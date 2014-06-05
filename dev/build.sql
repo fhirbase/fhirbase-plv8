@@ -336,7 +336,7 @@ LEFT JOIN fhir.datatype_unified_elements tp
 
 -- expand polimorphic types
 CREATE
-VIEW fhir.expanded_resource_elements as (
+VIEW fhir.polimorphic_expanded_resource_elements as (
   SELECT
     array_pop(path) || ARRAY[column_name(array_last(path), type)] as path,
     type,
@@ -358,24 +358,24 @@ VIEW fhir.expanded_resource_elements as (
 
 -- get all elements wich have a children
 -- all parent path is coumpound (teorema Bodnarchuka)
-CREATE
-VIEW fhir.compound_resource_elements as (
-  SELECT a.*
-         ,ere.min
-         ,ere.max
-    FROM (
-            SELECT DISTINCT
-              array_pop(path) as path
-            FROM fhir.expanded_resource_elements
-            WHERE array_length(path,1) > 1
-         ) a
-    LEFT JOIN fhir.expanded_resource_elements ere
-    ON ere.path = a.path
-);
+/* CREATE */
+/* VIEW fhir.compound_resource_elements as ( */
+/*   SELECT a.* */
+/*          ,ere.min */
+/*          ,ere.max */
+/*     FROM ( */
+/*             SELECT DISTINCT */
+/*               array_pop(path) as path */
+/*             FROM fhir.polimorphic_expanded_resource_elements */
+/*             WHERE array_length(path,1) > 1 */
+/*          ) a */
+/*     LEFT JOIN fhir.polimorphic_expanded_resource_elements ere */
+/*     ON ere.path = a.path */
+/* ); */
 
 -- elements recursively expanded with complex datatypes
 CREATE
-VIEW fhir.expanded_with_dt_resource_elements as (
+VIEW fhir.expanded_resource_elements as (
     SELECT
       e.path || array_tail(t.path) as path,
       CASE WHEN array_length(t.path,1) = 1
@@ -385,8 +385,12 @@ VIEW fhir.expanded_with_dt_resource_elements as (
       CASE WHEN array_length(t.path,1) = 1
         THEN e.max
         ELSE t.max
-      END AS max
-    FROM fhir.expanded_resource_elements e
+      END AS max,
+      CASE WHEN array_length(t.path,1) = 1
+        THEN e.type
+        ELSE t.type
+      END AS type
+    FROM fhir.polimorphic_expanded_resource_elements e
     JOIN fhir.datatype_unified_elements t
     ON t.path[1] = e.type
 );
@@ -430,7 +434,10 @@ WHERE array_length(path,1) = 1;
 
 -- TODO: insert procedure
 
-select * from fhir.expanded_with_dt_resource_elements
-where path[1]='Patient' and path[2]='name'
+--}}}
+--{{{
+
+select * from fhir.expanded_resource_elements
+where path[1]='Patient' and path[2]='address'
 order by path
 --}}}
