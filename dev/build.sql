@@ -30,6 +30,31 @@ $BODY$
 $BODY$
 LANGUAGE plpgsql VOLATILE;
 
+CREATE OR REPLACE
+FUNCTION array_pop(ar varchar[])
+  RETURNS varchar[] language sql AS $$
+    SELECT ar[array_lower(ar,1) : array_upper(ar,1) - 1];
+$$ IMMUTABLE;
+
+-- remove last item from array
+CREATE OR REPLACE
+FUNCTION array_tail(ar varchar[])
+  RETURNS varchar[] language sql AS $$
+    SELECT ar[2 : array_upper(ar,1)];
+$$ IMMUTABLE;
+
+CREATE OR REPLACE
+FUNCTION array_last(ar varchar[])
+  RETURNS varchar language sql AS $$
+    SELECT ar[array_length(ar,1)];
+$$ IMMUTABLE;
+
+CREATE OR REPLACE
+FUNCTION column_name(name varchar, type varchar)
+  RETURNS varchar language sql AS $$
+    SELECT replace(name, '[x]', '' || type);
+$$  IMMUTABLE;
+
 CREATE TABLE fhir.datatypes (
   version varchar,
   type varchar,
@@ -243,12 +268,138 @@ select
   ) els
 ;
 
+CREATE VIEW fhir.enums AS (
+  SELECT  replace(datatype, '-list','')
+      AS  enum
+          ,array_agg(value)
+      AS  options
+    FROM  fhir.datatype_enums
+GROUP BY  replace(datatype, '-list','')
+);
+
+CREATE VIEW fhir.primitive_types as (
+  SELECT type
+         ,pg_type
+    FROM fhir.type_to_pg_type
+   UNION SELECT enum, 'fhir."' || enum  || '"'
+    FROM fhir.enums
+);
+
+CREATE VIEW fhir._datatype_unified_elements AS (
+  SELECT ARRAY[datatype, name]
+      AS path
+         ,type
+         ,min_occurs
+      AS min
+         ,CASE when max_occurs = 'unbounded'
+           THEN '*'
+           ELSE max_occurs
+          END
+      AS max
+    FROM fhir.datatype_elements
+   WHERE datatype <> 'Resource'
+);
+
+CREATE VIEW fhir.datatype_unified_elements as (
+  WITH RECURSIVE tree(
+    path
+    ,type
+    ,min
+    ,max
+  ) AS (
+    SELECT r.* FROM fhir._datatype_unified_elements r
+    UNION
+    SELECT t.path || ARRAY[array_last(r.path)] as path,
+           r.type as type,
+           t.min as min,
+           t.max as max
+      FROM fhir._datatype_unified_elements r
+      JOIN tree t on t.type = r.path[1]
+  )
+  SELECT * FROM tree t LIMIT 1000
+);
+
+CREATE VIEW fhir.unified_complex_datatype AS (
+  SELECT   ue.path as path
+           ,coalesce(tp.type, ue.path[1]) as type, tp.min, tp.max
+     FROM  (
+              SELECT array_pop(path)
+                  AS path
+                FROM fhir.datatype_unified_elements
+            GROUP BY array_pop(path)
+           )
+       AS  ue
+LEFT JOIN fhir.datatype_unified_elements tp
+       ON tp.path = ue.path
+);
+
+
+-- expand polimorphic types
+CREATE
+VIEW fhir.expanded_resource_elements as (
+  SELECT
+    array_pop(path) || ARRAY[column_name(array_last(path), type)] as path,
+    type,
+    min,
+    max
+  FROM (
+    SELECT
+      path,
+      CASE WHEN array_length(type, 1) is null
+        THEN '_NestedResource_'
+        ELSE unnest(type)
+      END as type,
+      min,
+      max
+    FROM fhir.resource_elements
+  ) e
+  WHERE type not in ('Extension', 'contained') OR type is null
+);
+
+-- get all elements wich have a children
+-- all parent path is coumpound (teorema Bodnarchuka)
+CREATE
+VIEW fhir.compound_resource_elements as (
+  SELECT a.*
+         ,ere.min
+         ,ere.max
+    FROM (
+            SELECT DISTINCT
+              array_pop(path) as path
+            FROM fhir.expanded_resource_elements
+            WHERE array_length(path,1) > 1
+         ) a
+    LEFT JOIN fhir.expanded_resource_elements ere
+    ON ere.path = a.path
+);
+
+-- elements recursively expanded with complex datatypes
+CREATE
+VIEW fhir.expanded_with_dt_resource_elements as (
+    SELECT
+      e.path || array_tail(t.path) as path,
+      CASE WHEN array_length(t.path,1) = 1
+        THEN e.min
+        ELSE t.min
+      END AS min,
+      CASE WHEN array_length(t.path,1) = 1
+        THEN e.max
+        ELSE t.max
+      END AS max
+    FROM fhir.expanded_resource_elements e
+    JOIN fhir.datatype_unified_elements t
+    ON t.path[1] = e.type
+);
+
+
 SELECT
+count(
 eval_ddl(
   eval_template($SQL$
-    DROP TABLE IF EXISTS "{{tbl_name}}" CASCADE;
-    DROP TABLE IF EXISTS "{{tbl_name}}_history" CASCADE;
     DROP TABLE IF EXISTS "{{tbl_name}}_search_string" CASCADE;
+    DROP TABLE IF EXISTS "{{tbl_name}}_history" CASCADE;
+    DROP TABLE IF EXISTS "{{tbl_name}}" CASCADE;
+
     CREATE TABLE "{{tbl_name}}" (
       version_id uuid PRIMARY KEY,
       logical_id uuid UNIQUE,
@@ -256,6 +407,7 @@ eval_ddl(
       published  TIMESTAMP WITH TIME ZONE NOT NULL,
       data jsonb NOT NULL
     );
+
     CREATE TABLE "{{tbl_name}}_history" (
       version_id uuid PRIMARY KEY,
       logical_id uuid NOT NULL,
@@ -263,6 +415,7 @@ eval_ddl(
       published  TIMESTAMP WITH TIME ZONE NOT NULL,
       data jsonb NOT NULL
     );
+
     CREATE TABLE "{{tbl_name}}_search_string" (
       _id SERIAL PRIMARY KEY,
       resource_id uuid references "{{tbl_name}}"(logical_id),
@@ -271,8 +424,13 @@ eval_ddl(
       -- ts_value ts_vector
     );
   $SQL$,
-  'tbl_name', lower(path[1]))
-)
+  'tbl_name', lower(path[1]))))
 FROM fhir.resource_elements
 WHERE array_length(path,1) = 1;
+
+-- TODO: insert procedure
+
+select * from fhir.expanded_with_dt_resource_elements
+where path[1]='Patient' and path[2]='name'
+order by path
 --}}}
