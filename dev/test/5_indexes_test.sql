@@ -47,10 +47,14 @@ select * from patient_search_string;
 select * from patient;
 --}}}
 --{{{
-select * from patient where logical_id in (
-  select resource_id from patient_search_string
-  where param='given'
-  and
-  value ilike '%ame%'
-);
+select DISTINCT(type) from fhir.resource_indexables
+where search_type = 'token'
+and param_name <> '_id';
+
+select * from fhir.resource_indexables
+where search_type = 'token'
+and param_name <> '_id';
+--}}}
+--{{{
+\d patient_search_token
 --}}}

@@ -22,7 +22,21 @@ BEGIN
 END;
 $$;
 
-DROP FUNCTION index_string_resource(jsonb);
+CREATE OR REPLACE FUNCTION
+index_token_complex_type(_path varchar[], _item jsonb)
+RETURNS varchar LANGUAGE plpgsql AS $$
+DECLARE
+  el fhir.expanded_resource_elements%rowtype;
+  vals varchar[] := array[]::varchar[];
+BEGIN
+ --support
+ /* Identifier */
+ /* CodeableConcept */
+ /* Coding */
+END;
+$$;
+
+DROP FUNCTION IF EXISTS index_string_resource(jsonb);
 
 CREATE OR REPLACE FUNCTION
 index_string_resource(rsrs jsonb)
@@ -64,7 +78,7 @@ END
 $$;
 
 
-DROP FUNCTION insert_resource(jsonb);
+DROP FUNCTION IF EXISTS insert_resource(jsonb);
 
 CREATE OR REPLACE FUNCTION
 insert_resource(_rsrs jsonb)

@@ -28,6 +28,16 @@ eval_ddl(
       value varchar
       -- ts_value ts_vector
     );
+
+    CREATE TABLE "{{tbl_name}}_search_token" (
+      _id SERIAL PRIMARY KEY,
+      resource_id uuid references "{{tbl_name}}"(logical_id),
+      param varchar,
+      namespace varchar,
+      code varchar,
+      text varchar
+      -- ts_value ts_vector
+    );
   $SQL$,
   'tbl_name', lower(path[1]))))
 FROM fhir.resource_elements
