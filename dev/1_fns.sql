@@ -30,6 +30,23 @@ FUNCTION array_pop(ar varchar[])
 $$ IMMUTABLE;
 
 CREATE OR REPLACE
+FUNCTION is_subpath(_parent varchar[], _child varchar[])
+  RETURNS boolean language sql AS $$
+    SELECT _child[array_lower(_parent,1) : array_upper(_parent,1)] = _parent;
+    --SELECT _child && _parent;
+$$ IMMUTABLE;
+
+CREATE OR REPLACE
+FUNCTION relative_path(_parent varchar[], _child varchar[])
+  RETURNS varchar[] language sql AS $$
+    SELECT _child[array_upper(_parent,1) + 1 : array_upper(_child,1)];
+    --SELECT _child && _parent;
+$$ IMMUTABLE;
+
+
+--SELECT is_subpath('{a,b}','{a,b,c}');
+
+CREATE OR REPLACE
 FUNCTION butlast(ar varchar[])
   RETURNS varchar[] language sql AS $$
     SELECT ar[array_lower(ar,1) : array_upper(ar,1) - 1];
@@ -60,7 +77,6 @@ FUNCTION column_name(name varchar, type varchar)
     SELECT replace(name, '[x]', '' || type);
 $$  IMMUTABLE;
 
---{{{
 CREATE OR REPLACE FUNCTION
 is_array(json jsonb)
   RETURNS boolean language sql AS $$
@@ -70,6 +86,7 @@ is_array(json jsonb)
     END;
 $$  IMMUTABLE;
 
+--FIXME: use json_typeof
 CREATE OR REPLACE FUNCTION
 is_obj(json jsonb)
   RETURNS boolean language sql AS $$
@@ -78,6 +95,50 @@ is_obj(json jsonb)
       THEN true ELSE false
     END;
 $$  IMMUTABLE;
+
+CREATE or REPLACE
+FUNCTION xattr(pth varchar, x xml) returns varchar
+  as $$
+  BEGIN
+    return  unnest(xpath(pth, x, ARRAY[ARRAY['fh', 'http://hl7.org/fhir']])) limit 1;
+  END
+$$ language plpgsql;
+
+-- HACK: see http://joelonsql.com/2013/05/13/xml-madness/
+-- problems with namespaces
+CREATE OR REPLACE
+FUNCTION xspath(pth varchar, x xml) returns xml[]
+  as $$
+  BEGIN
+    return  xpath('/xml' || pth, xml('<xml xmlns:xs="xs">' || x || '</xml>'), ARRAY[ARRAY['xs','xs']]);
+  END
+$$ language plpgsql IMMUTABLE;
+
+CREATE OR REPLACE
+FUNCTION xsattr(pth varchar, x xml) returns varchar
+  as $$
+  BEGIN
+    return  unnest(xspath( pth,x)) limit 1;
+  END
+$$ language plpgsql IMMUTABLE;
+
+
+CREATE OR REPLACE
+FUNCTION fpath(pth varchar, x xml) returns xml[]
+  as $$
+  BEGIN
+    return xpath(pth, x, ARRAY[ARRAY['fh', 'http://hl7.org/fhir']]);
+  END
+$$ language plpgsql IMMUTABLE;
+
+create OR replace
+function xarrattr(pth varchar, x xml) returns varchar[]
+  as $$
+  BEGIN
+    RETURN array(select unnest(fpath(pth, x))::varchar);
+  END
+$$ language plpgsql;
+
 
 CREATE OR REPLACE FUNCTION
 get_in_path(json jsonb, path varchar[])
@@ -93,8 +154,18 @@ BEGIN
   END IF;
 
   IF array_length(path, 1) IS NULL THEN
-    --RAISE NOTICE 'return %', json;
-    RETURN array[json];
+    -- expand array
+    IF is_array(json) THEN
+      FOR item IN
+        SELECT jsonb_array_elements(json)
+      LOOP
+        acc := acc || item;
+      END LOOP;
+      RETURN acc;
+    RETURN acc;
+    ELSE
+      RETURN array[json];
+    END IF;
   END IF;
 
   IF is_array(json) THEN
@@ -112,9 +183,19 @@ BEGIN
 END
 $$;
 
---SELECT get_in_path('{"a": 1}'::jsonb, ARRAY['a']);
-
---SELECT get_in_path('{"a":[{"b": [{"c":"c1"},{"c":"c2"}]}, {"b":[{"c":"c3"}]}]}'::jsonb, ARRAY['a','b','c']);
-
---SELECT is_array('[{"a":"b"}]'::jsonb);
+CREATE OR REPLACE FUNCTION
+json_array_to_str_array(_jsons jsonb[])
+RETURNS varchar[] LANGUAGE plpgsql AS $$
+DECLARE
+item jsonb;
+acc varchar[] := array[]::varchar[];
+BEGIN
+  FOR item IN
+    SELECT unnest(_jsons)
+  LOOP
+    acc := acc || (json_build_object('x', item)->>'x')::varchar;
+  END LOOP;
+  RETURN acc;
+END
+$$;
 --}}}

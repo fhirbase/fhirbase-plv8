@@ -4,9 +4,6 @@ SELECT
 count(
 eval_ddl(
   eval_template($SQL$
-    DROP TABLE IF EXISTS "{{tbl_name}}_search_string" CASCADE;
-    DROP TABLE IF EXISTS "{{tbl_name}}_history" CASCADE;
-    DROP TABLE IF EXISTS "{{tbl_name}}" CASCADE;
 
     CREATE TABLE "{{tbl_name}}" (
       version_id uuid PRIMARY KEY,
@@ -35,11 +32,4 @@ eval_ddl(
   'tbl_name', lower(path[1]))))
 FROM fhir.resource_elements
 WHERE array_length(path,1) = 1;
-
---}}}
---{{{
-
-select * from fhir.expanded_resource_elements
-where path[1]='Patient' and path[2]='address'
-order by path
 --}}}

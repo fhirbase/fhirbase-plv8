@@ -32,24 +32,6 @@ CREATE TABLE fhir.datatype_enums (
   PRIMARY KEY(datatype, value)
 );
 
-CREATE TABLE fhir.resource_elements (
-  version varchar,
-  path varchar[],
-  min varchar,
-  max varchar,
-  type varchar[],
-  PRIMARY KEY(path)
-);
-
-CREATE TABLE fhir.resource_search_params (
-  _id SERIAL  PRIMARY KEY,
-  path varchar[],
-  name varchar,
-  version varchar,
-  type varchar,
-  documentation text
-);
-
 CREATE TABLE fhir.type_to_pg_type (
   type varchar,
   pg_type varchar
@@ -73,51 +55,7 @@ VALUES
 ('id', 'varchar'),
 ('oid', 'varchar');
 
-\set fhir `cat profiles-resources.xml`
 \set datatypes `cat fhir-base.xsd`
-
-CREATE or REPLACE
-FUNCTION xattr(pth varchar, x xml) returns varchar
-  as $$
-  BEGIN
-    return  unnest(xpath(pth, x, ARRAY[ARRAY['fh', 'http://hl7.org/fhir']])) limit 1;
-  END
-$$ language plpgsql;
-
--- HACK: see http://joelonsql.com/2013/05/13/xml-madness/
--- problems with namespaces
-CREATE OR REPLACE
-FUNCTION xspath(pth varchar, x xml) returns xml[]
-  as $$
-  BEGIN
-    return  xpath('/xml' || pth, xml('<xml xmlns:xs="xs">' || x || '</xml>'), ARRAY[ARRAY['xs','xs']]);
-  END
-$$ language plpgsql IMMUTABLE;
-
-CREATE OR REPLACE
-FUNCTION xsattr(pth varchar, x xml) returns varchar
-  as $$
-  BEGIN
-    return  unnest(xspath( pth,x)) limit 1;
-  END
-$$ language plpgsql IMMUTABLE;
-
-
-CREATE OR REPLACE
-FUNCTION fpath(pth varchar, x xml) returns xml[]
-  as $$
-  BEGIN
-    return xpath(pth, x, ARRAY[ARRAY['fh', 'http://hl7.org/fhir']]);
-  END
-$$ language plpgsql IMMUTABLE;
-
-create OR replace
-function xarrattr(pth varchar, x xml) returns varchar[]
-  as $$
-  BEGIN
-    RETURN array(select unnest(fpath(pth, x))::varchar);
-  END
-$$ language plpgsql;
 
 INSERT INTO fhir.datatypes (version, type)
 (
@@ -177,44 +115,6 @@ FROM (
        ARRAY[ARRAY['xs', 'http://www.w3.org/2001/XMLSchema']])) st
   ) n1
 ) n2;
-
-INSERT INTO fhir.resource_elements
- (version, path, min, max, type)
-select
-    '0.12' as version,
-    regexp_split_to_array(xattr('./path/@value', el), '\.') as path,
-    xattr('./definition/min/@value', el) as min,
-    xattr('./definition/max/@value', el) as max,
-    xarrattr('./definition/type/code/@value', el) as type
-  FROM (
-    SELECT unnest(fpath('//fh:structure/fh:element', :'fhir')) as el
-  ) els
-;
-
-INSERT INTO fhir.resource_search_params
- (version, path, name, type, documentation)
-select
-    '0.12' as version,
-    coalesce(
-      regexp_split_to_array(
-        replace(
-          xattr('./xpath/@value', el)
-          ,'f:'
-          ,'')
-        , '/')
-      ,ARRAY[res]) as path,
-    xattr('./name/@value', el) as type,
-    xattr('./type/@value', el) as type,
-    xattr('./documentation/@value', el) as documentation
-  FROM (
-    SELECT
-      xattr('./type/@value', st) as res,
-      unnest(xpath('./searchParam', st)) as el
-      FROM (
-        SELECT unnest(fpath('//fh:structure', :'fhir')) as st
-      ) st
-  ) els
-;
 
 CREATE VIEW fhir.enums AS (
   SELECT  replace(datatype, '-list','')
@@ -279,67 +179,5 @@ CREATE VIEW fhir.unified_complex_datatype AS (
        AS  ue
 LEFT JOIN fhir.datatype_unified_elements tp
        ON tp.path = ue.path
-);
-
-
--- expand polimorphic types
-CREATE
-VIEW fhir.polimorphic_expanded_resource_elements as (
-  SELECT
-    array_pop(path) || ARRAY[column_name(array_last(path), type)] as path,
-    type,
-    min,
-    max
-  FROM (
-    SELECT
-      path,
-      CASE WHEN array_length(type, 1) is null
-        THEN '_NestedResource_'
-        ELSE unnest(type)
-      END as type,
-      min,
-      max
-    FROM fhir.resource_elements
-  ) e
-  WHERE type not in ('Extension', 'contained') OR type is null
-);
-
--- get all elements wich have a children
--- all parent path is coumpound (teorema Bodnarchuka)
-/* CREATE */
-/* VIEW fhir.compound_resource_elements as ( */
-/*   SELECT a.* */
-/*          ,ere.min */
-/*          ,ere.max */
-/*     FROM ( */
-/*             SELECT DISTINCT */
-/*               array_pop(path) as path */
-/*             FROM fhir.polimorphic_expanded_resource_elements */
-/*             WHERE array_length(path,1) > 1 */
-/*          ) a */
-/*     LEFT JOIN fhir.polimorphic_expanded_resource_elements ere */
-/*     ON ere.path = a.path */
-/* ); */
-
--- elements recursively expanded with complex datatypes
-CREATE
-VIEW fhir.expanded_resource_elements as (
-    SELECT
-      e.path || array_tail(t.path) as path,
-      CASE WHEN array_length(t.path,1) = 1
-        THEN e.min
-        ELSE t.min
-      END AS min,
-      CASE WHEN array_length(t.path,1) = 1
-        THEN e.max
-        ELSE t.max
-      END AS max,
-      CASE WHEN array_length(t.path,1) = 1
-        THEN e.type
-        ELSE t.type
-      END AS type
-    FROM fhir.polimorphic_expanded_resource_elements e
-    JOIN fhir.datatype_unified_elements t
-    ON t.path[1] = e.type
 );
 --}}}
