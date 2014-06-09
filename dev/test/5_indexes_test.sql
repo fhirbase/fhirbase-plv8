@@ -100,10 +100,17 @@ select gen_random_uuid();
 
 delete from patient_search_string;
 delete from patient_search_token;
+delete from patient_history;
 delete from patient;
+
 SELECT insert_resource(:'pt'::jsonb);
+select update_resource(logical_id, data) FROM patient;
+
 select * from patient_search_token;
+select * from patient_search_string;
 select * from patient;
+select * from patient_history;
+
 --}}}
 
 --{{{
@@ -112,9 +119,11 @@ select * from patient;
 delete from encounter_search_string;
 delete from encounter_search_token;
 delete from encounter;
+\timing
 SELECT insert_resource(:'subj'::jsonb);
 select * from encounter_search_token;
 select * from encounter;
+
 --}}}
 
 

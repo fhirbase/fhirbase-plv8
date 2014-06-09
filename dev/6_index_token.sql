@@ -92,7 +92,7 @@ BEGIN
   LOOP
     attrs := get_in_path(rsrs, rest(prm.path));
 
-    RAISE NOTICE 'item %', attrs;
+    --RAISE NOTICE 'item %', attrs;
 
     FOR item IN SELECT unnest(attrs)
     LOOP

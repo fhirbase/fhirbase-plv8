@@ -1,19 +1,27 @@
 --db:fhirb
 --{{{
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+--TODO: handle publish date
 
-DROP FUNCTION IF EXISTS insert_resource(jsonb);
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE OR REPLACE FUNCTION
 insert_resource(_rsrs jsonb)
 RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE
-res_type varchar;
-id uuid := gen_random_uuid();
-published timestamptz :=  CURRENT_TIMESTAMP;
-idx jsonb;
-/* rec RECORD; */
+  id uuid := gen_random_uuid();
+BEGIN
+  RETURN insert_resource(id, _rsrs);
+END
+$$;
+
+CREATE OR REPLACE FUNCTION
+insert_resource(id uuid, _rsrs jsonb)
+RETURNS uuid LANGUAGE plpgsql AS $$
+DECLARE
+  res_type varchar;
+  published timestamptz :=  CURRENT_TIMESTAMP;
+  vid uuid := gen_random_uuid();
 BEGIN
   res_type := lower(_rsrs->>'resourceType');
 
@@ -24,8 +32,39 @@ BEGIN
       VALUES
       ($1, $2, $3, $4, $5)
     $SQL$, 'tbl', res_type)
-  USING id, id, published, published, _rsrs;
+  USING id, vid, published, published, _rsrs;
 
+  PERFORM index_resource(id, res_type, _rsrs);
+
+  RETURN id;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION
+index_resource(id uuid, res_type varchar)
+RETURNS uuid LANGUAGE plpgsql AS $$
+DECLARE
+  rec RECORD;
+  rsrs jsonb;
+BEGIN
+  EXECUTE
+    eval_template($SQL$
+      SELECT data FROM "{{tbl}}"
+        WHERE logical_id = $1
+        LIMIT 1
+    $SQL$, 'tbl', res_type)
+  INTO rsrs USING id;
+  RETURN index_resource(id, res_type, rsrs);
+END
+$$;
+
+CREATE OR REPLACE FUNCTION
+index_resource(id uuid, res_type varchar, _rsrs jsonb)
+RETURNS uuid LANGUAGE plpgsql AS $$
+DECLARE
+  rec RECORD;
+  idx jsonb;
+BEGIN
   -- indexing strings
   FOR idx IN
     SELECT unnest(index_string_resource(_rsrs))
@@ -55,31 +94,44 @@ BEGIN
       $SQL$, 'tbl', res_type)
     USING id, idx;
   END LOOP;
+
   RETURN id;
 END
 $$;
 
+--DROP FUNCTION delete_resource(uuid);
+
 CREATE OR REPLACE FUNCTION
-update_resource(_rsrs jsonb)
+delete_resource(id uuid, res_type varchar)
 RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE
 BEGIN
-  /* move old version to history */
-  /* remove res old indexes */
+  EXECUTE
+    eval_template($SQL$
+      INSERT INTO "{{tbl}}_history"
+      SELECT * FROM {{tbl}}
+      WHERE logical_id = $1;
 
-  /* insert resource with fixed id*/
-  /* create new indexes */
+      DELETE FROM "{{tbl}}_search_string" WHERE resource_id = $1;
+      DELETE FROM "{{tbl}}_search_token" WHERE resource_id = $1;
+      DELETE FROM "{{tbl}}" WHERE logical_id = $1;
+    $SQL$, 'tbl', res_type)
+  USING id;
+
+  RETURN id;
 END
 $$;
 
+-- TODO: implement by UPDATE
 CREATE OR REPLACE FUNCTION
-delete_resource(_rsrs jsonb)
+update_resource(id uuid, _rsrs jsonb)
 RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE
+  res_type varchar;
 BEGIN
-  /* move old version to history */
-  /* remove res old indexes */
-  /* create new indexes */
+  res_type := lower(_rsrs->>'resourceType');
+  PERFORM delete_resource(id, res_type);
+  RETURN insert_resource(id, _rsrs);
 END
 $$;
 --}}}
