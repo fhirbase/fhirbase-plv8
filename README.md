@@ -1,6 +1,9 @@
-# fhirplace
+# fhirbase jsonb
 
-A Clojure library designed to ... well, that part is up to you.
+New implementation of `fhirbase` using jsonb & jsquery.
+
+Main accent is on indexing and search.
+
 
 
 ## Search
