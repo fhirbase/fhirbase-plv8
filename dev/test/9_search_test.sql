@@ -28,7 +28,8 @@ SELECT
 
 --{{{
 SELECT
-  search_resource('Patient','{}');;
+  history_resource('Patient',
+    (select logical_id from patient limit 1))
 
 --}}}
 
