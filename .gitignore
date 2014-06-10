@@ -2,3 +2,4 @@
 *.swp
 .sw?
 *.sw?
+/dev/my-build.sh

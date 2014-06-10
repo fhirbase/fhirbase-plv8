@@ -5,24 +5,33 @@
 CREATE OR REPLACE FUNCTION
 param_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
 RETURNS text LANGUAGE sql AS $$
-SELECT CASE
-  WHEN _type = 'string' THEN
-    eval_template($SQL$
-      (resource.logical_id = {{tbl}}.resource_id
-       AND {{tbl}}.param = {{param}}
-       AND ({{vals_cond}}))
-    $SQL$, 'tbl', _table
-         , 'param', quote_literal(_param)
-         , 'vals_cond',
-           (SELECT
-              string_agg(
-              _table || '.value ilike ' || quote_literal('%' || regexp_split_to_table || '%')
-              ,' OR ')
-             FROM
-             regexp_split_to_table(_value, ',')))
-  ELSE
-    'IMPLEMENT ME ' || _type || ' SEARCH!!!'
-END
+WITH val_cond AS (SELECT
+  CASE WHEN _type = 'string' THEN
+    _table || '.value ilike ' || quote_literal('%' || regexp_split_to_table || '%')
+  WHEN _type = 'token' THEN
+    (SELECT
+    CASE WHEN p.count = 1 THEN
+      _table || '.code = ' || quote_literal(p.c1)
+    WHEN p.count = 2 THEN
+      _table || '.code = ' || quote_literal(p.c2) || ' AND ' ||
+      _table || '.namespace = ' || quote_literal(p.c1)
+    END
+    FROM (SELECT split_part(_value, '|', 1) AS c1,
+                 split_part(_value, '|', 2) AS c2,
+                 array_length(regexp_split_to_array(_value, '\|'), 1) AS count) p)
+  ELSE 'implement me' END as cond
+  FROM
+  regexp_split_to_table(_value, ','))
+
+SELECT
+  eval_template($SQL$
+    (resource.logical_id = {{tbl}}.resource_id
+     AND {{tbl}}.param = {{param}}
+     AND ({{vals_cond}}))
+  $SQL$, 'tbl', _table
+       , 'param', quote_literal(_param)
+       , 'vals_cond',
+       (SELECT string_agg(cond, ' OR ') FROM val_cond));
 $$;
 
 --DROP FUNCTION parse_search_params(varchar, jsonb);
@@ -77,7 +86,7 @@ BEGIN
           'resourceType', 'Bundle',
           'updated', now(),
           'id', gen_random_uuid(),
-          'entry', json_agg(y.*)
+          'entry', COALESCE(json_agg(y.*), '[]'::json)
         ) as json
         FROM (
           SELECT
@@ -112,7 +121,7 @@ BEGIN
           'resourceType', 'Bundle',
           'updated', now(),
           'id', gen_random_uuid(),
-          'entry', json_agg(y.*)
+          'entry', COALESCE(json_agg(y.*), '[]'::json)
         ) as json
         FROM (
           SELECT

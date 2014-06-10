@@ -5,8 +5,10 @@ select regexp_split_to_table from regexp_split_to_table('a,b,c', ',');
 --{{{
     SELECT parse_search_params('Patient', $JSON${
       "name": "Chalmers",
-      "given": "Peter"
-    }$JSON$)
+      "given": "Peter",
+      "active": "true",
+      "gender": "http://hl7.org/fhir/v3/AdministrativeGender|M"
+    }$JSON$);
 --}}}
 
 --{{{
