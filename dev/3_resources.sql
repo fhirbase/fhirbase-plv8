@@ -57,8 +57,10 @@ select
   ) els
 ;
 
+--}}}
+--{{{
 -- expand polimorphic types
-CREATE
+CREATE OR REPLACE
 VIEW fhir.polimorphic_expanded_resource_elements as (
   SELECT
     array_pop(path) || ARRAY[column_name(array_last(path), type)] as path,
@@ -114,10 +116,16 @@ VIEW fhir.expanded_resource_elements as (
   ) x
   LEFT JOIN fhir.primitive_types fpt
     ON fpt.type = x.type
+  GROUP BY x.path, x.min, x.max, x.type, is_primitive
 );
 
 CREATE OR REPLACE
 VIEW fhir.resource_indexables AS (
+WITH polimorphic_attrs_mapping AS (
+        SELECT 'date' as stp,  '{date,dateTime,instant,Period,Schedule}'::varchar[] as tp
+  UNION SELECT 'token' as stp, '{boolean,code,CodeableConcept,Coding,Identifier,oid,Resource,string,uri}'::varchar[] as tp
+  UNION SELECT 'string' as stp, '{Address,Attachment,CodeableConcept,Contact,HumanName,Period,Quantity,Ratio,Resource,SampledData,string,uri}'::varchar[] as tp
+  UNION SELECT 'quantity' as stp, '{Quantity}'::varchar[] as tp )
 SELECT
   rsp.name as param_name
   ,rsp.path[1] as resource_type
@@ -129,6 +137,14 @@ SELECT
   FROM fhir.resource_search_params rsp
   JOIN fhir.expanded_resource_elements ere
     ON ere.path = rsp.path
+       OR (array_last(rsp.path) ilike '%[x]' -- handle polymorph
+           AND butlast(ere.path) = butlast(rsp.path)
+           AND position(
+              replace(array_last(rsp.path), '[x]','')
+              in array_last(ere.path)) = 1
+           AND EXISTS (
+             SELECT *
+             FROM polimorphic_attrs_mapping pam
+             WHERE pam.stp = rsp.type AND ere.type = ANY(pam.tp)))
 );
 --}}}
-

@@ -96,18 +96,18 @@ BEGIN
   END LOOP;
 
   -- indexing dates
-  FOR idx IN
-  SELECT unnest(index_date_resource(_rsrs))
-  LOOP
-  --RAISE NOTICE 'idx %', idx;
-  EXECUTE
-  eval_template($SQL$
-  INSERT INTO "{{tbl}}_search_date"
-  (resource_id, param, "start", "end")
-  SELECT $1, $2->>'param', $2->>'start', $2->>'end'
-  $SQL$, 'tbl', res_type)
-  USING id, idx;
-  END LOOP;
+  /* FOR idx IN */
+  /* SELECT unnest(index_date_resource(_rsrs)) */
+  /* LOOP */
+  /* --RAISE NOTICE 'idx %', idx; */
+  /* EXECUTE */
+  /* eval_template($SQL$ */
+  /* INSERT INTO "{{tbl}}_search_date" */
+  /* (resource_id, param, "start", "end") */
+  /* SELECT $1, $2->>'param', $2->>'start', $2->>'end' */
+  /* $SQL$, 'tbl', res_type) */
+  /* USING id, idx; */
+  /* END LOOP; */
 
   RETURN id;
 END
