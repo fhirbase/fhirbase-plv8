@@ -163,6 +163,15 @@ SELECT unnest(index_date_resource(:'dr'::jsonb));
 
 --{{{
 SELECT index_schedule_to_date('when', $JSON$
-{"repeat":{"frequency":1,"duration":1,"units":"d"}}
+{"event": [{"start": "2011-12-23"}],
+"repeat":{"frequency":1,"duration":1,"units":"d"}}
+$JSON$);
+--}}}
+
+--{{{
+SELECT index_schedule_to_date('when', $JSON$
+{"event": [{"start": "2011-12-23"},
+           {"start": "2012-11-23"},
+           {"start": "2012-12-23", "end": "2012-12-27"}]}
 $JSON$);
 --}}}
