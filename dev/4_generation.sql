@@ -38,6 +38,14 @@ eval_ddl(
       text varchar
       -- ts_value ts_vector
     );
+
+    CREATE TABLE "{{tbl_name}}_search_date" (
+    _id SERIAL PRIMARY KEY,
+    resource_id uuid references "{{tbl_name}}"(logical_id),
+    param varchar,
+    "start" timestamptz,
+    "end" timestamptz
+    );
   $SQL$,
   'tbl_name', lower(path[1]))))
 FROM fhir.resource_elements
