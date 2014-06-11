@@ -2,13 +2,41 @@
 --{{{
 
 CREATE OR REPLACE FUNCTION
+convert_fhir_date_to_pgrange(d varchar)
+RETURNS tstzrange LANGUAGE plpgsql AS $$
+DECLARE
+  prec varchar;
+  d1 timestamptz;
+BEGIN
+  CASE
+  WHEN d ~ '^\d\d\d\d$' THEN    -- year
+  RETURN tstzrange((d || '-01-01 00:00:00')::timestamptz, (d || '-12-31 23:59:59')::timestamptz);
+  WHEN d ~ '^\d\d\d\d-\d\d$' THEN -- month
+    d1 := (d || '-01 00:00:00')::timestamptz;
+    RETURN tstzrange(d1, d1 + interval '1 month' - interval '1 second');
+  WHEN d ~ '^\d\d\d\d-\d\d-\d\d$' THEN -- day
+    d1 := (d || ' 00:00:00')::timestamptz;
+    RETURN tstzrange(d1, d1 + interval '23 hours 59 minutes 59 seconds');
+  WHEN d ~ '^\d\d\d\d-\d\d-\d\d( |T)\d\d$' THEN -- hour
+    d1 := (d || ':00:00')::timestamptz;
+    RETURN tstzrange(d1, d1 + interval '59 minutes 59 seconds');
+  WHEN d ~ '^\d\d\d\d-\d\d-\d\d( |T)\d\d:\d\d$' THEN -- minute
+    d1 := (d || ':00')::timestamptz;
+    RETURN tstzrange(d1, d1 + interval '59 seconds');
+  ELSE
+    RETURN ('[' || d || ',' || d || ']')::tstzrange;
+  END CASE;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION
 index_period_to_date(_param_name varchar, _item jsonb)
 RETURNS jsonb[] LANGUAGE plpgsql AS $$
 BEGIN
   RETURN array[json_build_object(
   'param', _param_name,
-  'start', _item->>'start',
-  'end', _item->>'end'
+  'start', lower(convert_fhir_date_to_pgrange(_item->>'start')),
+  'end', upper(convert_fhir_date_to_pgrange(_item->>'end'))
   )::jsonb];
 END;
 $$;
@@ -43,32 +71,15 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION
-index_datetime_or_instant_to_date(_param_name varchar, _item jsonb)
+index_date_or_datetime_or_instant_to_date(_param_name varchar, _item jsonb)
 RETURNS jsonb[] LANGUAGE plpgsql AS $$
 DECLARE
-  d timestamptz := _item::varchar::timestamptz;
+  d tstzrange := convert_fhir_date_to_pgrange(_item::varchar);
 BEGIN
   RETURN array[json_build_object(
   'param', _param_name,
-  'start', d,
-  'end', d
-  )::jsonb];
-END;
-$$;
-
--- TODO: support variable date precision
-CREATE OR REPLACE FUNCTION
-index_date_to_date(_param_name varchar, _item jsonb)
-RETURNS jsonb[] LANGUAGE plpgsql AS $$
-DECLARE
-  d date := _item::varchar::date;
-  st timestamp := date_trunc('second', d);
-  en timestamp := st + interval '24 hours';
-BEGIN
-  RETURN array[json_build_object(
-  'param', _param_name,
-  'start', st,
-  'end', en
+  'start', lower(d),
+  'end', upper(d)
   )::jsonb];
 END;
 $$;
@@ -94,10 +105,8 @@ BEGIN
       CASE
         WHEN prm.type = 'Period' THEN
           result := result || index_period_to_date(prm.param_name, item);
-        WHEN prm.type = 'dateTime' or prm.type = 'instant' THEN
-          result := result || index_datetime_or_instant_to_date(prm.param_name, item);
-        WHEN prm.type = 'date' THEN
-          result := result || index_date_to_date(prm.param_name, item);
+        WHEN prm.type = 'dateTime' OR prm.type = 'instant' OR prm.type = 'date' THEN
+          result := result || index_date_or_datetime_or_instant_to_date(prm.param_name, item);
         WHEN prm.type = 'Schedule' THEN
           result := result || index_schedule_to_date(prm.param_name, item);
         ELSE

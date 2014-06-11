@@ -19,6 +19,8 @@ WITH val_cond AS (SELECT
     FROM (SELECT split_part(_value, '|', 1) AS c1,
                  split_part(_value, '|', 2) AS c2,
                  array_length(regexp_split_to_array(_value, '\|'), 1) AS count) p)
+  WHEN _type = 'date' THEN
+    (SELECT 'true')
   ELSE 'implement me' END as cond
   FROM
   regexp_split_to_table(_value, ','))
