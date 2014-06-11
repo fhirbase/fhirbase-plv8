@@ -96,18 +96,18 @@ BEGIN
   END LOOP;
 
   -- indexing dates
-  /* FOR idx IN */
-  /* SELECT unnest(index_date_resource(_rsrs)) */
-  /* LOOP */
-  /* --RAISE NOTICE 'idx %', idx; */
-  /* EXECUTE */
-  /* eval_template($SQL$ */
-  /* INSERT INTO "{{tbl}}_search_date" */
-  /* (resource_id, param, "start", "end") */
-  /* SELECT $1, $2->>'param', $2->>'start', $2->>'end' */
-  /* $SQL$, 'tbl', res_type) */
-  /* USING id, idx; */
-  /* END LOOP; */
+  FOR idx IN
+    SELECT unnest(index_date_resource(_rsrs))
+  LOOP
+    RAISE NOTICE 'idx %', idx;
+    EXECUTE
+    eval_template($SQL$
+      INSERT INTO "{{tbl}}_search_date"
+      (resource_id, param, "start", "end")
+      SELECT $1, $2->>'param', ($2->>'start')::timestamptz, ($2->>'end')::timestamptz
+    $SQL$, 'tbl', res_type)
+    USING id, idx;
+    END LOOP;
 
   -- indexing quantity
   FOR idx IN
@@ -141,6 +141,8 @@ BEGIN
 
       DELETE FROM "{{tbl}}_search_string" WHERE resource_id = $1;
       DELETE FROM "{{tbl}}_search_token" WHERE resource_id = $1;
+      DELETE FROM "{{tbl}}_search_date" WHERE resource_id = $1;
+      -- DELETE FROM "{{tbl}}_search_quantity" WHERE resource_id = $1;
       DELETE FROM "{{tbl}}" WHERE logical_id = $1;
     $SQL$, 'tbl', lower(res_type))
   USING id;

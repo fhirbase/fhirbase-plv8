@@ -95,11 +95,16 @@ create extension pgcrypto;
 select gen_random_uuid();
 --}}}
 
+\set pt `curl http://www.hl7.org/implement/standards/fhir/patient-example.json`
+SELECT insert_resource(:'pt'::jsonb);
+
 --{{{
 \set pt `curl http://www.hl7.org/implement/standards/fhir/patient-example.json`
 
 delete from patient_search_string;
 delete from patient_search_token;
+delete from patient_search_date;
+-- delete from patient_search_quantity;
 delete from patient_history;
 delete from patient;
 
@@ -110,7 +115,7 @@ select * from patient_search_token;
 select * from patient_search_string;
 select * from patient;
 select * from patient_history;
-
+select * from patient_search_date;
 --}}}
 
 --{{{

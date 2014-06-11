@@ -184,6 +184,12 @@ END
 $$;
 
 CREATE OR REPLACE FUNCTION
+jsonb_text_value(j jsonb)
+RETURNS varchar LANGUAGE sql AS $$
+  SELECT (json_build_object('x', j::json)->>'x')::varchar
+$$;
+
+CREATE OR REPLACE FUNCTION
 json_array_to_str_array(_jsons jsonb[])
 RETURNS varchar[] LANGUAGE plpgsql AS $$
 DECLARE

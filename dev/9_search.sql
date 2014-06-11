@@ -3,26 +3,54 @@
 --DROP FUNCTION param_expression(_table varchar, _param varchar, _type varchar, modifier varchar, _value varchar);
 
 CREATE OR REPLACE FUNCTION
+_param_expression_string(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+RETURNS text LANGUAGE sql AS $$
+  SELECT _table || '.value ilike ' || quote_literal('%' || _value || '%');
+$$;
+
+CREATE OR REPLACE FUNCTION
+_param_expression_token(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+RETURNS text LANGUAGE sql AS $$
+  (SELECT
+  CASE WHEN p.count = 1 THEN
+  _table || '.code = ' || quote_literal(p.c1)
+  WHEN p.count = 2 THEN
+  _table || '.code = ' || quote_literal(p.c2) || ' AND ' ||
+  _table || '.namespace = ' || quote_literal(p.c1)
+  END
+  FROM
+    (SELECT split_part(_value, '|', 1) AS c1,
+     split_part(_value, '|', 2) AS c2,
+     array_length(regexp_split_to_array(_value, '\|'), 1) AS count) p);
+$$;
+
+CREATE OR REPLACE FUNCTION
+_param_expression_date(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+RETURNS text LANGUAGE sql AS $$
+  SELECT
+  CASE WHEN op IS NULL THEN
+    'tstzrange(' || _table || '."start", ' || _table || '."end") && ' || quote_literal(val) || '::tstzrange'
+  ELSE
+    '1'
+  END
+  FROM
+  (SELECT
+    (regexp_matches(_value, '^(<|>)?'))[1] AS op,
+    convert_fhir_date_to_pgrange((regexp_matches(_value, '^(<|>)?(.+)$'))[2]) AS val) p;
+$$;
+
+CREATE OR REPLACE FUNCTION
 param_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
 RETURNS text LANGUAGE sql AS $$
 WITH val_cond AS (SELECT
   CASE WHEN _type = 'string' THEN
-    _table || '.value ilike ' || quote_literal('%' || regexp_split_to_table || '%')
+    _param_expression_string(_table, _param, _type, _modifier, regexp_split_to_table)
   WHEN _type = 'token' THEN
-    (SELECT
-    CASE WHEN p.count = 1 THEN
-      _table || '.code = ' || quote_literal(p.c1)
-    WHEN p.count = 2 THEN
-      _table || '.code = ' || quote_literal(p.c2) || ' AND ' ||
-      _table || '.namespace = ' || quote_literal(p.c1)
-    END
-    FROM (SELECT split_part(_value, '|', 1) AS c1,
-                 split_part(_value, '|', 2) AS c2,
-                 array_length(regexp_split_to_array(_value, '\|'), 1) AS count) p)
+    _param_expression_token(_table, _param, _type, _modifier, regexp_split_to_table)
+  WHEN _type = 'date' THEN
+    _param_expression_date(_table, _param, _type, _modifier, regexp_split_to_table)
   ELSE 'implement me' END as cond
-  FROM
-  regexp_split_to_table(_value, ','))
-
+  FROM regexp_split_to_table(_value, ','))
 SELECT
   eval_template($SQL$
     (resource.logical_id = {{tbl}}.resource_id

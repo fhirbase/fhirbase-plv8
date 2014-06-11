@@ -5,7 +5,6 @@ CREATE OR REPLACE FUNCTION
 convert_fhir_date_to_pgrange(d varchar)
 RETURNS tstzrange LANGUAGE plpgsql AS $$
 DECLARE
-  prec varchar;
   d1 timestamptz;
 BEGIN
   CASE
@@ -23,8 +22,10 @@ BEGIN
   WHEN d ~ '^\d\d\d\d-\d\d-\d\d( |T)\d\d:\d\d$' THEN -- minute
     d1 := (d || ':00')::timestamptz;
     RETURN tstzrange(d1, d1 + interval '59 seconds');
-  ELSE
+  WHEN d ~ '^\d\d\d\d-\d\d-\d\d( |T)\d\d:\d\d:\d\d$' THEN -- full date
     RETURN ('[' || d || ',' || d || ']')::tstzrange;
+  ELSE
+    RAISE EXCEPTION 'unknown date format: %', d
   END CASE;
 END;
 $$;
@@ -60,8 +61,8 @@ BEGIN
     IF (_item->'event'->0->'start') IS NOT NULL OR (_item->'repeat'->'end') IS NOT NULL THEN
       RETURN array[json_build_object(
         'param', _param_name,
-        'start', _item->'event'->0->'start',
-        'end', _item->'repeat'->'end'
+        'start', _item->'event'->0->>'start',
+        'end', _item->'repeat'->>'end'
       )::jsonb];
     ELSE
       RETURN array[]::jsonb[];
@@ -74,7 +75,7 @@ CREATE OR REPLACE FUNCTION
 index_date_or_datetime_or_instant_to_date(_param_name varchar, _item jsonb)
 RETURNS jsonb[] LANGUAGE plpgsql AS $$
 DECLARE
-  d tstzrange := convert_fhir_date_to_pgrange(_item::varchar);
+  d tstzrange := convert_fhir_date_to_pgrange(jsonb_text_value(_item));
 BEGIN
   RETURN array[json_build_object(
   'param', _param_name,
