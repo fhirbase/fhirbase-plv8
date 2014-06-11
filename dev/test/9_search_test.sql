@@ -27,6 +27,11 @@ SELECT
     }$JSON$)
 
 --}}}
+--{{{
+ SELECT '2013-01-14T10:00+0600'::timestamp;
+ SELECT '2013-01-14T10:00+0600'::timestamptz;
+ SELECT '2013-01-14T10:00Z'::timestamptz;
+--}}}
 
 --{{{
 SELECT
