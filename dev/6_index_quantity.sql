@@ -15,13 +15,18 @@ BEGIN
     AND search_type = 'quantity'
   LOOP
     attrs := get_in_path(rsrs, rest(prm.path));
-
     FOR item IN SELECT unnest(attrs)
     LOOP
-      RAISE NOTICE '%', item;
+      result := result || json_build_object(
+       'param', prm.param_name,
+       'value', item->'value',
+       'comparator', item->'comparator',
+       'units', item->'units',
+       'system', item->'system',
+       'code', item->'code')::jsonb;
     END LOOP;
   END LOOP;
-  RETURN null::jsonb[];
+  RETURN result;
 END
 $$;
 --}}}

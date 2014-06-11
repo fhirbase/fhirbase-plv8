@@ -109,6 +109,19 @@ BEGIN
   /* USING id, idx; */
   /* END LOOP; */
 
+  -- indexing quantity
+  FOR idx IN
+  SELECT unnest(index_quantity_resource(_rsrs))
+  LOOP
+    EXECUTE
+      eval_template($SQL$
+        INSERT INTO "{{tbl}}_search_quantity"
+        (resource_id, param, value, comparator, units, system, code)
+        SELECT $1, $2->>'param', ($2->>'value')::decimal, $2->>'comparator', $2->>'units', $2->>'system', $2->>'code'
+      $SQL$, 'tbl', res_type)
+    USING id, idx;
+  END LOOP;
+
   RETURN id;
 END
 $$;

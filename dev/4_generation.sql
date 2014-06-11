@@ -46,6 +46,18 @@ eval_ddl(
     "start" timestamptz,
     "end" timestamptz
     );
+
+    --quantity
+    CREATE TABLE "{{tbl_name}}_search_quantity" (
+      _id SERIAL PRIMARY KEY,
+      resource_id uuid references "{{tbl_name}}"(logical_id),
+      param varchar,
+      value decimal,
+      comparator varchar,
+      units varchar,
+      system varchar,
+      code varchar
+    );
   $SQL$,
   'tbl_name', lower(path[1]))))
 FROM fhir.resource_elements

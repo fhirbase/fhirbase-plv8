@@ -3,6 +3,7 @@ DB='fhirb' #ase_test'
 
 echo "DROP DATABASE IF EXISTS $DB; CREATE DATABASE $DB;" | psql $PSQL_ARGS -d postgres;
 for scrpt in `ls *sql`; do
+  echo "Execute: $scrpt ..."
   cat $scrpt | psql $PSQL_ARGS -d $DB -1
 done
 

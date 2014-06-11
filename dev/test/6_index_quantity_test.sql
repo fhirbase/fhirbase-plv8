@@ -2,7 +2,8 @@
 --{{{
 \set pt `curl http://www.hl7.org/implement/standards/fhir/observation-example-f001-glucose.json`
 
-SELECT unnest(index_quantity_resource(:'pt'::jsonb));
+SELECT insert_resource(:'pt'::jsonb);
+select * from observation_search_quantity;
 --}}}
 --{{{
 /* select * from fhir.resource_search_params */
