@@ -136,3 +136,33 @@ and param_name <> '_id';
 --{{{
 \d patient_search_token
 --}}}
+
+--{{{
+\set pt `curl http://www.hl7.org/implement/standards/fhir/patient-example.json`
+SELECT unnest(index_date_resource(:'pt'::jsonb));
+--}}}
+
+--{{{
+\set ma `curl http://hl7.org/implement/standards/fhir/medicationadministration-example.json`
+SELECT unnest(index_date_resource(:'ma'::jsonb));
+--}}}
+
+--{{{
+\set pt `curl http://www.hl7.org/implement/standards/fhir/patient-example.json`
+SELECT unnest(index_date_resource(:'pt'::jsonb));
+--}}}
+j
+--{{{
+\set cond `curl http://hl7.org/implement/standards/fhir/condition-example-f201-fever.json`
+SELECT unnest(index_date_resource(:'cond'::jsonb));
+--}}}
+--{{{
+\set dr `curl http://hl7.org/implement/standards/fhir/documentreference-example.json`
+SELECT unnest(index_date_resource(:'dr'::jsonb));
+--}}}
+
+--{{{
+SELECT index_schedule_to_date('when', $JSON$
+{"repeat":{"frequency":1,"duration":1,"units":"d"}}
+$JSON$);
+--}}}
