@@ -13,11 +13,17 @@ CREATE OR REPLACE FUNCTION
 _param_expression_token(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
 RETURNS text LANGUAGE sql AS $$
   (SELECT
-  CASE WHEN p.count = 1 THEN
-  quote_ident(_table) || '.code = ' || quote_literal(p.c1)
-  WHEN p.count = 2 THEN
-  quote_ident(_table) || '.code = ' || quote_literal(p.c2) || ' AND ' ||
-  quote_ident(_table) || '.namespace = ' || quote_literal(p.c1)
+  CASE WHEN _modifier = '' THEN
+    CASE WHEN p.count = 1 THEN
+      quote_ident(_table) || '.code = ' || quote_literal(p.c1)
+    WHEN p.count = 2 THEN
+      quote_ident(_table) || '.code = ' || quote_literal(p.c2) || ' AND ' ||
+      quote_ident(_table) || '.namespace = ' || quote_literal(p.c1)
+    END
+  WHEN _modifier = 'text' THEN
+    quote_ident(_table) || '.text = ' || quote_literal(_value)
+  ELSE
+    '"unknown modifier' || _modifier || '"'
   END
   FROM
     (SELECT split_part(_value, '|', 1) AS c1,
