@@ -2,7 +2,7 @@ CREATE OR REPLACE FUNCTION
 _param_expression_string(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
 RETURNS text LANGUAGE sql AS $$
   SELECT CASE
-    WHEN _modifier IS NULL THEN
+    WHEN _modifier = '' THEN
       quote_ident(_table) || '.value ilike ' || quote_literal('%' || _value || '%')
     WHEN _modifier = 'exact' THEN
       quote_ident(_table) || '.value = ' || quote_literal(_value)
