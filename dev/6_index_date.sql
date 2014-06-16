@@ -22,7 +22,7 @@ BEGIN
   WHEN d ~ '^\d\d\d\d-\d\d-\d\d( |T)\d\d:\d\d$' THEN -- minute
     d1 := (d || ':00')::timestamptz;
     RETURN tstzrange(d1, d1 + interval '59 seconds');
-  WHEN d ~ '^\d\d\d\d-\d\d-\d\d( |T)\d\d:\d\d:\d\d$' THEN -- full date
+  WHEN d ~ '^\d\d\d\d-\d\d-\d\d( |T)\d\d:\d\d:\d\d(\.\d+)?((\+|\-)\d\d:\d\d)?$' THEN -- full date
     RETURN ('[' || d || ',' || d || ']')::tstzrange;
   ELSE
     RAISE EXCEPTION 'unknown date format: %', d;
