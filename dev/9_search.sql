@@ -1,11 +1,7 @@
---db:fhirb
---{{{
---DROP FUNCTION param_expression(_table varchar, _param varchar, _type varchar, modifier varchar, _value varchar);
-
 CREATE OR REPLACE FUNCTION
 _param_expression_string(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
 RETURNS text LANGUAGE sql AS $$
-  SELECT _table || '.value ilike ' || quote_literal('%' || _value || '%');
+  SELECT quote_ident(_table) || '.value ilike ' || quote_literal('%' || _value || '%');
 $$;
 
 CREATE OR REPLACE FUNCTION
@@ -13,10 +9,10 @@ _param_expression_token(_table varchar, _param varchar, _type varchar, _modifier
 RETURNS text LANGUAGE sql AS $$
   (SELECT
   CASE WHEN p.count = 1 THEN
-  _table || '.code = ' || quote_literal(p.c1)
+  quote_ident(_table) || '.code = ' || quote_literal(p.c1)
   WHEN p.count = 2 THEN
-  _table || '.code = ' || quote_literal(p.c2) || ' AND ' ||
-  _table || '.namespace = ' || quote_literal(p.c1)
+  quote_ident(_table) || '.code = ' || quote_literal(p.c2) || ' AND ' ||
+  quote_ident(_table) || '.namespace = ' || quote_literal(p.c1)
   END
   FROM
     (SELECT split_part(_value, '|', 1) AS c1,
@@ -29,9 +25,13 @@ _param_expression_date(_table varchar, _param varchar, _type varchar, _modifier 
 RETURNS text LANGUAGE sql AS $$
   SELECT
   CASE WHEN op IS NULL THEN
-    'tstzrange(' || _table || '."start", ' || _table || '."end") && ' || quote_literal(val) || '::tstzrange'
+    quote_literal(val) || '::tstzrange @> tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end")'
+  WHEN op = '>' THEN
+    'tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end") && ' || 'tstzrange(' || quote_literal(upper(val)) || ', NULL)'
+  WHEN op = '<' THEN
+    'tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end") && ' || 'tstzrange(NULL, ' || quote_literal(lower(val)) || ')'
   ELSE
-    '1'
+  '1'
   END
   FROM
   (SELECT
@@ -53,16 +53,14 @@ WITH val_cond AS (SELECT
   FROM regexp_split_to_table(_value, ','))
 SELECT
   eval_template($SQL$
-    (resource.logical_id = {{tbl}}.resource_id
-     AND {{tbl}}.param = {{param}}
+    (resource.logical_id = "{{tbl}}".resource_id
+     AND "{{tbl}}".param = {{param}}
      AND ({{vals_cond}}))
   $SQL$, 'tbl', _table
        , 'param', quote_literal(_param)
        , 'vals_cond',
        (SELECT string_agg(cond, ' OR ') FROM val_cond));
 $$;
-
---DROP FUNCTION parse_search_params(varchar, jsonb);
 
 CREATE OR REPLACE FUNCTION
 parse_search_params(_resource_type varchar, query jsonb)
@@ -74,7 +72,7 @@ RETURNS text LANGUAGE sql AS $$
                {{idx_tables}}
          WHERE {{idx_conds}}
       $SQL$, 'res-tbl', lower(_resource_type)
-           , 'idx_tables', string_agg((z.tbl || ' ' || z.alias), ', ')
+           , 'idx_tables', string_agg((z.tbl || ' "' || z.alias || '"'), ', ')
            , 'idx_conds', string_agg(z.cond, '  AND  '))
       FROM (
       SELECT
@@ -98,8 +96,6 @@ RETURNS text LANGUAGE sql AS $$
       ) z
 $$ IMMUTABLE;
 
---DROP FUNCTION search_resource(varchar, jsonb);
-
 CREATE OR REPLACE FUNCTION
 search_resource(resource_type varchar, query jsonb)
 RETURNS jsonb LANGUAGE plpgsql AS $$
@@ -114,7 +110,7 @@ BEGIN
         ,x.last_modified_date as last_modified_date
         ,x.published as published
         ,x.data as content
-        FROM {{tbl}} x
+        FROM "{{tbl}}" x
         WHERE logical_id IN ({{search_sql}}))
       SELECT
         json_build_object(
@@ -150,7 +146,7 @@ BEGIN
           ,x.last_modified_date as last_modified_date
           ,x.published as published
           ,x.data as content
-        FROM {{tbl}} x
+        FROM "{{tbl}}" x
         WHERE x.logical_id  = $1
         UNION
         SELECT
@@ -175,4 +171,3 @@ BEGIN
   RETURN res.json;
 END
 $$;
---}}}
