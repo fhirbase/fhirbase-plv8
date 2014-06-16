@@ -4,6 +4,9 @@
 
 SELECT insert_resource(:'pt'::jsonb);
 select * from observation_search_quantity;
+
+--}}}
+--{{{
 --}}}
 --{{{
 /* select * from fhir.resource_search_params */

@@ -25,7 +25,7 @@ BEGIN
   WHEN d ~ '^\d\d\d\d-\d\d-\d\d( |T)\d\d:\d\d:\d\d$' THEN -- full date
     RETURN ('[' || d || ',' || d || ']')::tstzrange;
   ELSE
-    RAISE EXCEPTION 'unknown date format: %', d
+    RAISE EXCEPTION 'unknown date format: %', d;
   END CASE;
 END;
 $$;
