@@ -17,7 +17,7 @@ BEGIN
     --RAISE NOTICE 'extracting el %', el;
     vals := vals || json_array_to_str_array(get_in_path(_item, relative_path(_path, el.path)));
   END LOOP;
-  RETURN array_to_string(vals, ' , ');
+  RETURN array_to_string(vals, ' ');
 END;
 $$;
 
