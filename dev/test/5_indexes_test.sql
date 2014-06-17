@@ -80,7 +80,7 @@ SELECT * FROM index_string_complex_type(
 --{{{
 \set pt `curl http://www.hl7.org/implement/standards/fhir/patient-example.json`
 
-SELECT unnest(index_string_resource(:'pt'::jsonb));
+SELECT unnest(index_reference_resource(:'pt'::jsonb));
 --}}}
 
 

@@ -122,6 +122,20 @@ BEGIN
     USING id, idx;
   END LOOP;
 
+  -- indexing references
+  FOR idx IN
+  SELECT unnest(index_reference_resource(_rsrs))
+  LOOP
+  EXECUTE
+  eval_template($SQL$
+    INSERT INTO "{{tbl}}_search_reference"
+    (resource_id, param, logical_id, resource_type, url)
+    SELECT $1, $2->>'param', $2->>'logical_id', $2->>'resource_type', $2->>'url';
+  $SQL$, 'tbl', res_type)
+  USING id, idx;
+  END LOOP;
+
+
   RETURN id;
 END
 $$;

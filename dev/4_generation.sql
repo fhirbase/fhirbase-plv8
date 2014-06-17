@@ -4,7 +4,6 @@ SELECT
 count(
 eval_ddl(
   eval_template($SQL$
-
     CREATE TABLE "{{tbl_name}}" (
       version_id uuid PRIMARY KEY,
       logical_id uuid UNIQUE,
@@ -24,7 +23,7 @@ eval_ddl(
     CREATE TABLE "{{tbl_name}}_search_string" (
       _id SERIAL PRIMARY KEY,
       resource_id uuid references "{{tbl_name}}"(logical_id),
-      param varchar,
+      param varchar NOT NULL,
       value varchar
       -- ts_value ts_vector
     );
@@ -32,7 +31,7 @@ eval_ddl(
     CREATE TABLE "{{tbl_name}}_search_token" (
       _id SERIAL PRIMARY KEY,
       resource_id uuid references "{{tbl_name}}"(logical_id),
-      param varchar,
+      param varchar NOT NULL,
       namespace varchar,
       code varchar,
       text varchar
@@ -42,9 +41,19 @@ eval_ddl(
     CREATE TABLE "{{tbl_name}}_search_date" (
     _id SERIAL PRIMARY KEY,
     resource_id uuid references "{{tbl_name}}"(logical_id),
-    param varchar,
+    param varchar NOT NULL,
     "start" timestamptz,
     "end" timestamptz
+    );
+
+    -- references
+    CREATE TABLE "{{tbl_name}}_search_reference" (
+    _id SERIAL PRIMARY KEY,
+    resource_id uuid references "{{tbl_name}}"(logical_id),
+    param varchar NOT NULL,
+    resource_type varchar NOT NULL,
+    logical_id varchar NOT NULL,
+    url varchar
     );
 
     --quantity

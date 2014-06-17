@@ -10,6 +10,18 @@ RETURNS text LANGUAGE sql AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION
+_param_expression_reference(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+RETURNS text LANGUAGE sql AS $$
+  SELECT
+    '(' || quote_ident(_table) || '.logical_id = ' || quote_literal(_value) || ' OR ' || quote_ident(_table) || '.url = ' || quote_literal(_value) || ')' ||
+    CASE WHEN _modifier <> '' THEN
+      ' AND ' || quote_ident(_table) || '.resource_type = ' || quote_literal(_modifier)
+    ELSE
+      ''
+    END;
+$$;
+
+CREATE OR REPLACE FUNCTION
 _param_expression_quantity(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
 RETURNS text LANGUAGE sql AS $$
   SELECT
@@ -104,6 +116,8 @@ WITH val_cond AS (SELECT
     _param_expression_date(_table, _param, _type, _modifier, regexp_split_to_table)
   WHEN _type = 'quantity' THEN
     _param_expression_quantity(_table, _param, _type, _modifier, regexp_split_to_table)
+  WHEN _type = 'reference' THEN
+    _param_expression_reference(_table, _param, _type, _modifier, regexp_split_to_table)
   ELSE 'implement_me' END as cond
   FROM regexp_split_to_table(_value, ','))
 SELECT
