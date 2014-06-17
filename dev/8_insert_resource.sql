@@ -156,7 +156,8 @@ BEGIN
       DELETE FROM "{{tbl}}_search_string" WHERE resource_id = $1;
       DELETE FROM "{{tbl}}_search_token" WHERE resource_id = $1;
       DELETE FROM "{{tbl}}_search_date" WHERE resource_id = $1;
-      -- DELETE FROM "{{tbl}}_search_quantity" WHERE resource_id = $1;
+      DELETE FROM "{{tbl}}_search_reference" WHERE resource_id = $1;
+      DELETE FROM "{{tbl}}_search_quantity" WHERE resource_id = $1;
       DELETE FROM "{{tbl}}" WHERE logical_id = $1;
     $SQL$, 'tbl', lower(res_type))
   USING id;

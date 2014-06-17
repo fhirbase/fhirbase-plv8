@@ -139,6 +139,43 @@ function xarrattr(pth varchar, x xml) returns varchar[]
   END
 $$ language plpgsql;
 
+CREATE OR REPLACE FUNCTION
+tables_with_aliases(_tbls varchar[], _als varchar[])
+RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+  res text = '';
+  tbls varchar[] = array_discard_nulls(_tbls);
+  als varchar[] = array_discard_nulls(_als);
+  i integer;
+BEGIN
+  FOR i IN 1..array_upper(tbls, 1)
+  LOOP
+    res := res || tbls[i] || ' ' || als[i];
+
+    IF i < array_upper(tbls, 1) AND length(res) > 0 THEN
+      res := res || ', ';
+    END IF;
+  END LOOP;
+
+  RETURN res;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION
+keys_and_values_to_jsonb(keys varchar[], vals varchar[])
+RETURNS jsonb LANGUAGE plpgsql AS $$
+DECLARE
+  res text[];
+  i integer;
+BEGIN
+  FOR i IN 1..array_upper(keys, 1)
+  LOOP
+    res := res || (to_json(keys[i])::varchar || ':' || to_json(vals[i])::varchar);
+  END LOOP;
+
+  RETURN ('{' || array_to_string(res, ', ') || '}')::jsonb;
+END
+$$;
 
 CREATE OR REPLACE FUNCTION
 get_in_path(json jsonb, path varchar[])
@@ -187,6 +224,12 @@ CREATE OR REPLACE FUNCTION
 jsonb_text_value(j jsonb)
 RETURNS varchar LANGUAGE sql AS $$
   SELECT (json_build_object('x', j::json)->>'x')::varchar
+$$;
+
+CREATE OR REPLACE FUNCTION
+array_discard_nulls(a varchar[])
+RETURNS varchar[] LANGUAGE sql AS $$
+SELECT array_agg("unnest") FROM unnest(a) WHERE "unnest" IS NOT NULL;
 $$;
 
 CREATE OR REPLACE FUNCTION

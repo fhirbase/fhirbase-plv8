@@ -6,6 +6,7 @@ CREATE TABLE fhir.resource_elements (
   min varchar,
   max varchar,
   type varchar[],
+  ref_type varchar[],
   PRIMARY KEY(path)
 );
 
@@ -18,16 +19,24 @@ CREATE TABLE fhir.resource_search_params (
   documentation text
 );
 
+CREATE OR REPLACE FUNCTION
+profile_to_resource_type(profiles varchar[])
+RETURNS varchar[] LANGUAGE sql AS $$
+  SELECT array_agg(replace("unnest", 'http://hl7.org/fhir/profiles/', ''))::varchar[]
+  FROM unnest(profiles);
+$$;
+
 \set fhir `cat profiles-resources.xml`
 
 INSERT INTO fhir.resource_elements
- (version, path, min, max, type)
+ (version, path, min, max, type, ref_type)
 select
     '0.12' as version,
     regexp_split_to_array(xattr('./path/@value', el), '\.') as path,
     xattr('./definition/min/@value', el) as min,
     xattr('./definition/max/@value', el) as max,
-    xarrattr('./definition/type/code/@value', el) as type
+    xarrattr('./definition/type/code/@value', el) as type,
+    profile_to_resource_type(xarrattr('./definition/type/profile/@value', el)) as ref_type
   FROM (
     SELECT unnest(fpath('//fh:structure/fh:element', :'fhir')) as el
   ) els

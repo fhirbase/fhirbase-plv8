@@ -105,7 +105,7 @@ RETURNS text LANGUAGE sql AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION
-param_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+param_expression(_resource_table varchar, _table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
 RETURNS text LANGUAGE sql AS $$
 WITH val_cond AS (SELECT
   CASE WHEN _type = 'string' THEN
@@ -122,46 +122,96 @@ WITH val_cond AS (SELECT
   FROM regexp_split_to_table(_value, ','))
 SELECT
   eval_template($SQL$
-    (resource.logical_id = "{{tbl}}".resource_id
+    ({{resource_table}}.logical_id = "{{tbl}}".resource_id
      AND "{{tbl}}".param = {{param}}
      AND ({{vals_cond}}))
   $SQL$, 'tbl', _table
+       , 'resource_table', _resource_table
        , 'param', quote_literal(_param)
        , 'vals_cond',
        (SELECT string_agg(cond, ' OR ') FROM val_cond));
 $$;
 
+-- forward declaration, actual function below
 CREATE OR REPLACE FUNCTION
-parse_search_params(_resource_type varchar, query jsonb)
+parse_search_params(_resource_type varchar, query jsonb, nested_level integer)
+RETURNS text LANGUAGE sql AS $$
+SELECT 'forward declaration'::text;
+$$;
+
+CREATE OR REPLACE FUNCTION
+parse_nested_search_params(_resource_table varchar, _resource_type varchar, query jsonb, nested_level integer)
+RETURNS setof text LANGUAGE sql AS $$
+SELECT
+  'split_part(' || _resource_table || '.data->' || quote_literal(ref_attr) || '->>''reference'', ''/'', 2)::uuid IN (' ||
+  parse_search_params(ref_type, keys_and_values_to_jsonb(array_agg(rest), array_agg(val)), nested_level + 1) ||
+  ')'
+FROM
+  (SELECT
+    _param_name, rest,
+    (CASE WHEN array_length(re.ref_type, 1) = 1 THEN
+      re.ref_type[1]
+    ELSE
+      split_part(_param_name, ':', 2)
+    END) AS ref_type,
+    val,
+    array_last(ri.path) AS ref_attr
+  FROM
+    (SELECT
+       (regexp_matches(x.key, '^([^.]+)\.'))[1] AS _param_name,
+       (regexp_matches(x.key, '^([^.]+)\.(.+)'))[2] AS rest,
+       x.value AS val
+     FROM jsonb_each_text(query) x
+     WHERE position('.' in x.key) > 0) x
+
+  JOIN fhir.resource_indexables ri ON ri.param_name = split_part(_param_name, ':', 1) AND ri.resource_type = _resource_type
+  JOIN fhir.resource_elements re ON re.path = ri.path) x
+GROUP BY ref_type, ref_attr
+$$;
+
+CREATE OR REPLACE FUNCTION
+parse_search_params(_resource_type varchar, query jsonb, nested_level integer)
 RETURNS text LANGUAGE sql AS $$
     SELECT
       eval_template($SQL$
-        SELECT DISTINCT(resource.logical_id)
-          FROM {{res-tbl}} resource,
-               {{idx_tables}}
-         WHERE {{idx_conds}}
-      $SQL$, 'res-tbl', lower(_resource_type)
-           , 'idx_tables', string_agg((z.tbl || ' "' || z.alias || '"'), ', ')
-           , 'idx_conds', string_agg(z.cond, '  AND  '))
+        SELECT DISTINCT({{resource_table}}.logical_id)
+          FROM {{tables}}
+          WHERE {{idx_conds}}
+      $SQL$,
+      'resource_table', (_resource_type || '_resource_' || nested_level),
+      'tables',
+      tables_with_aliases(array[lower(_resource_type)]::varchar[]  || array_agg(z.tbl)::varchar[],
+                          array[_resource_type || '_resource_' || nested_level]::varchar[] || array_agg(z.alias)::varchar[]),
+      'idx_conds', string_agg(z.cond, '  AND  '))
       FROM (
       SELECT
          z.tbl
         ,z.alias
         ,string_agg(
-          param_expression(z.alias, z.param_name, z.search_type, z.modifier, z.value)
+          param_expression(_resource_type || '_resource_' || nested_level, z.alias, z.param_name, z.search_type, z.modifier, z.value)
           , ' AND ') as cond
         FROM (
           SELECT
             lower(_resource_type) || '_search_' || fri.search_type as tbl
-            ,fri.param_name || '_idx' as alias
+            ,lower(_resource_type) || '_' || x.key || '_idx' as alias
             ,split_part(x.key, ':', 2) as modifier
-            ,*
-          FROM jsonb_each_text(query) x
-          JOIN fhir.resource_indexables fri
-            ON fri.param_name = split_part(x.key, ':', 1)
-            AND fri.resource_type =  _resource_type
+            ,param_name, search_type, key, value
+           FROM jsonb_each_text(query) x
+           JOIN fhir.resource_indexables fri
+               ON fri.param_name = split_part(x.key, ':', 1)
+               AND fri.resource_type =  _resource_type
+           WHERE position('.' in x.key) = 0
         ) z
         GROUP BY tbl, alias
+
+        -- nested params
+        UNION
+        SELECT
+          NULL as tbl,
+          NULL as alias,
+          string_agg("parse_nested_search_params", ' AND ') as cond
+          FROM parse_nested_search_params(_resource_type || '_resource_' || nested_level, _resource_type, query, nested_level)
+        WHERE "parse_nested_search_params" IS NOT NULL
       ) z
 $$ IMMUTABLE;
 
@@ -193,7 +243,7 @@ BEGIN
    $SQL$,
   'tbl', lower(resource_type),
   'search_sql', coalesce(
-                   parse_search_params(resource_type, query),
+                   parse_search_params(resource_type, query, 1),
                    ('SELECT logical_id FROM ' || lower(resource_type))))
   INTO res;
 
