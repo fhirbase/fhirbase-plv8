@@ -171,24 +171,27 @@ $$;
 
 CREATE OR REPLACE FUNCTION
 parse_search_params(_resource_type varchar, query jsonb, nested_level integer)
-RETURNS text LANGUAGE sql AS $$
-    SELECT
+RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+  resource_table varchar = _resource_type || '_resource_' || nested_level;
+BEGIN
+  RETURN (SELECT
       eval_template($SQL$
         SELECT DISTINCT({{resource_table}}.logical_id)
           FROM {{tables}}
           WHERE {{idx_conds}}
       $SQL$,
-      'resource_table', (_resource_type || '_resource_' || nested_level),
+      'resource_table', resource_table,
       'tables',
       tables_with_aliases(array[lower(_resource_type)]::varchar[]  || array_agg(z.tbl)::varchar[],
-                          array[_resource_type || '_resource_' || nested_level]::varchar[] || array_agg(z.alias)::varchar[]),
+                          array[resource_table]::varchar[] || array_agg(z.alias)::varchar[]),
       'idx_conds', string_agg(z.cond, '  AND  '))
       FROM (
       SELECT
          z.tbl
         ,z.alias
         ,string_agg(
-          param_expression(_resource_type || '_resource_' || nested_level, z.alias, z.param_name, z.search_type, z.modifier, z.value)
+          param_expression(resource_table, z.alias, z.param_name, z.search_type, z.modifier, z.value)
           , ' AND ') as cond
         FROM (
           SELECT
@@ -210,9 +213,10 @@ RETURNS text LANGUAGE sql AS $$
           NULL as tbl,
           NULL as alias,
           string_agg("parse_nested_search_params", ' AND ') as cond
-          FROM parse_nested_search_params(_resource_type || '_resource_' || nested_level, _resource_type, query, nested_level)
+          FROM parse_nested_search_params(resource_table, _resource_type, query, nested_level)
         WHERE "parse_nested_search_params" IS NOT NULL
-      ) z
+      ) z);
+END
 $$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
