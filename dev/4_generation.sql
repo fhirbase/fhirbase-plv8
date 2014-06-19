@@ -1,5 +1,16 @@
 --db:fhirb
 --{{{
+
+SET client_min_messages=WARNING;
+CREATE TABLE resource (
+    version_id uuid,
+    logical_id uuid,
+    resource_type varchar,
+    last_modified_date TIMESTAMP WITH TIME ZONE,
+    published  TIMESTAMP WITH TIME ZONE,
+    data jsonb
+);
+
 SELECT
 count(
 eval_ddl(
@@ -7,10 +18,11 @@ eval_ddl(
     CREATE TABLE "{{tbl_name}}" (
       version_id uuid PRIMARY KEY,
       logical_id uuid UNIQUE,
+      resource_type varchar DEFAULT '{{tbl_name}}',
       last_modified_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
       published  TIMESTAMP WITH TIME ZONE NOT NULL,
       data jsonb NOT NULL
-    );
+    ) INHERITS (resource);
 
     CREATE TABLE "{{tbl_name}}_history" (
       version_id uuid PRIMARY KEY,
@@ -80,4 +92,6 @@ eval_ddl(
   'tbl_name', lower(path[1]))))
 FROM fhir.resource_elements
 WHERE array_length(path,1) = 1;
+
+SET client_min_messages=INFO;
 --}}}

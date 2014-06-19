@@ -1,12 +1,13 @@
 --db:fhirb -e
 --{{{
+\d patient
+select * from resource;
+--}}}
+--{{{
 \set pt `curl http://www.hl7.org/implement/standards/fhir/observation-example-f001-glucose.json`
 
-WITH res AS (
-  SELECT insert_resource(:'pt'::jsonb)
-)
-select count(*) from observation_search_quantity
-where resource_id NOT IN (select insert_resource from res);
+SELECT insert_resource(:'pt'::jsonb);
+select * from observation_search_quantity;
 --}}}
 
 --{{{
