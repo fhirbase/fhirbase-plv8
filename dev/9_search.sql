@@ -272,39 +272,17 @@ END
 $$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
-search_resource(resource_type varchar, query jsonb)
-RETURNS jsonb LANGUAGE plpgsql AS $$
-DECLARE
-  res record;
-BEGIN
-  EXECUTE
-    eval_template($SQL$
-      WITH entries AS
-      (SELECT
-        x.logical_id as id
-        ,x.last_modified_date as last_modified_date
-        ,x.published as published
-        ,x.data as content
-        FROM "{{tbl}}" x
-        WHERE logical_id IN ({{search_sql}}))
-      SELECT
-        json_build_object(
-          'title', 'search',
-          'resourceType', 'Bundle',
-          'updated', now(),
-          'id', gen_random_uuid(),
-          'entry', COALESCE(json_agg(y.*), '[]'::json)
-        ) as json
-        FROM entries y
-   $SQL$,
-  'tbl', lower(resource_type),
-  'search_sql', coalesce(
-                   parse_search_params(resource_type, query, 1),
-                   ('SELECT logical_id FROM ' || lower(resource_type))))
-  INTO res;
-
-  RETURN res.json;
-END
+search_bundle(resource_type varchar, query jsonb)
+RETURNS json LANGUAGE sql AS $$
+  SELECT
+    json_build_object(
+      'title', 'Search results for ' || query::varchar,
+      'resourceType', 'Bundle',
+      'updated', now(),
+      'id', gen_random_uuid(),
+      'entry', COALESCE(json_agg(y.*), '[]'::json)
+    ) as json
+  FROM search(resource_type, query) y
 $$;
 
 CREATE OR REPLACE FUNCTION
