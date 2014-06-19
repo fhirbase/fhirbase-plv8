@@ -135,19 +135,18 @@ BEGIN
   USING id, idx;
   END LOOP;
 
-  -- indexing all references (for includes)
-  FOR idx IN
-  SELECT unnest(index_all_resource_references(_rsrs))
-  LOOP
-  EXECUTE
-    eval_template($SQL$
-      INSERT INTO "{{tbl}}_references"
-      (logical_id, path, reference_type, reference_id)
-      SELECT $1, $2->>'path', $2->>'reference_type', $2->>'reference_id';
-    $SQL$, 'tbl', res_type)
-  USING id, idx;
-  END LOOP;
-
+  -- -- indexing all references (for includes)
+  -- FOR idx IN
+  -- SELECT unnest(index_all_resource_references(_rsrs))
+  -- LOOP
+  -- EXECUTE
+  --   eval_template($SQL$
+  --     INSERT INTO "{{tbl}}_references"
+  --     (logical_id, path, reference_type, reference_id)
+  --     SELECT $1, $2->>'path', $2->>'reference_type', $2->>'reference_id';
+  --   $SQL$, 'tbl', res_type)
+  -- USING id, idx;
+  -- END LOOP;
   RETURN id;
 END
 $$;
