@@ -122,7 +122,7 @@ WITH val_cond AS (SELECT
   FROM regexp_split_to_table(_value, ','))
 SELECT
   eval_template($SQL$
-    ({{resource_table}}.logical_id = "{{tbl}}".resource_id
+    ("{{resource_table}}".logical_id = "{{tbl}}".resource_id
      AND "{{tbl}}".param = {{param}}
      AND ({{vals_cond}}))
   $SQL$, 'tbl', _table
