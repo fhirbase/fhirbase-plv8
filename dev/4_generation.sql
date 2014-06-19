@@ -16,8 +16,8 @@ count(
 eval_ddl(
   eval_template($SQL$
     CREATE TABLE "{{tbl_name}}" (
-      version_id uuid PRIMARY KEY,
-      logical_id uuid UNIQUE,
+      logical_id uuid PRIMARY KEY,
+      version_id uuid UNIQUE,
       resource_type varchar DEFAULT '{{resource_type}}',
       last_modified_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
       published  TIMESTAMP WITH TIME ZONE NOT NULL,

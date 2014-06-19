@@ -234,26 +234,22 @@ $$ IMMUTABLE;
 CREATE OR REPLACE FUNCTION
 search(resource_type varchar, query jsonb)
 RETURNS TABLE (logical_id uuid, data jsonb) LANGUAGE plpgsql AS $$
-DECLARE
-  includes varchar[];
-  inc record;
 BEGIN
-  SELECT INTO includes COALESCE(array_agg(jsonb_array_elements_text), '{}'::varchar[])
-  FROM jsonb_array_elements_text(query->'_include');
-
   RETURN QUERY EXECUTE (
         eval_template($SQL$
-
-        WITH found_resources AS (
+        WITH
+        found_resources AS (
           SELECT logical_id, data
           FROM "{{tbl}}" x
-          WHERE logical_id IN ({{search_sql}})),
+          WHERE logical_id IN ({{search_sql}})
+        ),
 
         refs_to_include AS (
           SELECT reference_type AS type, reference_id AS id
           FROM "{{tbl}}_references" refs
           WHERE logical_id IN (SELECT logical_id FROM found_resources)
-                AND path = ANY({{includes}}::varchar[])
+                AND path IN (SELECT * FROM
+                             jsonb_array_elements_text({{json_includes}}::jsonb))
         )
 
         -- fetch found resources
@@ -267,7 +263,7 @@ BEGIN
         FROM resource incres WHERE incres.logical_id::varchar IN (SELECT id FROM refs_to_include)
                                    AND incres.resource_type IN (SELECT type FROM refs_to_include)
       $SQL$,
-      'includes', quote_literal(includes),
+      'json_includes', quote_literal(COALESCE(query->'_include', '[]'::jsonb)),
       'tbl', lower(resource_type),
       'search_sql', coalesce(
                        parse_search_params(resource_type, query, 1),
