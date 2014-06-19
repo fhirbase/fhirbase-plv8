@@ -150,7 +150,7 @@ DECLARE
 BEGIN
   FOR i IN 1..array_upper(tbls, 1)
   LOOP
-    res := res || tbls[i] || ' ' || als[i];
+    res := res || quote_ident(tbls[i]) || ' ' || quote_ident(als[i]);
 
     IF i < array_upper(tbls, 1) AND length(res) > 0 THEN
       res := res || ', ';

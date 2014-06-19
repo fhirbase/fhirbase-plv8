@@ -177,7 +177,7 @@ DECLARE
 BEGIN
   RETURN (SELECT
       eval_template($SQL$
-        SELECT DISTINCT({{resource_table}}.logical_id)
+        SELECT DISTINCT("{{resource_table}}".logical_id)
           FROM {{tables}}
           {{idx_conds}}
       $SQL$,
