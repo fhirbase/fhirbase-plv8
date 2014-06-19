@@ -18,7 +18,7 @@ eval_ddl(
     CREATE TABLE "{{tbl_name}}" (
       version_id uuid PRIMARY KEY,
       logical_id uuid UNIQUE,
-      resource_type varchar DEFAULT '{{tbl_name}}',
+      resource_type varchar DEFAULT '{{resource_type}}',
       last_modified_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
       published  TIMESTAMP WITH TIME ZONE NOT NULL,
       data jsonb NOT NULL
@@ -86,10 +86,11 @@ eval_ddl(
       logical_id uuid NOT NULL,
       path varchar NOT NULL,
       reference_type varchar NOT NULL,
-      reference_id uuid NOT NULL
+      reference_id varchar NOT NULL
     );
   $SQL$,
-  'tbl_name', lower(path[1]))))
+  'tbl_name', lower(path[1]),
+  'resource_type', path[1])))
 FROM fhir.resource_elements
 WHERE array_length(path,1) = 1;
 

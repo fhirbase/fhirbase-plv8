@@ -233,25 +233,39 @@ $$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
 search(resource_type varchar, query jsonb)
-RETURNS TABLE (logical_id uuid, data jsonb, included_resources jsonb[]) LANGUAGE plpgsql AS $$
+RETURNS TABLE (logical_id uuid, data jsonb) LANGUAGE plpgsql AS $$
 DECLARE
   includes varchar[];
   inc record;
 BEGIN
-  SELECT INTO includes array_agg(jsonb_array_elements_text)
+  SELECT INTO includes COALESCE(array_agg(jsonb_array_elements_text), '{}'::varchar[])
   FROM jsonb_array_elements_text(query->'_include');
-
-  RAISE NOTICE 'Using includes: %', includes;
 
   RETURN QUERY EXECUTE (
         eval_template($SQL$
-        WITH resources AS (
+
+        WITH found_resources AS (
           SELECT logical_id, data
           FROM "{{tbl}}" x
-          WHERE logical_id IN ({{search_sql}}))
-        SELECT res.logical_id, res.data, array_agg(incs.data) AS included_resources FROM resources res
-        LEFT JOIN resources incs ON res.logical_id = ANY(collect_included_logical_ids({{includes}}::varchar[], res.data))
-        GROUP BY res.logical_id, res.data
+          WHERE logical_id IN ({{search_sql}})),
+
+        refs_to_include AS (
+          SELECT reference_type AS type, reference_id AS id
+          FROM "{{tbl}}_references" refs
+          WHERE logical_id IN (SELECT logical_id FROM found_resources)
+                AND path = ANY({{includes}}::varchar[])
+        )
+
+        -- fetch found resources
+        SELECT fres.logical_id, fres.data
+        FROM found_resources fres
+
+        UNION
+
+        -- union with included resources
+        SELECT incres.logical_id, incres.data
+        FROM resource incres WHERE incres.logical_id::varchar IN (SELECT id FROM refs_to_include)
+                                   AND incres.resource_type IN (SELECT type FROM refs_to_include)
       $SQL$,
       'includes', quote_literal(includes),
       'tbl', lower(resource_type),

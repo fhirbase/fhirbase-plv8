@@ -32,10 +32,46 @@ END
 $$;
 
 CREATE OR REPLACE FUNCTION
-index_all_resource_references(res jsonb)
+_index_res_ref_recur(path varchar[], res jsonb)
 RETURNS jsonb[] LANGUAGE plpgsql AS $$
 DECLARE
+  -- t text = jsonb_typeof(res);
+  r record;
+  ref varchar;
+  ref_parts varchar[];
+  result jsonb[];
 BEGIN
-  RETURN ARRAY['{}'::jsonb]::jsonb[];
+  -- RAISE NOTICE '!!! %', res;
+  CASE jsonb_typeof(res)
+  WHEN 'object' THEN
+    FOR r IN SELECT * FROM jsonb_each(res)
+    LOOP
+      CASE jsonb_typeof(r.value)
+      WHEN 'string' THEN
+        ref := jsonb_text_value(r.value);
+        IF r.key = 'reference' AND ref ~ '^[a-zA-Z]+/.+$' THEN
+          ref_parts := regexp_split_to_array(ref, '/');
+          result := result || json_build_object('path', array_to_string(path, '.'), 'reference_type', ref_parts[1], 'reference_id', ref_parts[2])::jsonb;
+        END IF;
+      WHEN 'object', 'array' THEN
+        result := result || _index_res_ref_recur(array_append(path, r.key::varchar), r.value);
+      ELSE -- noop
+      END CASE;
+    END LOOP;
+  WHEN 'array' THEN
+    FOR r IN SELECT * FROM jsonb_array_elements(res)
+    LOOP
+      result := result || _index_res_ref_recur(path, r.value);
+    END LOOP;
+  ELSE -- noop
+  END CASE;
+
+  RETURN result;
 END
+$$;
+
+CREATE OR REPLACE FUNCTION
+index_all_resource_references(res jsonb)
+RETURNS jsonb[] LANGUAGE sql AS $$
+  SELECT _index_res_ref_recur(ARRAY[res->>'resourceType']::varchar[], res);
 $$;

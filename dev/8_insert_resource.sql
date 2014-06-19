@@ -85,7 +85,6 @@ BEGIN
     UNION
     SELECT json_build_object('param', '_id', 'code', id, 'text', id)::jsonb
   LOOP
-    --RAISE NOTICE 'idx %', idx;
     EXECUTE
       eval_template($SQL$
         INSERT INTO "{{tbl}}_search_token"
@@ -107,7 +106,7 @@ BEGIN
       SELECT $1, $2->>'param', ($2->>'start')::timestamptz, ($2->>'end')::timestamptz
     $SQL$, 'tbl', res_type)
     USING id, idx;
-    END LOOP;
+  END LOOP;
 
   -- indexing quantity
   FOR idx IN
@@ -126,27 +125,27 @@ BEGIN
   FOR idx IN
   SELECT unnest(index_reference_resource(_rsrs))
   LOOP
-  EXECUTE
-  eval_template($SQL$
-    INSERT INTO "{{tbl}}_search_reference"
-    (resource_id, param, logical_id, resource_type, url)
-    SELECT $1, $2->>'param', $2->>'logical_id', $2->>'resource_type', $2->>'url';
-  $SQL$, 'tbl', res_type)
-  USING id, idx;
+    EXECUTE
+    eval_template($SQL$
+      INSERT INTO "{{tbl}}_search_reference"
+      (resource_id, param, logical_id, resource_type, url)
+      SELECT $1, $2->>'param', $2->>'logical_id', $2->>'resource_type', $2->>'url';
+    $SQL$, 'tbl', res_type)
+    USING id, idx;
   END LOOP;
 
-  -- -- indexing all references (for includes)
-  -- FOR idx IN
-  -- SELECT unnest(index_all_resource_references(_rsrs))
-  -- LOOP
-  -- EXECUTE
-  --   eval_template($SQL$
-  --     INSERT INTO "{{tbl}}_references"
-  --     (logical_id, path, reference_type, reference_id)
-  --     SELECT $1, $2->>'path', $2->>'reference_type', $2->>'reference_id';
-  --   $SQL$, 'tbl', res_type)
-  -- USING id, idx;
-  -- END LOOP;
+  -- indexing all references (for includes)
+  FOR idx IN
+  SELECT unnest(index_all_resource_references(_rsrs))
+  LOOP
+  EXECUTE
+    eval_template($SQL$
+      INSERT INTO "{{tbl}}_references"
+      (logical_id, path, reference_type, reference_id)
+      SELECT $1, $2->>'path', $2->>'reference_type', $2->>'reference_id';
+    $SQL$, 'tbl', res_type)
+  USING id, idx;
+  END LOOP;
   RETURN id;
 END
 $$;
@@ -161,7 +160,8 @@ BEGIN
   EXECUTE
     eval_template($SQL$
       INSERT INTO "{{tbl}}_history"
-      SELECT * FROM {{tbl}}
+      (version_id, logical_id, last_modified_date, published, data)
+      SELECT version_id, logical_id, last_modified_date, published, data FROM {{tbl}}
       WHERE logical_id = $1;
 
       DELETE FROM "{{tbl}}_search_string" WHERE resource_id = $1;
