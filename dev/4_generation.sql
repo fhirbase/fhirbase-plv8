@@ -67,6 +67,15 @@ eval_ddl(
       system varchar,
       code varchar
     );
+
+    -- index for search includes
+    CREATE TABLE "{{tbl_name}}_references" (
+      _id SERIAL PRIMARY KEY,
+      logical_id uuid NOT NULL,
+      path varchar NOT NULL,
+      reference_type varchar NOT NULL,
+      reference_id uuid NOT NULL
+    );
   $SQL$,
   'tbl_name', lower(path[1]))))
 FROM fhir.resource_elements

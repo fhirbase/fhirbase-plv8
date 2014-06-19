@@ -179,13 +179,18 @@ BEGIN
       eval_template($SQL$
         SELECT DISTINCT({{resource_table}}.logical_id)
           FROM {{tables}}
-          WHERE {{idx_conds}}
+          {{idx_conds}}
       $SQL$,
       'resource_table', resource_table,
       'tables',
       tables_with_aliases(array[lower(_resource_type)]::varchar[]  || array_agg(z.tbl)::varchar[],
                           array[resource_table]::varchar[] || array_agg(z.alias)::varchar[]),
-      'idx_conds', string_agg(z.cond, '  AND  '))
+      'idx_conds', CASE WHEN length(string_agg(z.cond, '')) > 0 THEN
+                     'WHERE ' || string_agg(z.cond, '  AND  ')
+                   ELSE
+                     ''
+                   END)
+
       FROM (
       SELECT
          z.tbl
@@ -216,6 +221,43 @@ BEGIN
           FROM parse_nested_search_params(resource_table, _resource_type, query, nested_level)
         WHERE "parse_nested_search_params" IS NOT NULL
       ) z);
+END
+$$ IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION
+collect_included_logical_ids(includes varchar[], data jsonb)
+RETURNS uuid[] LANGUAGE sql AS
+$$
+  SELECT ARRAY[]::uuid[];
+$$ IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION
+search(resource_type varchar, query jsonb)
+RETURNS TABLE (logical_id uuid, data jsonb, included_resources jsonb[]) LANGUAGE plpgsql AS $$
+DECLARE
+  includes varchar[];
+  inc record;
+BEGIN
+  SELECT INTO includes array_agg(jsonb_array_elements_text)
+  FROM jsonb_array_elements_text(query->'_include');
+
+  RAISE NOTICE 'Using includes: %', includes;
+
+  RETURN QUERY EXECUTE (
+        eval_template($SQL$
+        WITH resources AS (
+          SELECT logical_id, data
+          FROM "{{tbl}}" x
+          WHERE logical_id IN ({{search_sql}}))
+        SELECT res.logical_id, res.data, array_agg(incs.data) AS included_resources FROM resources res
+        LEFT JOIN resources incs ON res.logical_id = ANY(collect_included_logical_ids({{includes}}::varchar[], res.data))
+        GROUP BY res.logical_id, res.data
+      $SQL$,
+      'includes', quote_literal(includes),
+      'tbl', lower(resource_type),
+      'search_sql', coalesce(
+                       parse_search_params(resource_type, query, 1),
+                       ('SELECT logical_id FROM ' || lower(resource_type)))));
 END
 $$ IMMUTABLE;
 

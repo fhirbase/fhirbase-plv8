@@ -7,7 +7,7 @@ DECLARE
 result text := _tpl;
 BEGIN
   FOR i IN 1..(array_upper(_bindings, 1)/2) LOOP
-    result := replace(result, '{{' || _bindings[i*2 - 1] || '}}', _bindings[i*2]);
+    result := replace(result, '{{' || _bindings[i*2 - 1] || '}}', coalesce(_bindings[i*2], ''));
   END LOOP;
   RETURN result;
 END

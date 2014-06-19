@@ -2,12 +2,12 @@ CREATE OR REPLACE FUNCTION
 index_reference_resource(res jsonb)
 RETURNS jsonb[] LANGUAGE plpgsql AS $$
 DECLARE
-prm fhir.resource_indexables%rowtype;
-attrs jsonb[];
-item jsonb;
-result jsonb[] := array[]::jsonb[];
-ref_id varchar;
-ref_type varchar;
+  prm fhir.resource_indexables%rowtype;
+  attrs jsonb[];
+  item jsonb;
+  result jsonb[] := array[]::jsonb[];
+  ref_id varchar;
+  ref_type varchar;
 BEGIN
   FOR prm IN
     SELECT * FROM fhir.resource_indexables
@@ -28,5 +28,14 @@ BEGIN
     END LOOP;
   END LOOP;
   RETURN result;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION
+index_all_resource_references(res jsonb)
+RETURNS jsonb[] LANGUAGE plpgsql AS $$
+DECLARE
+BEGIN
+  RETURN ARRAY['{}'::jsonb]::jsonb[];
 END
 $$;
