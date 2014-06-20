@@ -64,7 +64,7 @@ eval_ddl(
     );
 
     CREATE TABLE {{tbl_name}}_history_tag (
-      id uuid PRIMARY KEY,
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       resource_id uuid NOT NULL,
       resource_version_id uuid REFERENCES "{{tbl_name}}_history" (version_id),
       resource_type varchar DEFAULT '{{tbl_name}}',

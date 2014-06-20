@@ -14,7 +14,7 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440000'::uuid,  E'{"resour
  550e8400-e29b-41d4-a716-446655440000
 (1 row)
 
-SELECT insert_resource('550e8400-e29b-41d4-a716-446655440000'::uuid,  E'{"resourceType":"Patient","text":{"status":"generated","div":"<div>\\n      <p>Patient Donald D DUCK @ Acme Healthcare, Inc. MR = 123456</p>\\n    </div>"},"identifier":[{"use":"usual","label":"MRN","system":"urn:oid:0.1.2.3.4.5.6.7","value":"123456"}],"name":[{"use":"official","family":["Donald"],"given":["Duck","D"]}],"gender":{"coding":[{"system":"http://hl7.org/fhir/v3/AdministrativeGender","code":"M","display":"Male"}]},"photo":[{"contentType":"image/gif","data":"R0lGODlhEwARAPcAAAAAAAAA/+9aAO+1AP/WAP/eAP/eCP/eEP/eGP/nAP/nCP/nEP/nIf/nKf/nUv/nWv/vAP/vCP/vEP/vGP/vIf/vKf/vMf/vOf/vWv/vY//va//vjP/3c//3lP/3nP//tf//vf///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////yH5BAEAAAEALAAAAAATABEAAAi+AAMIDDCgYMGBCBMSvMCQ4QCFCQcwDBGCA4cLDyEGECDxAoAQHjxwyKhQAMeGIUOSJJjRpIAGDS5wCDly4AALFlYOgHlBwwOSNydM0AmzwYGjBi8IHWoTgQYORg8QIGDAwAKhESI8HIDgwQaRDI1WXXAhK9MBBzZ8/XDxQoUFZC9IiCBh6wEHGz6IbNuwQoSpWxEgyLCXL8O/gAnylNlW6AUEBRIL7Og3KwQIiCXb9HsZQoIEUzUjNEiaNMKAAAA7"}],"managingOrganization":{"reference":"Organization/1","display":"ACME Healthcare, Inc"},"link":[{"other":{"reference":"Patient/pat1"},"type":"seealso"}],"active":true}'::jsonb, '[{"scheme": "pt.com", "term": "pt"}]'::jsonb);
+SELECT insert_resource('550e8400-e29b-41d4-a716-446655440000'::uuid,  E'{"resourceType":"Patient","text":{"status":"generated","div":"<div>\\n      <p>Patient Donald D DUCK @ Acme Healthcare, Inc. MR = 123456</p>\\n    </div>"},"identifier":[{"use":"usual","label":"MRN","system":"urn:oid:0.1.2.3.4.5.6.7","value":"123456"}],"name":[{"use":"official","family":["Donald"],"given":["Duck","D"]}],"gender":{"coding":[{"system":"http://hl7.org/fhir/v3/AdministrativeGender","code":"M","display":"Male"}]},"photo":[{"contentType":"image/gif","data":"R0lGODlhEwARAPcAAAAAAAAA/+9aAO+1AP/WAP/eAP/eCP/eEP/eGP/nAP/nCP/nEP/nIf/nKf/nUv/nWv/vAP/vCP/vEP/vGP/vIf/vKf/vMf/vOf/vWv/vY//va//vjP/3c//3lP/3nP//tf//vf///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////yH5BAEAAAEALAAAAAATABEAAAi+AAMIDDCgYMGBCBMSvMCQ4QCFCQcwDBGCA4cLDyEGECDxAoAQHjxwyKhQAMeGIUOSJJjRpIAGDS5wCDly4AALFlYOgHlBwwOSNydM0AmzwYGjBi8IHWoTgQYORg8QIGDAwAKhESI8HIDgwQaRDI1WXXAhK9MBBzZ8/XDxQoUFZC9IiCBh6wEHGz6IbNuwQoSpWxEgyLCXL8O/gAnylNlW6AUEBRIL7Og3KwQIiCXb9HsZQoIEUzUjNEiaNMKAAAA7"}],"managingOrganization":{"reference":"Organization/1","display":"ACME Healthcare, Inc"},"link":[{"other":{"reference":"Patient/pat1"},"type":"seealso"}],"active":true}'::jsonb, '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]'::jsonb);
            insert_resource            
 --------------------------------------
  550e8400-e29b-41d4-a716-446655440000
@@ -23,7 +23,7 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440000'::uuid,  E'{"resour
 SELECT tags();
                                                                        tags                                                                        
 ---------------------------------------------------------------------------------------------------------------------------------------------------
- {"category": [{"term": "pt", "label": null, "scheme": "pt.com"}, {"term": "obs", "label": null, "scheme": "obs.com"}], "resourceType": "TagList"}
+ {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}, {"term": "obs", "label": null, "scheme": "obs.com"}], "resourceType": "TagList"}
 (1 row)
 
 SELECT tags('Observation');
@@ -35,7 +35,7 @@ SELECT tags('Observation');
 SELECT tags('Patient');
                                              tags                                             
 ----------------------------------------------------------------------------------------------
- {"category": [{"term": "pt", "label": null, "scheme": "pt.com"}], "resourceType": "TagList"}
+ {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
 (1 row)
 
 SELECT tags('Observation', '550e8400-e29b-41d4-a716-446655440000');
@@ -47,13 +47,13 @@ SELECT tags('Observation', '550e8400-e29b-41d4-a716-446655440000');
 SELECT tags('Patient', '550e8400-e29b-41d4-a716-446655440000');
                                              tags                                             
 ----------------------------------------------------------------------------------------------
- {"category": [{"term": "pt", "label": null, "scheme": "pt.com"}], "resourceType": "TagList"}
+ {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
 (1 row)
 
 SELECT remove_tags('Patient', '550e8400-e29b-41d4-a716-446655440000');
  remove_tags 
 -------------
- 
+           1
 (1 row)
 
 SELECT assert(
@@ -62,6 +62,109 @@ SELECT assert(
        assert       
 --------------------
  OK should be empty
+(1 row)
+
+SELECT affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440000', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]');
+                     affix_tags                      
+-----------------------------------------------------
+ [{"term": "pt", "label": "pt", "scheme": "pt.com"}]
+(1 row)
+
+SELECT assert(affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440000', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]') = '[]'::jsonb, 'should not insert twice');
+           assert           
+----------------------------
+ OK should not insert twice
+(1 row)
+
+SELECT assert(
+         tags('Patient', '550e8400-e29b-41d4-a716-446655440000') = '{"category": [{"scheme":"pt.com", "term":"pt", "label":"pt"}], "resourceType": "TagList"}',
+              'should populate again');
+          assert          
+--------------------------
+ OK should populate again
+(1 row)
+
+SELECT 'ok' FROM update_resource('550e8400-e29b-41d4-a716-446655440000',  E'{"resourceType":"Patient","text":{"status":"generated","div":"<div>\\n      <p>Patient Donald D DUCK @ Acme Healthcare, Inc. MR = 123456</p>\\n    </div>"},"identifier":[{"use":"usual","label":"MRN","system":"urn:oid:0.1.2.3.4.5.6.7","value":"123456"}],"name":[{"use":"official","family":["Donald"],"given":["Duck","D"]}],"gender":{"coding":[{"system":"http://hl7.org/fhir/v3/AdministrativeGender","code":"M","display":"Male"}]},"photo":[{"contentType":"image/gif","data":"R0lGODlhEwARAPcAAAAAAAAA/+9aAO+1AP/WAP/eAP/eCP/eEP/eGP/nAP/nCP/nEP/nIf/nKf/nUv/nWv/vAP/vCP/vEP/vGP/vIf/vKf/vMf/vOf/vWv/vY//va//vjP/3c//3lP/3nP//tf//vf///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////yH5BAEAAAEALAAAAAATABEAAAi+AAMIDDCgYMGBCBMSvMCQ4QCFCQcwDBGCA4cLDyEGECDxAoAQHjxwyKhQAMeGIUOSJJjRpIAGDS5wCDly4AALFlYOgHlBwwOSNydM0AmzwYGjBi8IHWoTgQYORg8QIGDAwAKhESI8HIDgwQaRDI1WXXAhK9MBBzZ8/XDxQoUFZC9IiCBh6wEHGz6IbNuwQoSpWxEgyLCXL8O/gAnylNlW6AUEBRIL7Og3KwQIiCXb9HsZQoIEUzUjNEiaNMKAAAA7"}],"managingOrganization":{"reference":"Organization/1","display":"ACME Healthcare, Inc"},"link":[{"other":{"reference":"Patient/pat1"},"type":"seealso"}],"active":true}', '[]');
+ ?column? 
+----------
+ ok
+(1 row)
+
+WITH tgs AS (
+  SELECT tags('Patient',
+            '550e8400-e29b-41d4-a716-446655440000',
+            (SELECT resource_version_id
+              FROM patient_history_tag
+              WHERE resource_id = '550e8400-e29b-41d4-a716-446655440000' limit 1)) as t
+)
+SELECT assert((SELECT t from tgs limit 1)
+           = '{"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}'
+        , 'should show history tags');
+           assert            
+-----------------------------
+ OK should show history tags
+(1 row)
+
+SELECT remove_tags('Patient', '550e8400-e29b-41d4-a716-446655440000',
+            (SELECT resource_version_id
+              FROM patient_history_tag
+              WHERE resource_id = '550e8400-e29b-41d4-a716-446655440000' limit 1));
+ remove_tags 
+-------------
+           1
+(1 row)
+
+WITH tgs AS (
+  SELECT tags('Patient',
+            '550e8400-e29b-41d4-a716-446655440000',
+            (SELECT resource_version_id
+              FROM patient_history_tag
+              WHERE resource_id = '550e8400-e29b-41d4-a716-446655440000' limit 1)) as t
+)
+SELECT assert((SELECT t from tgs limit 1)
+           = '{"category": [], "resourceType": "TagList"}'
+        , 'should show history tags');
+           assert            
+-----------------------------
+ OK should show history tags
+(1 row)
+
+SELECT affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440000',
+                   (SELECT version_id FROM patient_history WHERE logical_id = '550e8400-e29b-41d4-a716-446655440000' limit 1),
+                  '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]'::jsonb);
+                     affix_tags                      
+-----------------------------------------------------
+ [{"term": "pt", "label": "pt", "scheme": "pt.com"}]
+(1 row)
+
+SELECT affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440000',
+                   (SELECT version_id FROM patient_history WHERE logical_id = '550e8400-e29b-41d4-a716-446655440000' limit 1),
+                  '[{"scheme": "obs.com", "term": "obs"}]'::jsonb);
+                      affix_tags                       
+-------------------------------------------------------
+ [{"term": "obs", "label": null, "scheme": "obs.com"}]
+(1 row)
+
+SELECT tags('Patient');
+                                             tags                                             
+----------------------------------------------------------------------------------------------
+ {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
+(1 row)
+
+SELECT tags('Patient', '550e8400-e29b-41d4-a716-446655440000');
+                                             tags                                             
+----------------------------------------------------------------------------------------------
+ {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
+(1 row)
+
+SELECT tags('Patient',
+          '550e8400-e29b-41d4-a716-446655440000',
+          (SELECT resource_version_id
+            FROM patient_history_tag
+            WHERE resource_id = '550e8400-e29b-41d4-a716-446655440000' limit 1));
+                                                                       tags                                                                        
+---------------------------------------------------------------------------------------------------------------------------------------------------
+ {"category": [{"term": "obs", "label": null, "scheme": "obs.com"}, {"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
 (1 row)
 
 ROLLBACK;
