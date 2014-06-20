@@ -247,4 +247,20 @@ BEGIN
   RETURN acc;
 END
 $$;
+
+CREATE OR REPLACE FUNCTION
+assert(_pred boolean, mess varchar)
+RETURNS varchar LANGUAGE plpgsql AS $$
+DECLARE
+item jsonb;
+acc varchar[] := array[]::varchar[];
+BEGIN
+  IF _pred THEN
+    RETURN 'OK ' || mess;
+  ELSE
+    RAISE EXCEPTION 'NOT OK %',  mess;
+    RETURN 'not ok';
+  END IF;
+END
+$$;
 --}}}

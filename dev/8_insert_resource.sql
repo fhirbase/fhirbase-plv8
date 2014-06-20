@@ -3,7 +3,6 @@
 
 --TODO: handle publish date
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE OR REPLACE FUNCTION
 insert_resource(_rsrs jsonb, _tags jsonb)
@@ -34,9 +33,27 @@ BEGIN
     $SQL$, 'tbl', res_type)
   USING id, vid, published, published, _rsrs;
 
+  PERFORM create_tags(id, vid, res_type, _tags);
   PERFORM index_resource(id, res_type, _rsrs);
 
   RETURN id;
+END
+$$;
+
+--private
+CREATE OR REPLACE FUNCTION
+create_tags(_id uuid, _vid uuid, res_type varchar, _tags jsonb)
+RETURNS uuid LANGUAGE plpgsql AS $$
+BEGIN
+  EXECUTE
+    eval_template($SQL$
+      INSERT INTO {{tbl}}_tag
+      (resource_id, resource_version_id, scheme, term, label)
+      SELECT $1, $2, tg->>'scheme', tg->>'term', tg->>'label'
+      FROM jsonb_array_elements($3) tg
+    $SQL$, 'tbl', res_type)
+  USING _id, _vid, _tags;
+  RETURN _id;
 END
 $$;
 
@@ -162,9 +179,17 @@ BEGIN
     eval_template($SQL$
       INSERT INTO "{{tbl}}_history"
       (version_id, logical_id, last_modified_date, published, data)
-      SELECT version_id, logical_id, last_modified_date, published, data FROM {{tbl}}
+      SELECT version_id, logical_id, last_modified_date, published, data
+      FROM {{tbl}}
       WHERE logical_id = $1;
 
+      INSERT INTO "{{tbl}}_history_tag"
+      (id, resource_id, resource_version_id, scheme, term, label)
+      SELECT id, resource_id, resource_version_id, scheme, term, label
+      FROM {{tbl}}_tag
+      WHERE resource_id = $1;
+
+      DELETE FROM "{{tbl}}_tag" WHERE resource_id = $1;
       DELETE FROM "{{tbl}}_search_string" WHERE resource_id = $1;
       DELETE FROM "{{tbl}}_search_token" WHERE resource_id = $1;
       DELETE FROM "{{tbl}}_search_date" WHERE resource_id = $1;
@@ -179,16 +204,52 @@ BEGIN
 END
 $$;
 
+--private
+CREATE OR REPLACE FUNCTION
+merge_tags(_id uuid, res_type varchar, _tags jsonb)
+RETURNS jsonb LANGUAGE plpgsql AS $$
+DECLARE
+  res jsonb;
+BEGIN
+  EXECUTE
+    eval_template($SQL$
+      SELECT json_agg(row_to_json(tgs))::jsonb
+        FROM (
+          SELECT scheme, term, label FROM (
+            SELECT tg->>'scheme' as scheme,
+                   tg->>'term' as term,
+                   tg->>'label' as label
+            FROM jsonb_array_elements($2) tg
+            UNION
+            SELECT scheme as scheme,
+                   term as term,
+                   label as label
+            FROM {{tbl}}_tag
+            WHERE resource_id = $1
+          ) tgs_
+          GROUP BY scheme, term, label
+        ) tgs
+    $SQL$, 'tbl', res_type)
+  INTO res USING _id, _tags;
+
+  RETURN res;
+END
+$$;
+
 -- TODO: implement by UPDATE
 CREATE OR REPLACE FUNCTION
 update_resource(id uuid, _rsrs jsonb, _tags jsonb)
 RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE
+  res uuid;
+  new_tags jsonb;
   res_type varchar;
 BEGIN
   res_type := lower(_rsrs->>'resourceType');
+  new_tags = merge_tags(id, res_type, _tags);
   PERFORM delete_resource(id, res_type);
-  RETURN insert_resource(id, _rsrs, _tags);
+  res := insert_resource(id, _rsrs, new_tags);
+  RETURN res;
 END
 $$;
 --}}}

@@ -1,5 +1,6 @@
 --db:fhirb
 --{{{
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 SET client_min_messages=WARNING;
 CREATE TABLE resource (
@@ -35,7 +36,7 @@ eval_ddl(
     ) INHERITS (resource);
 
     CREATE TABLE {{tbl_name}}_tag (
-      id uuid PRIMARY KEY,
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       resource_id uuid REFERENCES "{{tbl_name}}" (logical_id),
       resource_version_id uuid NOT NULL,
       resource_type varchar DEFAULT '{{tbl_name}}',
