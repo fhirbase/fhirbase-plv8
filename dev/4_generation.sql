@@ -11,6 +11,16 @@ CREATE TABLE resource (
     data jsonb
 );
 
+CREATE TABLE tag (
+  id uuid,
+  resource_id uuid,
+  resource_version_id uuid,
+  resource_type varchar,
+  scheme varchar,
+  term varchar,
+  label text
+);
+
 SELECT
 count(
 eval_ddl(
@@ -24,13 +34,34 @@ eval_ddl(
       data jsonb NOT NULL
     ) INHERITS (resource);
 
+    CREATE TABLE {{tbl_name}}_tag (
+      id uuid PRIMARY KEY,
+      resource_id uuid REFERENCES "{{tbl_name}}" (logical_id),
+      resource_version_id uuid NOT NULL,
+      resource_type varchar DEFAULT '{{tbl_name}}',
+      scheme varchar NOT NULL,
+      term varchar NOT NULL,
+      label text
+    ) INHERITS (tag);
+
     CREATE TABLE "{{tbl_name}}_history" (
       version_id uuid PRIMARY KEY,
       logical_id uuid NOT NULL,
+      resource_type varchar DEFAULT '{{tbl_name}}',
       last_modified_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
       published  TIMESTAMP WITH TIME ZONE NOT NULL,
       data jsonb NOT NULL
     );
+
+    CREATE TABLE {{tbl_name}}_history_tag (
+      id uuid PRIMARY KEY,
+      resource_id uuid NOT NULL,
+      resource_version_id uuid REFERENCES "{{tbl_name}}_history" (version_id),
+      resource_type varchar DEFAULT '{{tbl_name}}',
+      scheme varchar NOT NULL,
+      term varchar NOT NULL,
+      label text
+    ) INHERITS (tag);
 
     CREATE TABLE "{{tbl_name}}_search_string" (
       _id SERIAL PRIMARY KEY,

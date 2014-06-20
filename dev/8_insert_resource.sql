@@ -6,17 +6,17 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE OR REPLACE FUNCTION
-insert_resource(_rsrs jsonb)
+insert_resource(_rsrs jsonb, _tags jsonb)
 RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE
   id uuid := gen_random_uuid();
 BEGIN
-  RETURN insert_resource(id, _rsrs);
+  RETURN insert_resource(id, _rsrs, _tags);
 END
 $$;
 
 CREATE OR REPLACE FUNCTION
-insert_resource(id uuid, _rsrs jsonb)
+insert_resource(id uuid, _rsrs jsonb, _tags jsonb)
 RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE
   res_type varchar;
@@ -40,6 +40,7 @@ BEGIN
 END
 $$;
 
+--private
 CREATE OR REPLACE FUNCTION
 index_resource(id uuid, res_type varchar)
 RETURNS uuid LANGUAGE plpgsql AS $$
@@ -180,14 +181,14 @@ $$;
 
 -- TODO: implement by UPDATE
 CREATE OR REPLACE FUNCTION
-update_resource(id uuid, _rsrs jsonb)
+update_resource(id uuid, _rsrs jsonb, _tags jsonb)
 RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE
   res_type varchar;
 BEGIN
   res_type := lower(_rsrs->>'resourceType');
   PERFORM delete_resource(id, res_type);
-  RETURN insert_resource(id, _rsrs);
+  RETURN insert_resource(id, _rsrs, _tags);
 END
 $$;
 --}}}
