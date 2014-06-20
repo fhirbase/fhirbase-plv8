@@ -3,7 +3,6 @@
 
 --TODO: handle publish date
 
-
 CREATE OR REPLACE FUNCTION
 insert_resource(_rsrs jsonb, _tags jsonb)
 RETURNS uuid LANGUAGE plpgsql AS $$
@@ -215,19 +214,16 @@ BEGIN
     eval_template($SQL$
       SELECT json_agg(row_to_json(tgs))::jsonb
         FROM (
-          SELECT scheme, term, label FROM (
-            SELECT tg->>'scheme' as scheme,
-                   tg->>'term' as term,
-                   tg->>'label' as label
-            FROM jsonb_array_elements($2) tg
-            UNION
-            SELECT scheme as scheme,
-                   term as term,
-                   label as label
-            FROM {{tbl}}_tag
-            WHERE resource_id = $1
-          ) tgs_
-          GROUP BY scheme, term, label
+          SELECT tg->>'scheme' as scheme,
+                 tg->>'term' as term,
+                 tg->>'label' as label
+          FROM jsonb_array_elements($2) tg
+          UNION
+          SELECT scheme as scheme,
+                 term as term,
+                 label as label
+          FROM {{tbl}}_tag
+          WHERE resource_id = $1
         ) tgs
     $SQL$, 'tbl', res_type)
   INTO res USING _id, _tags;

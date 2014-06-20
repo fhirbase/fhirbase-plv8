@@ -90,28 +90,28 @@ SELECT delete_resource('550e8400-e29b-41d4-a716-446655440000'::uuid, 'observatio
  550e8400-e29b-41d4-a716-446655440000
 (1 row)
 
-SELECT assert(count(*)=0,'not empty') FROM observation where logical_id = '550e8400-e29b-41d4-a716-446655440000';
-    assert    
---------------
- OK not empty
+SELECT assert(count(*)=0,'delete: empty res') FROM observation where logical_id = '550e8400-e29b-41d4-a716-446655440000';
+        assert        
+----------------------
+ OK delete: empty res
 (1 row)
 
-SELECT assert(count(*)=2,'not empty') FROM observation_history where logical_id = '550e8400-e29b-41d4-a716-446655440000';
-    assert    
---------------
- OK not empty
+SELECT assert(count(*)=2,'delete: 2 in history') FROM observation_history where logical_id = '550e8400-e29b-41d4-a716-446655440000';
+         assert          
+-------------------------
+ OK delete: 2 in history
 (1 row)
 
-SELECT assert(count(*)=0,'not empty') FROM observation_tag where resource_id = '550e8400-e29b-41d4-a716-446655440000';
-    assert    
---------------
- OK not empty
+SELECT assert(count(*)=0,'delete: 0 in tags') FROM observation_tag where resource_id = '550e8400-e29b-41d4-a716-446655440000';
+        assert        
+----------------------
+ OK delete: 0 in tags
 (1 row)
 
-SELECT assert(count(*)=5,'not empty') FROM observation_history_tag where resource_id = '550e8400-e29b-41d4-a716-446655440000';
-    assert    
---------------
- OK not empty
+SELECT assert(count(*)=5,'delete: 5 in history tags') FROM observation_history_tag where resource_id = '550e8400-e29b-41d4-a716-446655440000';
+            assert            
+------------------------------
+ OK delete: 5 in history tags
 (1 row)
 
 ROLLBACK;

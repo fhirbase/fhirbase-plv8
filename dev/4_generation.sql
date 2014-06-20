@@ -21,6 +21,15 @@ CREATE TABLE tag (
   term varchar,
   label text
 );
+CREATE TABLE history_tag (
+  id uuid,
+  resource_id uuid,
+  resource_version_id uuid,
+  resource_type varchar,
+  scheme varchar,
+  term varchar,
+  label text
+);
 
 SELECT
 count(
@@ -62,7 +71,7 @@ eval_ddl(
       scheme varchar NOT NULL,
       term varchar NOT NULL,
       label text
-    ) INHERITS (tag);
+    ) INHERITS (history_tag);
 
     CREATE TABLE "{{tbl_name}}_search_string" (
       _id SERIAL PRIMARY KEY,
