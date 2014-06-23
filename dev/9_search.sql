@@ -193,7 +193,7 @@ RETURNS TABLE(joins text, weight integer) LANGUAGE sql AS $$
     eval_template($SQL$
     -- level {{nested_level}}
     JOIN {{refs_idx}} {{refs_alias}}
-    ON   {{refs_alias}}.logical_id = {{res_table}}.logical_id
+    ON   ({{refs_alias}}.logical_id)::varchar = ({{res_table}}.logical_id)::varchar
     AND  {{refs_alias}}.reference_type = {{ref_type}}
     $SQL$,
     'refs_idx', quote_ident(lower(_resource_type) || '_references'),
