@@ -51,7 +51,7 @@ BEGIN
         ref := jsonb_text_value(r.value);
         IF r.key = 'reference' AND ref ~ '^[a-zA-Z]+/.+$' THEN
           ref_parts := regexp_split_to_array(ref, '/');
-          result := result || json_build_object('path', array_to_string(path, '.'), 'reference_type', ref_parts[1], 'reference_id', ref_parts[2])::jsonb;
+          result := result || json_build_object('path', array_to_string(path, '.'), 'reference_type', ref_parts[1], 'logical_id', ref_parts[2])::jsonb;
         END IF;
       WHEN 'object', 'array' THEN
         result := result || _index_res_ref_recur(array_append(path, r.key::varchar), r.value);

@@ -124,10 +124,10 @@ eval_ddl(
     -- index for search includes
     CREATE TABLE "{{tbl_name}}_references" (
       _id SERIAL PRIMARY KEY,
-      logical_id uuid NOT NULL,
+      resource_id uuid NOT NULL,
       path varchar NOT NULL,
       reference_type varchar NOT NULL,
-      reference_id varchar NOT NULL
+      logical_id varchar NOT NULL
     );
   $SQL$,
   'tbl_name', lower(path[1]),

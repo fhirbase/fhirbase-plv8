@@ -122,8 +122,7 @@ WITH val_cond AS (SELECT
   FROM regexp_split_to_table(_value, ','))
 SELECT
   eval_template($SQL$
-    ("{{resource_table}}".logical_id = "{{tbl}}".resource_id
-     AND "{{tbl}}".param = {{param}}
+    ("{{tbl}}".param = {{param}}
      AND ({{vals_cond}}))
   $SQL$, 'tbl', _table
        , 'resource_table', _resource_table
@@ -140,87 +139,127 @@ SELECT 'forward declaration'::text;
 $$;
 
 CREATE OR REPLACE FUNCTION
-parse_nested_search_params(_resource_table varchar, _resource_type varchar, query jsonb, nested_level integer)
-RETURNS setof text LANGUAGE sql AS $$
-SELECT
-  'split_part(' || _resource_table || '.data->' || quote_literal(ref_attr) || '->>''reference'', ''/'', 2)::uuid IN (' ||
-  parse_search_params(ref_type, keys_and_values_to_jsonb(array_agg(rest), array_agg(val)), nested_level + 1) ||
-  ')'
-FROM
-  (SELECT
-    _param_name, rest,
-    (CASE WHEN array_length(re.ref_type, 1) = 1 THEN
-      re.ref_type[1]
-    ELSE
-      split_part(_param_name, ':', 2)
-    END) AS ref_type,
-    val,
-    array_last(ri.path) AS ref_attr
-  FROM
-    (SELECT
-       (regexp_matches(x.key, '^([^.]+)\.'))[1] AS _param_name,
-       (regexp_matches(x.key, '^([^.]+)\.(.+)'))[2] AS rest,
-       x.value AS val
-     FROM jsonb_each_text(query) x
-     WHERE position('.' in x.key) > 0) x
-
-  JOIN fhir.resource_indexables ri ON ri.param_name = split_part(_param_name, ':', 1) AND ri.resource_type = _resource_type
-  JOIN fhir.resource_elements re ON re.path = ri.path) x
-GROUP BY ref_type, ref_attr
+parse_search_params_one_level(_resource_type varchar, root_tbl varchar, query jsonb, nested_level integer)
+RETURNS TABLE(joins text) LANGUAGE sql AS $$
+    WITH search_params_not_aggregated AS (
+      SELECT
+        lower(_resource_type) || '_search_' || fri.search_type as tbl,
+        lower(_resource_type) || '_' || x.key || '_idx_' || nested_level::varchar as alias,
+        split_part(x.key, ':', 2) as modifier,
+        param_name,
+        search_type,
+        key,
+        value
+      FROM jsonb_each_text(query) x
+      JOIN fhir.resource_indexables fri
+           ON fri.param_name = split_part(x.key, ':', 1)
+           AND fri.resource_type =  _resource_type
+      WHERE position('.' in x.key) = 0
+    )
+    SELECT
+    'JOIN ' || z.tbl || ' ' || z.alias || ' ON ' || z.alias || '.resource_id::varchar = ' || root_tbl || '.logical_id::varchar AND ' ||
+    string_agg(
+      param_expression(root_tbl, z.alias, z.param_name, z.search_type, z.modifier, z.value), ' AND ') AS joins
+    FROM search_params_not_aggregated z
+    GROUP BY z.tbl, z.alias
 $$;
 
 CREATE OR REPLACE FUNCTION
-parse_search_params(_resource_type varchar, query jsonb, nested_level integer)
+parse_nested_search_params(_resource_table varchar, _resource_type varchar, query jsonb, nested_level integer)
+RETURNS TABLE(joins text, weight integer) LANGUAGE sql AS $$
+  WITH extracted_nested_query_params AS
+    (SELECT
+        _param_name, rest,
+        (CASE WHEN array_length(re.ref_type, 1) = 1 THEN
+          re.ref_type[1]
+        ELSE
+          split_part(_param_name, ':', 2)
+        END) AS ref_type,
+        val,
+        array_last(ri.path) AS ref_attr
+      FROM
+        (SELECT
+           (regexp_matches(x.key, '^([^.]+)\.'))[1] AS _param_name,
+           (regexp_matches(x.key, '^([^.]+)\.(.+)'))[2] AS rest,
+           x.value AS val
+        FROM jsonb_each_text(query) x
+        WHERE position('.' in x.key) > 0) x
+
+      JOIN fhir.resource_indexables ri ON ri.param_name = split_part(_param_name, ':', 1) AND ri.resource_type = _resource_type
+      JOIN fhir.resource_elements re ON re.path = ri.path)
+
+  -- join through references
+  SELECT
+    eval_template($SQL$
+    -- level {{nested_level}}
+    JOIN {{refs_idx}} {{refs_alias}}
+    ON   {{refs_alias}}.logical_id = {{res_table}}.logical_id
+    AND  {{refs_alias}}.reference_type = {{ref_type}}
+    $SQL$,
+    'refs_idx', quote_ident(lower(_resource_type) || '_references'),
+    'refs_alias', quote_ident(ref_attr || '_refs_' || nested_level),
+    'res_table', quote_ident(_resource_table),
+    'ref_type', quote_literal(ref_type),
+    'nested_level', nested_level::varchar
+    ) AS joins,
+    1000 * nested_level + 0 as weight
+  FROM
+    extracted_nested_query_params x
+  GROUP BY ref_type, ref_attr
+
+  UNION (
+    WITH new_queries AS (
+    SELECT ref_type, ref_attr, keys_and_values_to_jsonb(array_agg(rest), array_agg(val)) as query
+      FROM extracted_nested_query_params
+      GROUP BY ref_type, ref_attr
+    )
+    -- search joins for this level
+    SELECT parse_search_params_one_level(ref_type, quote_ident(ref_attr || '_refs_' || nested_level), query, nested_level) AS joins,
+      1000 * nested_level + 1 as weight
+    FROM new_queries
+
+    -- recursively collect nested search params
+    UNION
+    SELECT
+      (parse_nested_search_params(nq.ref_attr || '_refs_' || nested_level, nq.ref_type, nq.query, nested_level + 1)).joins,
+      (parse_nested_search_params(nq.ref_attr || '_refs_' || nested_level, nq.ref_type, nq.query, nested_level + 1)).weight
+    FROM new_queries nq
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION
+parse_search_params(_resource_type varchar, query jsonb)
 RETURNS text LANGUAGE plpgsql AS $$
 DECLARE
-  resource_table varchar = _resource_type || '_resource_' || nested_level;
+  resource_table varchar = 'main_resource_tbl';
+  order_clause varchar = '';
 BEGIN
-  RETURN (SELECT
-      eval_template($SQL$
-        SELECT DISTINCT("{{resource_table}}".logical_id)
-          FROM {{tables}}
-          {{idx_conds}}
-      $SQL$,
-      'resource_table', resource_table,
-      'tables',
-      tables_with_aliases(array[lower(_resource_type)]::varchar[]  || array_agg(z.tbl)::varchar[],
-                          array[resource_table]::varchar[] || array_agg(z.alias)::varchar[]),
-      'idx_conds', CASE WHEN length(string_agg(z.cond, '')) > 0 THEN
-                     'WHERE ' || string_agg(z.cond, '  AND  ')
-                   ELSE
-                     ''
-                   END)
+  RETURN (
+    SELECT
+    eval_template($SQL$
+      SELECT DISTINCT("{{resource_table_alias}}".logical_id)
+        FROM {{resource_table}} "{{resource_table_alias}}"
+        {{joins}}
+        {{order_clause}}
+    $SQL$,
+    'resource_table_alias', resource_table,
+    'resource_table', lower(_resource_type),
+    'joins', string_agg(x.joins, E'\n'),
+    'order_clause', order_clause)
+    FROM
+      (SELECT joins
+       FROM
+        (SELECT joins, 0 as weight
+         FROM parse_search_params_one_level(_resource_type, 'main_resource_tbl', query, 0)
 
-      FROM (
-      SELECT
-         z.tbl
-        ,z.alias
-        ,string_agg(
-          param_expression(resource_table, z.alias, z.param_name, z.search_type, z.modifier, z.value)
-          , ' AND ') as cond
-        FROM (
-          SELECT
-            lower(_resource_type) || '_search_' || fri.search_type as tbl
-            ,lower(_resource_type) || '_' || x.key || '_idx' as alias
-            ,split_part(x.key, ':', 2) as modifier
-            ,param_name, search_type, key, value
-           FROM jsonb_each_text(query) x
-           JOIN fhir.resource_indexables fri
-               ON fri.param_name = split_part(x.key, ':', 1)
-               AND fri.resource_type =  _resource_type
-           WHERE position('.' in x.key) = 0
-        ) z
-        GROUP BY tbl, alias
+         UNION
 
-        -- nested params
-        UNION
-        SELECT
-          NULL as tbl,
-          NULL as alias,
-          string_agg("parse_nested_search_params", ' AND ') as cond
-          FROM parse_nested_search_params(resource_table, _resource_type, query, nested_level)
-        WHERE "parse_nested_search_params" IS NOT NULL
-      ) z);
+         SELECT joins, weight
+         FROM parse_nested_search_params('main_resource_tbl', _resource_type, query, 1)
+       ) z
+       ORDER BY weight
+    ) x
+  );
 END
 $$ IMMUTABLE;
 
@@ -233,94 +272,67 @@ $$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
 search(resource_type varchar, query jsonb)
-RETURNS TABLE (logical_id uuid, data jsonb) LANGUAGE plpgsql AS $$
+RETURNS TABLE (logical_id uuid, data jsonb, weight bigint, last_modified_date timestamptz, published timestamptz) LANGUAGE plpgsql AS $$
 BEGIN
   RETURN QUERY EXECUTE (
-        eval_template($SQL$
+      eval_template($SQL$
         WITH
-        found_resources AS (
-          SELECT logical_id, data
-          FROM "{{tbl}}" x
-          WHERE logical_id IN ({{search_sql}})
+        found_ids AS (
+          SELECT logical_id,
+
+          -- this will preserve final resources order
+          ROW_NUMBER() OVER () as weight
+          FROM ({{search_sql}}) AS x
         ),
 
         refs_to_include AS (
-          SELECT reference_type AS type, reference_id AS id
+          SELECT reference_type AS type, logical_id AS id
           FROM "{{tbl}}_references" refs
-          WHERE logical_id IN (SELECT logical_id FROM found_resources)
+          WHERE resource_id IN (SELECT logical_id FROM found_ids)
                 AND path IN (SELECT * FROM
                              jsonb_array_elements_text({{json_includes}}::jsonb))
         )
 
         -- fetch found resources
-        SELECT fres.logical_id, fres.data
-        FROM found_resources fres
+        SELECT fres.logical_id, fres.data,
+               fids.weight AS weight,
+               fres.last_modified_date, fres.published
+        FROM found_ids fids
+        JOIN "{{tbl}}" fres ON fres.logical_id = fids.logical_id
 
         UNION
 
         -- union with included resources
-        SELECT incres.logical_id, incres.data
+        SELECT incres.logical_id, incres.data,
+               0 AS weight, incres.last_modified_date, incres.published
         FROM resource incres WHERE incres.logical_id::varchar IN (SELECT id FROM refs_to_include)
                                    AND incres.resource_type IN (SELECT type FROM refs_to_include)
+
+        ORDER BY weight
       $SQL$,
-      'json_includes', quote_literal(COALESCE(query->'_include', '[]'::jsonb)),
-      'tbl', lower(resource_type),
-      'search_sql', coalesce(
-                       parse_search_params(resource_type, query, 1),
-                       ('SELECT logical_id FROM ' || lower(resource_type)))));
+      'json_includes', quote_literal(COALESCE(query->'_include', '[]')),
+      'tbl', LOWER(resource_type),
+      'search_sql', COALESCE(
+                       parse_search_params(resource_type, query),
+                       ('SELECT logical_id FROM ' ||  LOWER(resource_type)))));
 END
 $$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
 search_bundle(resource_type varchar, query jsonb)
-RETURNS json LANGUAGE sql AS $$
+RETURNS jsonb LANGUAGE sql AS $$
   SELECT
     json_build_object(
       'title', 'Search results for ' || query::varchar,
       'resourceType', 'Bundle',
       'updated', now(),
       'id', gen_random_uuid(),
-      'entry', COALESCE(json_agg(y.*), '[]'::json)
-    ) as json
-  FROM search(resource_type, query) y
-$$;
-
-CREATE OR REPLACE FUNCTION
-history_resource(_resource_type varchar, _id uuid)
-RETURNS jsonb LANGUAGE plpgsql AS $$
-DECLARE
-  res record;
-BEGIN
-  EXECUTE
-    eval_template($SQL$
-      WITH entries AS
-      (SELECT
-          x.logical_id as id
-          ,x.last_modified_date as last_modified_date
-          ,x.published as published
-          ,x.data as content
-        FROM "{{tbl}}" x
-        WHERE x.logical_id  = $1
-        UNION
-        SELECT
-          x.logical_id as id
-          ,x.last_modified_date as last_modified_date
-          ,x.published as published
-          ,x.data as content
-        FROM {{tbl}}_history x
-        WHERE x.logical_id  = $1)
-      SELECT
-        json_build_object(
-          'title', 'search',
-          'resourceType', 'Bundle',
-          'updated', now(),
-          'id', gen_random_uuid(),
-          'entry', COALESCE(json_agg(y.*), '[]'::json)
-        ) as json
-        FROM entries y
-   $SQL$, 'tbl', lower(_resource_type))
-  INTO res USING _id;
-
-  RETURN res.json;
-END
+      'entry', COALESCE(json_agg(z.*), '[]'::json)
+    )::jsonb as json
+  FROM
+    (SELECT y.data AS content,
+            y.last_modified_date AS updated,
+            y.published AS published,
+            y.logical_id AS id
+     FROM search(resource_type, query) y) z
 $$;
