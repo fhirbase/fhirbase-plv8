@@ -106,8 +106,9 @@ RETURNS text LANGUAGE sql AS $$
     convert_fhir_date_to_pgrange((regexp_matches(_value, '^(<|>)?(.+)$'))[2]) AS val) p;
 $$;
 
+-- TODO: all by convetion
 CREATE OR REPLACE FUNCTION
-param_expression(_resource_table varchar, _table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+param_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
 RETURNS text LANGUAGE sql AS $$
 WITH val_cond AS (SELECT
   CASE WHEN _type = 'string' THEN
@@ -124,148 +125,125 @@ WITH val_cond AS (SELECT
   FROM regexp_split_to_table(_value, ','))
 SELECT
   eval_template($SQL$
-    ("{{tbl}}".param = {{param}}
+    ({{tbl}}.param = {{param}}
      AND ({{vals_cond}}))
-  $SQL$, 'tbl', _table
-       , 'resource_table', _resource_table
+  $SQL$, 'tbl', quote_ident(_table)
        , 'param', quote_literal(_param)
        , 'vals_cond',
        (SELECT string_agg(cond, ' OR ') FROM val_cond));
 $$;
 
-CREATE OR REPLACE FUNCTION
-search_joins(_resource_type varchar, root_tbl varchar, query jsonb, nested_level integer)
-RETURNS TABLE(joins text) LANGUAGE sql AS $$
-    WITH search_params_not_aggregated AS (
-      SELECT
-        lower(_resource_type) || '_search_' || fri.search_type as tbl,
-        lower(_resource_type) || '_' || x.key || '_idx_' || nested_level::varchar as alias,
-        split_part(x.key, ':', 2) as modifier,
-        param_name,
-        search_type,
-        key,
-        value
-      FROM jsonb_each_text(query) x
-      JOIN fhir.resource_indexables fri
-           ON fri.param_name = split_part(x.key, ':', 1)
-           AND fri.resource_type =  _resource_type
-      WHERE position('.' in x.key) = 0
-    )
-    SELECT
-    'JOIN ' || z.tbl || ' ' || z.alias || ' ON ' || z.alias || '.resource_id::varchar = ' || root_tbl || '.logical_id::varchar AND ' ||
-    string_agg(
-      param_expression(root_tbl, z.alias, z.param_name, z.search_type, z.modifier, z.value), ' AND ') AS joins
-    FROM search_params_not_aggregated z
-    GROUP BY z.tbl, z.alias
-$$;
 
-CREATE OR REPLACE FUNCTION
-recur_search_joins(_resource_table varchar, _resource_type varchar, query jsonb, nested_level integer)
-RETURNS TABLE(joins text, weight integer)
-LANGUAGE sql AS $$
-  WITH extracted_nested_query_params AS
-    (SELECT
-        _param_name, rest,
-        (CASE WHEN array_length(re.ref_type, 1) = 1 THEN
-          re.ref_type[1]
+CREATE OR REPLACE
+FUNCTION get_reference_type(_key text,  _types text[])
+RETURNS text language sql AS $$
+    SELECT
+        CASE WHEN position(':' in _key ) > 0 THEN
+           split_part(_key, ':', 2)
+        WHEN array_length(_types, 1) = 1 THEN
+          _types[1]
         ELSE
-          split_part(_param_name, ':', 2)
-        END) AS ref_type,
-        val,
-        array_last(ri.path) AS ref_attr
-      FROM
-        (SELECT
-           (regexp_matches(x.key, '^([^.]+)\.'))[1] AS _param_name,
-           (regexp_matches(x.key, '^([^.]+)\.(.+)'))[2] AS rest,
-           x.value AS val
-        FROM jsonb_each_text(query) x
-        WHERE position('.' in x.key) > 0) x
+          null -- TODO: think about this case
+        END
+$$ IMMUTABLE;
 
-      JOIN fhir.resource_indexables ri
-        ON ri.param_name = split_part(_param_name, ':', 1)
-       AND ri.resource_type = _resource_type
-      JOIN fhir.resource_elements re
-        ON re.path = ri.path),
-
-    new_queries AS (
-      SELECT ref_type, ref_attr, keys_and_values_to_jsonb(array_agg(rest), array_agg(val)) as query
-      FROM extracted_nested_query_params
-      GROUP BY ref_type, ref_attr
-    ),
-
-    ref_joins AS (
-    -- join through references
-    -- TODO search by path
+CREATE OR REPLACE
+FUNCTION get_alias_from_path( _path text[])
+RETURNS text language sql AS $$
     SELECT
-      eval_template($SQL$
-        JOIN {{refs_idx}} {{refs_alias}}
-        ON   ({{refs_alias}}.logical_id)::varchar = ({{res_table}}.logical_id)::varchar
-        AND  {{refs_alias}}.reference_type = {{ref_type}}
-      $SQL$,
-      'refs_idx',     quote_ident(lower(_resource_type) || '_references'),
-      'refs_alias',   quote_ident(ref_attr || '_refs_' || nested_level),
-      'res_table',    quote_ident(_resource_table),
-      'ref_type',     quote_literal(ref_type),
-      'nested_level', nested_level::varchar
-      ) AS joins
-    FROM extracted_nested_query_params x
-    GROUP BY ref_type, ref_attr
-   )
+      regexp_replace(
+       lower(array_to_string(_path, '_')),
+       E'\\W', '') ;
+$$ IMMUTABLE;
 
-  -- search joins for this level
-  SELECT * FROM (
-  SELECT joins,
-         1000 * nested_level + 1 as weight
-    FROM search_joins(
-      _resource_type,
-      quote_ident(_resource_table),
-      query,
-      nested_level)
+CREATE OR REPLACE FUNCTION
+build_search_joins(_resource_type text, _query jsonb)
+RETURNS text LANGUAGE sql AS $$
+
+-- recursivelly expand chained params
+WITH RECURSIVE params(parent_res, res, path, key, value) AS (
+
+  SELECT null::text as parent_res,
+         _resource_type::text as res,
+         ARRAY[_resource_type]::text[] as path,
+         x.key,
+         x.value
+    FROM jsonb_each_text(_query) x
+
+  UNION
+
+  SELECT res as parent_res,
+         get_reference_type(split_part(x.key, '.', 1), re.ref_type) as res,
+         array_append(x.path,split_part(key, '.', 1)) as path,
+         (regexp_matches(key, '^([^.]+)\.(.+)'))[2] AS key,
+         value
+         FROM params x
+   JOIN  fhir.resource_indexables ri
+     ON  ri.param_name = split_part(split_part(x.key, '.', 1), ':',1)
+    AND  ri.resource_type = x.res
+   JOIN  fhir.resource_elements re
+     ON  re.path = ri.path
+),
+joins AS  (
+  -- joins for index search
+  SELECT eval_template($SQL$
+          JOIN {{tbl}} {{als}}
+            ON {{als}}.resource_id = {{prnt}}.logical_id::uuid
+            AND {{cond}}
+        $SQL$,
+        'tbl',  quote_ident(lower(p.res) || '_search_' || fri.search_type),
+        'als',  get_alias_from_path(array_append(p.path, fri.search_type::text)),
+        'prnt', get_alias_from_path(p.path),
+        'cond', string_agg(
+                   param_expression( get_alias_from_path(array_append(p.path, fri.search_type::text)),
+                                     fri.param_name,
+                                     fri.search_type,
+                                     split_part(p.key, ':', 2),
+                                     p.value), ' AND ')) as join_str
+         ,p.path::text || '2' as weight
+     FROM params p
+     JOIN fhir.resource_indexables fri
+       ON fri.param_name = split_part(p.key, ':', 1)
+      AND fri.resource_type =  p.res
+    WHERE position('.' in p.key) = 0
+    GROUP BY p.res, p.path, fri.search_type
 
   UNION ALL
+  -- joins trhough referenced resources for chained params
+  SELECT eval_template($SQL$
+          JOIN {{tbl}} {{als}}
+            ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
+         $SQL$,
+         'tbl', quote_ident(lower(p.res) || '_references'),
+         'als', get_alias_from_path(p.path),
+         'prnt', get_alias_from_path(butlast(p.path)))
+         AS join_str
+          ,p.path::text || '1'  as weight
+    FROM params p
+    WHERE parent_res is not null
+    GROUP BY p.parent_res, res, path
+)
 
-  SELECT joins,
-         1000 * nested_level + 0 as weight
-    FROM ref_joins
-
-  UNION ALL
-
-  SELECT z.joins, z.weight
-    FROM new_queries nq,
-         recur_search_joins(
-            nq.ref_attr || '_refs_' || nested_level,
-            nq.ref_type,
-            nq.query,
-            nested_level + 1) z
-  ) _
-  ORDER BY weight
+SELECT string_agg(join_str, '')
+  FROM (SELECT join_str  FROM joins ORDER BY weight LIMIT 1000) _ ;
 $$;
+
 
 CREATE OR REPLACE FUNCTION
 build_search_query(_resource_type varchar, query jsonb)
-RETURNS text LANGUAGE plpgsql AS $$
-DECLARE
-  resource_table varchar = 'main_resource_tbl';
-  order_clause varchar = '';
-BEGIN
-  RETURN (
-    SELECT COALESCE(
-     (SELECT
-      eval_template($SQL$
-        SELECT DISTINCT("{{resource_table_alias}}".logical_id)
-          FROM {{resource_table}} "{{resource_table_alias}}"
-          {{joins}}
-          {{order_clause}}
-      $SQL$,
-      'resource_table_alias', resource_table,
-      'resource_table', lower(_resource_type),
-      'joins', string_agg(x.joins, E'\n'),
-      'order_clause', order_clause)
-      FROM recur_search_joins('main_resource_tbl', _resource_type, query, 1) x
-    ),
-   ('SELECT logical_id FROM ' ||  LOWER(_resource_type))
-  ));
-END
+RETURNS text LANGUAGE sql AS $$
+  SELECT COALESCE(
+    eval_template($SQL$
+      SELECT DISTINCT({{tbl}}.logical_id)
+        FROM {{tbl}} {{tbl}}
+        {{joins}}
+        {{order_clause}}
+    $SQL$,
+    'tbl', quote_ident(lower(_resource_type)),
+    'joins', build_search_joins(_resource_type, query),
+    'order_clause', ''),
+
+   ('SELECT logical_id FROM ' ||  LOWER(_resource_type)));
 $$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION

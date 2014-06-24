@@ -15,15 +15,6 @@ limit 10;
     }$JSON$);
 --}}}
 --{{{
-    SELECT build_search_query('Patient', $JSON${
-      "provider.partof.name": "hl",
-      "name": "Chalmers",
-      "given": "Peter",
-      "provider.name": "hl",
-      "active": "true",
-      "gender": "http://hl7.org/fhir/v3/AdministrativeGender|M"
-    }$JSON$);
-
     SELECT search('Patient', $JSON${
       "provider.partof.name": "hl",
       "name": "Chalmers",
@@ -32,73 +23,80 @@ limit 10;
       "active": "true",
       "gender": "http://hl7.org/fhir/v3/AdministrativeGender|M"
     }$JSON$);
+
+    /* SELECT search('Patient', $JSON${ */
+    /*   "provider.partof.name": "hl", */
+    /*   "name": "Chalmers", */
+    /*   "given": "Peter", */
+    /*   "provider.name": "hl", */
+    /*   "active": "true", */
+    /*   "gender": "http://hl7.org/fhir/v3/AdministrativeGender|M" */
+    /* }$JSON$); */
 --}}}
 --{{{
-\set js '{"date":"now","status": "active", "subject.provider.name": "hl", "subject.name": "Peter", "indication:Observation.name": "loinc"}'
+\set js '{"date":"1900-01-01","status": "active", "subject.provider.name": "hl", "subject.name": "Peter", "indication:Observation.name": "loinc"}'
+
+SELECT search('Encounter', :'js');
+--}}}
+--{{{
+       SELECT DISTINCT(encounter.logical_id)
+         FROM encounter encounter
+
+           JOIN encounter_search_token encounter_token
+             ON encounter_token.resource_id = encounter.logical_id
+             AND
+     ("encounter_token".param = 'status'
+      AND (encounter_token.code = 'active'))
 
 
-SEleCT COALESCE(split_part('a', '.',2), 'ups');
+           JOIN encounter_search_date encounter_date
+             ON encounter_date.resource_id = encounter.logical_id
+             AND
+     ("encounter_date".param = 'date'
+      AND ('["1900-01-01 00:00:00+02:30","1900-01-01 23:59:59+02:30")'::tstzrange @> tstzrange(encounter_date."start", encounter_date."end")))
 
-CREATE OR REPLACE
-FUNCTION get_reference_type(_key text,  _types text[])
-RETURNS text language sql AS $$
-    SELECT
-        CASE WHEN position(':' in _key ) > 0 THEN
-           split_part(_key, ':', 2)
-        WHEN array_length(_types, 1) = 1 THEN
-          _types[1]
-        ELSE
-          null -- TODO: think about this case
-        END
-$$ IMMUTABLE;
 
-WITH RECURSIVE params(parent_res, res, path, key, value) AS (
-SELECT
-  null::text as parent_res,
-  'Encounter'::text as res
-  ,'{Encounter}'::text[] as path
-  ,x.key
-  ,x.value
-  FROM jsonb_each_text(:'js') x
-UNION
+           JOIN observation_references encounter_indicationobservation
+             ON encounter_indicationobservation.resource_id::varchar = encounter.logical_id::varchar
 
-SELECT
-    res as parent_res,
-    get_reference_type(split_part(x.key, '.', 1), re.ref_type) as res,
-    array_append(x.path,split_part(key, '.', 1)) as path,
-    (regexp_matches(key, '^([^.]+)\.(.+)'))[2] AS key,
-    value
-    FROM params x
-JOIN fhir.resource_indexables ri
-     ON ri.param_name = split_part(split_part(x.key, '.', 1), ':',1)
-    AND ri.resource_type = x.res
-JOIN fhir.resource_elements re
-    ON re.path = ri.path
-)
+           JOIN observation_search_token encounter_indicationobservation_token
+             ON encounter_indicationobservation_token.resource_id = encounter_indicationobservation.logical_id
+             AND
+     ("encounter_indicationobservation_token".param = 'name'
+      AND (encounter_indicationobservation_token.code = 'loinc'))
 
-SELECT * FROM
-(
-  -- params
-  (SELECT 'index_join' as tp, p.res, p.path, p.key, p.value
-     FROM params p WHERE position('.' in p.key) = 0)
 
-  UNION ALL
-  -- references
+           JOIN patient_references encounter_subject
+             ON encounter_subject.resource_id::varchar = encounter.logical_id::varchar
 
-  (SELECT 'ref_join' as tp, res, path, p.parent_res as key, p.res as value
-    FROM params p
-    WHERE parent_res is not null
-    GROUP BY p.parent_res, res, path)
-) _
-ORDER BY path
-LIMIT 100
-;
+           JOIN patient_search_string encounter_subject_string
+             ON encounter_subject_string.resource_id = encounter_subject.logical_id
+             AND
+     ("encounter_subject_string".param = 'name'
+      AND (encounter_subject_string.value ilike '%Peter%'))
+
+
+           JOIN organization_references encounter_subject_provider
+             ON encounter_subject_provider.resource_id::varchar = encounter_subject.logical_id::varchar
+
+           JOIN organization_search_string encounter_subject_provider_string
+             ON encounter_subject_provider_string.resource_id = encounter_subject_provider.logical_id
+             AND
+     ("encounter_subject_provider_string".param = 'name'
+      AND (encounter_subject_provider_string.value ilike '%hl%'))
+
+
+
+
+
+
+
+
+
 
 
 
 --}}}
-
---{{{
 select * from fhir.resource_indexables
 where
 resource_type = 'Encounter'
