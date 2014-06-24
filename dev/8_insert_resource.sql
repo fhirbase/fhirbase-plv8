@@ -115,7 +115,7 @@ BEGIN
   FOR idx IN
     SELECT unnest(index_date_resource(_rsrs))
   LOOP
-    RAISE NOTICE 'idx %', idx;
+    -- RAISE NOTICE 'idx %', idx;
     EXECUTE
     eval_template($SQL$
       INSERT INTO "{{tbl}}_search_date"

@@ -263,4 +263,20 @@ BEGIN
   END IF;
 END
 $$;
+
+CREATE OR REPLACE FUNCTION
+assert_eq(expec anyelement, res anyelement, mess varchar)
+RETURNS varchar LANGUAGE plpgsql AS $$
+DECLARE
+item jsonb;
+acc varchar[] := array[]::varchar[];
+BEGIN
+  IF expec = res THEN
+    RETURN 'OK ' || mess;
+  ELSE
+    RAISE EXCEPTION '%: % NOT EQ %', mess, res, expec;
+    RETURN 'not ok';
+  END IF;
+END
+$$;
 --}}}

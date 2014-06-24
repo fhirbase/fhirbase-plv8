@@ -25,8 +25,50 @@ for script in `ls test/*_test.sql`; do
   fi
 done
 
-
 echo '-----------------------------'
-echo -e "\e[00;31m"
-echo $failed
-echo -e "\e[00m"
+if [ ${#failed[@]} -eq 0 ]; then
+  clear
+  echo -e "\e[00;32m"
+  echo "Tests passed"
+  echo ""
+  echo ""
+  echo -e "\e[92m|||||||||||||||||||||||||||||||||||||"
+  echo -e "|||||||||||||||||||||||||||||||||||||"
+  echo -e "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV\e[32m"
+  echo -e "|                                   |"
+  echo -e "|    |||||     |   |     |||||      |"
+  echo -e "|    -----     |   |     -----      |"
+  echo -e "|    |||||     |   |     |||||      |"
+  echo -e "|             (0 _ 0)               |"
+  echo -e "|                                   |"
+  echo -e "|      \e[00;31m_____________________\e[00;32m        |"
+  echo -e "|                                   |"
+  echo -e "|                o                  |"
+  echo -e "\\___________________________________/"
+  echo -e "\e[00m"
+  sleep 2s
+  clear
+  echo -e "\e[00;32m"
+  echo "Tests passed"
+  echo ""
+  echo ""
+  echo -e "\e[92m|||||||||||||||||||||||||||||||||||||"
+  echo -e "|||||||||||||||||||||||||||||||||||||"
+  echo -e "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV\e[32m"
+  echo -e "|                                   |"
+  echo -e "|    |||||     |   |     |||||      |"
+  echo -e "|    <\e[107m * \e[49m>     |   |     <\e[107m * \e[49m>      |"
+  echo -e "|    |||||     |   |     |||||      |"
+  echo -e "|             (0 _ 0)               |"
+  echo -e "|                                   |"
+  echo -e "|      \e[00;31m_____________________\e[00;32m        |"
+  echo -e "|      \e[00;31m\e[101m_____________________\e[49m \e[00;32m       |"
+  echo -e "|                o                  |"
+  echo -e "\\___________________________________/"
+  echo -e "\e[00m"
+else
+  echo -e "\e[00;31m"
+  echo "Tests failed:"
+  echo $failed
+  echo -e "\e[00m"
+fi

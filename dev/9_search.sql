@@ -214,7 +214,7 @@ references_joins AS (
           JOIN {{tbl}} {{als}}
             ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
          $SQL$,
-         'tbl', quote_ident(lower(p.res) || '_references'),
+         'tbl', quote_ident(lower(p.parent_res) || '_references'),
          'als', get_alias_from_path(p.path),
          'prnt', get_alias_from_path(butlast(p.path)))
          AS join_str

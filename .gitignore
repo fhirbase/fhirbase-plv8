@@ -3,3 +3,5 @@
 .sw?
 *.sw?
 /dev/my-build.sh
+test/out/*
+test/out/*
