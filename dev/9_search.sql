@@ -1,3 +1,5 @@
+--db:fhirb
+--{{{
 CREATE OR REPLACE FUNCTION
 _param_expression_string(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
 RETURNS text LANGUAGE sql AS $$
@@ -131,15 +133,8 @@ SELECT
        (SELECT string_agg(cond, ' OR ') FROM val_cond));
 $$;
 
--- forward declaration, actual function below
 CREATE OR REPLACE FUNCTION
-parse_search_params(_resource_type varchar, query jsonb, nested_level integer)
-RETURNS text LANGUAGE sql AS $$
-SELECT 'forward declaration'::text;
-$$;
-
-CREATE OR REPLACE FUNCTION
-parse_search_params_one_level(_resource_type varchar, root_tbl varchar, query jsonb, nested_level integer)
+search_joins(_resource_type varchar, root_tbl varchar, query jsonb, nested_level integer)
 RETURNS TABLE(joins text) LANGUAGE sql AS $$
     WITH search_params_not_aggregated AS (
       SELECT
@@ -165,8 +160,9 @@ RETURNS TABLE(joins text) LANGUAGE sql AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION
-parse_nested_search_params(_resource_table varchar, _resource_type varchar, query jsonb, nested_level integer)
-RETURNS TABLE(joins text, weight integer) LANGUAGE sql AS $$
+recur_search_joins(_resource_table varchar, _resource_type varchar, query jsonb, nested_level integer)
+RETURNS TABLE(joins text, weight integer)
+LANGUAGE sql AS $$
   WITH extracted_nested_query_params AS
     (SELECT
         _param_name, rest,
@@ -185,136 +181,148 @@ RETURNS TABLE(joins text, weight integer) LANGUAGE sql AS $$
         FROM jsonb_each_text(query) x
         WHERE position('.' in x.key) > 0) x
 
-      JOIN fhir.resource_indexables ri ON ri.param_name = split_part(_param_name, ':', 1) AND ri.resource_type = _resource_type
-      JOIN fhir.resource_elements re ON re.path = ri.path)
+      JOIN fhir.resource_indexables ri
+        ON ri.param_name = split_part(_param_name, ':', 1)
+       AND ri.resource_type = _resource_type
+      JOIN fhir.resource_elements re
+        ON re.path = ri.path),
 
-  -- join through references
-  SELECT
-    eval_template($SQL$
-    -- level {{nested_level}}
-    JOIN {{refs_idx}} {{refs_alias}}
-    ON   ({{refs_alias}}.logical_id)::varchar = ({{res_table}}.logical_id)::varchar
-    AND  {{refs_alias}}.reference_type = {{ref_type}}
-    $SQL$,
-    'refs_idx', quote_ident(lower(_resource_type) || '_references'),
-    'refs_alias', quote_ident(ref_attr || '_refs_' || nested_level),
-    'res_table', quote_ident(_resource_table),
-    'ref_type', quote_literal(ref_type),
-    'nested_level', nested_level::varchar
-    ) AS joins,
-    1000 * nested_level + 0 as weight
-  FROM
-    extracted_nested_query_params x
-  GROUP BY ref_type, ref_attr
-
-  UNION (
-    WITH new_queries AS (
-    SELECT ref_type, ref_attr, keys_and_values_to_jsonb(array_agg(rest), array_agg(val)) as query
+    new_queries AS (
+      SELECT ref_type, ref_attr, keys_and_values_to_jsonb(array_agg(rest), array_agg(val)) as query
       FROM extracted_nested_query_params
       GROUP BY ref_type, ref_attr
-    )
-    -- search joins for this level
-    SELECT parse_search_params_one_level(ref_type, quote_ident(ref_attr || '_refs_' || nested_level), query, nested_level) AS joins,
-      1000 * nested_level + 1 as weight
-    FROM new_queries
+    ),
 
-    -- recursively collect nested search params
-    UNION
+    ref_joins AS (
+    -- join through references
+    -- TODO search by path
     SELECT
-      (parse_nested_search_params(nq.ref_attr || '_refs_' || nested_level, nq.ref_type, nq.query, nested_level + 1)).joins,
-      (parse_nested_search_params(nq.ref_attr || '_refs_' || nested_level, nq.ref_type, nq.query, nested_level + 1)).weight
-    FROM new_queries nq
-  )
+      eval_template($SQL$
+        JOIN {{refs_idx}} {{refs_alias}}
+        ON   ({{refs_alias}}.logical_id)::varchar = ({{res_table}}.logical_id)::varchar
+        AND  {{refs_alias}}.reference_type = {{ref_type}}
+      $SQL$,
+      'refs_idx',     quote_ident(lower(_resource_type) || '_references'),
+      'refs_alias',   quote_ident(ref_attr || '_refs_' || nested_level),
+      'res_table',    quote_ident(_resource_table),
+      'ref_type',     quote_literal(ref_type),
+      'nested_level', nested_level::varchar
+      ) AS joins
+    FROM extracted_nested_query_params x
+    GROUP BY ref_type, ref_attr
+   )
+
+  -- search joins for this level
+  SELECT * FROM (
+  SELECT joins,
+         1000 * nested_level + 1 as weight
+    FROM search_joins(
+      _resource_type,
+      quote_ident(_resource_table),
+      query,
+      nested_level)
+
+  UNION ALL
+
+  SELECT joins,
+         1000 * nested_level + 0 as weight
+    FROM ref_joins
+
+  UNION ALL
+
+  SELECT z.joins, z.weight
+    FROM new_queries nq,
+         recur_search_joins(
+            nq.ref_attr || '_refs_' || nested_level,
+            nq.ref_type,
+            nq.query,
+            nested_level + 1) z
+  ) _
+  ORDER BY weight
 $$;
 
 CREATE OR REPLACE FUNCTION
-parse_search_params(_resource_type varchar, query jsonb)
+build_search_query(_resource_type varchar, query jsonb)
 RETURNS text LANGUAGE plpgsql AS $$
 DECLARE
   resource_table varchar = 'main_resource_tbl';
   order_clause varchar = '';
 BEGIN
   RETURN (
-    SELECT
-    eval_template($SQL$
-      SELECT DISTINCT("{{resource_table_alias}}".logical_id)
-        FROM {{resource_table}} "{{resource_table_alias}}"
-        {{joins}}
-        {{order_clause}}
-    $SQL$,
-    'resource_table_alias', resource_table,
-    'resource_table', lower(_resource_type),
-    'joins', string_agg(x.joins, E'\n'),
-    'order_clause', order_clause)
-    FROM
-      (SELECT joins
-       FROM
-        (SELECT joins, 0 as weight
-         FROM parse_search_params_one_level(_resource_type, 'main_resource_tbl', query, 0)
-
-         UNION
-
-         SELECT joins, weight
-         FROM parse_nested_search_params('main_resource_tbl', _resource_type, query, 1)
-       ) z
-       ORDER BY weight
-    ) x
-  );
+    SELECT COALESCE(
+     (SELECT
+      eval_template($SQL$
+        SELECT DISTINCT("{{resource_table_alias}}".logical_id)
+          FROM {{resource_table}} "{{resource_table_alias}}"
+          {{joins}}
+          {{order_clause}}
+      $SQL$,
+      'resource_table_alias', resource_table,
+      'resource_table', lower(_resource_type),
+      'joins', string_agg(x.joins, E'\n'),
+      'order_clause', order_clause)
+      FROM recur_search_joins('main_resource_tbl', _resource_type, query, 1) x
+    ),
+   ('SELECT logical_id FROM ' ||  LOWER(_resource_type))
+  ));
 END
 $$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
-collect_included_logical_ids(includes varchar[], data jsonb)
-RETURNS uuid[] LANGUAGE sql AS
-$$
-  SELECT ARRAY[]::uuid[];
-$$ IMMUTABLE;
-
-CREATE OR REPLACE FUNCTION
 search(resource_type varchar, query jsonb)
-RETURNS TABLE (logical_id uuid, data jsonb, weight bigint, last_modified_date timestamptz, published timestamptz) LANGUAGE plpgsql AS $$
+RETURNS TABLE (logical_id uuid, data jsonb, weight bigint, last_modified_date timestamptz, published timestamptz)
+LANGUAGE plpgsql AS $$
 BEGIN
   RETURN QUERY EXECUTE (
       eval_template($SQL$
         WITH
         found_ids AS (
           SELECT logical_id,
+            -- this will preserve final resources order
+            ROW_NUMBER() OVER () as weight
+            FROM ({{search_sql}}) AS x
+        ),
 
-          -- this will preserve final resources order
-          ROW_NUMBER() OVER () as weight
-          FROM ({{search_sql}}) AS x
+        include_paths AS (
+           SELECT * FROM
+           jsonb_array_elements_text({{json_includes}}::jsonb)
         ),
 
         refs_to_include AS (
-          SELECT reference_type AS type, logical_id AS id
-          FROM "{{tbl}}_references" refs
-          WHERE resource_id IN (SELECT logical_id FROM found_ids)
-                AND path IN (SELECT * FROM
-                             jsonb_array_elements_text({{json_includes}}::jsonb))
+          SELECT reference_type AS type,
+                 logical_id AS id
+            FROM "{{tbl}}_references" refs
+           WHERE resource_id IN (SELECT logical_id FROM found_ids)
+             AND path IN (SELECT * FROM include_paths)
         )
 
         -- fetch found resources
-        SELECT fres.logical_id, fres.data,
+        SELECT fres.logical_id,
+               fres.data,
                fids.weight AS weight,
-               fres.last_modified_date, fres.published
+               fres.last_modified_date,
+               fres.published
         FROM found_ids fids
-        JOIN "{{tbl}}" fres ON fres.logical_id = fids.logical_id
+        JOIN "{{tbl}}" fres
+          ON fres.logical_id = fids.logical_id
 
         UNION
 
         -- union with included resources
-        SELECT incres.logical_id, incres.data,
-               0 AS weight, incres.last_modified_date, incres.published
-        FROM resource incres WHERE incres.logical_id::varchar IN (SELECT id FROM refs_to_include)
-                                   AND incres.resource_type IN (SELECT type FROM refs_to_include)
+        SELECT incres.logical_id,
+               incres.data,
+               0 AS weight,
+               incres.last_modified_date,
+               incres.published
+          FROM resource incres, refs_to_include
+         WHERE incres.logical_id::varchar = refs_to_include.id
+           AND incres.resource_type = refs_to_include.type
 
         ORDER BY weight
       $SQL$,
       'json_includes', quote_literal(COALESCE(query->'_include', '[]')),
       'tbl', LOWER(resource_type),
-      'search_sql', COALESCE(
-                       parse_search_params(resource_type, query),
-                       ('SELECT logical_id FROM ' ||  LOWER(resource_type)))));
+      'search_sql', build_search_query(resource_type, query)));
 END
 $$ IMMUTABLE;
 
@@ -336,3 +344,4 @@ RETURNS jsonb LANGUAGE sql AS $$
             y.logical_id AS id
      FROM search(resource_type, query) y) z
 $$;
+--}}}

@@ -128,7 +128,7 @@ VIEW fhir.expanded_resource_elements as (
   GROUP BY x.path, x.min, x.max, x.type, is_primitive
 );
 
-CREATE OR REPLACE
+CREATE MATERIALIZED
 VIEW fhir.resource_indexables AS (
 WITH polimorphic_attrs_mapping AS (
         SELECT 'date' as stp,  '{date,dateTime,instant,Period,Schedule}'::varchar[] as tp
