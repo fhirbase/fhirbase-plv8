@@ -184,7 +184,7 @@ WITH RECURSIVE params(parent_res, res, path, key, value) AS (
    JOIN  fhir.resource_elements re
      ON  re.path = ri.path
 ),
-joins AS  (
+search_index_joins AS (
   -- joins for index search
   SELECT eval_template($SQL$
           JOIN {{tbl}} {{als}}
@@ -207,8 +207,8 @@ joins AS  (
       AND fri.resource_type =  p.res
     WHERE position('.' in p.key) = 0
     GROUP BY p.res, p.path, fri.search_type
-
-  UNION ALL
+),
+references_joins AS (
   -- joins trhough referenced resources for chained params
   SELECT eval_template($SQL$
           JOIN {{tbl}} {{als}}
@@ -222,8 +222,14 @@ joins AS  (
     FROM params p
     WHERE parent_res is not null
     GROUP BY p.parent_res, res, path
+),
+-- mix joins together
+joins AS  (
+  SELECT * FROM search_index_joins
+  UNION ALL
+  SELECT * FROM references_joins
 )
-
+-- agg to SQL string
 SELECT string_agg(join_str, '')
   FROM (SELECT join_str  FROM joins ORDER BY weight LIMIT 1000) _ ;
 $$;
@@ -234,7 +240,7 @@ build_search_query(_resource_type varchar, query jsonb)
 RETURNS text LANGUAGE sql AS $$
   SELECT COALESCE(
     eval_template($SQL$
-      SELECT DISTINCT({{tbl}}.logical_id)
+      SELECT {{tbl}}.*
         FROM {{tbl}} {{tbl}}
         {{joins}}
         {{order_clause}}
@@ -246,61 +252,52 @@ RETURNS text LANGUAGE sql AS $$
    ('SELECT logical_id FROM ' ||  LOWER(_resource_type)));
 $$ IMMUTABLE;
 
+DROP FUNCTION IF EXISTS search(character varying,jsonb);
 CREATE OR REPLACE FUNCTION
 search(resource_type varchar, query jsonb)
-RETURNS TABLE (logical_id uuid, data jsonb, weight bigint, last_modified_date timestamptz, published timestamptz)
+RETURNS TABLE (logical_id uuid, data jsonb, last_modified_date timestamptz, published timestamptz, weight bigint)
 LANGUAGE plpgsql AS $$
 BEGIN
-  RETURN QUERY EXECUTE (
-      eval_template($SQL$
-        WITH
-        found_ids AS (
-          SELECT logical_id,
-            -- this will preserve final resources order
-            ROW_NUMBER() OVER () as weight
-            FROM ({{search_sql}}) AS x
-        ),
+RETURN QUERY EXECUTE (
+  eval_template($SQL$
+    WITH
+    found_resources AS (
+      SELECT x.logical_id,
+             x.data,
+             x.last_modified_date,
+             x.published,
+             ROW_NUMBER() OVER () as weight
+        FROM ({{search_sql}}) AS x
+    ),
 
-        include_paths AS (
-           SELECT * FROM
-           jsonb_array_elements_text({{json_includes}}::jsonb)
-        ),
+    refs_to_include AS (
+      SELECT reference_type AS type,
+             logical_id AS id
+        FROM "{{tbl}}_references" refs
+       WHERE resource_id IN (SELECT logical_id FROM found_resources)
+         AND path IN (SELECT * FROM jsonb_array_elements_text({{json_includes}}::jsonb))
+    ),
 
-        refs_to_include AS (
-          SELECT reference_type AS type,
-                 logical_id AS id
-            FROM "{{tbl}}_references" refs
-           WHERE resource_id IN (SELECT logical_id FROM found_ids)
-             AND path IN (SELECT * FROM include_paths)
-        )
+    included_resources AS (
+      SELECT incres.logical_id,
+             incres.data,
+             incres.last_modified_date,
+             incres.published,
+             0 AS weight
+        FROM resource incres, refs_to_include
+       WHERE incres.logical_id::varchar = refs_to_include.id
+         AND incres.resource_type = refs_to_include.type
+    )
 
-        -- fetch found resources
-        SELECT fres.logical_id,
-               fres.data,
-               fids.weight AS weight,
-               fres.last_modified_date,
-               fres.published
-        FROM found_ids fids
-        JOIN "{{tbl}}" fres
-          ON fres.logical_id = fids.logical_id
+    SELECT * from found_resources
+    UNION
+    SELECT * from included_resources
+    ORDER BY weight
 
-        UNION
-
-        -- union with included resources
-        SELECT incres.logical_id,
-               incres.data,
-               0 AS weight,
-               incres.last_modified_date,
-               incres.published
-          FROM resource incres, refs_to_include
-         WHERE incres.logical_id::varchar = refs_to_include.id
-           AND incres.resource_type = refs_to_include.type
-
-        ORDER BY weight
-      $SQL$,
-      'json_includes', quote_literal(COALESCE(query->'_include', '[]')),
-      'tbl', LOWER(resource_type),
-      'search_sql', build_search_query(resource_type, query)));
+  $SQL$,
+  'json_includes', quote_literal(COALESCE(query->'_include', '[]')),
+  'tbl',           LOWER(resource_type),
+  'search_sql',    build_search_query(resource_type, query)));
 END
 $$ IMMUTABLE;
 
