@@ -34,10 +34,30 @@ BEGIN
 
   PERFORM create_tags(id, vid, res_type, _tags);
   PERFORM index_resource(id, res_type, _rsrs);
+  PERFORM denormalize_sort(id, res_type);
 
   RETURN id;
 END
 $$;
+
+--private
+CREATE OR REPLACE FUNCTION
+denormalize_sort(_id uuid, res_type varchar)
+RETURNS text
+LANGUAGE plpgsql AS $$
+BEGIN
+  EXECUTE
+    eval_template($SQL$
+      INSERT INTO {{tbl}}_sort
+      (resource_id, param, lower, upper)
+      SELECT resource_id, param, value, value FROM {{tbl}}_search_string
+       WHERE resource_id = $1
+    $SQL$, 'tbl', res_type)
+  USING _id;
+  RETURN _id;
+END
+$$;
+
 
 --private
 CREATE OR REPLACE FUNCTION
@@ -188,6 +208,7 @@ BEGIN
       FROM {{tbl}}_tag
       WHERE resource_id = $1;
 
+      DELETE FROM "{{tbl}}_sort" WHERE resource_id = $1;
       DELETE FROM "{{tbl}}_tag" WHERE resource_id = $1;
       DELETE FROM "{{tbl}}_search_string" WHERE resource_id = $1;
       DELETE FROM "{{tbl}}_search_token" WHERE resource_id = $1;

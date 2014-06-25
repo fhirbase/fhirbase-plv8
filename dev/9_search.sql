@@ -284,6 +284,11 @@ SELECT string_agg(join_str, '')
   FROM (SELECT join_str  FROM joins ORDER BY weight LIMIT 1000) _ ;
 $$;
 
+CREATE OR REPLACE FUNCTION
+build_order_by(_resource_type varchar, query jsonb)
+RETURNS text LANGUAGE sql AS $$
+ select ''::text;
+$$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
 build_search_query(_resource_type varchar, query jsonb)
@@ -388,4 +393,28 @@ RETURNS jsonb LANGUAGE sql AS $$
             y.published
     ) z
 $$;
+--}}}
+--{{{
+
+WITH params AS (
+    SELECT lower('Patient') as prnt,
+           lower('Patient' || '_sort') as tbl,
+           lower('Patient' || '_sort_' || fri.param_name) as als,
+           fri.param_name,
+           fri.search_type,
+           split_part(y.value,':',2) as direction
+      from jsonb_each('{"_sort":["name:asc", "birthdate:desc"]}') x,
+           jsonb_array_elements_text(x.value) y,
+           fhir.resource_indexables fri
+    WHERE split_part(x.key, ':',1) = '_sort'
+      AND fri.param_name = split_part(y.value,':',1)
+      AND fri.resource_type = 'Patient' ),
+joins AS (
+  SELECT  eval_template($SQL$
+            JOIN {{tbl}} {{als}}
+              ON {{als}}.resource_id = {{prnt}}.logical_id
+          $SQL$, 'tbl', tbl, 'als', als, 'prnt', prnt) as join_str
+     FROM params)
+SELECT (select string_agg(j.join_str, ', ') from joins j);
+
 --}}}

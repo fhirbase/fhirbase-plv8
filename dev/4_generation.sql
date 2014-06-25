@@ -54,6 +54,14 @@ eval_ddl(
       label text
     ) INHERITS (tag);
 
+    CREATE TABLE {{tbl_name}}_sort (
+      _id SERIAL PRIMARY KEY,
+      resource_id uuid REFERENCES "{{tbl_name}}" (logical_id),
+      param varchar NOT NULL,
+      upper varchar NOT NULL,
+      lower varchar NOT NULL
+    );
+
     CREATE TABLE "{{tbl_name}}_history" (
       version_id uuid PRIMARY KEY,
       logical_id uuid NOT NULL,
