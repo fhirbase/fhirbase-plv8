@@ -28,7 +28,7 @@ RETURNS jsonb LANGUAGE sql AS $$
   FROM (
     SELECT scheme, term, label
     FROM tag
-    WHERE resource_type = lower(_res_type)
+    WHERE resource_type = _res_type
     GROUP BY scheme, term, label) tgs
 $$ IMMUTABLE;
 
@@ -43,7 +43,7 @@ RETURNS jsonb LANGUAGE sql AS $$
   FROM (
     SELECT scheme, term, label
     FROM tag
-    WHERE resource_type = lower(_res_type)
+    WHERE resource_type = _res_type
     AND resource_id = _id
     GROUP BY scheme, term, label) tgs
 $$ IMMUTABLE;
@@ -59,7 +59,7 @@ RETURNS jsonb LANGUAGE sql AS $$
   FROM (
     SELECT scheme, term, label
     FROM history_tag
-    WHERE resource_type = lower(_res_type)
+    WHERE resource_type = _res_type
     AND resource_id = _id
     AND resource_version_id = _vid
     GROUP BY scheme, term, label) tgs
@@ -163,7 +163,7 @@ remove_tags(_res_type varchar, _id uuid)
 RETURNS bigint LANGUAGE sql AS $$
   WITH DELETED AS (
   DELETE FROM tag
-    WHERE resource_type = lower(_res_type)
+    WHERE resource_type = _res_type
     AND resource_id = _id RETURNING * )
   SELECT count(*) FROM DELETED;
 $$;
@@ -175,7 +175,7 @@ remove_tags(_res_type varchar, _id uuid, _vid uuid)
 RETURNS bigint LANGUAGE sql AS $$
   WITH DELETED AS (
   DELETE FROM history_tag
-    WHERE resource_type = lower(_res_type)
+    WHERE resource_type = _res_type
     AND resource_id = _id
     AND resource_version_id = _vid RETURNING *)
   SELECT count(*) FROM DELETED;

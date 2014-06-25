@@ -157,6 +157,30 @@ RETURNS text language sql AS $$
 $$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
+_param_expression_tag(_table varchar, _key varchar, _val varchar, _modifier varchar)
+RETURNS text LANGUAGE sql AS $$
+ SELECT
+  '(' ||
+  CASE
+  WHEN _key = '_security' THEN
+    _table || '.scheme = ''http://hl7.org/fhir/tag/security'' AND '
+  WHEN _key = '_profile' THEN
+    _table || '.scheme = ''http://hl7.org/fhir/tag/profile'' AND '
+  ElSE
+    ''
+  END ||
+  CASE
+  WHEN _modifier = 'text' THEN
+    _table || '.label ilike ' || quote_literal('%' || _val || '%')
+  WHEN _modifier = 'partial' THEN
+    _table || '.term  ilike ' || quote_literal(_val || '%')
+  ELSE
+    _table || '.term = ' || quote_literal(_val)
+  END
+  || ')';
+$$;
+
+CREATE OR REPLACE FUNCTION
 build_search_joins(_resource_type text, _query jsonb)
 RETURNS text LANGUAGE sql AS $$
 
@@ -169,6 +193,7 @@ WITH RECURSIVE params(parent_res, res, path, key, value) AS (
          x.key,
          x.value
     FROM jsonb_each_text(_query) x
+   WHERE split_part(x.key,':',1) NOT IN ('_tag', '_security', '_profile')
 
   UNION
 
@@ -188,7 +213,7 @@ search_index_joins AS (
   -- joins for index search
   SELECT eval_template($SQL$
           JOIN {{tbl}} {{als}}
-            ON {{als}}.resource_id = {{prnt}}.logical_id::uuid
+            ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
             AND {{cond}}
         $SQL$,
         'tbl',  quote_ident(lower(p.res) || '_search_' || fri.search_type),
@@ -223,8 +248,33 @@ references_joins AS (
     WHERE parent_res is not null
     GROUP BY p.parent_res, res, path
 ),
+tag_joins AS (
+  SELECT eval_template($SQL$
+          JOIN {{tbl}} {{als}}
+            ON {{als}}.resource_id = {{prnt}}.logical_id
+           AND {{cond}}
+         $SQL$,
+         'tbl', lower(_resource_type || '_tag'),
+         'als',  y.als,
+         'cond', string_agg(_param_expression_tag(y.als, y.key, y.value, y.modifier), ' OR '),
+         'prnt', quote_ident(lower(_resource_type)))
+          as join_str,
+          '0'::text as weight
+    FROM (
+      SELECT quote_ident('_' || md5(x.value::text)) as als,
+             split_part(x.key,':',1) as key,
+             split_part(x.key,':',2) as modifier,
+             regexp_split_to_table as value
+        FROM jsonb_each_text(_query) x,
+             regexp_split_to_table(x.value, ',')
+       WHERE split_part(x.key,':',1) IN ('_tag', '_security', '_profile')
+    ) y
+    GROUP BY y.als, y.key, y.modifier
+),
 -- mix joins together
 joins AS  (
+  SELECT join_str, weight FROM tag_joins
+  UNION ALL
   SELECT * FROM search_index_joins
   UNION ALL
   SELECT * FROM references_joins
@@ -254,15 +304,16 @@ $$ IMMUTABLE;
 
 DROP FUNCTION IF EXISTS search(character varying,jsonb);
 CREATE OR REPLACE FUNCTION
-search(resource_type varchar, query jsonb)
-RETURNS TABLE (logical_id uuid, data jsonb, last_modified_date timestamptz, published timestamptz, weight bigint)
+search(_resource_type varchar, query jsonb)
+RETURNS TABLE (resource_type varchar, logical_id uuid, data jsonb, last_modified_date timestamptz, published timestamptz, weight bigint)
 LANGUAGE plpgsql AS $$
 BEGIN
 RETURN QUERY EXECUTE (
   eval_template($SQL$
     WITH
     found_resources AS (
-      SELECT x.logical_id,
+      SELECT x.resource_type,
+             x.logical_id,
              x.data,
              x.last_modified_date,
              x.published,
@@ -279,7 +330,8 @@ RETURN QUERY EXECUTE (
     ),
 
     included_resources AS (
-      SELECT incres.logical_id,
+      SELECT incres.resource_type,
+             incres.logical_id,
              incres.data,
              incres.last_modified_date,
              incres.published,
@@ -296,13 +348,14 @@ RETURN QUERY EXECUTE (
 
   $SQL$,
   'json_includes', quote_literal(COALESCE(query->'_include', '[]')),
-  'tbl',           LOWER(resource_type),
-  'search_sql',    build_search_query(resource_type, query)));
+  'tbl',           LOWER(_resource_type),
+  'search_sql',    build_search_query(_resource_type, query)));
 END
 $$ IMMUTABLE;
 
+DROP FUNCTION IF EXISTS search_bundle(_resource_type varchar, query jsonb);
 CREATE OR REPLACE FUNCTION
-search_bundle(resource_type varchar, query jsonb)
+search_bundle(_resource_type varchar, query jsonb)
 RETURNS jsonb LANGUAGE sql AS $$
   SELECT
     json_build_object(
@@ -316,7 +369,23 @@ RETURNS jsonb LANGUAGE sql AS $$
     (SELECT y.data AS content,
             y.last_modified_date AS updated,
             y.published AS published,
-            y.logical_id AS id
-     FROM search(resource_type, query) y) z
+            y.logical_id AS id,
+            CASE WHEN string_agg(t.scheme,'') IS NULL THEN
+              '[]'::jsonb
+              ELSE
+            json_agg(
+               json_build_object('scheme', t.scheme,
+                                 'term', t.term,
+                                 'label', t.label))::jsonb
+            END AS category
+       FROM search(_resource_type, query) y
+  LEFT JOIN tag t
+         ON t.resource_id = y.logical_id
+            AND t.resource_type = y.resource_type
+   GROUP BY y.logical_id,
+            y.data,
+            y.last_modified_date,
+            y.published
+    ) z
 $$;
 --}}}

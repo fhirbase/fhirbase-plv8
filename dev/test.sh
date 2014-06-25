@@ -46,7 +46,7 @@ if [ ${#failed[@]} -eq 0 ]; then
   echo -e "|                o                  |"
   echo -e "\\___________________________________/"
   echo -e "\e[00m"
-  sleep 2s
+  sleep 1s
   clear
   echo -e "\e[00;32m"
   echo "Tests passed"

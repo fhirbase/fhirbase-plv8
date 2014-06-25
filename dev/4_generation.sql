@@ -48,7 +48,7 @@ eval_ddl(
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       resource_id uuid REFERENCES "{{tbl_name}}" (logical_id),
       resource_version_id uuid NOT NULL,
-      resource_type varchar DEFAULT '{{tbl_name}}',
+      resource_type varchar DEFAULT '{{resource_type}}',
       scheme varchar NOT NULL,
       term varchar NOT NULL,
       label text
@@ -57,7 +57,7 @@ eval_ddl(
     CREATE TABLE "{{tbl_name}}_history" (
       version_id uuid PRIMARY KEY,
       logical_id uuid NOT NULL,
-      resource_type varchar DEFAULT '{{tbl_name}}',
+      resource_type varchar DEFAULT '{{resource_type}}',
       last_modified_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
       published  TIMESTAMP WITH TIME ZONE NOT NULL,
       data jsonb NOT NULL
@@ -67,7 +67,7 @@ eval_ddl(
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       resource_id uuid NOT NULL,
       resource_version_id uuid REFERENCES "{{tbl_name}}_history" (version_id),
-      resource_type varchar DEFAULT '{{tbl_name}}',
+      resource_type varchar DEFAULT '{{resource_type}}',
       scheme varchar NOT NULL,
       term varchar NOT NULL,
       label text
