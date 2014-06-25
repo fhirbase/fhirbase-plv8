@@ -14,6 +14,59 @@ END
 $$;
 
 CREATE OR REPLACE FUNCTION
+numeric_to_sortable_varchar(i real)
+RETURNS varchar LANGUAGE sql AS $$
+  SELECT to_char(i, 'SG0000000000000000D99999');
+$$;
+
+--private
+CREATE OR REPLACE FUNCTION
+make_search_index(_id uuid, res_type varchar)
+RETURNS text
+LANGUAGE plpgsql AS $$
+BEGIN
+  EXECUTE
+    eval_template($SQL$
+      INSERT INTO {{tbl}}_sort
+      (resource_id, param, lower, upper)
+
+      SELECT resource_id, param, MIN(value), MAX(value)
+        FROM {{tbl}}_search_string
+       WHERE resource_id = $1
+    GROUP BY param, resource_id
+
+      UNION
+
+      SELECT resource_id, param, MIN(code), MAX(code)
+        FROM {{tbl}}_search_token
+       WHERE resource_id = $1
+    GROUP BY param, resource_id
+
+      UNION
+
+      SELECT resource_id, param, MIN(logical_id), MAX(logical_id)
+        FROM {{tbl}}_search_reference
+       WHERE resource_id = $1
+    GROUP BY param, resource_id
+
+      UNION
+
+      SELECT resource_id, param,
+             numeric_to_sortable_varchar(MIN(value)),
+             numeric_to_sortable_varchar(MAX(value))
+        FROM {{tbl}}_search_quantity
+       WHERE resource_id = $1
+    GROUP BY param, resource_id
+
+    -- TODO: don't forget about numerics
+
+    $SQL$, 'tbl', res_type)
+  USING _id;
+  RETURN _id;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION
 insert_resource(id uuid, _rsrs jsonb, _tags jsonb)
 RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE
@@ -34,30 +87,11 @@ BEGIN
 
   PERFORM create_tags(id, vid, res_type, _tags);
   PERFORM index_resource(id, res_type, _rsrs);
-  PERFORM denormalize_sort(id, res_type);
+  PERFORM make_search_index(id, res_type);
 
   RETURN id;
 END
 $$;
-
---private
-CREATE OR REPLACE FUNCTION
-denormalize_sort(_id uuid, res_type varchar)
-RETURNS text
-LANGUAGE plpgsql AS $$
-BEGIN
-  EXECUTE
-    eval_template($SQL$
-      INSERT INTO {{tbl}}_sort
-      (resource_id, param, lower, upper)
-      SELECT resource_id, param, value, value FROM {{tbl}}_search_string
-       WHERE resource_id = $1
-    $SQL$, 'tbl', res_type)
-  USING _id;
-  RETURN _id;
-END
-$$;
-
 
 --private
 CREATE OR REPLACE FUNCTION
@@ -106,7 +140,6 @@ BEGIN
   FOR idx IN
     SELECT unnest(index_string_resource(_rsrs))
   LOOP
-    --RAISE NOTICE 'idx %', idx;
     EXECUTE
       eval_template($SQL$
         INSERT INTO "{{tbl}}_search_string"
@@ -135,7 +168,6 @@ BEGIN
   FOR idx IN
     SELECT unnest(index_date_resource(_rsrs))
   LOOP
-    -- RAISE NOTICE 'idx %', idx;
     EXECUTE
     eval_template($SQL$
       INSERT INTO "{{tbl}}_search_date"

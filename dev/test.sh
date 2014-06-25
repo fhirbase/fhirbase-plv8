@@ -1,5 +1,12 @@
-PSQL_ARGS=''
-DB='fhirb' #ase_test'
+#!/bin/bash
+
+if [ `hostname` = 'mlapshin' ]; then
+    PSQL_ARGS='-h localhost -U fhirbase -p 5556'
+    DB='fhirbase'
+else
+    PSQL_ARGS=''
+    DB='fhirb'
+fi;
 
 echo "Run tests"
 failed=()

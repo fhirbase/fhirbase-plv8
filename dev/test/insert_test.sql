@@ -35,7 +35,3 @@ SELECT assert(count(*)=5,'delete: 5 in history tags') FROM observation_history_t
 
 ROLLBACK;
 --}}}
-
---{{{
---}}}
-
