@@ -45,7 +45,7 @@ RETURNS text LANGUAGE sql AS $$
     WHEN _int = 0 THEN
       'a0'
     WHEN _int < 0 THEN
-      lex_reverse(lexit(-_int))
+      lex_reverse(_lexit_int(-_int))
     ELSE
       (SELECT repeat('a', char_length(lex_prefix)) || lex_prefix || _int::text
         FROM lex_prefix('', _int))
