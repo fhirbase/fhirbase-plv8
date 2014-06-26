@@ -14,9 +14,10 @@ END
 $$;
 
 CREATE OR REPLACE FUNCTION
-numeric_to_sortable_varchar(i real)
+numeric_to_sortable_varchar(_num decimal)
 RETURNS varchar LANGUAGE sql AS $$
-  SELECT to_char(i, 'SG0000000000000000D99999');
+  /* SELECT to_char(i, 'SG0000000000000000D99999'); */
+  SELECT lexit(_num);
 $$;
 
 --private
