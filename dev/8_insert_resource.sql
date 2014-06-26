@@ -35,21 +35,21 @@ BEGIN
        WHERE resource_id = $1
     GROUP BY param, resource_id
 
-      UNION
+       UNION
 
       SELECT resource_id, param, MIN(code), MAX(code)
         FROM {{tbl}}_search_token
        WHERE resource_id = $1
     GROUP BY param, resource_id
 
-      UNION
+       UNION
 
       SELECT resource_id, param, MIN(logical_id), MAX(logical_id)
         FROM {{tbl}}_search_reference
        WHERE resource_id = $1
     GROUP BY param, resource_id
 
-      UNION
+       UNION
 
       SELECT resource_id, param,
              numeric_to_sortable_varchar(MIN(value)),
