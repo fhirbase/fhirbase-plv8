@@ -21,7 +21,7 @@ $$;
 
 --private
 CREATE OR REPLACE FUNCTION
-make_search_index(_id uuid, res_type varchar)
+index_sorting(_id uuid, res_type varchar)
 RETURNS text
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -87,7 +87,7 @@ BEGIN
 
   PERFORM create_tags(id, vid, res_type, _tags);
   PERFORM index_resource(id, res_type, _rsrs);
-  PERFORM make_search_index(id, res_type);
+  PERFORM index_sorting(id, res_type);
 
   RETURN id;
 END
