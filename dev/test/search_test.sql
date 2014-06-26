@@ -9,15 +9,15 @@ SET escape_string_warning=off;
 \set pt_uuid '550e8400-e29b-41d4-a716-446655440010'
 \set pt_tags  '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'
 
-\set pt_noise `cat test/fixtures/pt_noise.json`
-\set pt_noise_uuid '550e8400-e29b-41d4-a716-446655440011'
-\set pt_noise_tags  '[{"scheme": "http://pt.com", "term": "http://pt/noise", "label":"noise"}]'
+\set pt2 `cat test/fixtures/pt2.json`
+\set pt2_uuid '550e8400-e29b-41d4-a716-446655440011'
+\set pt2_tags  '[{"scheme": "http://pt.com", "term": "http://pt/noise", "label":"noise"}]'
 
 BEGIN;
 
 SELECT insert_resource(:'org_uuid'::uuid, :'org1'::jsonb, '[]'::jsonb);
 SELECT insert_resource(:'pt_uuid'::uuid, :'pt'::jsonb, :'pt_tags'::jsonb);
-SELECT insert_resource(:'pt_noise_uuid'::uuid, :'pt_noise'::jsonb, :'pt_noise_tags'::jsonb);
+SELECT insert_resource(:'pt2_uuid'::uuid, :'pt2'::jsonb, :'pt2_tags'::jsonb);
 
 SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by name')
   FROM search('Patient', '{"name": "roel"}');

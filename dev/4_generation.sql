@@ -62,6 +62,9 @@ eval_ddl(
       lower varchar NOT NULL
     );
 
+    CREATE UNIQUE INDEX {{tbl_name}}_sort_uniq_on_param_idx
+    ON {{tbl_name}}_sort (resource_id, param);
+
     CREATE TABLE "{{tbl_name}}_history" (
       version_id uuid PRIMARY KEY,
       logical_id uuid NOT NULL,

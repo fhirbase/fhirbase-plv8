@@ -285,15 +285,58 @@ SELECT string_agg(join_str, '')
 $$;
 
 CREATE OR REPLACE FUNCTION
-build_order_by(_resource_type varchar, query jsonb)
+parse_order_params(_resource_type varchar, query jsonb)
+RETURNS TABLE(param text, direction text) LANGUAGE sql AS $$
+  SELECT split_part(jsonb_array_elements_text, ':', 1) AS param,
+         upper(split_part(jsonb_array_elements_text, ':', 2)) AS direction
+    FROM jsonb_array_elements_text(query->'_sort')
+   WHERE position('.' IN jsonb_array_elements_text) = 0
+$$;
+
+CREATE OR REPLACE FUNCTION
+build_order_clause(_resource_type varchar, query jsonb)
 RETURNS text LANGUAGE sql AS $$
- select ''::text;
+  WITH order_strs AS (
+    SELECT eval_template($SQL$
+             {{param_tbl}}.{{param_clmn}} {{dir}}
+           $SQL$,
+           'param_tbl', lower(_resource_type) || '_' || param || '_order_idx',
+           'param_clmn', CASE WHEN direction = 'ASC' THEN 'lower' ELSE 'upper' END,
+           'dir', CASE WHEN direction = 'ASC' THEN 'ASC' ELSE 'DESC' END) AS str
+      FROM parse_order_params(_resource_type, query)
+  )
+  SELECT CASE WHEN length(string_agg(str, '')) > 0 THEN
+           'ORDER BY ' || string_agg(str, ', ')
+         ELSE
+           'ORDER BY logical_id ASC'
+         END
+    FROM order_strs
+$$ IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION
+build_order_joins(_resource_type varchar, query jsonb)
+RETURNS text LANGUAGE sql AS $$
+  WITH joins AS (
+    SELECT eval_template($SQL$
+      LEFT JOIN {{order_idx_tbl}} {{order_idx_alias}}
+             ON {{order_idx_alias}}.resource_id =
+                {{resource_tbl}}.logical_id
+                AND {{order_idx_alias}}.param = {{param}}
+           $SQL$,
+           'order_idx_tbl', lower(_resource_type) || '_sort',
+           'order_idx_alias', lower(_resource_type) || '_' || param || '_order_idx',
+           'resource_tbl', lower(_resource_type),
+           'param', quote_literal(param)) AS j
+      FROM parse_order_params(_resource_type, query)
+  )
+  SELECT string_agg(j, ' ')
+    FROM joins;
 $$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
 build_search_query(_resource_type varchar, query jsonb)
 RETURNS text LANGUAGE sql AS $$
-  SELECT COALESCE(
+  SELECT
     eval_template($SQL$
       SELECT {{tbl}}.*
         FROM {{tbl}} {{tbl}}
@@ -301,10 +344,9 @@ RETURNS text LANGUAGE sql AS $$
         {{order_clause}}
     $SQL$,
     'tbl', quote_ident(lower(_resource_type)),
-    'joins', build_search_joins(_resource_type, query),
-    'order_clause', ''),
-
-   ('SELECT logical_id FROM ' ||  LOWER(_resource_type)));
+    'joins', COALESCE(build_search_joins(_resource_type, query), '') || ' ' ||
+             COALESCE(build_order_joins(_resource_type, query), ''),
+    'order_clause', build_order_clause(_resource_type, query));
 $$ IMMUTABLE;
 
 DROP FUNCTION IF EXISTS search(character varying,jsonb);
@@ -350,7 +392,6 @@ RETURN QUERY EXECUTE (
     UNION
     SELECT * from included_resources
     ORDER BY weight
-
   $SQL$,
   'json_includes', quote_literal(COALESCE(query->'_include', '[]')),
   'tbl',           LOWER(_resource_type),
@@ -393,28 +434,4 @@ RETURNS jsonb LANGUAGE sql AS $$
             y.published
     ) z
 $$;
---}}}
---{{{
-
-WITH params AS (
-    SELECT lower('Patient') as prnt,
-           lower('Patient' || '_sort') as tbl,
-           lower('Patient' || '_sort_' || fri.param_name) as als,
-           fri.param_name,
-           fri.search_type,
-           split_part(y.value,':',2) as direction
-      from jsonb_each('{"_sort":["name:asc", "birthdate:desc"]}') x,
-           jsonb_array_elements_text(x.value) y,
-           fhir.resource_indexables fri
-    WHERE split_part(x.key, ':',1) = '_sort'
-      AND fri.param_name = split_part(y.value,':',1)
-      AND fri.resource_type = 'Patient' ),
-joins AS (
-  SELECT  eval_template($SQL$
-            JOIN {{tbl}} {{als}}
-              ON {{als}}.resource_id = {{prnt}}.logical_id
-          $SQL$, 'tbl', tbl, 'als', als, 'prnt', prnt) as join_str
-     FROM params)
-SELECT (select string_agg(j.join_str, ', ') from joins j);
-
 --}}}
