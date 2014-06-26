@@ -44,6 +44,13 @@ BEGIN
 
        UNION
 
+      SELECT resource_id, param, "start"::varchar, "end"::varchar
+        FROM {{tbl}}_search_date
+       WHERE resource_id = $1
+    GROUP BY param, resource_id, "start", "end"
+
+       UNION
+
       SELECT resource_id, param, MIN(logical_id), MAX(logical_id)
         FROM {{tbl}}_search_reference
        WHERE resource_id = $1
