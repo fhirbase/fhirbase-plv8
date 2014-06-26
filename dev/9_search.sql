@@ -329,7 +329,7 @@ RETURNS text LANGUAGE sql AS $$
            'param', quote_literal(param)) AS j
       FROM parse_order_params(_resource_type, query)
   )
-  SELECT COALESCE(string_agg(j, ' '), '')
+  SELECT string_agg(j, ' ')
     FROM joins;
 $$ IMMUTABLE;
 
@@ -345,7 +345,7 @@ RETURNS text LANGUAGE sql AS $$
     $SQL$,
     'tbl', quote_ident(lower(_resource_type)),
     'joins', COALESCE(build_search_joins(_resource_type, query), '') || ' ' ||
-             build_order_joins(_resource_type, query),
+             COALESCE(build_order_joins(_resource_type, query), ''),
     'order_clause', build_order_clause(_resource_type, query));
 $$ IMMUTABLE;
 
