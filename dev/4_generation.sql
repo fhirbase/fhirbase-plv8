@@ -46,6 +46,10 @@ eval_ddl(
       data jsonb NOT NULL
     ) INHERITS (resource);
 
+    -- this index speedup search joins (cause uuid are casted to varchars)
+    CREATE UNIQUE INDEX {{tbl_name}}_logical_id_as_varchar_idx
+    ON "{{tbl_name}}" (CAST(logical_id AS varchar));
+
     CREATE TABLE {{tbl_name}}_tag (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       resource_id uuid REFERENCES "{{tbl_name}}" (logical_id),
