@@ -44,6 +44,7 @@ ROLLBACK;
 BEGIN;
 
 SELECT insert_resource(:'uuid'::uuid, :'obs'::jsonb, :'tags'::jsonb);
+select * from observation;
 SELECT assert_eq(:'uuid', id, 'read resource') FROM read('Observation', :'uuid'::uuid) LIMIT 1;
 SELECT assert_eq(category#>>'{1,term}', 'term1', 'should have category') FROM read('Observation', :'uuid'::uuid) LIMIT 1;
 

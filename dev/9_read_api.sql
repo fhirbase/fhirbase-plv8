@@ -10,25 +10,8 @@ LANGUAGE sql AS $$
            r.updated AS updated,
            r.published AS published,
            r.content AS content,
-           CASE WHEN string_agg(t.scheme,'') IS NULL THEN
-             NULL
-           ELSE
-             json_agg(
-                json_build_object('scheme', t.scheme,
-                                  'term', t.term,
-                                  'label', t.label))::jsonb
-           END AS category
+           r.category AS category
        FROM resource r
-  LEFT JOIN tag t
-         ON t.resource_id = r.logical_id
-            AND t.resource_type = r.resource_type
-      WHERE r.resource_type = _resource_type
-        AND r.logical_id = _id
-   GROUP BY r.logical_id,
-            r.version_id,
-            r.content,
-            r.updated,
-            r.published
 $$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
@@ -45,6 +28,7 @@ BEGIN
           ,x.updated as updated
           ,x.published as published
           ,x.content as content
+          ,x.category as category
         FROM "{{tbl}}" x
         WHERE x.logical_id  = $1
         UNION
@@ -53,6 +37,7 @@ BEGIN
           ,x.updated as updated
           ,x.published as published
           ,x.content as content
+          ,x.category as category
         FROM {{tbl}}_history x
         WHERE x.logical_id  = $1)
       SELECT

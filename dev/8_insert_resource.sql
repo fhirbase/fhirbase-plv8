@@ -87,11 +87,11 @@ BEGIN
   EXECUTE
     eval_template($SQL$
       INSERT INTO "{{tbl}}"
-      (logical_id, version_id, published, updated, content)
+      (logical_id, version_id, published, updated, content, category)
       VALUES
-      ($1, $2, $3, $4, $5)
+      ($1, $2, $3, $4, $5, $6)
     $SQL$, 'tbl', res_type)
-  USING id, vid, published, published, _rsrs;
+  USING id, vid, published, published, _rsrs, _tags;
 
   PERFORM create_tags(id, vid, res_type, _tags);
   PERFORM index_resource(id, res_type, _rsrs);

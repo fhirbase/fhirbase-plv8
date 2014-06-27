@@ -398,7 +398,7 @@ $$;
 DROP FUNCTION IF EXISTS search(character varying,jsonb);
 CREATE OR REPLACE FUNCTION
 search(_resource_type varchar, query jsonb)
-RETURNS TABLE (resource_type varchar, logical_id uuid, content jsonb, updated timestamptz, published timestamptz, weight bigint, is_included boolean)
+RETURNS TABLE (resource_type varchar, logical_id uuid, content jsonb, category jsonb, updated timestamptz, published timestamptz, weight bigint, is_included boolean)
 LANGUAGE plpgsql AS $$
 BEGIN
 RETURN QUERY EXECUTE (
@@ -408,6 +408,7 @@ RETURN QUERY EXECUTE (
       SELECT x.resource_type,
              x.logical_id,
              x.content,
+             x.category,
              x.updated,
              x.published,
              ROW_NUMBER() OVER () as weight,
@@ -427,6 +428,7 @@ RETURN QUERY EXECUTE (
       SELECT incres.resource_type,
              incres.logical_id,
              incres.content,
+             incres.category,
              incres.updated,
              incres.published,
              0 as weight,
@@ -464,22 +466,8 @@ RETURNS jsonb LANGUAGE sql AS $$
             y.updated AS updated,
             y.published AS published,
             y.logical_id AS id,
-            CASE WHEN string_agg(t.scheme,'') IS NULL THEN
-               NULL
-              ELSE
-            json_agg(
-               json_build_object('scheme', t.scheme,
-                                 'term', t.term,
-                                 'label', t.label))::jsonb
-            END AS category
+            y.category AS category
        FROM search(_resource_type, query) y
-  LEFT JOIN tag t
-         ON t.resource_id = y.logical_id
-            AND t.resource_type = y.resource_type
-   GROUP BY y.logical_id,
-            y.content,
-            y.updated,
-            y.published
     ) z
 $$;
 --}}}
