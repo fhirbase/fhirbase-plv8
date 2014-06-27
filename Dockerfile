@@ -5,6 +5,7 @@ RUN apt-get -qqy install git build-essential gettext libreadline6 libreadline6-d
 RUN cd /root/ && git clone --depth=1 git://git.postgresql.org/git/postgresql.git postgresql
 RUN XML2_CONFIG=`which xml2-config` cd /root/postgresql && ./configure --prefix=/usr/local  --with-libxml && make && make install
 RUN cd /root/postgresql/contrib/pgcrypto && make && make install
+RUN cd /root/postgresql/contrib/pg_trgm && make && make install
 
 # RUN git clone https://github.com/akorotkov/jsquery.git /root/postgresql/contrib/jsquery
 # RUN cd /root/postgresql/contrib/jsquery && make && make install

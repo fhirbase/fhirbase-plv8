@@ -169,11 +169,12 @@ RETURNS text LANGUAGE sql AS $$
   ElSE
     ''
   END ||
+
   CASE
   WHEN _modifier = 'text' THEN
-    _table || '.label ilike ' || quote_literal('%' || _val || '%')
+    _table || '.label ILIKE ' || quote_literal('%' || _val || '%')
   WHEN _modifier = 'partial' THEN
-    _table || '.term  ilike ' || quote_literal(_val || '%')
+    _table || '.term  ILIKE ' || quote_literal(_val || '%')
   ELSE
     _table || '.term = ' || quote_literal(_val)
   END
@@ -183,105 +184,104 @@ $$;
 CREATE OR REPLACE FUNCTION
 build_search_joins(_resource_type text, _query jsonb)
 RETURNS text LANGUAGE sql AS $$
+  -- recursivelly expand chained params
+  WITH RECURSIVE params(parent_res, res, path, key, value) AS (
 
--- recursivelly expand chained params
-WITH RECURSIVE params(parent_res, res, path, key, value) AS (
+    SELECT null::text as parent_res,
+           _resource_type::text as res,
+           ARRAY[_resource_type]::text[] as path,
+           x.key,
+           x.value
+      FROM jsonb_each_text(_query) x
+     WHERE split_part(x.key,':',1) NOT IN ('_tag', '_security', '_profile')
 
-  SELECT null::text as parent_res,
-         _resource_type::text as res,
-         ARRAY[_resource_type]::text[] as path,
-         x.key,
-         x.value
-    FROM jsonb_each_text(_query) x
-   WHERE split_part(x.key,':',1) NOT IN ('_tag', '_security', '_profile')
+    UNION
 
-  UNION
-
-  SELECT res as parent_res,
-         get_reference_type(split_part(x.key, '.', 1), re.ref_type) as res,
-         array_append(x.path,split_part(key, '.', 1)) as path,
-         (regexp_matches(key, '^([^.]+)\.(.+)'))[2] AS key,
-         value
-         FROM params x
-   JOIN  fhir.resource_indexables ri
-     ON  ri.param_name = split_part(split_part(x.key, '.', 1), ':',1)
-    AND  ri.resource_type = x.res
-   JOIN  fhir.resource_elements re
-     ON  re.path = ri.path
-),
-search_index_joins AS (
-  -- joins for index search
-  SELECT eval_template($SQL$
-          JOIN {{tbl}} {{als}}
-            ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
-            AND {{cond}}
-        $SQL$,
-        'tbl',  quote_ident(lower(p.res) || '_search_' || fri.search_type),
-        'als',  get_alias_from_path(array_append(p.path, fri.search_type::text)),
-        'prnt', get_alias_from_path(p.path),
-        'cond', string_agg(
-                   param_expression( get_alias_from_path(array_append(p.path, fri.search_type::text)),
-                                     fri.param_name,
-                                     fri.search_type,
-                                     split_part(p.key, ':', 2),
-                                     p.value), ' AND ')) as join_str
-         ,p.path::text || '2' as weight
-     FROM params p
-     JOIN fhir.resource_indexables fri
-       ON fri.param_name = split_part(p.key, ':', 1)
-      AND fri.resource_type =  p.res
-    WHERE position('.' in p.key) = 0
-    GROUP BY p.res, p.path, fri.search_type
-),
-references_joins AS (
-  -- joins trhough referenced resources for chained params
-  SELECT eval_template($SQL$
-          JOIN {{tbl}} {{als}}
-            ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
-         $SQL$,
-         'tbl', quote_ident(lower(p.parent_res) || '_references'),
-         'als', get_alias_from_path(p.path),
-         'prnt', get_alias_from_path(butlast(p.path)))
-         AS join_str
-          ,p.path::text || '1'  as weight
-    FROM params p
-    WHERE parent_res is not null
-    GROUP BY p.parent_res, res, path
-),
-tag_joins AS (
-  SELECT eval_template($SQL$
-          JOIN {{tbl}} {{als}}
-            ON {{als}}.resource_id = {{prnt}}.logical_id
-           AND {{cond}}
-         $SQL$,
-         'tbl', lower(_resource_type || '_tag'),
-         'als',  y.als,
-         'cond', string_agg(_param_expression_tag(y.als, y.key, y.value, y.modifier), ' OR '),
-         'prnt', quote_ident(lower(_resource_type)))
-          as join_str,
-          '0'::text as weight
-    FROM (
-      SELECT quote_ident('_' || md5(x.value::text)) as als,
-             split_part(x.key,':',1) as key,
-             split_part(x.key,':',2) as modifier,
-             regexp_split_to_table as value
-        FROM jsonb_each_text(_query) x,
-             regexp_split_to_table(x.value, ',')
-       WHERE split_part(x.key,':',1) IN ('_tag', '_security', '_profile')
-    ) y
-    GROUP BY y.als, y.key, y.modifier
-),
--- mix joins together
-joins AS  (
-  SELECT join_str, weight FROM tag_joins
-  UNION ALL
-  SELECT * FROM search_index_joins
-  UNION ALL
-  SELECT * FROM references_joins
-)
--- agg to SQL string
-SELECT string_agg(join_str, '')
-  FROM (SELECT join_str  FROM joins ORDER BY weight LIMIT 1000) _ ;
+    SELECT res as parent_res,
+           get_reference_type(split_part(x.key, '.', 1), re.ref_type) as res,
+           array_append(x.path,split_part(key, '.', 1)) as path,
+           (regexp_matches(key, '^([^.]+)\.(.+)'))[2] AS key,
+           value
+           FROM params x
+     JOIN  fhir.resource_indexables ri
+       ON  ri.param_name = split_part(split_part(x.key, '.', 1), ':',1)
+      AND  ri.resource_type = x.res
+     JOIN  fhir.resource_elements re
+       ON  re.path = ri.path
+  ),
+  search_index_joins AS (
+    -- joins for index search
+    SELECT eval_template($SQL$
+            JOIN {{tbl}} {{als}}
+              ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
+              AND {{cond}}
+          $SQL$,
+          'tbl',  quote_ident(lower(p.res) || '_search_' || fri.search_type),
+          'als',  get_alias_from_path(array_append(p.path, fri.search_type::text)),
+          'prnt', get_alias_from_path(p.path),
+          'cond', string_agg(
+                     param_expression( get_alias_from_path(array_append(p.path, fri.search_type::text)),
+                                       fri.param_name,
+                                       fri.search_type,
+                                       split_part(p.key, ':', 2),
+                                       p.value), ' AND ')) as join_str
+           ,p.path::text || '2' as weight
+       FROM params p
+       JOIN fhir.resource_indexables fri
+         ON fri.param_name = split_part(p.key, ':', 1)
+        AND fri.resource_type =  p.res
+      WHERE position('.' in p.key) = 0
+      GROUP BY p.res, p.path, fri.search_type
+  ),
+  references_joins AS (
+    -- joins trhough referenced resources for chained params
+    SELECT eval_template($SQL$
+            JOIN {{tbl}} {{als}}
+              ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
+           $SQL$,
+           'tbl', quote_ident(lower(p.parent_res) || '_references'),
+           'als', get_alias_from_path(p.path),
+           'prnt', get_alias_from_path(butlast(p.path)))
+           AS join_str
+            ,p.path::text || '1'  as weight
+      FROM params p
+      WHERE parent_res is not null
+      GROUP BY p.parent_res, res, path
+  ),
+  tag_joins AS (
+    SELECT eval_template($SQL$
+            JOIN {{tbl}} {{als}}
+              ON {{als}}.resource_id = {{prnt}}.logical_id
+             AND {{cond}}
+           $SQL$,
+           'tbl', lower(_resource_type || '_tag'),
+           'als',  y.als,
+           'cond', string_agg(_param_expression_tag(y.als, y.key, y.value, y.modifier), ' OR '),
+           'prnt', quote_ident(lower(_resource_type)))
+            as join_str,
+            '0'::text as weight
+      FROM (
+        SELECT quote_ident('_' || md5(x.value::text)) as als,
+               split_part(x.key,':',1) as key,
+               split_part(x.key,':',2) as modifier,
+               regexp_split_to_table as value
+          FROM jsonb_each_text(_query) x,
+               regexp_split_to_table(x.value, ',')
+         WHERE split_part(x.key,':',1) IN ('_tag', '_security', '_profile')
+      ) y
+      GROUP BY y.als, y.key, y.modifier
+  ),
+  -- mix joins together
+  joins AS  (
+    SELECT join_str, weight FROM tag_joins
+    UNION ALL
+    SELECT * FROM search_index_joins
+    UNION ALL
+    SELECT * FROM references_joins
+  )
+  -- agg to SQL string
+  SELECT string_agg(join_str, '')
+    FROM (SELECT join_str  FROM joins ORDER BY weight LIMIT 1000) _ ;
 $$;
 
 CREATE OR REPLACE FUNCTION
