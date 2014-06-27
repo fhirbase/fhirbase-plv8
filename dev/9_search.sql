@@ -335,18 +335,35 @@ $$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
 build_search_query(_resource_type varchar, query jsonb)
-RETURNS text LANGUAGE sql AS $$
-  SELECT
+RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+  _count integer;
+  _offset integer;
+  _page integer;
+  res text;
+BEGIN
+  _count := COALESCE(query->>'_count', '50')::integer;
+  _page := COALESCE(query->>'_page', '0')::integer;
+  _offset := _page * _count;
+
+  SELECT INTO res
     eval_template($SQL$
       SELECT {{tbl}}.*
         FROM {{tbl}} {{tbl}}
         {{joins}}
         {{order_clause}}
+        LIMIT {{limit}}
+        OFFSET {{offset}}
     $SQL$,
     'tbl', quote_ident(lower(_resource_type)),
     'joins', COALESCE(build_search_joins(_resource_type, query), '') || ' ' ||
              COALESCE(build_order_joins(_resource_type, query), ''),
-    'order_clause', build_order_clause(_resource_type, query));
+    'order_clause', build_order_clause(_resource_type, query),
+    'limit', _count::varchar,
+    'offset', _offset::varchar);
+
+  RETURN res;
+END
 $$ IMMUTABLE;
 
 DROP FUNCTION IF EXISTS search(character varying,jsonb);
