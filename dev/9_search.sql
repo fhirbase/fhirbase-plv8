@@ -398,7 +398,7 @@ $$;
 DROP FUNCTION IF EXISTS search(character varying,jsonb);
 CREATE OR REPLACE FUNCTION
 search(_resource_type varchar, query jsonb)
-RETURNS TABLE (resource_type varchar, logical_id uuid, content jsonb, updated timestamptz, published timestamptz,weight bigint, is_included boolean)
+RETURNS TABLE (resource_type varchar, logical_id uuid, content jsonb, updated timestamptz, published timestamptz, weight bigint, is_included boolean)
 LANGUAGE plpgsql AS $$
 BEGIN
 RETURN QUERY EXECUTE (
@@ -409,7 +409,7 @@ RETURN QUERY EXECUTE (
              x.logical_id,
              x.content,
              x.updated,
-             x.published
+             x.published,
              ROW_NUMBER() OVER () as weight,
              FALSE as is_included
         FROM ({{search_sql}}) AS x
@@ -428,7 +428,7 @@ RETURN QUERY EXECUTE (
              incres.logical_id,
              incres.content,
              incres.updated,
-             incres.published
+             incres.published,
              0 as weight,
              TRUE as is_included
         FROM resource incres, refs_to_include
