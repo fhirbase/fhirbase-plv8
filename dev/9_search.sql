@@ -396,7 +396,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION
 search(_resource_type varchar, query jsonb)
-RETURNS TABLE (resource_type varchar, logical_id uuid, data jsonb, last_modified_date timestamptz, published timestamptz, weight bigint)
+RETURNS TABLE (resource_type varchar, logical_id uuid, data jsonb, last_modified_date timestamptz, published timestamptz, weight bigint, is_included boolean)
 LANGUAGE plpgsql AS $$
 BEGIN
 RETURN QUERY EXECUTE (
@@ -408,7 +408,8 @@ RETURN QUERY EXECUTE (
              x.data,
              x.last_modified_date,
              x.published,
-             ROW_NUMBER() OVER () as weight
+             ROW_NUMBER() OVER () as weight,
+             FALSE as is_included
         FROM ({{search_sql}}) AS x
     ),
 
@@ -426,7 +427,8 @@ RETURN QUERY EXECUTE (
              incres.data,
              incres.last_modified_date,
              incres.published,
-             0 as weight
+             0 as weight,
+             TRUE as is_included
         FROM resource incres, refs_to_include
        WHERE incres.logical_id::varchar = refs_to_include.id
          AND incres.resource_type = refs_to_include.type
@@ -435,6 +437,7 @@ RETURN QUERY EXECUTE (
     SELECT * from found_resources
     UNION
     SELECT * from included_resources
+    ORDER BY is_included DESC, weight
   $SQL$,
   'json_includes', quote_literal(COALESCE(query->'_include', '[]')),
   'tbl',           LOWER(_resource_type),

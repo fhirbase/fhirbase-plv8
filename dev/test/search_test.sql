@@ -72,6 +72,9 @@ SELECT assert_eq('http://pt/vip',
             search_bundle('Patient', '{"_tag": "http://pt/vip"}')->'entry'))
  ,'pt by tag');
 
+
+-- TESTS ON _count, _sort and _page
+-------------------------------------------------
 SELECT assert_eq('1', (SELECT COUNT(*)::varchar), 'search respects _count option')
   FROM search('Patient', '{"_count": 1}');
 
@@ -92,6 +95,20 @@ SELECT assert_eq(:'pt_uuid' || '|' || :'pt2_uuid', (SELECT string_agg(logical_id
   FROM search('Patient', '{"gender": "M", "_sort": ["birthdate:asc"]}');
 
 
+SELECT assert_eq(:'pt_uuid' || '|' || :'pt2_uuid', (SELECT string_agg(logical_id::varchar, '|')),
+  'search should combine several _sort columns')
+  FROM search('Patient', '{"gender": "M", "_sort": ["gender:desc", "birthdate:asc"]}');
+
+-- TESTS ON _include
+-------------------------------------------------
+
+SELECT assert_eq(:'org_uuid' || '|' || :'pt_uuid', (SELECT string_agg(logical_id::varchar, '|')),
+  'search should include resources specified in _include')
+  FROM search('Patient', '{"name": "Roel", "_include": ["Patient.managingOrganization"]}');
+
+SELECT assert_eq(:'pt_uuid', (SELECT string_agg(logical_id::varchar, '|')),
+  'search should ignore wrong paths in _include')
+  FROM search('Patient', '{"name": "Roel", "_include": ["Patient.foobar"]}');
 
 
 ROLLBACK;

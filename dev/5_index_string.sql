@@ -63,7 +63,7 @@ BEGIN
         CASE prm.type
         WHEN 'HumanName' THEN
           new_val := index_string_human_name(item);
-          RAISE NOTICE 'val: %', new_val;
+          -- RAISE NOTICE 'val: %', new_val;
         ELSE
           new_val := index_string_complex_type(prm.path, item);
         END CASE;

@@ -274,7 +274,7 @@ BEGIN
   IF expec = res THEN
     RETURN 'OK ' || mess;
   ELSE
-    RAISE EXCEPTION '%: % NOT EQ %', mess, res, expec;
+    RAISE EXCEPTION E'assert_eq % FAILED:\nEXPECTED: %\nACTUAL:   %', mess, expec, res;
     RETURN 'not ok';
   END IF;
 END
