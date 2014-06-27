@@ -34,34 +34,34 @@ $$ IMMUTABLE;
 
 -- Return all tags for resource
 CREATE OR REPLACE FUNCTION
-tags(_res_type varchar, _id uuid) -- return all tags
+tags(_res_type varchar, _id_ uuid) -- return all tags
 RETURNS jsonb LANGUAGE sql AS $$
   SELECT
   json_build_object(
     'resourceType',  'TagList',
     'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
   FROM (
-    SELECT scheme, term, label
-    FROM tag
-    WHERE resource_type = _res_type
-    AND resource_id = _id
+    SELECT t.scheme, t.term, t.label
+    FROM tag t
+    WHERE t.resource_type = _res_type
+    AND t.resource_id = _id_
     GROUP BY scheme, term, label) tgs
 $$ IMMUTABLE;
 
 -- Return all tags for resource version
 CREATE OR REPLACE FUNCTION
-tags(_res_type varchar, _id uuid, _vid uuid)
+tags(_res_type varchar, _id_ uuid, _vid uuid)
 RETURNS jsonb LANGUAGE sql AS $$
   SELECT
   json_build_object(
     'resourceType',  'TagList',
     'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
   FROM (
-    SELECT scheme, term, label
-    FROM history_tag
-    WHERE resource_type = _res_type
-    AND resource_id = _id
-    AND resource_version_id = _vid
+    SELECT t.scheme, t.term, t.label
+    FROM history_tag t
+    WHERE t.resource_type = _res_type
+    AND t.resource_id = _id_
+    AND t.resource_version_id = _vid
     GROUP BY scheme, term, label) tgs
 $$ IMMUTABLE;
 
@@ -157,27 +157,27 @@ END;
 $$;
 
 -- Remove all tag from current version of resource with _id
-DROP FUNCTION IF EXISTS remove_tags(_res_type varchar, _id uuid);
+DROP FUNCTION IF EXISTS remove_tags(_res_type varchar, _id_ uuid);
 CREATE OR REPLACE FUNCTION
-remove_tags(_res_type varchar, _id uuid)
+remove_tags(_res_type varchar, _id_ uuid)
 RETURNS bigint LANGUAGE sql AS $$
   WITH DELETED AS (
-  DELETE FROM tag
-    WHERE resource_type = _res_type
-    AND resource_id = _id RETURNING * )
+  DELETE FROM tag t
+    WHERE t.resource_type = _res_type
+    AND t.resource_id = _id_ RETURNING * )
   SELECT count(*) FROM DELETED;
 $$;
 
 -- Remove all tag from resource with _id and _vid
-DROP FUNCTION IF EXISTS remove_tags(_res_type varchar, _id uuid, _vid uuid);
+DROP FUNCTION IF EXISTS remove_tags(_res_type varchar, _id_ uuid, _vid uuid);
 CREATE OR REPLACE FUNCTION
-remove_tags(_res_type varchar, _id uuid, _vid uuid)
+remove_tags(_res_type varchar, _id_ uuid, _vid uuid)
 RETURNS bigint LANGUAGE sql AS $$
   WITH DELETED AS (
-  DELETE FROM history_tag
-    WHERE resource_type = _res_type
-    AND resource_id = _id
-    AND resource_version_id = _vid RETURNING *)
+  DELETE FROM history_tag ht
+    WHERE ht.resource_type = _res_type
+    AND ht.resource_id = _id_
+    AND ht.resource_version_id = _vid RETURNING *)
   SELECT count(*) FROM DELETED;
 $$;
 --}}}

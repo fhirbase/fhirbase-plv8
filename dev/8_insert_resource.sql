@@ -243,8 +243,8 @@ BEGIN
       WHERE logical_id = $1;
 
       INSERT INTO "{{tbl}}_history_tag"
-      (id, resource_id, resource_version_id, scheme, term, label)
-      SELECT id, resource_id, resource_version_id, scheme, term, label
+      (_id, resource_id, resource_version_id, scheme, term, label)
+      SELECT _id, resource_id, resource_version_id, scheme, term, label
       FROM {{tbl}}_tag
       WHERE resource_id = $1;
 
@@ -265,8 +265,9 @@ END
 $$;
 
 --private
+DROP FUNCTION IF EXISTS merge_tags(_id_ uuid, res_type varchar, _tags jsonb);
 CREATE OR REPLACE FUNCTION
-merge_tags(_id uuid, res_type varchar, _tags jsonb)
+merge_tags(_id_ uuid, res_type varchar, _tags jsonb)
 RETURNS jsonb LANGUAGE plpgsql AS $$
 DECLARE
   res jsonb;
@@ -287,7 +288,7 @@ BEGIN
           WHERE resource_id = $1
         ) tgs
     $SQL$, 'tbl', res_type)
-  INTO res USING _id, _tags;
+  INTO res USING _id_, _tags;
 
   RETURN res;
 END

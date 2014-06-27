@@ -35,16 +35,3 @@ SELECT
   FROM (SELECT unnest(xpath('/u:root/unit', :'ucum', :'ns')) st ) u
 );
 --}}}
---{{{
---select * from ucum_prefixes;
-
-select
-name,
---code,
-value,
-unit,
-func_name,
-*
-from ucum_units
-;
---}}}

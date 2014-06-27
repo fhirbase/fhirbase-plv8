@@ -1,10 +1,11 @@
 --db:fhirb
 --{{{
-CREATE OR REPLACE FUNCTION
-eval_template(_tpl text, variadic _bindings varchar[])
+DROP FUNCTION IF EXISTS eval_template(_tpl_ text, variadic _bindings varchar[]);
+CREATE FUNCTION
+eval_template(_tpl_ text, variadic _bindings varchar[])
 RETURNS text LANGUAGE plpgsql AS $$
 DECLARE
-result text := _tpl;
+result text := _tpl_;
 BEGIN
   FOR i IN 1..(array_upper(_bindings, 1)/2) LOOP
     result := replace(result, '{{' || _bindings[i*2 - 1] || '}}', coalesce(_bindings[i*2], ''));
@@ -13,62 +14,59 @@ BEGIN
 END
 $$;
 
-CREATE OR REPLACE FUNCTION eval_ddl(str text)
+DROP FUNCTION IF EXISTS eval_ddl(_str_ text);
+CREATE FUNCTION eval_ddl(_str_ text)
 RETURNS text AS
 $BODY$
   begin
-    EXECUTE str;
-    RETURN str;
+    EXECUTE _str_;
+    RETURN _str_;
   end;
 $BODY$
 LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE
-FUNCTION array_pop(ar varchar[])
-  RETURNS varchar[] language sql AS $$
-    SELECT ar[array_lower(ar,1) : array_upper(ar,1) - 1];
+DROP FUNCTION IF EXISTS array_pop(_ar_ varchar[]);
+CREATE FUNCTION array_pop(_ar_ varchar[])
+RETURNS varchar[] language sql AS $$
+  SELECT _ar_[array_lower(_ar_,1) : array_upper(_ar_,1) - 1];
 $$ IMMUTABLE;
 
-CREATE OR REPLACE
-FUNCTION is_subpath(_parent varchar[], _child varchar[])
-  RETURNS boolean language sql AS $$
-    SELECT _child[array_lower(_parent,1) : array_upper(_parent,1)] = _parent;
-    --SELECT _child && _parent;
+DROP FUNCTION IF EXISTS is_subpath(_parent_ varchar[], _child_ varchar[]);
+CREATE FUNCTION is_subpath(_parent_ varchar[], _child_ varchar[])
+RETURNS boolean language sql AS $$
+  SELECT _child_[array_lower(_parent_,1) : array_upper(_parent_,1)] = _parent_;
 $$ IMMUTABLE;
 
-CREATE OR REPLACE
-FUNCTION relative_path(_parent varchar[], _child varchar[])
-  RETURNS varchar[] language sql AS $$
-    SELECT _child[array_upper(_parent,1) + 1 : array_upper(_child,1)];
-    --SELECT _child && _parent;
+DROP FUNCTION IF EXISTS relative_path(_parent_ varchar[], _child_ varchar[]);
+CREATE FUNCTION relative_path(_parent_ varchar[], _child_ varchar[])
+RETURNS varchar[] language sql AS $$
+    SELECT _child_[array_upper(_parent_,1) + 1 : array_upper(_child_,1)];
 $$ IMMUTABLE;
 
-
---SELECT is_subpath('{a,b}','{a,b,c}');
-
-CREATE OR REPLACE
-FUNCTION butlast(ar varchar[])
+DROP FUNCTION IF EXISTS butlast(_ar_ varchar[]);
+CREATE FUNCTION butlast(_ar_ varchar[])
   RETURNS varchar[] language sql AS $$
-    SELECT ar[array_lower(ar,1) : array_upper(ar,1) - 1];
+    SELECT _ar_[array_lower(_ar_,1) : array_upper(_ar_,1) - 1];
 $$ IMMUTABLE;
 
 -- remove last item from array
-CREATE OR REPLACE
-FUNCTION array_tail(ar varchar[])
-  RETURNS varchar[] language sql AS $$
-    SELECT ar[2 : array_upper(ar,1)];
+DROP FUNCTION IF EXISTS array_tail(varchar[]);
+CREATE FUNCTION array_tail(_ar_ varchar[])
+RETURNS varchar[] language sql AS $$
+    SELECT _ar_[2 : array_upper(_ar_,1)];
 $$ IMMUTABLE;
 
-CREATE OR REPLACE
-FUNCTION rest(ar varchar[])
-  RETURNS varchar[] language sql AS $$
-    SELECT ar[2 : array_upper(ar,1)];
+
+DROP FUNCTION  IF EXISTS rest(varchar[]);
+CREATE FUNCTION rest(_ar_ varchar[])
+RETURNS varchar[] language sql AS $$
+    SELECT _ar_[2 : array_upper(_ar_,1)];
 $$ IMMUTABLE;
 
-CREATE OR REPLACE
-FUNCTION array_last(ar varchar[])
+DROP FUNCTION IF EXISTS array_last(ar varchar[]);
+CREATE FUNCTION array_last(_ar_ varchar[])
   RETURNS varchar language sql AS $$
-    SELECT ar[array_length(ar,1)];
+    SELECT _ar_[array_length(_ar_,1)];
 $$ IMMUTABLE;
 
 CREATE OR REPLACE

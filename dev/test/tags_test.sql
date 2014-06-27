@@ -22,12 +22,12 @@ SELECT insert_resource(:'pt_uuid'::uuid, :'pt'::jsonb, :'pt_tags'::jsonb);
 
 SELECT tags();
 SELECT tags('Observation');
-SELECT tags('Patient');
 SELECT tags('Observation', :'obs_uuid');
+
+SELECT tags('Patient');
 SELECT tags('Patient', :'pt_uuid');
 
 SELECT remove_tags('Patient', :'pt_uuid');
-SELECT tags('Patient', :'pt_uuid');
 SELECT assert(
          tags('Patient', :'pt_uuid') = '{"category": null, "resourceType": "TagList"}',
               'should be empty');

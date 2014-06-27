@@ -175,16 +175,16 @@ SELECT tags('Observation');
  {"category": [{"term": "obs", "label": "obs", "scheme": "obs.com"}], "resourceType": "TagList"}
 (1 row)
 
-SELECT tags('Patient');
-                                             tags                                             
-----------------------------------------------------------------------------------------------
- {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
-(1 row)
-
 SELECT tags('Observation', '550e8400-e29b-41d4-a716-446655440078');
                                               tags                                               
 -------------------------------------------------------------------------------------------------
  {"category": [{"term": "obs", "label": "obs", "scheme": "obs.com"}], "resourceType": "TagList"}
+(1 row)
+
+SELECT tags('Patient');
+                                             tags                                             
+----------------------------------------------------------------------------------------------
+ {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
 (1 row)
 
 SELECT tags('Patient', '550e8400-e29b-41d4-a716-446655440077');
@@ -197,12 +197,6 @@ SELECT remove_tags('Patient', '550e8400-e29b-41d4-a716-446655440077');
  remove_tags 
 -------------
            1
-(1 row)
-
-SELECT tags('Patient', '550e8400-e29b-41d4-a716-446655440077');
-                     tags                      
------------------------------------------------
- {"category": null, "resourceType": "TagList"}
 (1 row)
 
 SELECT assert(

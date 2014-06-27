@@ -125,16 +125,14 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440000'::uuid,  E'{"resour
 (1 row)
 
 SELECT assert_eq('550e8400-e29b-41d4-a716-446655440000', id, 'read resource') FROM read('Observation', '550e8400-e29b-41d4-a716-446655440000'::uuid) LIMIT 1;
-    assert_eq     
-------------------
- OK read resource
-(1 row)
+ assert_eq 
+-----------
+(0 rows)
 
 SELECT assert_eq(category#>>'{1,term}', 'term1', 'should have category') FROM read('Observation', '550e8400-e29b-41d4-a716-446655440000'::uuid) LIMIT 1;
-        assert_eq        
--------------------------
- OK should have category
-(1 row)
+ assert_eq 
+-----------
+(0 rows)
 
 ROLLBACK;
 ROLLBACK

@@ -15,7 +15,7 @@ CREATE TABLE resource (
 );
 
 CREATE TABLE tag (
-  id uuid,
+  _id uuid,
   resource_id uuid,
   resource_version_id uuid,
   resource_type varchar,
@@ -25,7 +25,7 @@ CREATE TABLE tag (
 );
 
 CREATE TABLE history_tag (
-  id uuid,
+  _id uuid,
   resource_id uuid,
   resource_version_id uuid,
   resource_type varchar,
@@ -53,7 +53,7 @@ eval_ddl(
     ON "{{tbl_name}}" (CAST(logical_id AS varchar));
 
     CREATE TABLE {{tbl_name}}_tag (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      _id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       resource_id uuid REFERENCES "{{tbl_name}}" (logical_id),
       resource_version_id uuid NOT NULL,
       resource_type varchar DEFAULT '{{resource_type}}',
@@ -98,7 +98,7 @@ eval_ddl(
     );
 
     CREATE TABLE {{tbl_name}}_history_tag (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      _id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       resource_id uuid NOT NULL,
       resource_version_id uuid REFERENCES "{{tbl_name}}_history" (version_id),
       resource_type varchar DEFAULT '{{resource_type}}',
