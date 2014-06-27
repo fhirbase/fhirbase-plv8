@@ -10,7 +10,7 @@ RETURNS jsonb LANGUAGE sql AS $$
 SELECT
   json_build_object(
     'resourceType',  'TagList',
-    'category', coalesce(json_agg(row_to_json(tgs)), '[]'::json))::jsonb
+    'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
   FROM (
     SELECT scheme, term, label
     FROM tag
@@ -24,7 +24,7 @@ RETURNS jsonb LANGUAGE sql AS $$
   SELECT
   json_build_object(
     'resourceType',  'TagList',
-    'category', coalesce(json_agg(row_to_json(tgs)), '[]'::json))::jsonb
+    'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
   FROM (
     SELECT scheme, term, label
     FROM tag
@@ -39,7 +39,7 @@ RETURNS jsonb LANGUAGE sql AS $$
   SELECT
   json_build_object(
     'resourceType',  'TagList',
-    'category', coalesce(json_agg(row_to_json(tgs)), '[]'::json))::jsonb
+    'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
   FROM (
     SELECT scheme, term, label
     FROM tag
@@ -55,7 +55,7 @@ RETURNS jsonb LANGUAGE sql AS $$
   SELECT
   json_build_object(
     'resourceType',  'TagList',
-    'category', coalesce(json_agg(row_to_json(tgs)), '[]'::json))::jsonb
+    'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
   FROM (
     SELECT scheme, term, label
     FROM history_tag

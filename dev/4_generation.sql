@@ -5,12 +5,13 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm; -- for ilike optimisation in search
 
 SET client_min_messages=WARNING;
 CREATE TABLE resource (
-    version_id uuid,
-    logical_id uuid,
-    resource_type varchar,
-    last_modified_date TIMESTAMP WITH TIME ZONE,
-    published  TIMESTAMP WITH TIME ZONE,
-    data jsonb
+  version_id uuid,
+  logical_id uuid,
+  resource_type varchar,
+  updated TIMESTAMP WITH TIME ZONE,
+  published  TIMESTAMP WITH TIME ZONE,
+  category jsonb,
+  content jsonb
 );
 
 CREATE TABLE tag (
@@ -41,9 +42,10 @@ eval_ddl(
       logical_id uuid PRIMARY KEY,
       version_id uuid UNIQUE,
       resource_type varchar DEFAULT '{{resource_type}}',
-      last_modified_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
       published  TIMESTAMP WITH TIME ZONE NOT NULL,
-      data jsonb NOT NULL
+      content jsonb NOT NULL,
+      category jsonb
     ) INHERITS (resource);
 
     -- this index speedup search joins (cause uuid are casted to varchars)
@@ -89,9 +91,10 @@ eval_ddl(
       version_id uuid PRIMARY KEY,
       logical_id uuid NOT NULL,
       resource_type varchar DEFAULT '{{resource_type}}',
-      last_modified_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
       published  TIMESTAMP WITH TIME ZONE NOT NULL,
-      data jsonb NOT NULL
+      content jsonb NOT NULL,
+      category jsonb
     );
 
     CREATE TABLE {{tbl_name}}_history_tag (

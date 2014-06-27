@@ -87,7 +87,7 @@ BEGIN
   EXECUTE
     eval_template($SQL$
       INSERT INTO "{{tbl}}"
-      (logical_id, version_id, published, last_modified_date, data)
+      (logical_id, version_id, published, updated, content)
       VALUES
       ($1, $2, $3, $4, $5)
     $SQL$, 'tbl', res_type)
@@ -128,7 +128,7 @@ DECLARE
 BEGIN
   EXECUTE
     eval_template($SQL$
-      SELECT data FROM "{{tbl}}"
+      SELECT content FROM "{{tbl}}"
         WHERE logical_id = $1
         LIMIT 1
     $SQL$, 'tbl', res_type)
@@ -237,8 +237,8 @@ BEGIN
   EXECUTE
     eval_template($SQL$
       INSERT INTO "{{tbl}}_history"
-      (version_id, logical_id, last_modified_date, published, data)
-      SELECT version_id, logical_id, last_modified_date, published, data
+      (version_id, logical_id, updated, published, content)
+      SELECT version_id, logical_id, updated, published, content
       FROM {{tbl}}
       WHERE logical_id = $1;
 

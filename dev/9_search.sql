@@ -388,7 +388,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION
 search(_resource_type varchar, query jsonb)
-RETURNS TABLE (resource_type varchar, logical_id uuid, data jsonb, last_modified_date timestamptz, published timestamptz)
+RETURNS TABLE (resource_type varchar, logical_id uuid, content jsonb, updated timestamptz, published timestamptz)
 LANGUAGE plpgsql AS $$
 BEGIN
 RETURN QUERY EXECUTE (
@@ -397,8 +397,8 @@ RETURN QUERY EXECUTE (
     found_resources AS (
       SELECT x.resource_type,
              x.logical_id,
-             x.data,
-             x.last_modified_date,
+             x.content,
+             x.updated,
              x.published
         FROM ({{search_sql}}) AS x
     ),
@@ -414,8 +414,8 @@ RETURN QUERY EXECUTE (
     included_resources AS (
       SELECT incres.resource_type,
              incres.logical_id,
-             incres.data,
-             incres.last_modified_date,
+             incres.content,
+             incres.updated,
              incres.published
         FROM resource incres, refs_to_include
        WHERE incres.logical_id::varchar = refs_to_include.id
@@ -445,8 +445,8 @@ RETURNS jsonb LANGUAGE sql AS $$
       'entry', COALESCE(json_agg(z.*), '[]'::json)
     )::jsonb as json
   FROM
-    (SELECT y.data AS content,
-            y.last_modified_date AS updated,
+    (SELECT y.content AS content,
+            y.updated AS updated,
             y.published AS published,
             y.logical_id AS id,
             CASE WHEN string_agg(t.scheme,'') IS NULL THEN
@@ -462,8 +462,8 @@ RETURNS jsonb LANGUAGE sql AS $$
          ON t.resource_id = y.logical_id
             AND t.resource_type = y.resource_type
    GROUP BY y.logical_id,
-            y.data,
-            y.last_modified_date,
+            y.content,
+            y.updated,
             y.published
     ) z
 $$;
