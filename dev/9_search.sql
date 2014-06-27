@@ -366,10 +366,29 @@ BEGIN
 END
 $$ IMMUTABLE;
 
-DROP FUNCTION IF EXISTS search(character varying,jsonb);
+CREATE OR REPLACE FUNCTION
+search_results_count(_resource_type varchar, query jsonb)
+RETURNS bigint LANGUAGE plpgsql AS $$
+DECLARE
+  res bigint;
+BEGIN
+  EXECUTE (
+    eval_template($SQL$
+      SELECT COUNT({{tbl}}.*)
+        FROM {{tbl}} {{tbl}}
+        {{joins}}
+    $SQL$,
+    'tbl', quote_ident(lower(_resource_type)),
+    'joins', COALESCE(build_search_joins(_resource_type, query), '')))
+  INTO res;
+
+  RETURN res;
+END
+$$;
+
 CREATE OR REPLACE FUNCTION
 search(_resource_type varchar, query jsonb)
-RETURNS TABLE (resource_type varchar, logical_id uuid, data jsonb, last_modified_date timestamptz, published timestamptz, weight bigint)
+RETURNS TABLE (resource_type varchar, logical_id uuid, data jsonb, last_modified_date timestamptz, published timestamptz)
 LANGUAGE plpgsql AS $$
 BEGIN
 RETURN QUERY EXECUTE (
@@ -380,8 +399,7 @@ RETURN QUERY EXECUTE (
              x.logical_id,
              x.data,
              x.last_modified_date,
-             x.published,
-             ROW_NUMBER() OVER () as weight
+             x.published
         FROM ({{search_sql}}) AS x
     ),
 
@@ -398,8 +416,7 @@ RETURN QUERY EXECUTE (
              incres.logical_id,
              incres.data,
              incres.last_modified_date,
-             incres.published,
-             0 AS weight
+             incres.published
         FROM resource incres, refs_to_include
        WHERE incres.logical_id::varchar = refs_to_include.id
          AND incres.resource_type = refs_to_include.type
@@ -408,7 +425,6 @@ RETURN QUERY EXECUTE (
     SELECT * from found_resources
     UNION
     SELECT * from included_resources
-    ORDER BY weight
   $SQL$,
   'json_includes', quote_literal(COALESCE(query->'_include', '[]')),
   'tbl',           LOWER(_resource_type),
@@ -416,7 +432,6 @@ RETURN QUERY EXECUTE (
 END
 $$ IMMUTABLE;
 
-DROP FUNCTION IF EXISTS search_bundle(_resource_type varchar, query jsonb);
 CREATE OR REPLACE FUNCTION
 search_bundle(_resource_type varchar, query jsonb)
 RETURNS jsonb LANGUAGE sql AS $$
@@ -424,6 +439,7 @@ RETURNS jsonb LANGUAGE sql AS $$
     json_build_object(
       'title', 'Search results for ' || query::varchar,
       'resourceType', 'Bundle',
+      'totalResults', (SELECT search_results_count(_resource_type, query)),
       'updated', now(),
       'id', gen_random_uuid(),
       'entry', COALESCE(json_agg(z.*), '[]'::json)
