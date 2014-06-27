@@ -288,7 +288,15 @@ CREATE OR REPLACE FUNCTION
 parse_order_params(_resource_type varchar, query jsonb)
 RETURNS TABLE(param text, direction text) LANGUAGE sql AS $$
   SELECT split_part(jsonb_array_elements_text, ':', 1) AS param,
-         upper(split_part(jsonb_array_elements_text, ':', 2)) AS direction
+         CASE WHEN split_part(jsonb_array_elements_text, ':', 2) = '' THEN
+           'ASC'
+         ELSE
+           CASE WHEN upper(split_part(jsonb_array_elements_text, ':', 2)) = 'ASC' THEN
+             'ASC'
+           ELSE
+             'DESC'
+           END
+         END AS direction
     FROM jsonb_array_elements_text(query->'_sort')
    WHERE position('.' IN jsonb_array_elements_text) = 0
 $$;
@@ -388,7 +396,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION
 search(_resource_type varchar, query jsonb)
-RETURNS TABLE (resource_type varchar, logical_id uuid, data jsonb, last_modified_date timestamptz, published timestamptz)
+RETURNS TABLE (resource_type varchar, logical_id uuid, data jsonb, last_modified_date timestamptz, published timestamptz, weight bigint)
 LANGUAGE plpgsql AS $$
 BEGIN
 RETURN QUERY EXECUTE (
@@ -399,7 +407,8 @@ RETURN QUERY EXECUTE (
              x.logical_id,
              x.data,
              x.last_modified_date,
-             x.published
+             x.published,
+             ROW_NUMBER() OVER () as weight
         FROM ({{search_sql}}) AS x
     ),
 
@@ -416,7 +425,8 @@ RETURN QUERY EXECUTE (
              incres.logical_id,
              incres.data,
              incres.last_modified_date,
-             incres.published
+             incres.published,
+             0 as weight
         FROM resource incres, refs_to_include
        WHERE incres.logical_id::varchar = refs_to_include.id
          AND incres.resource_type = refs_to_include.type

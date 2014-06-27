@@ -61,7 +61,6 @@ SELECT assert_eq(:'pt_uuid',
     FROM search('Patient', '{"provider.name": "Health Level"}'))
  ,'pt by org name');
 
-
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
     FROM search('Patient', '{"name": "Roelof",  "provider.name": "Health Level"}'))
@@ -72,6 +71,28 @@ SELECT assert_eq('http://pt/vip',
     FROM jsonb_array_elements(
             search_bundle('Patient', '{"_tag": "http://pt/vip"}')->'entry'))
  ,'pt by tag');
+
+SELECT assert_eq('1', (SELECT COUNT(*)::varchar), 'search respects _count option')
+  FROM search('Patient', '{"_count": 1}');
+
+SELECT assert_eq(:'pt2_uuid', (SELECT string_agg(logical_id::varchar, '')),
+                 'search respects _count and _page option')
+  FROM search('Patient', '{"_count": 1, "_page": 1, "_sort": ["birthdate"]}');
+
+SELECT assert_eq(:'pt2_uuid', (SELECT string_agg(logical_id::varchar, '')),
+  'search respects _count and _page option')
+  FROM search('Patient', '{"gender": "M", "_count": 1, "_page": 0, "_sort": ["birthdate:desc"]}');
+
+SELECT assert_eq(:'pt2_uuid' || :'pt_uuid', (SELECT string_agg(logical_id::varchar, '')),
+  'search respects _sort option')
+  FROM search('Patient', '{"gender": "M", "_sort": ["birthdate:desc"]}');
+
+SELECT assert_eq(:'pt_uuid' || '|' || :'pt2_uuid', (SELECT string_agg(logical_id::varchar, '|')),
+  'search respects _sort option')
+  FROM search('Patient', '{"gender": "M", "_sort": ["birthdate:asc"]}');
+
+
+
 
 ROLLBACK;
 --}}}
