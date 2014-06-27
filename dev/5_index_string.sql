@@ -62,7 +62,6 @@ BEGIN
       LOOP
         CASE prm.type
         WHEN 'HumanName' THEN
-          -- RAISE NOTICE 'val: %', new_val;
           new_val := index_string_human_name(item);
         ELSE
           new_val := index_string_complex_type(prm.path, item);

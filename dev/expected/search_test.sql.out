@@ -410,5 +410,68 @@ SELECT assert_eq('http://pt/vip',
  OK pt by tag
 (1 row)
 
+SELECT assert_eq('1', (SELECT COUNT(*)::varchar), 'search respects _count option')
+  FROM search('Patient', '{"_count": 1}');
+            assert_eq             
+----------------------------------
+ OK search respects _count option
+(1 row)
+
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440011', (SELECT string_agg(logical_id::varchar, '')),
+                 'search respects _count and _page option')
+  FROM search('Patient', '{"_count": 1, "_page": 1, "_sort": ["birthdate"]}');
+                 assert_eq                  
+--------------------------------------------
+ OK search respects _count and _page option
+(1 row)
+
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440011', (SELECT string_agg(logical_id::varchar, '')),
+  'search respects _count and _page option')
+  FROM search('Patient', '{"gender": "M", "_count": 1, "_page": 0, "_sort": ["birthdate:desc"]}');
+                 assert_eq                  
+--------------------------------------------
+ OK search respects _count and _page option
+(1 row)
+
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440011' || '550e8400-e29b-41d4-a716-446655440010', (SELECT string_agg(logical_id::varchar, '')),
+  'search respects _sort option')
+  FROM search('Patient', '{"gender": "M", "_sort": ["birthdate:desc"]}');
+            assert_eq            
+---------------------------------
+ OK search respects _sort option
+(1 row)
+
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010' || '|' || '550e8400-e29b-41d4-a716-446655440011', (SELECT string_agg(logical_id::varchar, '|')),
+  'search respects _sort option')
+  FROM search('Patient', '{"gender": "M", "_sort": ["birthdate:asc"]}');
+            assert_eq            
+---------------------------------
+ OK search respects _sort option
+(1 row)
+
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010' || '|' || '550e8400-e29b-41d4-a716-446655440011', (SELECT string_agg(logical_id::varchar, '|')),
+  'search should combine several _sort columns')
+  FROM search('Patient', '{"gender": "M", "_sort": ["gender:desc", "birthdate:asc"]}');
+                   assert_eq                    
+------------------------------------------------
+ OK search should combine several _sort columns
+(1 row)
+
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440009' || '|' || '550e8400-e29b-41d4-a716-446655440010', (SELECT string_agg(logical_id::varchar, '|')),
+  'search should include resources specified in _include')
+  FROM search('Patient', '{"name": "Roel", "_include": ["Patient.managingOrganization"]}');
+                        assert_eq                         
+----------------------------------------------------------
+ OK search should include resources specified in _include
+(1 row)
+
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', (SELECT string_agg(logical_id::varchar, '|')),
+  'search should ignore wrong paths in _include')
+  FROM search('Patient', '{"name": "Roel", "_include": ["Patient.foobar"]}');
+                    assert_eq                    
+-------------------------------------------------
+ OK search should ignore wrong paths in _include
+(1 row)
+
 ROLLBACK;
 ROLLBACK
