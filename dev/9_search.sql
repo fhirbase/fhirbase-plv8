@@ -417,7 +417,7 @@ RETURNS jsonb LANGUAGE sql AS $$
             y.published AS published,
             y.logical_id AS id,
             CASE WHEN string_agg(t.scheme,'') IS NULL THEN
-              '[]'::jsonb
+               NULL
               ELSE
             json_agg(
                json_build_object('scheme', t.scheme,
