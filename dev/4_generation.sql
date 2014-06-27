@@ -14,6 +14,16 @@ CREATE TABLE resource (
   content jsonb
 );
 
+CREATE TABLE resource_history (
+  version_id uuid,
+  logical_id uuid,
+  resource_type varchar,
+  updated TIMESTAMP WITH TIME ZONE,
+  published  TIMESTAMP WITH TIME ZONE,
+  category jsonb,
+  content jsonb
+);
+
 CREATE TABLE tag (
   _id uuid,
   resource_id uuid,
@@ -95,7 +105,7 @@ eval_ddl(
       published  TIMESTAMP WITH TIME ZONE NOT NULL,
       content jsonb NOT NULL,
       category jsonb
-    );
+    ) INHERITS (resource_history);
 
     CREATE TABLE {{tbl_name}}_history_tag (
       _id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

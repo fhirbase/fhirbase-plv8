@@ -106,6 +106,10 @@ BEGIN
         FROM inserted
       $SQL$, 'tbl', lower(_res_type))
     INTO res USING _id, _tags;
+
+    UPDATE resource SET category = tags(_res_type, _id)->'category'
+     WHERE resource_type = _res_type
+      AND logical_id = _id;
     RETURN res;
 END;
 $$;
@@ -152,6 +156,10 @@ BEGIN
         FROM inserted
       $SQL$, 'tbl', lower(_res_type))
     INTO res USING _vid, _tags;
+
+    UPDATE resource_history SET category = tags(_res_type, _id)->'category'
+     WHERE resource_type = _res_type
+      AND version_id = _vid;
     RETURN res;
 END;
 $$;
@@ -161,6 +169,10 @@ DROP FUNCTION IF EXISTS remove_tags(_res_type varchar, _id_ uuid);
 CREATE OR REPLACE FUNCTION
 remove_tags(_res_type varchar, _id_ uuid)
 RETURNS bigint LANGUAGE sql AS $$
+  UPDATE resource SET category = NULL
+  WHERE resource_type = _res_type
+    AND logical_id = _id_;
+
   WITH DELETED AS (
   DELETE FROM tag t
     WHERE t.resource_type = _res_type
@@ -173,6 +185,10 @@ DROP FUNCTION IF EXISTS remove_tags(_res_type varchar, _id_ uuid, _vid uuid);
 CREATE OR REPLACE FUNCTION
 remove_tags(_res_type varchar, _id_ uuid, _vid uuid)
 RETURNS bigint LANGUAGE sql AS $$
+  UPDATE resource_history SET category = NULL
+  WHERE resource_type = _res_type
+    AND logical_id = _id_;
+
   WITH DELETED AS (
   DELETE FROM history_tag ht
     WHERE ht.resource_type = _res_type

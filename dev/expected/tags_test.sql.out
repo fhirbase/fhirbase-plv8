@@ -213,16 +213,23 @@ SELECT affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme"
  [{"term": "pt", "label": "pt", "scheme": "pt.com"}]
 (1 row)
 
-SELECT assert(affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]') = '[]'::jsonb, 'should not insert twice');
-           assert           
+SELECT assert(category IS NOT NULL, 'populate category column') FROM patient WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077';
+           assert            
+-----------------------------
+ OK populate category column
+(1 row)
+
+SELECT assert_eq(affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]'), '[]'::jsonb, 'should not insert twice');
+         assert_eq          
 ----------------------------
  OK should not insert twice
 (1 row)
 
-SELECT assert(
-         tags('Patient', '550e8400-e29b-41d4-a716-446655440077') = '{"category": [{"scheme":"pt.com", "term":"pt", "label":"pt"}], "resourceType": "TagList"}',
+SELECT assert_eq(
+         tags('Patient', '550e8400-e29b-41d4-a716-446655440077'),
+        '{"category": [{"scheme":"pt.com", "term":"pt", "label":"pt"}], "resourceType": "TagList"}',
               'should populate again');
-          assert          
+        assert_eq         
 --------------------------
  OK should populate again
 (1 row)
@@ -400,6 +407,12 @@ SELECT remove_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
            1
 (1 row)
 
+SELECT assert_eq(category, NULL, 'clear hx category column') FROM patient_history WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077';
+          assert_eq          
+-----------------------------
+ OK clear hx category column
+(1 row)
+
 WITH tgs AS (
   SELECT tags('Patient',
             '550e8400-e29b-41d4-a716-446655440077',
@@ -429,6 +442,12 @@ SELECT affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
                        affix_tags                       
 --------------------------------------------------------
  [{"term": "obs", "label": "obs", "scheme": "obs.com"}]
+(1 row)
+
+SELECT assert(category IS NOT NULL, 'populate hx category column') FROM patient_history WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077';
+             assert             
+--------------------------------
+ OK populate hx category column
 (1 row)
 
 SELECT tags('Patient');

@@ -34,10 +34,14 @@ SELECT assert(
 
 SELECT affix_tags('Patient', :'pt_uuid', :'pt_tags');
 
-SELECT assert(affix_tags('Patient', :'pt_uuid', :'pt_tags') = '[]'::jsonb, 'should not insert twice');
+SELECT assert(category IS NOT NULL, 'populate category column') FROM patient WHERE logical_id = :'pt_uuid';
 
-SELECT assert(
-         tags('Patient', :'pt_uuid') = '{"category": [{"scheme":"pt.com", "term":"pt", "label":"pt"}], "resourceType": "TagList"}',
+SELECT assert_eq(affix_tags('Patient', :'pt_uuid', :'pt_tags'), '[]'::jsonb, 'should not insert twice');
+
+
+SELECT assert_eq(
+         tags('Patient', :'pt_uuid'),
+        '{"category": [{"scheme":"pt.com", "term":"pt", "label":"pt"}], "resourceType": "TagList"}',
               'should populate again');
 
 SELECT 'ok' FROM update_resource(:'pt_uuid', :'pt', '[]');
@@ -58,6 +62,8 @@ SELECT remove_tags('Patient', :'pt_uuid',
               FROM patient_history_tag
               WHERE resource_id = :'pt_uuid' limit 1));
 
+SELECT assert_eq(category, NULL, 'clear hx category column') FROM patient_history WHERE logical_id = :'pt_uuid';
+
 WITH tgs AS (
   SELECT tags('Patient',
             :'pt_uuid',
@@ -76,6 +82,8 @@ SELECT affix_tags('Patient', :'pt_uuid',
 SELECT affix_tags('Patient', :'pt_uuid',
                    (SELECT version_id FROM patient_history WHERE logical_id = :'pt_uuid' limit 1),
                   :'obs_tags'::jsonb);
+
+SELECT assert(category IS NOT NULL, 'populate hx category column') FROM patient_history WHERE logical_id = :'pt_uuid';
 
 SELECT tags('Patient');
 SELECT tags('Patient', :'pt_uuid');

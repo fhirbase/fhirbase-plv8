@@ -269,7 +269,7 @@ DECLARE
 item jsonb;
 acc varchar[] := array[]::varchar[];
 BEGIN
-  IF expec = res THEN
+  IF expec = res  OR (expec IS NULL AND res IS NULL) THEN
     RETURN 'OK ' || mess;
   ELSE
     RAISE EXCEPTION E'assert_eq % FAILED:\nEXPECTED: %\nACTUAL:   %', mess, expec, res;
