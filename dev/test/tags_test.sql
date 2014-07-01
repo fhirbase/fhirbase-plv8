@@ -50,7 +50,7 @@ WITH tgs AS (
   SELECT tags('Patient',
             :'pt_uuid',
             (SELECT resource_version_id
-              FROM patient_history_tag
+              FROM patient_tag_history
               WHERE resource_id = :'pt_uuid' limit 1)) as t
 )
 SELECT assert_eq((SELECT t from tgs limit 1),
@@ -59,7 +59,7 @@ SELECT assert_eq((SELECT t from tgs limit 1),
 
 SELECT remove_tags('Patient', :'pt_uuid',
             (SELECT resource_version_id
-              FROM patient_history_tag
+              FROM patient_tag_history
               WHERE resource_id = :'pt_uuid' limit 1));
 
 SELECT assert_eq(category, NULL, 'clear hx category column') FROM patient_history WHERE logical_id = :'pt_uuid';
@@ -68,7 +68,7 @@ WITH tgs AS (
   SELECT tags('Patient',
             :'pt_uuid',
             (SELECT resource_version_id
-              FROM patient_history_tag
+              FROM patient_tag_history
               WHERE resource_id = :'pt_uuid' limit 1)) as t
 )
 SELECT assert((SELECT t from tgs limit 1)
@@ -83,6 +83,7 @@ SELECT affix_tags('Patient', :'pt_uuid',
                    (SELECT version_id FROM patient_history WHERE logical_id = :'pt_uuid' limit 1),
                   :'obs_tags'::jsonb);
 
+
 SELECT assert(category IS NOT NULL, 'populate hx category column') FROM patient_history WHERE logical_id = :'pt_uuid';
 
 SELECT tags('Patient');
@@ -91,7 +92,7 @@ SELECT tags('Patient', :'pt_uuid');
 SELECT tags('Patient',
           :'pt_uuid',
           (SELECT resource_version_id
-            FROM patient_history_tag
+            FROM patient_tag_history
             WHERE resource_id = :'pt_uuid' limit 1));
 
 ROLLBACK;

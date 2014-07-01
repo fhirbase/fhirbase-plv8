@@ -34,7 +34,7 @@ CREATE TABLE tag (
   label text
 );
 
-CREATE TABLE history_tag (
+CREATE TABLE tag_history (
   _id uuid,
   resource_id uuid,
   resource_version_id uuid,
@@ -107,7 +107,7 @@ eval_ddl(
       category jsonb
     ) INHERITS (resource_history);
 
-    CREATE TABLE {{tbl_name}}_history_tag (
+    CREATE TABLE {{tbl_name}}_tag_history (
       _id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       resource_id uuid NOT NULL,
       resource_version_id uuid REFERENCES "{{tbl_name}}_history" (version_id),
@@ -115,7 +115,7 @@ eval_ddl(
       scheme varchar NOT NULL,
       term varchar NOT NULL,
       label text
-    ) INHERITS (history_tag);
+    ) INHERITS (tag_history);
 
     CREATE TABLE "{{tbl_name}}_search_string" (
       _id SERIAL PRIMARY KEY,

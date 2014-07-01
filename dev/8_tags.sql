@@ -58,7 +58,7 @@ RETURNS jsonb LANGUAGE sql AS $$
     'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
   FROM (
     SELECT t.scheme, t.term, t.label
-    FROM history_tag t
+    FROM tag_history t
     WHERE t.resource_type = _res_type
     AND t.resource_id = _id_
     AND t.resource_version_id = _vid
@@ -66,9 +66,9 @@ RETURNS jsonb LANGUAGE sql AS $$
 $$ IMMUTABLE;
 
 -- Affix tag to resource with _id
-DROP FUNCTION IF EXISTS affix_tags(_res_type varchar, _id uuid, _tags jsonb);
+DROP FUNCTION IF EXISTS affix_tags(_res_type varchar, _id_ uuid, _tags jsonb);
 CREATE OR REPLACE FUNCTION
-affix_tags(_res_type varchar, _id uuid, _tags jsonb)
+affix_tags(_res_type varchar, _id_ uuid, _tags jsonb)
 RETURNS jsonb LANGUAGE plpgsql AS $$
 DECLARE
   res jsonb;
@@ -105,19 +105,19 @@ BEGIN
       SELECT coalesce(json_agg(row_to_json(inserted)), '[]'::json)::jsonb
         FROM inserted
       $SQL$, 'tbl', lower(_res_type))
-    INTO res USING _id, _tags;
+    INTO res USING _id_, _tags;
 
-    UPDATE resource SET category = tags(_res_type, _id)->'category'
+    UPDATE resource SET category = (SELECT json_agg(x)::jsonb FROM (SELECT t.term, t.scheme, t.label FROM tag t WHERE  t.resource_id = _id_) x)
      WHERE resource_type = _res_type
-      AND logical_id = _id;
+      AND logical_id = _id_;
     RETURN res;
 END;
 $$;
 
 -- Affix tag to resource with _id and _vid
-DROP FUNCTION IF EXISTS affix_tags(_res_type varchar, _id uuid, _vid uuid, _tags jsonb);
+DROP FUNCTION IF EXISTS affix_tags(_res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb);
 CREATE OR REPLACE FUNCTION
-affix_tags(_res_type varchar, _id uuid, _vid uuid, _tags jsonb)
+affix_tags(_res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb)
 RETURNS jsonb LANGUAGE plpgsql AS $$
 DECLARE
   res jsonb;
@@ -131,7 +131,7 @@ BEGIN
         WHERE version_id = $1
       ),
       old_tags AS (
-        SELECT scheme, term, label FROM {{tbl}}_history_tag
+        SELECT scheme, term, label FROM {{tbl}}_tag_history
         WHERE resource_version_id = $1
       ),
       new_tags AS (
@@ -143,7 +143,7 @@ BEGIN
         SELECT * from old_tags
       ),
       inserted AS (
-        INSERT INTO "{{tbl}}_history_tag"
+        INSERT INTO "{{tbl}}_tag_history"
         (resource_id, resource_version_id, scheme, term, label)
         SELECT rsrs.logical_id,
                rsrs.version_id,
@@ -155,11 +155,11 @@ BEGIN
       SELECT coalesce(json_agg(row_to_json(inserted)), '[]'::json)::jsonb
         FROM inserted
       $SQL$, 'tbl', lower(_res_type))
-    INTO res USING _vid, _tags;
+    INTO res USING _vid_, _tags;
 
-    UPDATE resource_history SET category = tags(_res_type, _id)->'category'
+    UPDATE resource_history SET category = (SELECT json_agg(x)::jsonb FROM (SELECT t.term, t.scheme, t.label FROM tag_history t WHERE  t.resource_version_id = _vid_) x)
      WHERE resource_type = _res_type
-      AND version_id = _vid;
+      AND version_id = _vid_;
     RETURN res;
 END;
 $$;
@@ -190,7 +190,7 @@ RETURNS bigint LANGUAGE sql AS $$
     AND logical_id = _id_;
 
   WITH DELETED AS (
-  DELETE FROM history_tag ht
+  DELETE FROM tag_history ht
     WHERE ht.resource_type = _res_type
     AND ht.resource_id = _id_
     AND ht.resource_version_id = _vid RETURNING *)

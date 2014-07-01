@@ -387,7 +387,7 @@ WITH tgs AS (
   SELECT tags('Patient',
             '550e8400-e29b-41d4-a716-446655440077',
             (SELECT resource_version_id
-              FROM patient_history_tag
+              FROM patient_tag_history
               WHERE resource_id = '550e8400-e29b-41d4-a716-446655440077' limit 1)) as t
 )
 SELECT assert_eq((SELECT t from tgs limit 1),
@@ -400,7 +400,7 @@ SELECT assert_eq((SELECT t from tgs limit 1),
 
 SELECT remove_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
             (SELECT resource_version_id
-              FROM patient_history_tag
+              FROM patient_tag_history
               WHERE resource_id = '550e8400-e29b-41d4-a716-446655440077' limit 1));
  remove_tags 
 -------------
@@ -417,7 +417,7 @@ WITH tgs AS (
   SELECT tags('Patient',
             '550e8400-e29b-41d4-a716-446655440077',
             (SELECT resource_version_id
-              FROM patient_history_tag
+              FROM patient_tag_history
               WHERE resource_id = '550e8400-e29b-41d4-a716-446655440077' limit 1)) as t
 )
 SELECT assert((SELECT t from tgs limit 1)
@@ -465,7 +465,7 @@ SELECT tags('Patient', '550e8400-e29b-41d4-a716-446655440077');
 SELECT tags('Patient',
           '550e8400-e29b-41d4-a716-446655440077',
           (SELECT resource_version_id
-            FROM patient_history_tag
+            FROM patient_tag_history
             WHERE resource_id = '550e8400-e29b-41d4-a716-446655440077' limit 1));
                                                                         tags                                                                        
 ----------------------------------------------------------------------------------------------------------------------------------------------------

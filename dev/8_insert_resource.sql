@@ -242,7 +242,7 @@ BEGIN
       FROM {{tbl}}
       WHERE logical_id = $1;
 
-      INSERT INTO "{{tbl}}_history_tag"
+      INSERT INTO "{{tbl}}_tag_history"
       (_id, resource_id, resource_version_id, scheme, term, label)
       SELECT _id, resource_id, resource_version_id, scheme, term, label
       FROM {{tbl}}_tag
