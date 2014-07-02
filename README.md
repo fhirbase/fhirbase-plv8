@@ -12,7 +12,8 @@ Sponsored by:
 
 ## Live Demo
 
-Here is an [interactive demo](http://try-fhirplace.hospital-systems.com/fhirface/index.html).
+Here is an [interactive demo](http://try-fhirplace.hospital-systems.com/fhirface/index.html),
+which is build with [FHIRPlace](https://github.com/fhirplace/) & [FHIRFace](https://github.com/fhirface/) by-products.
 
 
 ## Motivation
@@ -61,8 +62,12 @@ For each resource type FHIRbase create set of tables
 * <RESOURCE-TYPE>_tag_history (patient_tag_history)
 
 
-
 ## Installation
+
+PostgreSQL 9.4, pgcrypto & pg_trgm required.
+
+This repository include Dockerfile and shell script to build
+PostgreSQL from source code (on debian/ubuntu).
 
 ## Usage
 

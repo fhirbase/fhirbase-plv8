@@ -6,5 +6,5 @@ before_script:
   - sudo su $USER -c "./postgresql-setup.sh $TRAVIS_BUILD_DIR"
 
 
-script: export PATH=$PATH:`pwd`/bin/bin && env PSQL_ARGS='-p 5777' cd dev && ./runme integrate
+script: export PATH=$PATH:/home/travis/build/fhirbase/fhirbase/bin/bin && cd /home/travis/build/fhirbase/fhirbase/dev/ && env PSQL_ARGS='-p 5777' ./runme integrate
 
