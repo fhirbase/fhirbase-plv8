@@ -44,6 +44,68 @@ CREATE TABLE tag_history (
   label text
 );
 
+-- index tables
+
+CREATE TABLE search_string (
+  _id SERIAL PRIMARY KEY,
+  resource_id uuid,
+  resource_type varchar,
+  param varchar NOT NULL,
+  value varchar
+  -- TODO: ts_value ts_vector
+);
+
+CREATE TABLE search_token (
+  _id SERIAL PRIMARY KEY,
+  resource_id uuid,
+  param varchar NOT NULL,
+  resource_type varchar,
+  namespace varchar,
+  code varchar,
+  text varchar
+  -- ts_value ts_vector
+);
+
+CREATE TABLE search_date (
+  _id SERIAL PRIMARY KEY,
+  resource_id uuid,
+  resource_type varchar,
+  param varchar NOT NULL,
+  "start" timestamptz,
+  "end" timestamptz
+);
+
+CREATE TABLE search_reference (
+  _id SERIAL PRIMARY KEY,
+  resource_id uuid,
+  param varchar NOT NULL,
+  resource_type varchar NOT NULL,
+  _resource_type varchar NOT NULL,
+  logical_id varchar NOT NULL,
+  url varchar
+);
+
+CREATE TABLE search_quantity (
+  _id SERIAL PRIMARY KEY,
+  resource_id uuid,
+  resource_type varchar,
+  param varchar,
+  value decimal,
+  comparator varchar,
+  units varchar,
+  system varchar,
+  code varchar
+);
+
+CREATE TABLE "references" (
+  _id SERIAL PRIMARY KEY,
+  resource_id uuid NOT NULL,
+  _resource_type varchar,
+  path varchar NOT NULL,
+  reference_type varchar NOT NULL,
+  logical_id varchar NOT NULL
+);
+
 SELECT
 count(
 eval_ddl(
@@ -120,10 +182,11 @@ eval_ddl(
     CREATE TABLE "{{tbl_name}}_search_string" (
       _id SERIAL PRIMARY KEY,
       resource_id uuid references "{{tbl_name}}"(logical_id),
+      resource_type varchar DEFAULT '{{resource_type}}',
       param varchar NOT NULL,
       value varchar
       -- ts_value ts_vector
-    );
+    ) INHERITS (search_string);
 
     -- composite index for fast joins
     CREATE INDEX {{tbl_name}}_search_string_on_resource_id_and_param_idx
@@ -140,12 +203,13 @@ eval_ddl(
     CREATE TABLE "{{tbl_name}}_search_token" (
       _id SERIAL PRIMARY KEY,
       resource_id uuid references "{{tbl_name}}"(logical_id),
+      resource_type varchar DEFAULT '{{resource_type}}',
       param varchar NOT NULL,
       namespace varchar,
       code varchar,
       text varchar
       -- ts_value ts_vector
-    );
+    ) INHERITS (search_token);
 
     -- index for join
     CREATE INDEX {{tbl_name}}_search_token_on_resource_id_and_param_idx
@@ -161,10 +225,11 @@ eval_ddl(
     CREATE TABLE "{{tbl_name}}_search_date" (
       _id SERIAL PRIMARY KEY,
       resource_id uuid references "{{tbl_name}}"(logical_id),
+      resource_type varchar DEFAULT '{{resource_type}}',
       param varchar NOT NULL,
       "start" timestamptz,
       "end" timestamptz
-    );
+    ) INHERITS (search_date);
 
     -- index for join
     CREATE INDEX {{tbl_name}}_search_date_on_resource_id_and_param_idx
@@ -180,9 +245,11 @@ eval_ddl(
       resource_id uuid references "{{tbl_name}}"(logical_id),
       param varchar NOT NULL,
       resource_type varchar NOT NULL,
+      -- TODO: name clash
+      _resource_type varchar DEFAULT '{{resource_type}}',
       logical_id varchar NOT NULL,
       url varchar
-    );
+    ) INHERITS (search_reference);
 
     -- index for join
     CREATE INDEX {{tbl_name}}_search_reference_on_resource_id_and_param_idx
@@ -199,13 +266,14 @@ eval_ddl(
     CREATE TABLE "{{tbl_name}}_search_quantity" (
       _id SERIAL PRIMARY KEY,
       resource_id uuid references "{{tbl_name}}"(logical_id),
+      resource_type varchar DEFAULT '{{resource_type}}',
       param varchar,
       value decimal,
       comparator varchar,
       units varchar,
       system varchar,
       code varchar
-    );
+    ) INHERITS (search_quantity);
 
     -- index for join
     CREATE INDEX {{tbl_name}}_search_quantity_on_resource_id_and_param_idx
@@ -217,13 +285,16 @@ eval_ddl(
     -- TODO: maybe index on units?
 
     -- index for search includes
+    -- TODO: use singular name
     CREATE TABLE "{{tbl_name}}_references" (
       _id SERIAL PRIMARY KEY,
       resource_id uuid NOT NULL,
+      -- TODO: name clash
+      _resource_type varchar DEFAULT '{{resource_type}}',
       path varchar NOT NULL,
       reference_type varchar NOT NULL,
       logical_id varchar NOT NULL
-    );
+    ) INHERITS ("references");
 
     -- index for join
     CREATE INDEX {{tbl_name}}_references_on_resource_id_idx
