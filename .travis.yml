@@ -1,10 +1,7 @@
 # .travis.yml
 before_script:
-  - sudo apt-get update
   - sudo apt-get -qqy install git build-essential gettext libreadline6 libreadline6-dev zlib1g-dev flex bison libxml2-dev libxslt-dev
-  - export
-  - sudo su $USER -c "./postgresql-setup.sh $TRAVIS_BUILD_DIR"
+  - sudo su $USER -c "source ./travis_cfg.sh && ./install-postgres"
 
-
-script: export PATH=$PATH:/home/travis/build/fhirbase/fhirbase/bin/bin && cd /home/travis/build/fhirbase/fhirbase/dev/ && env PSQL_ARGS='-p 5777 -h localhost' ./runme integrate
+script: sudo su $USER -c "source .travis_cfg.sh && cd ./dev/ && ./runme integrate"
 

@@ -111,29 +111,54 @@ Note: Same trick is used by PostgreSQL for [partitioning](http://www.postgresql.
 For more information [see source code](https://github.com/fhirbase/fhirbase/blob/master/dev/4_generation.sql#L51):
 
 
-## API
-
-Most of FHIR complaint operations could be done with FHIRBase procedures,
-which guaranties data integrity:
-
-* insert_resource(resource jsonb, tags jsonb) - insert resource and fill tag & index tables
-* insert_resource(id uuid, resource jsonb, tags jsonb) - overloaded version taking explicit id
-* update_resource(id uuid, _rsrs jsonb, _tags jsonb) - create new version of resource and move old version into resource_history table
-* delete_resource(id uuid, res_type varchar) - remove resource preserving all history versions
-* search_bundle(_resource_type varchar, query jsonb) - search resources of _resource_type by query object and return bundle json
-* tags(), tags(_res_type varchar), tags(_res_type varchar, _id_ uuid), tags(_res_type varchar, _id_ uuid, _vid uuid) - return tags for all resources, concrete type, concrete resource, concrete version of resource respectively
-* affix_tags(_res_type varchar, _id_ uuid, _tags jsonb), affix_tags(_res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb) - affix tags to current or concrete version
-* remove_tags(_res_type varchar, _id_ uuid), remove_tags(_res_type varchar, _id_ uuid, _vid uuid) remove tags from current or concrete version of resource
-* history_resource(_resource_type varchar, _id uuid) - return history bundle for resource
 
 ## Installation
 
-PostgreSQL 9.4, pgcrypto & pg_trgm required.
+Requirements:
+* PostgreSQL 9.4 (http://www.postgresql.org/about/news/1522/)
+* pgcrypto
+* pg_trgm
 
-This repository include Dockerfile and shell script to build
-PostgreSQL from source code (on debian/ubuntu).
+
+This repository also include Dockerfile and shell script to build
+PostgreSQL from source code on debian/ubuntu .
+
+
+```
+psql mydatabas < fhirplace--1.0.sql
+```
 
 ## Usage
+
+Most of FHIR complaint operations could be done with FHIRBase procedures,
+which guaranties data integrity and do heavy job for you:
+
+`insert_resource(resource jsonb, tags jsonb)`
+insert resource and fill tag & index tables
+
+`insert_resource(id uuid, resource jsonb, tags jsonb)`
+overloaded version taking explicit id
+
+`update_resource(id uuid, _rsrs jsonb, _tags jsonb)`
+create new version of resource and move old version into resource_history table
+
+`delete_resource(id uuid, res_type varchar)`
+remove resource preserving all history versions
+
+`search_bundle(_resource_type varchar, query jsonb)`
+search resources of _resource_type by query object and return bundle json
+
+`tags(), tags(_res_type varchar), tags(_res_type varchar, _id_ uuid), tags(_res_type varchar, _id_ uuid, _vid uuid)`
+return tags for all resources, concrete type, concrete resource, concrete version of resource respectively
+
+`affix_tags(_res_type varchar, _id_ uuid, _tags jsonb), affix_tags(_res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb)`
+affix tags to current or concrete version
+
+`remove_tags(_res_type varchar, _id_ uuid), remove_tags(_res_type varchar, _id_ uuid, _vid uuid)`
+remove tags from current or concrete version of resource
+
+`history_resource(_resource_type varchar, _id uuid)`
+return history bundle for resource
 
 ## Contribution
 
@@ -141,9 +166,9 @@ PostgreSQL from source code (on debian/ubuntu).
 * Create an issue – for a bug report or enhancment
 * Contribute to FHIRBase − see dev/README.md
 
-## Roadmap
+## Development
 
-* Extensions
+Development detains see in [dev/README.md]()
 
 ## License
 
