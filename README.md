@@ -26,25 +26,27 @@ which (we hope) could be used as a foundationan for Health IT systems. FHIR is b
 > Version 3 and CDA® product lines while leveraging the latest
 > web standards and applying a tight focus on implementability.
 
-
-## Why PostgreSQL?
+Also we learned that data is a heart of any information system,
+and should be reliably managed. PostgreSQL is battle proved open source
+database, which supports structured documents (jsonb), while preserving
+ACID guaranties and richness of SQL query language.
 
 > PostgreSQL is a powerful, open source object-relational database system.
 > It has more than 15 years of active development and a proven architecture
 > that has earned it a strong reputation for reliability, data integrity, and correctness.
 
-We actively use advanced postgresql features
+Here is list of PostgreSQL features we use:
 
-* [xml](http://www.postgresql.org/docs/9.3/static/functions-xml.html)
-* [jsonb](http://www.postgresql.org/docs/9.3/static/functions-json.html)
-* [enums](http://www.postgresql.org/docs/9.3/static/datatype-enum.html)
-* [arrays](http://www.postgresql.org/docs/9.3/static/arrays.html)
-* [inheritance](http://www.postgresql.org/docs/9.3/static/tutorial-inheritance.html)
-* [materialized views](http://www.postgresql.org/docs/9.3/static/sql-altermaterializedview.html)
-* [uuid-ossp](http://www.postgresql.org/docs/9.3/static/uuid-ossp.html)
+* [xml](http://www.postgresql.org/docs/9.4/static/functions-xml.html)
+* [jsonb](http://www.postgresql.org/docs/9.4/static/functions-json.html)
+* [enums](http://www.postgresql.org/docs/9.4/static/datatype-enum.html)
+* [arrays](http://www.postgresql.org/docs/9.4/static/arrays.html)
+* [inheritance](http://www.postgresql.org/docs/9.4/static/tutorial-inheritance.html)
+* [materialized views](http://www.postgresql.org/docs/9.4/static/sql-altermaterializedview.html)
+* [uuid](http://www.postgresql.org/docs/9.4/static/pgcrypto.html)
 
 
-## Schema Generation
+## Overview
 
 ## Installation
 
