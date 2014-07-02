@@ -120,13 +120,25 @@ Requirements:
 * pg_trgm
 
 
-This repository also include Dockerfile and shell script to build
-PostgreSQL from source code on debian/ubuntu .
+You can build Postgresql from source  on debian/ubuntu
+and create local user cluster with:
 
 
 ```
-psql mydatabas < fhirplace--1.0.sql
+source local_cfg.sh && ./install-postgres
 ```
+
+NOTE: you can tune configuration in local_cfg.sh.
+
+You can install FHIRBase:
+
+```
+source local_cfg.sh
+echo 'CREATE DATABASE mydb' | psql postgres
+psql mydb < fhirplace--1.0.sql
+```
+
+TODO: test script to verify installation
 
 ## Usage
 

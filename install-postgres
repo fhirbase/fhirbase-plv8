@@ -1,6 +1,7 @@
 #!/bin/bash
 # This script build postgresql from source
 
+sudo apt-get -qq update
 sudo apt-get -qqy install git build-essential gettext libreadline6 libreadline6-dev zlib1g-dev flex bison libxml2-dev libxslt-dev || echo 'Ups. No sudo'
 
 git clone -b REL9_4_STABLE --depth=1 git://git.postgresql.org/git/postgresql.git $SOURCE_DIR

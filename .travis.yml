@@ -1,6 +1,5 @@
 # .travis.yml
 before_script:
-  - sudo apt-get -qqy install git build-essential gettext libreadline6 libreadline6-dev zlib1g-dev flex bison libxml2-dev libxslt-dev
   - sudo su $USER -c "source ./travis_cfg.sh && ./install-postgres"
 
 script: sudo su $USER -c "source .travis_cfg.sh && cd ./dev/ && ./runme integrate"
