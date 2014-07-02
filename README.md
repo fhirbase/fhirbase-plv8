@@ -39,14 +39,28 @@ Here is list of PostgreSQL features we use:
 
 * [xml](http://www.postgresql.org/docs/9.4/static/functions-xml.html)
 * [jsonb](http://www.postgresql.org/docs/9.4/static/functions-json.html)
-* [enums](http://www.postgresql.org/docs/9.4/static/datatype-enum.html)
-* [arrays](http://www.postgresql.org/docs/9.4/static/arrays.html)
 * [inheritance](http://www.postgresql.org/docs/9.4/static/tutorial-inheritance.html)
 * [materialized views](http://www.postgresql.org/docs/9.4/static/sql-altermaterializedview.html)
 * [uuid](http://www.postgresql.org/docs/9.4/static/pgcrypto.html)
 
 
+We actively collaborate with PostgreSQL lead developers to craft production ready
+storage for FHIR.
+
+TODO: about fhirb, VODKA and jsquery
+
 ## Overview
+
+For each resource type FHIRbase create set of tables
+[see source code](https://github.com/fhirbase/fhirbase/blob/master/dev/4_generation.sql#L51):
+
+* <RESOURCE-TYPE>             (patient)
+* <RESOURCE-TYPE>_tag         (patient_tag)
+
+* <RESOURCE-TYPE>_history     (patient_history)
+* <RESOURCE-TYPE>_tag_history (patient_tag_history)
+
+
 
 ## Installation
 
