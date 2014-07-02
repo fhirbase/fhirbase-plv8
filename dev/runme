@@ -62,6 +62,7 @@ function test_cmd {
     echo "Tests failed:"
     echo $failed
     echo -e "\e[00m"
+    exit 1
   fi
 }
 

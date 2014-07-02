@@ -55,11 +55,18 @@ TODO: about fhirb, VODKA and jsquery
 For each resource type FHIRbase create set of tables
 [see source code](https://github.com/fhirbase/fhirbase/blob/master/dev/4_generation.sql#L51):
 
-* <RESOURCE-TYPE>             (patient)
-* <RESOURCE-TYPE>_tag         (patient_tag)
 
-* <RESOURCE-TYPE>_history     (patient_history)
-* <RESOURCE-TYPE>_tag_history (patient_tag_history)
+* "{{lower(ResourceType)}}" (...)
+* "{{lower(ResourceType)}}_history" (...)
+* "{{lower(ResourceType)}}_tag" (...)
+* "{{lower(ResourceType)}}_tag_history" (...)
+* "{{lower(ResourceType)}}_sort" (...)
+* "{{lower(ResourceType)}}_search_string" (...)
+* "{{lower(ResourceType)}}_search_token" (...)
+* "{{lower(ResourceType)}}_search_date" (...)
+* "{{lower(ResourceType)}}_search_reference" (...)
+* "{{lower(ResourceType)}}_search_quantity" (...)
+* "{{lower(ResourceType)}}_references" (...)
 
 
 ## Installation
