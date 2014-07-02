@@ -29,4 +29,4 @@ echo "port=$PGPORT" >> $PGDATA/postgresql.conf
 $PG_BIN/pg_ctl -D $PGDATA start
 
 echo 'Postgresql builded & started\nYou can login into with: \n  source local_conf.sh && $PG_BIN/psql postgres'
-source local_cfg.sh && $PG_BIN/psql postgres
+# source local_cfg.sh && $PG_BIN/psql postgres

@@ -180,7 +180,7 @@ return history bundle for resource
 
 ## Development
 
-Development detains see in [dev/README.md]()
+Development details see in [dev/README.md]()
 
 ## License
 
