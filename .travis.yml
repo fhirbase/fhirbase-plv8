@@ -1,0 +1,6 @@
+# .travis.yml
+before_script:
+  - apt-get -qqy install git build-essential gettext libreadline6 libreadline6-dev zlib1g-dev flex bison libxml2-dev libxslt-dev
+  - sudo -E su $USER -c './postgresql-setup.sh'
+
+script: cd $TRAVIS_BUILD_DIR/dev && ./runme install && ./runme test

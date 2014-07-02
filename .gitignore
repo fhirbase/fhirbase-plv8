@@ -4,3 +4,4 @@
 *.sw?
 /dev/my-build.sh
 /dev/out/*
+/tmp
