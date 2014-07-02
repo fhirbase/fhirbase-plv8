@@ -2,7 +2,7 @@
 before_script:
   - sudo apt-get update
   - sudo apt-get -qqy install git build-essential gettext libreadline6 libreadline6-dev zlib1g-dev flex bison libxml2-dev libxslt-dev
-  - sudo su $USER -c ./postgresql-setup.sh
+  - sudo su $USER -c ./postgresql-setup.sh $TRAVIS_BUILD_DIR
 
 
 script: env PSQL_ARGS='-p 5777' cd $TRAVIS_BUILD_DIR/dev && ./runme install && ./runme test

@@ -2,7 +2,7 @@
 # USER=devel
 
 # sudo apt-get -qqy install git build-essential gettext libreadline6 libreadline6-dev zlib1g-dev flex bison libxml2-dev libxslt-dev
-
+TRAVIS_BUILD_DIR=$1
 PG_DIR=$TRAVIS_BUILD_DIR/pg
 PGDATA=$TRAVIS_BUILD_DIR/data
 PG_BIN=$TRAVIS_BUILD_DIR/bin
