@@ -90,7 +90,7 @@ BEGIN
     AND search_type = 'token'
     AND param_name <> '_id'
   LOOP
-    attrs := get_in_path(rsrs, rest(prm.path));
+    attrs := json_get_in(rsrs, _rest(prm.path));
 
     --RAISE NOTICE 'item %', attrs;
 

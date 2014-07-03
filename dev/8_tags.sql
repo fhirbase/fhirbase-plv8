@@ -74,7 +74,7 @@ DECLARE
   res jsonb;
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       WITH rsrs AS (
         SELECT logical_id, version_id
         FROM  "{{tbl}}"
@@ -123,7 +123,7 @@ DECLARE
   res jsonb;
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       WITH rsrs AS (
         SELECT logical_id,
                version_id

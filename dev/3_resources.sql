@@ -19,12 +19,36 @@ CREATE TABLE fhir.resource_search_params (
   documentation text
 );
 
+CREATE OR REPLACE
+FUNCTION xattr(pth varchar, x xml) returns varchar
+AS $$
+BEGIN
+  RETURN unnest(xpath(pth, x, ARRAY[ARRAY['fh', 'http://hl7.org/fhir']])) limit 1;
+END
+$$ language plpgsql;
+
 CREATE OR REPLACE FUNCTION
 profile_to_resource_type(profiles varchar[])
 RETURNS varchar[] LANGUAGE sql AS $$
   SELECT array_agg(replace("unnest", 'http://hl7.org/fhir/profiles/', ''))::varchar[]
   FROM unnest(profiles);
 $$;
+
+CREATE OR REPLACE
+FUNCTION fpath(pth varchar, x xml) returns xml[]
+  as $$
+  BEGIN
+    return xpath(pth, x, ARRAY[ARRAY['fh', 'http://hl7.org/fhir']]);
+  END
+$$ language plpgsql IMMUTABLE;
+
+CREATE or REPLACE
+FUNCTION xarrattr(pth varchar, x xml) returns varchar[]
+  as $$
+  BEGIN
+    RETURN array(select unnest(fpath(pth, x))::varchar);
+  END
+$$ language plpgsql;
 
 \set fhir `cat profiles-resources.xml`
 
@@ -72,7 +96,7 @@ select
 CREATE OR REPLACE
 VIEW fhir.polimorphic_expanded_resource_elements as (
   SELECT
-    array_pop(path) || ARRAY[column_name(array_last(path), type)] as path,
+    _butlast(path) || ARRAY[column_name(_last(path), type)] as path,
     type,
     min,
     max
@@ -101,7 +125,7 @@ VIEW fhir.expanded_resource_elements as (
         END AS is_primitive
     FROM (
     SELECT
-      e.path || array_tail(t.path) as path,
+      e.path || _rest(t.path) as path,
       CASE WHEN array_length(t.path,1) = 1
         THEN e.min
         ELSE t.min
@@ -146,11 +170,11 @@ SELECT
   FROM fhir.resource_search_params rsp
   JOIN fhir.expanded_resource_elements ere
     ON ere.path = rsp.path
-       OR (array_last(rsp.path) ilike '%[x]' -- handle polymorph
-           AND butlast(ere.path) = butlast(rsp.path)
+       OR (_last(rsp.path) ilike '%[x]' -- handle polymorph
+           AND _butlast(ere.path) = _butlast(rsp.path)
            AND position(
-              replace(array_last(rsp.path), '[x]','')
-              in array_last(ere.path)) = 1
+              replace(_last(rsp.path), '[x]','')
+              in _last(ere.path)) = 1
            AND EXISTS (
              SELECT *
              FROM polimorphic_attrs_mapping pam

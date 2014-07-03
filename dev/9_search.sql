@@ -124,7 +124,7 @@ WITH val_cond AS (SELECT
   ELSE 'implement_me' END as cond
   FROM regexp_split_to_table(_value, ','))
 SELECT
-  eval_template($SQL$
+  _tpl($SQL$
     ({{tbl}}.param = {{param}}
      AND ({{vals_cond}}))
   $SQL$, 'tbl', quote_ident(_table)
@@ -211,7 +211,7 @@ RETURNS text LANGUAGE sql AS $$
   ),
   search_index_joins AS (
     -- joins for index search
-    SELECT eval_template($SQL$
+    SELECT _tpl($SQL$
             JOIN {{tbl}} {{als}}
               ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
               AND {{cond}}
@@ -235,13 +235,13 @@ RETURNS text LANGUAGE sql AS $$
   ),
   references_joins AS (
     -- joins trhough referenced resources for chained params
-    SELECT eval_template($SQL$
+    SELECT _tpl($SQL$
             JOIN {{tbl}} {{als}}
               ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
            $SQL$,
            'tbl', quote_ident(lower(p.parent_res) || '_references'),
            'als', get_alias_from_path(p.path),
-           'prnt', get_alias_from_path(butlast(p.path)))
+           'prnt', get_alias_from_path(_butlast(p.path)))
            AS join_str
             ,p.path::text || '1'  as weight
       FROM params p
@@ -249,7 +249,7 @@ RETURNS text LANGUAGE sql AS $$
       GROUP BY p.parent_res, res, path
   ),
   tag_joins AS (
-    SELECT eval_template($SQL$
+    SELECT _tpl($SQL$
             JOIN {{tbl}} {{als}}
               ON {{als}}.resource_id = {{prnt}}.logical_id
              AND {{cond}}
@@ -305,7 +305,7 @@ CREATE OR REPLACE FUNCTION
 build_order_clause(_resource_type varchar, query jsonb)
 RETURNS text LANGUAGE sql AS $$
   WITH order_strs AS (
-    SELECT eval_template($SQL$
+    SELECT _tpl($SQL$
              {{param_tbl}}.{{param_clmn}} {{dir}}
            $SQL$,
            'param_tbl', lower(_resource_type) || '_' || param || '_order_idx',
@@ -325,7 +325,7 @@ CREATE OR REPLACE FUNCTION
 build_order_joins(_resource_type varchar, query jsonb)
 RETURNS text LANGUAGE sql AS $$
   WITH joins AS (
-    SELECT eval_template($SQL$
+    SELECT _tpl($SQL$
       LEFT JOIN {{order_idx_tbl}} {{order_idx_alias}}
              ON {{order_idx_alias}}.resource_id =
                 {{resource_tbl}}.logical_id
@@ -355,7 +355,7 @@ BEGIN
   _offset := _page * _count;
 
   SELECT INTO res
-    eval_template($SQL$
+    _tpl($SQL$
       SELECT {{tbl}}.*
         FROM {{tbl}} {{tbl}}
         {{joins}}
@@ -381,7 +381,7 @@ DECLARE
   res bigint;
 BEGIN
   EXECUTE (
-    eval_template($SQL$
+    _tpl($SQL$
       SELECT COUNT({{tbl}}.*)
         FROM {{tbl}} {{tbl}}
         {{joins}}
@@ -402,7 +402,7 @@ RETURNS TABLE (resource_type varchar, logical_id uuid, content jsonb, category j
 LANGUAGE plpgsql AS $$
 BEGIN
 RETURN QUERY EXECUTE (
-  eval_template($SQL$
+  _tpl($SQL$
     WITH
     found_resources AS (
       SELECT x.resource_type,

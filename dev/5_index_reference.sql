@@ -15,7 +15,7 @@ BEGIN
     AND search_type = 'reference'
     AND array_length(path, 1) > 1
   LOOP
-    attrs := get_in_path(res, rest(prm.path));
+    attrs := json_get_in(res, _rest(prm.path));
     -- RAISE NOTICE 'param % | %', prm, attrs;
 
     FOR item IN SELECT unnest(attrs) LOOP

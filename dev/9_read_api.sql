@@ -21,7 +21,7 @@ DECLARE
   res record;
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       WITH entries AS
       (SELECT
           x.logical_id as id

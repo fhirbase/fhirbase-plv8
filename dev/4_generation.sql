@@ -108,8 +108,8 @@ CREATE TABLE "references" (
 
 SELECT
 count(
-eval_ddl(
-  eval_template($SQL$
+_eval(
+  _tpl($SQL$
     CREATE TABLE "{{tbl_name}}" (
       logical_id uuid PRIMARY KEY,
       version_id uuid UNIQUE,

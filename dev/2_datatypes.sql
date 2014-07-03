@@ -3,6 +3,24 @@
 drop schema if exists fhir cascade;
 create schema fhir;
 
+-- HACK: see http://joelonsql.com/2013/05/13/xml-madness/
+-- problems with namespaces
+CREATE OR REPLACE
+FUNCTION xspath(pth varchar, x xml) returns xml[]
+  as $$
+  BEGIN
+    return  xpath('/xml' || pth, xml('<xml xmlns:xs="xs">' || x || '</xml>'), ARRAY[ARRAY['xs','xs']]);
+  END
+$$ language plpgsql IMMUTABLE;
+
+CREATE OR REPLACE
+FUNCTION xsattr(pth varchar, x xml) returns varchar
+  as $$
+  BEGIN
+    return  unnest(xspath( pth,x)) limit 1;
+  END
+$$ language plpgsql IMMUTABLE;
+
 CREATE TABLE fhir.datatypes (
   version varchar,
   type varchar,
@@ -75,6 +93,7 @@ INSERT INTO fhir.datatypes (version, type)
        ARRAY[ARRAY['xs', 'http://www.w3.org/2001/XMLSchema']])) st
   ) simple_types
 );
+
 
 INSERT INTO fhir.datatype_enums (version, datatype, value)
 SELECT
@@ -157,7 +176,7 @@ CREATE VIEW fhir.datatype_unified_elements as (
   ) AS (
     SELECT r.* FROM fhir._datatype_unified_elements r
     UNION
-    SELECT t.path || ARRAY[array_last(r.path)] as path,
+    SELECT t.path || ARRAY[_last(r.path)] as path,
            r.type as type,
            t.min as min,
            t.max as max
@@ -171,10 +190,10 @@ CREATE VIEW fhir.unified_complex_datatype AS (
   SELECT   ue.path as path
            ,coalesce(tp.type, ue.path[1]) as type, tp.min, tp.max
      FROM  (
-              SELECT array_pop(path)
+              SELECT _butlast(path)
                   AS path
                 FROM fhir.datatype_unified_elements
-            GROUP BY array_pop(path)
+            GROUP BY _butlast(path)
            )
        AS  ue
 LEFT JOIN fhir.datatype_unified_elements tp

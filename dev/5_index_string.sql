@@ -10,10 +10,10 @@ DECLARE
 BEGIN
   FOR el IN
     SELECT * FROM fhir.expanded_resource_elements
-    WHERE is_subpath(_path, path) = true
+    WHERE _is_descedant(_path, path) = true
     AND is_primitive = true
   LOOP
-    vals := vals || json_array_to_str_array(get_in_path(_item, relative_path(_path, el.path)));
+    vals := vals || json_array_to_str_array(json_get_in(_item, _subpath(_path, el.path)));
   END LOOP;
   RETURN array_to_string(vals, ' ');
 END;
@@ -53,7 +53,7 @@ BEGIN
   LOOP
     index_vals := ARRAY[]::varchar[];
 
-    attrs := get_in_path(rsrs, rest(prm.path));
+    attrs := json_get_in(rsrs, _rest(prm.path));
 
     IF prm.is_primitive THEN
       index_vals := json_array_to_str_array(attrs);

@@ -27,7 +27,7 @@ RETURNS text
 LANGUAGE plpgsql AS $$
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO {{tbl}}_sort
       (resource_id, param, lower, upper)
 
@@ -85,7 +85,7 @@ BEGIN
   res_type := lower(_rsrs->>'resourceType');
 
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO "{{tbl}}"
       (logical_id, version_id, published, updated, content, category)
       VALUES
@@ -107,7 +107,7 @@ create_tags(_id uuid, _vid uuid, res_type varchar, _tags jsonb)
 RETURNS uuid LANGUAGE plpgsql AS $$
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO {{tbl}}_tag
       (resource_id, resource_version_id, scheme, term, label)
       SELECT $1, $2, tg->>'scheme', tg->>'term', tg->>'label'
@@ -127,7 +127,7 @@ DECLARE
   rsrs jsonb;
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       SELECT content FROM "{{tbl}}"
         WHERE logical_id = $1
         LIMIT 1
@@ -149,7 +149,7 @@ BEGIN
     SELECT unnest(index_string_resource(_rsrs))
   LOOP
     EXECUTE
-      eval_template($SQL$
+      _tpl($SQL$
         INSERT INTO "{{tbl}}_search_string"
         (resource_id, param, value)
         SELECT $1,$2, jsonb_array_elements_text($3)
@@ -164,7 +164,7 @@ BEGIN
     SELECT json_build_object('param', '_id', 'code', id, 'text', id)::jsonb
   LOOP
     EXECUTE
-      eval_template($SQL$
+      _tpl($SQL$
         INSERT INTO "{{tbl}}_search_token"
         (resource_id, param, namespace, code, text)
         SELECT $1, $2->>'param', $2->>'system', $2->>'code', $2->>'text'
@@ -177,7 +177,7 @@ BEGIN
     SELECT unnest(index_date_resource(_rsrs))
   LOOP
     EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO "{{tbl}}_search_date"
       (resource_id, param, "start", "end")
       SELECT $1, $2->>'param', ($2->>'start')::timestamptz, ($2->>'end')::timestamptz
@@ -190,7 +190,7 @@ BEGIN
   SELECT unnest(index_quantity_resource(_rsrs))
   LOOP
     EXECUTE
-      eval_template($SQL$
+      _tpl($SQL$
         INSERT INTO "{{tbl}}_search_quantity"
         (resource_id, param, value, comparator, units, system, code)
         SELECT $1, $2->>'param', ($2->>'value')::decimal, $2->>'comparator', $2->>'units', $2->>'system', $2->>'code'
@@ -203,7 +203,7 @@ BEGIN
   SELECT unnest(index_reference_resource(_rsrs))
   LOOP
     EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO "{{tbl}}_search_reference"
       (resource_id, param, logical_id, resource_type, url)
       SELECT $1, $2->>'param', $2->>'logical_id', $2->>'resource_type', $2->>'url';
@@ -216,7 +216,7 @@ BEGIN
   SELECT unnest(index_all_resource_references(_rsrs))
   LOOP
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO "{{tbl}}_references"
       (resource_id, path, reference_type, logical_id)
       SELECT $1, $2->>'path', $2->>'reference_type', $2->>'logical_id';
@@ -235,7 +235,7 @@ RETURNS uuid LANGUAGE plpgsql AS $$
 DECLARE
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO "{{tbl}}_history"
       (version_id, logical_id, updated, published, content)
       SELECT version_id, logical_id, updated, published, content
@@ -273,7 +273,7 @@ DECLARE
   res jsonb;
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       SELECT json_agg(row_to_json(tgs))::jsonb
         FROM (
           SELECT tg->>'scheme' as scheme,

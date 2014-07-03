@@ -99,7 +99,7 @@ BEGIN
     WHERE resource_type = rsrs->>'resourceType'
     AND search_type = 'date'
   LOOP
-    attrs := get_in_path(rsrs, rest(prm.path));
+    attrs := json_get_in(rsrs, _rest(prm.path));
 
     FOR item IN SELECT unnest(attrs)
     LOOP
