@@ -193,8 +193,8 @@ SELECT fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077');
  {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
 (1 row)
 
-SELECT remove_fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077');
- remove_fhir_tags 
+SELECT fhir_remove_tags('Patient', '550e8400-e29b-41d4-a716-446655440077');
+ fhir_remove_tags 
 ------------------
                 1
 (1 row)
@@ -207,8 +207,8 @@ SELECT assert(
  OK should be empty
 (1 row)
 
-SELECT affix_fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]');
-                   affix_fhir_tags                   
+SELECT fhir_affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]');
+                   fhir_affix_tags                   
 -----------------------------------------------------
  [{"term": "pt", "label": "pt", "scheme": "pt.com"}]
 (1 row)
@@ -219,7 +219,7 @@ SELECT assert(category IS NOT NULL, 'populate category column') FROM patient WHE
  OK populate category column
 (1 row)
 
-SELECT assert_eq(affix_fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]'), '[]'::jsonb, 'should not insert twice');
+SELECT assert_eq(fhir_affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]'), '[]'::jsonb, 'should not insert twice');
          assert_eq          
 ----------------------------
  OK should not insert twice
@@ -398,11 +398,11 @@ SELECT assert_eq((SELECT t from tgs limit 1),
  OK should show history tags
 (1 row)
 
-SELECT remove_fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
+SELECT fhir_remove_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
             (SELECT resource_version_id
               FROM patient_tag_history
               WHERE resource_id = '550e8400-e29b-41d4-a716-446655440077' limit 1));
- remove_fhir_tags 
+ fhir_remove_tags 
 ------------------
                 1
 (1 row)
@@ -428,18 +428,18 @@ SELECT assert((SELECT t from tgs limit 1)
  OK should show history tags
 (1 row)
 
-SELECT affix_fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
+SELECT fhir_affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
                    (SELECT version_id FROM patient_history WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077' limit 1),
                   '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]'::jsonb);
-                   affix_fhir_tags                   
+                   fhir_affix_tags                   
 -----------------------------------------------------
  [{"term": "pt", "label": "pt", "scheme": "pt.com"}]
 (1 row)
 
-SELECT affix_fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
+SELECT fhir_affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
                    (SELECT version_id FROM patient_history WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077' limit 1),
                   '[{"scheme": "obs.com", "term": "obs", "label": "obs"}]'::jsonb);
-                    affix_fhir_tags                     
+                    fhir_affix_tags                     
 --------------------------------------------------------
  [{"term": "obs", "label": "obs", "scheme": "obs.com"}]
 (1 row)
