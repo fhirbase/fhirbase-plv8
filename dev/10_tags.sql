@@ -71,9 +71,9 @@ LANGUAGE sql AS $$
 $$ IMMUTABLE;
 
 -- Affix tag to resource with _id
-DROP FUNCTION IF EXISTS affix_fhir_tags(_res_type varchar, _id_ uuid, _tags jsonb);
+DROP FUNCTION IF EXISTS fhir_affix_tags(_res_type varchar, _id_ uuid, _tags jsonb);
 CREATE OR REPLACE
-FUNCTION affix_fhir_tags(_res_type varchar, _id_ uuid, _tags jsonb) RETURNS jsonb
+FUNCTION fhir_affix_tags(_res_type varchar, _id_ uuid, _tags jsonb) RETURNS jsonb
 LANGUAGE plpgsql AS $$
 DECLARE
   res jsonb;
@@ -120,9 +120,9 @@ END;
 $$;
 
 -- Affix tag to resource with _id and _vid
-DROP FUNCTION IF EXISTS affix_fhir_tags(_res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb);
+DROP FUNCTION IF EXISTS fhir_affix_tags(_res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb);
 CREATE OR REPLACE
-FUNCTION affix_fhir_tags(_res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb) RETURNS jsonb
+FUNCTION fhir_affix_tags(_res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb) RETURNS jsonb
 LANGUAGE plpgsql AS $$
 DECLARE
   res jsonb;
@@ -170,9 +170,9 @@ END;
 $$;
 
 -- Remove all tag from current version of resource with _id
-DROP FUNCTION IF EXISTS remove_fhir_tags(_res_type varchar, _id_ uuid);
+DROP FUNCTION IF EXISTS fhir_remove_tags(_res_type varchar, _id_ uuid);
 CREATE OR REPLACE
-FUNCTION remove_fhir_tags(_res_type varchar, _id_ uuid) RETURNS bigint
+FUNCTION fhir_remove_tags(_res_type varchar, _id_ uuid) RETURNS bigint
 LANGUAGE sql AS $$
   UPDATE resource SET category = NULL
   WHERE resource_type = _res_type
@@ -186,9 +186,9 @@ LANGUAGE sql AS $$
 $$;
 
 -- Remove all tag from resource with _id and _vid
-DROP FUNCTION IF EXISTS remove_fhir_tags(_res_type varchar, _id_ uuid, _vid uuid);
+DROP FUNCTION IF EXISTS fhir_remove_tags(_res_type varchar, _id_ uuid, _vid uuid);
 CREATE OR REPLACE
-FUNCTION remove_fhir_tags(_res_type varchar, _id_ uuid, _vid uuid) RETURNS bigint
+FUNCTION fhir_remove_tags(_res_type varchar, _id_ uuid, _vid uuid) RETURNS bigint
 LANGUAGE sql AS $$
   UPDATE resource_history SET category = NULL
   WHERE resource_type = _res_type
