@@ -228,7 +228,9 @@ END
 $$;
 
 --DROP FUNCTION delete_resource(uuid);
-
+-- TODO: simplify throu base tables
+-- TODO: mark deleted in history
+-- TODO: swap
 CREATE OR REPLACE FUNCTION
 delete_resource(id uuid, res_type varchar)
 RETURNS uuid LANGUAGE plpgsql AS $$

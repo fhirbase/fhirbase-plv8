@@ -398,7 +398,7 @@ $$;
 DROP FUNCTION IF EXISTS search(character varying,jsonb);
 CREATE OR REPLACE FUNCTION
 search(_resource_type varchar, query jsonb)
-RETURNS TABLE (resource_type varchar, logical_id uuid, content jsonb, category jsonb, updated timestamptz, published timestamptz, weight bigint, is_included boolean)
+RETURNS TABLE (resource_type varchar, logical_id uuid, version_id uuid, content jsonb, category jsonb, updated timestamptz, published timestamptz, weight bigint, is_included boolean)
 LANGUAGE plpgsql AS $$
 BEGIN
 RETURN QUERY EXECUTE (
@@ -407,6 +407,7 @@ RETURN QUERY EXECUTE (
     found_resources AS (
       SELECT x.resource_type,
              x.logical_id,
+             x.version_id,
              x.content,
              x.category,
              x.updated,
@@ -427,6 +428,7 @@ RETURN QUERY EXECUTE (
     included_resources AS (
       SELECT incres.resource_type,
              incres.logical_id,
+             incres.version_id,
              incres.content,
              incres.category,
              incres.updated,
@@ -449,6 +451,7 @@ RETURN QUERY EXECUTE (
 END
 $$ IMMUTABLE;
 
+-- TODO absolete
 CREATE OR REPLACE FUNCTION
 search_bundle(_resource_type varchar, query jsonb)
 RETURNS jsonb LANGUAGE sql AS $$

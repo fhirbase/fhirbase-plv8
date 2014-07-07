@@ -20,34 +20,34 @@ BEGIN;
 SELECT insert_resource(:'obs_uuid'::uuid, :'obs'::jsonb, :'obs_tags'::jsonb);
 SELECT insert_resource(:'pt_uuid'::uuid, :'pt'::jsonb, :'pt_tags'::jsonb);
 
-SELECT tags();
-SELECT tags('Observation');
-SELECT tags('Observation', :'obs_uuid');
+SELECT fhir_tags();
+SELECT fhir_tags('Observation');
+SELECT fhir_tags('Observation', :'obs_uuid');
 
-SELECT tags('Patient');
-SELECT tags('Patient', :'pt_uuid');
+SELECT fhir_tags('Patient');
+SELECT fhir_tags('Patient', :'pt_uuid');
 
-SELECT remove_tags('Patient', :'pt_uuid');
+SELECT remove_fhir_tags('Patient', :'pt_uuid');
 SELECT assert(
-         tags('Patient', :'pt_uuid') = '{"category": null, "resourceType": "TagList"}',
+         fhir_tags('Patient', :'pt_uuid') = '{"category": null, "resourceType": "TagList"}',
               'should be empty');
 
-SELECT affix_tags('Patient', :'pt_uuid', :'pt_tags');
+SELECT affix_fhir_tags('Patient', :'pt_uuid', :'pt_tags');
 
 SELECT assert(category IS NOT NULL, 'populate category column') FROM patient WHERE logical_id = :'pt_uuid';
 
-SELECT assert_eq(affix_tags('Patient', :'pt_uuid', :'pt_tags'), '[]'::jsonb, 'should not insert twice');
+SELECT assert_eq(affix_fhir_tags('Patient', :'pt_uuid', :'pt_tags'), '[]'::jsonb, 'should not insert twice');
 
 
 SELECT assert_eq(
-         tags('Patient', :'pt_uuid'),
+         fhir_tags('Patient', :'pt_uuid'),
         '{"category": [{"scheme":"pt.com", "term":"pt", "label":"pt"}], "resourceType": "TagList"}',
               'should populate again');
 
 SELECT 'ok' FROM update_resource(:'pt_uuid', :'pt', '[]');
 
 WITH tgs AS (
-  SELECT tags('Patient',
+  SELECT fhir_tags('Patient',
             :'pt_uuid',
             (SELECT resource_version_id
               FROM patient_tag_history
@@ -57,7 +57,7 @@ SELECT assert_eq((SELECT t from tgs limit 1),
          '{"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}'
         , 'should show history tags');
 
-SELECT remove_tags('Patient', :'pt_uuid',
+SELECT remove_fhir_tags('Patient', :'pt_uuid',
             (SELECT resource_version_id
               FROM patient_tag_history
               WHERE resource_id = :'pt_uuid' limit 1));
@@ -65,7 +65,7 @@ SELECT remove_tags('Patient', :'pt_uuid',
 SELECT assert_eq(category, NULL, 'clear hx category column') FROM patient_history WHERE logical_id = :'pt_uuid';
 
 WITH tgs AS (
-  SELECT tags('Patient',
+  SELECT fhir_tags('Patient',
             :'pt_uuid',
             (SELECT resource_version_id
               FROM patient_tag_history
@@ -75,21 +75,21 @@ SELECT assert((SELECT t from tgs limit 1)
            = '{"category": null, "resourceType": "TagList"}'
         , 'should show history tags');
 
-SELECT affix_tags('Patient', :'pt_uuid',
+SELECT affix_fhir_tags('Patient', :'pt_uuid',
                    (SELECT version_id FROM patient_history WHERE logical_id = :'pt_uuid' limit 1),
                   :'pt_tags'::jsonb);
 
-SELECT affix_tags('Patient', :'pt_uuid',
+SELECT affix_fhir_tags('Patient', :'pt_uuid',
                    (SELECT version_id FROM patient_history WHERE logical_id = :'pt_uuid' limit 1),
                   :'obs_tags'::jsonb);
 
 
 SELECT assert(category IS NOT NULL, 'populate hx category column') FROM patient_history WHERE logical_id = :'pt_uuid';
 
-SELECT tags('Patient');
-SELECT tags('Patient', :'pt_uuid');
+SELECT fhir_tags('Patient');
+SELECT fhir_tags('Patient', :'pt_uuid');
 
-SELECT tags('Patient',
+SELECT fhir_tags('Patient',
           :'pt_uuid',
           (SELECT resource_version_id
             FROM patient_tag_history

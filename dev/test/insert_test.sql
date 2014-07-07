@@ -35,17 +35,3 @@ SELECT assert(count(*)=5,'delete: 5 in history tags') FROM observation_tag_histo
 
 ROLLBACK;
 --}}}
---{{{
-\set obs `curl http://www.hl7.org/implement/standards/fhir/observation-example-f001-glucose.json`
-\set uuid '550e8400-e29b-41d4-a716-446655440000'
-\set tags '[{"scheme": "fhir.com", "term": "term", "label": "label"},{"scheme": "fhir.com1", "term": "term1", "label": "label1"}]'
-\set new_tags '[{"scheme": "fhir.com", "term": "term", "label": "label"}, {"scheme": "fhir.com2", "term": "term2", "label": "label2"}]'
-
-BEGIN;
-
-SELECT insert_resource(:'uuid'::uuid, :'obs'::jsonb, :'tags'::jsonb);
-SELECT assert_eq(:'uuid', id, 'read resource') FROM read('Observation', :'uuid'::uuid) LIMIT 1;
-SELECT assert_eq(category#>>'{1,term}', 'term1', 'should have category') FROM read('Observation', :'uuid'::uuid) LIMIT 1;
-
-ROLLBACK;
---}}}
