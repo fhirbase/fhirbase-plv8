@@ -140,37 +140,44 @@ psql mydb < fhirplace--1.0.sql
 
 TODO: test script to verify installation
 
-## Usage
+## API
 
 Most of FHIR complaint operations could be done with FHIRBase procedures,
 which guaranties data integrity and do heavy job for you:
 
-`insert_resource(resource jsonb, tags jsonb)`
-insert resource and fill tag & index tables
+### FUNCTION fhir_read(_type_ varchar, _id_ uuid)
+Read the current state of the resource
+return bundle with one entry;
 
-`insert_resource(id uuid, resource jsonb, tags jsonb)`
-overloaded version taking explicit id
+### FUNCTION fhir_create(_type_ varchar, _resource_ jsonb, _tags_ jsonb)
+Create a new resource with a server assigned id
+return bundle with one entry;
 
-`update_resource(id uuid, _rsrs jsonb, _tags jsonb)`
-create new version of resource and move old version into resource_history table
+### FUNCTION fhir_vread(_type_ varchar, _id_ uuid, _vid_ uuid)
+Read specific version of resource with _type_
+Returns bundle with one entry;
 
-`delete_resource(id uuid, res_type varchar)`
-remove resource preserving all history versions
+### FUNCTION fhir_update(_type_ varchar, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb)
+Update resource, creating new version
+Returns bundle with one entry;
 
-`search_bundle(_resource_type varchar, query jsonb)`
-search resources of _resource_type by query object and return bundle json
+### FUNCTION fhir_delete(_type_ varchar, _id_ uuid)
+DELETE resource by its id AND return deleted version
+Return bundle with one deleted version entry ;
 
-`tags(), tags(_res_type varchar), tags(_res_type varchar, _id_ uuid), tags(_res_type varchar, _id_ uuid, _vid uuid)`
-return tags for all resources, concrete type, concrete resource, concrete version of resource respectively
+### FUNCTION fhir_history(_type_ varchar, _id_ uuid, _params_ jsonb)
+Retrieve the changes history for a particular resource with logical id (_id_)
+Return bundle with entries representing versions;
 
-`affix_tags(_res_type varchar, _id_ uuid, _tags jsonb), affix_tags(_res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb)`
-affix tags to current or concrete version
+### FUNCTION fhir_search(_type_ varchar, _params_ jsonb)
+Search in resources with _type_ by _params_
+Returns bundle with entries;
 
-`remove_tags(_res_type varchar, _id_ uuid), remove_tags(_res_type varchar, _id_ uuid, _vid uuid)`
-remove tags from current or concrete version of resource
+### FUNCTION fhir_tags()
+Return all tags in system;
 
-`history_resource(_resource_type varchar, _id uuid)`
-return history bundle for resource
+### FUNCTION fhir_tags(_res_type varchar)
+Return tags for resources with type = _type_;
 
 ## Contribution
 
