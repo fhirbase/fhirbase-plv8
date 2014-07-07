@@ -1,27 +1,35 @@
 --db:fhirb
 --{{{
+
+--- Here we load metadata about datatypes
+--- into meta tables
+
+
 drop schema if exists fhir cascade;
 create schema fhir;
 
--- HACK: see http://joelonsql.com/2013/05/13/xml-madness/
--- problems with namespaces
 CREATE OR REPLACE
 FUNCTION xspath(pth varchar, x xml) returns xml[]
-  as $$
-  BEGIN
-    return  xpath('/xml' || pth, xml('<xml xmlns:xs="xs">' || x || '</xml>'), ARRAY[ARRAY['xs','xs']]);
-  END
+--- @private
+--- HACK: see http://joelonsql.com/2013/05/13/xml-madness/
+--- problems with namespaces
+AS $$
+BEGIN
+  return  xpath('/xml' || pth, xml('<xml xmlns:xs="xs">' || x || '</xml>'), ARRAY[ARRAY['xs','xs']]);
+END
 $$ language plpgsql IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION xsattr(pth varchar, x xml) returns varchar
-  as $$
-  BEGIN
-    return  unnest(xspath( pth,x)) limit 1;
-  END
+--- @private
+AS $$
+BEGIN
+  RETURN unnest(xspath( pth,x)) limit 1;
+END
 $$ language plpgsql IMMUTABLE;
 
 CREATE TABLE fhir.datatypes (
+--- store list of datatypes
   version varchar,
   type varchar,
   kind varchar,
@@ -32,6 +40,7 @@ CREATE TABLE fhir.datatypes (
 );
 
 CREATE TABLE fhir.datatype_elements (
+  --- store relations between complex datatypes
   version varchar,
   datatype varchar references fhir.datatypes(type),
   name varchar,
@@ -43,6 +52,7 @@ CREATE TABLE fhir.datatype_elements (
 );
 
 CREATE TABLE fhir.datatype_enums (
+  --- store enumerated values for enum datatypes
   version varchar,
   datatype varchar references fhir.datatypes(type),
   value varchar,
@@ -73,67 +83,59 @@ VALUES
 ('id', 'varchar'),
 ('oid', 'varchar');
 
+-- Here we load metadata from xsd file
 \set datatypes `cat fhir-base.xsd`
 
 INSERT INTO fhir.datatypes (version, type)
 (
-  select
-    '0.12' as version,
-    xsattr('/xs:simpleType/@name', st) as type
-    FROM (
-    SELECT unnest(xpath('/xs:schema/xs:simpleType', :'datatypes',
-       ARRAY[ARRAY['xs', 'http://www.w3.org/2001/XMLSchema']])) st
-  ) simple_types
+  SELECT '0.12' as version,
+         xsattr('/xs:simpleType/@name', st) as type
+   FROM (
+          SELECT unnest(xpath('/xs:schema/xs:simpleType', :'datatypes',
+             ARRAY[ARRAY['xs', 'http://www.w3.org/2001/XMLSchema']])) st
+        ) simple_types
   UNION
-  select
-    '0.12' as version,
-    xsattr('/xs:complexType/@name', st) as type
-    FROM (
-    SELECT unnest(xpath('/xs:schema/xs:complexType', :'datatypes',
-       ARRAY[ARRAY['xs', 'http://www.w3.org/2001/XMLSchema']])) st
-  ) simple_types
+  SELECT '0.12' as version,
+          xsattr('/xs:complexType/@name', st) as type
+        FROM (
+          SELECT unnest(xpath('/xs:schema/xs:complexType', :'datatypes',
+             ARRAY[ARRAY['xs', 'http://www.w3.org/2001/XMLSchema']])) st
+        ) simple_types
 );
 
 
 INSERT INTO fhir.datatype_enums (version, datatype, value)
-SELECT
- '0.12' as version,
- datatype,
- xsattr('/xs:enumeration/@value', enum) as value
-FROM
-  (select
-      xsattr('/xs:simpleType/@name', st) as datatype,
-      unnest(xspath('/xs:simpleType/xs:restriction/xs:enumeration', st)) as enum
-      FROM (SELECT unnest(xpath('/xs:schema/xs:simpleType', :'datatypes',
-             ARRAY[ARRAY['xs', 'http://www.w3.org/2001/XMLSchema']])) st
-      ) n1
-  ) n2;
+SELECT '0.12' as version,
+       datatype,
+       xsattr('/xs:enumeration/@value', enum) as value
+  FROM (SELECT xsattr('/xs:simpleType/@name', st) as datatype,
+               unnest(xspath('/xs:simpleType/xs:restriction/xs:enumeration', st)) as enum
+          FROM (SELECT unnest(xpath('/xs:schema/xs:simpleType', :'datatypes',
+                       ARRAY[ARRAY['xs', 'http://www.w3.org/2001/XMLSchema']])) st
+          ) n1
+      ) n2;
 
 
 INSERT INTO fhir.datatype_elements
 (version, datatype, name, type, min_occurs, max_occurs)
-SELECT
-  '0.12' as version,
-  datatype,
-  coalesce(
-    xsattr('/xs:element/@name', el),
-    (string_to_array(xsattr('/xs:element/@ref', el),':'))[2]
-  ) as name,
-  coalesce(
-    xsattr('/xs:element/@type', el),
-    'text'
-  ) as type,
-  xsattr('/xs:element/@minOccurs', el) as min_occurs,
-  xsattr('/xs:element/@maxOccurs', el) as max_occurs
-FROM (
-  SELECT
-    xsattr('/xs:complexType/@name', st) as datatype,
-    unnest(xspath('/xs:complexType/xs:complexContent/xs:extension/xs:sequence/xs:element', st)) as el
-    FROM (
-    SELECT unnest(xpath('/xs:schema/xs:complexType', :'datatypes',
-       ARRAY[ARRAY['xs', 'http://www.w3.org/2001/XMLSchema']])) st
-  ) n1
-) n2;
+SELECT '0.12' as version,
+        datatype,
+        coalesce(
+          xsattr('/xs:element/@name', el),
+          (string_to_array(xsattr('/xs:element/@ref', el),':'))[2]
+        ) as name,
+        coalesce(
+          xsattr('/xs:element/@type', el),
+          'text'
+        ) as type,
+        xsattr('/xs:element/@minOccurs', el) as min_occurs,
+        xsattr('/xs:element/@maxOccurs', el) as max_occurs
+FROM ( SELECT xsattr('/xs:complexType/@name', st) as datatype,
+              unnest(xspath('/xs:complexType/xs:complexContent/xs:extension/xs:sequence/xs:element', st)) as el
+        FROM ( SELECT unnest(xpath('/xs:schema/xs:complexType', :'datatypes',
+               ARRAY[ARRAY['xs', 'http://www.w3.org/2001/XMLSchema']])) st
+    ) n1
+  ) n2;
 
 CREATE VIEW fhir.enums AS (
   SELECT  replace(datatype, '-list','')
@@ -153,11 +155,9 @@ CREATE VIEW fhir.primitive_types as (
 );
 
 CREATE VIEW fhir._datatype_unified_elements AS (
-  SELECT ARRAY[datatype, name]
-      AS path
+  SELECT ARRAY[datatype, name] AS path
          ,type
-         ,min_occurs
-      AS min
+         ,min_occurs AS min
          ,CASE when max_occurs = 'unbounded'
            THEN '*'
            ELSE max_occurs
@@ -167,13 +167,8 @@ CREATE VIEW fhir._datatype_unified_elements AS (
    WHERE datatype <> 'Resource'
 );
 
-CREATE VIEW fhir.datatype_unified_elements as (
-  WITH RECURSIVE tree(
-    path
-    ,type
-    ,min
-    ,max
-  ) AS (
+CREATE VIEW fhir.datatype_unified_elements AS (
+  WITH RECURSIVE tree( path ,type ,min ,max) AS (
     SELECT r.* FROM fhir._datatype_unified_elements r
     UNION
     SELECT t.path || ARRAY[_last(r.path)] as path,

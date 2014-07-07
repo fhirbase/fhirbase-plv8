@@ -1,0 +1,62 @@
+--db:fhirb
+--{{{
+
+--- # Instance Level Interactions
+FUNCTION fhir_read(_type_ varchar, _id_ uuid) AS $$
+--- Read the current state of the resource
+--- return entry
+
+FUNCTION fhir_vread(_type_ varchar, _id_ uuid, _vid_ uuid)
+--- Read the state of a specific version of the resource
+--- return entry
+
+FUNCTION fhir_update(_type varchar, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb)
+--- Update an existing resource by its id (ORDER BY create it if it is new)
+--- return entry
+
+FUNCTION fhir_delete(_type_ varchar, _id_ uuid)
+--- Delete a resource
+--- return entry
+
+FUNCTION fhir_history(_type_ varchar, _id_ uuid, _params_ jsonb)
+--- Retrieve the update history for a particular resource
+--- return bundle
+
+--- # Type Level Interactions
+
+FUNCTION fhir_create(_type_ varchar, _resource_ jsonb, _tags_ jsonb)
+--- Create a new resource with a server assigned id
+--- return entry
+
+FUNCTION fhir_search(_type_ varchar, _params_ jsonb)
+--- Search the resource type based on some filter criteria
+--- return bundle
+
+FUNCTION fhir_history(_type_ varchar, _params_ jsonb)
+--- Retrieve the update history for a particular resource type
+
+FUNCTION fhir_validate(_type_ varchar, _resource_ jsonb)
+--- Check that the content would be acceptable as an update
+
+
+--- # Whole System Interactions
+
+FUNCTION fhir_conformance()
+--- Get a conformance statement for the system
+--- return conformance resource
+
+FUNCTION fhir_transaction(_bundle_ jsonb)
+--- Update, create ORDER BY delete a set of resources as a single transaction
+
+FUNCTION fhir_history(_params_ jsonb)
+--- Retrieve the update history for all resources
+
+FUNCTION fhir_search(_params_ jsonb)
+--- SearchSearch across all resource types based on some filter criteria
+
+FUNCTION fhir_mailbox(_bundle_)
+
+FUNCTION fhir_document()
+
+-- TAGS operations
+--}}}

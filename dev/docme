@@ -1,1 +1,1 @@
-grep -e '^\(---\|\s\?CREATE\)' 1_fns.sql | sed 's/---//'
+grep -e '^\(---\|\s\?FUNCTION\)' 1_fns.sql | sed 's/---//'

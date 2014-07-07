@@ -2,7 +2,8 @@
 --{{{
 
 DROP FUNCTION IF EXISTS _tpl(_tpl_ text, variadic _bindings varchar[]);
-CREATE FUNCTION _tpl(_tpl_ text, variadic _bindings varchar[]) RETURNS text AS $$
+CREATE
+FUNCTION _tpl(_tpl_ text, variadic _bindings varchar[]) RETURNS text AS $$
 --- replace {{var}} in template string
 ---  EXAMPLE:
 ---    _tpl('{{a}}={{b}}', 'a', 'A','b','B') => 'A=B'
@@ -18,7 +19,8 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 
 
 DROP FUNCTION IF EXISTS _eval(_str_ text);
-CREATE FUNCTION _eval(_str_ text) RETURNS text AS
+CREATE
+FUNCTION _eval(_str_ text) RETURNS text AS
 --- eval _str_
 $BODY$
 BEGIN
@@ -29,21 +31,24 @@ $BODY$
 LANGUAGE plpgsql VOLATILE;
 
 DROP FUNCTION IF EXISTS _butlast(anyarray);
-CREATE FUNCTION _butlast(_ar_ anyarray) RETURNS anyarray
+CREATE
+FUNCTION _butlast(_ar_ anyarray) RETURNS anyarray
 --- cut last element of array
 language sql AS $$
   SELECT _ar_[array_lower(_ar_,1) : array_upper(_ar_,1) - 1];
 $$ IMMUTABLE;
 
 DROP FUNCTION IF EXISTS _is_descedant(anyarray, anyarray);
-CREATE FUNCTION _is_descedant(_parent_ anyarray, _child_ anyarray) RETURNS boolean
+CREATE
+FUNCTION _is_descedant(_parent_ anyarray, _child_ anyarray) RETURNS boolean
 --- test _parent_ is prefix of _child_
 language sql AS $$
   SELECT _child_[array_lower(_parent_,1) : array_upper(_parent_,1)] = _parent_;
 $$ IMMUTABLE;
 
 DROP FUNCTION IF EXISTS _subpath(anyarray, anyarray);
-CREATE FUNCTION _subpath(_parent_ anyarray, _child_ anyarray) RETURNS varchar[]
+CREATE
+FUNCTION _subpath(_parent_ anyarray, _child_ anyarray) RETURNS varchar[]
 --- remove _parent_ elements from begining of _child_
 language sql AS $$
   SELECT _child_[array_upper(_parent_,1) + 1 : array_upper(_child_,1)];
@@ -51,14 +56,16 @@ $$ IMMUTABLE;
 
 
 DROP FUNCTION  IF EXISTS _rest(anyarray);
-CREATE FUNCTION _rest(_ar_ anyarray) RETURNS anyarray
+CREATE
+FUNCTION _rest(_ar_ anyarray) RETURNS anyarray
 --- return rest of array
 language sql AS $$
   SELECT _ar_[2 : array_upper(_ar_,1)];
 $$ IMMUTABLE;
 
 DROP FUNCTION IF EXISTS _last(ar anyarray);
-CREATE FUNCTION _last(_ar_ anyarray) RETURNS anyelement
+CREATE
+FUNCTION _last(_ar_ anyarray) RETURNS anyelement
 --- return last element of collection
 language sql AS $$
   SELECT _ar_[array_length(_ar_,1)];
@@ -148,6 +155,7 @@ $$;
 
 CREATE OR REPLACE
 FUNCTION assert(_pred boolean, mess varchar) RETURNS varchar
+--- simple test fn
 LANGUAGE plpgsql AS $$
 DECLARE
   item jsonb;
@@ -173,7 +181,7 @@ BEGIN
     RETURN 'OK ' || mess;
   ELSE
     RAISE EXCEPTION E'assert_eq % FAILED:\nEXPECTED: %\nACTUAL:   %', mess, expec, res;
-    RETURN 'not ok';
+    RETURN 'NOT OK';
   END IF;
 END
 $$;

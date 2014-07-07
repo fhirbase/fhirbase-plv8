@@ -1,20 +1,22 @@
 --db:fhirb
 --{{{
-/* Efficient Lexicographic Encoding of Numbers */
-/* Peter Seymour */
-/* June 5, 2008--- implementation of */
-/* www.zanopha.com/docs/elen.pdf */
+---  We use one table and one column to denormalize and simplify sorting
+---  Here is implementation of ELEN for sorting numbers as text (i.e. in lexicographic order):
+---  Efficient Lexicographic Encoding of Numbers
+---  www.zanopha.com/docs/elen.pdf
+---  Peter Seymour
 
-CREATE OR REPLACE FUNCTION
-lexit(_str text)
-RETURNS text LANGUAGE sql AS $$
+CREATE OR REPLACE
+FUNCTION lexit(_str text) RETURNS text
+--- just for polymorphic interface
+LANGUAGE sql AS $$
   select _str;
 $$;
 
-
+-- private
 CREATE OR REPLACE FUNCTION
-lex_reverse(_int text)
-RETURNS text LANGUAGE sql AS $$
+lex_reverse(_int text) RETURNS text
+LANGUAGE sql AS $$
   SELECT string_agg(CASE
                     WHEN regexp_split_to_table = 'a' THEN
                       '!'
@@ -26,9 +28,10 @@ RETURNS text LANGUAGE sql AS $$
     FROM regexp_split_to_table(_int, '')
 $$;
 
+-- private
 CREATE OR REPLACE FUNCTION
-lex_prefix(_acc text, _int decimal)
-RETURNS text LANGUAGE sql AS $$
+lex_prefix(_acc text, _int decimal) RETURNS text
+LANGUAGE sql AS $$
   SELECT CASE
     WHEN char_length(_int::text) > 9 THEN
       lex_prefix(char_length(_int::text) || _acc,
@@ -38,9 +41,10 @@ RETURNS text LANGUAGE sql AS $$
     END;
 $$ IMMUTABLE;
 
+--private
 CREATE OR REPLACE FUNCTION
-_lexit_int(_int decimal)
-RETURNS text LANGUAGE sql AS $$
+_lexit_int(_int decimal) RETURNS text
+LANGUAGE sql AS $$
   SELECT CASE
     WHEN _int = 0 THEN
       'a0'
@@ -52,16 +56,18 @@ RETURNS text LANGUAGE sql AS $$
     END;
 $$ IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION
-lexit(_int bigint)
-RETURNS text LANGUAGE sql AS $$
+CREATE OR REPLACE
+FUNCTION lexit(_int bigint) RETURNS text
+--- encode bigint
+LANGUAGE sql AS $$
   SELECT _lexit_int(_int::decimal);
 $$ IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION
-lexit(_dec decimal)
-RETURNS text LANGUAGE sql AS $$
+CREATE OR REPLACE
+FUNCTION lexit(_dec decimal) RETURNS text
+--- encode decimal
+LANGUAGE sql AS $$
   SELECT CASE
     WHEN _dec = 0 THEN
       'a0'
