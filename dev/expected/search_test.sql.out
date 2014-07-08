@@ -384,7 +384,7 @@ SELECT assert_eq('550e8400-e29b-41d4-a716-446655440009',
 
 SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
  (SELECT logical_id
-    FROM search('Patient', '{"provider.name": "Health Level"}'))
+    FROM search('Patient', '{"provider.name": "Health Level"}') LIMIT 1)
  ,'pt by org name');
      assert_eq     
 -------------------
@@ -403,7 +403,7 @@ SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
 SELECT assert_eq('http://pt/vip',
  (SELECT string_agg(jsonb_array_elements#>>'{category,0,term}','')
     FROM jsonb_array_elements(
-            search_bundle('Patient', '{"_tag": "http://pt/vip"}')->'entry'))
+            fhir_search('Patient', '{"_tag": "http://pt/vip"}')->'entry'))
  ,'pt by tag');
   assert_eq   
 --------------

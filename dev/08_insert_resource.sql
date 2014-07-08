@@ -16,7 +16,6 @@ $$;
 CREATE OR REPLACE FUNCTION
 numeric_to_sortable_varchar(_num decimal)
 RETURNS varchar LANGUAGE sql AS $$
-  /* SELECT to_char(i, 'SG0000000000000000D99999'); */
   SELECT lexit(_num);
 $$;
 
@@ -102,9 +101,9 @@ END
 $$;
 
 --private
-CREATE OR REPLACE FUNCTION
-create_tags(_id uuid, _vid uuid, res_type varchar, _tags jsonb)
-RETURNS uuid LANGUAGE plpgsql AS $$
+CREATE OR REPLACE
+FUNCTION create_tags(_id uuid, _vid uuid, res_type varchar, _tags jsonb) RETURNS uuid
+LANGUAGE plpgsql AS $$
 BEGIN
   EXECUTE
     _tpl($SQL$
@@ -119,9 +118,9 @@ END
 $$;
 
 --private
-CREATE OR REPLACE FUNCTION
-index_resource(id uuid, res_type varchar)
-RETURNS uuid LANGUAGE plpgsql AS $$
+CREATE OR REPLACE
+FUNCTION index_resource(id uuid, res_type varchar) RETURNS uuid
+LANGUAGE plpgsql AS $$
 DECLARE
   rec RECORD;
   rsrs jsonb;
@@ -137,9 +136,9 @@ BEGIN
 END
 $$;
 
-CREATE OR REPLACE FUNCTION
-index_resource(id uuid, res_type varchar, _rsrs jsonb)
-RETURNS uuid LANGUAGE plpgsql AS $$
+CREATE OR REPLACE
+FUNCTION index_resource(id uuid, res_type varchar, _rsrs jsonb) RETURNS uuid
+LANGUAGE plpgsql AS $$
 DECLARE
   rec RECORD;
   idx jsonb;
@@ -297,9 +296,9 @@ END
 $$;
 
 -- TODO: implement by UPDATE
-CREATE OR REPLACE FUNCTION
-update_resource(id uuid, _rsrs jsonb, _tags jsonb)
-RETURNS uuid LANGUAGE plpgsql AS $$
+CREATE OR REPLACE
+FUNCTION update_resource(id uuid, _rsrs jsonb, _tags jsonb) RETURNS uuid
+LANGUAGE plpgsql AS $$
 DECLARE
   res uuid;
   new_tags jsonb;

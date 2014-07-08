@@ -36,6 +36,7 @@ SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by status')
 SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by status')
   FROM search('Patient', '{"active": "true"}');
 
+
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
     FROM search('Patient', '{"telecom": "+31612345678"}'))
@@ -51,6 +52,7 @@ SELECT assert_eq(:'pt_uuid',
     FROM search('Patient', '{"birthdate": "1960"}'))
  ,'pt found birthdate');
 
+
 SELECT assert_eq(:'org_uuid',
  (SELECT logical_id
     FROM search('Organization', '{"name": "Health Level"}'))
@@ -58,7 +60,7 @@ SELECT assert_eq(:'org_uuid',
 
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
-    FROM search('Patient', '{"provider.name": "Health Level"}'))
+    FROM search('Patient', '{"provider.name": "Health Level"}') LIMIT 1)
  ,'pt by org name');
 
 SELECT assert_eq(:'pt_uuid',
@@ -69,7 +71,7 @@ SELECT assert_eq(:'pt_uuid',
 SELECT assert_eq('http://pt/vip',
  (SELECT string_agg(jsonb_array_elements#>>'{category,0,term}','')
     FROM jsonb_array_elements(
-            search_bundle('Patient', '{"_tag": "http://pt/vip"}')->'entry'))
+            fhir_search('Patient', '{"_tag": "http://pt/vip"}')->'entry'))
  ,'pt by tag');
 
 

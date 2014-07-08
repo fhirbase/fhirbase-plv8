@@ -29,4 +29,46 @@ BEGIN
   RETURN result;
 END
 $$;
+
+CREATE OR REPLACE FUNCTION
+_search_quantity_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+RETURNS text LANGUAGE sql AS $$
+  SELECT
+  quote_ident(_table) || '.value ' ||
+
+  CASE
+  WHEN op = '' OR op IS NULL THEN
+    '= ' || quote_literal(p.val)
+  WHEN op = '<' THEN
+    '< ' || quote_literal(p.val)
+  WHEN op = '>' THEN
+    '>' || quote_literal(p.val)
+  WHEN op = '~' THEN
+    '<@ numrange(' || val - val * 0.05 || ',' || val + val * 0.05 || ')'
+  ELSE
+    '= "unknown operator: ' || op || '"'
+  END ||
+
+  CASE WHEN array_length(p.c, 1) = 3 THEN
+    CASE WHEN p.c[2] IS NOT NULL AND p.c[2] <> '' THEN
+      ' AND ' || quote_ident(_table) || '.system = ' || quote_literal(p.c[2])
+    ELSE
+      ''
+    END ||
+    CASE WHEN p.c[3] IS NOT NULL AND p.c[3] <> '' THEN
+      ' AND ' || quote_ident(_table) || '.units = ' || quote_literal(p.c[3])
+    ELSE
+      ''
+    END
+  WHEN array_length(p.c, 1) = 1 THEN
+    ''
+  ELSE
+    '"wrong number of compoments of search string, must be 1 or 3"'
+  END
+  FROM
+  (SELECT
+    regexp_split_to_array(_value, '\|') AS c,
+    (regexp_matches(split_part(_value, '|', 1), '^(<|>|~)?'))[1] AS op,
+    (regexp_matches(split_part(_value, '|', 1), '^(<|>|~)?(.+)$'))[2]::numeric AS val) p;
+$$;
 --}}}

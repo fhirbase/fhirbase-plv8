@@ -5,17 +5,11 @@ CREATE OR REPLACE FUNCTION
 index_string_complex_type(_path varchar[], _item jsonb)
 RETURNS varchar LANGUAGE plpgsql AS $$
 DECLARE
-  el fhir.expanded_resource_elements%rowtype;
+  /* el fhir.expanded_resource_elements%rowtype; */
   vals varchar[] := array[]::varchar[];
 BEGIN
-  FOR el IN
-    SELECT * FROM fhir.expanded_resource_elements
-    WHERE _is_descedant(_path, path) = true
-    AND is_primitive = true
-  LOOP
-    vals := vals || json_array_to_str_array(json_get_in(_item, _subpath(_path, el.path)));
-  END LOOP;
-  RETURN array_to_string(vals, ' ');
+  -- TODO: implement more reason algorithm
+  RETURN _item::text;
 END;
 $$;
 
@@ -38,12 +32,12 @@ CREATE OR REPLACE FUNCTION
 index_string_resource(rsrs jsonb)
 RETURNS jsonb[] LANGUAGE plpgsql AS $$
 DECLARE
-prm fhir.resource_indexables%rowtype;
-attrs jsonb[];
-item jsonb;
-index_vals varchar[];
-new_val varchar;
-result jsonb[] := array[]::jsonb[];
+  prm fhir.resource_indexables%rowtype;
+  attrs jsonb[];
+  item jsonb;
+  index_vals varchar[];
+  new_val varchar;
+  result jsonb[] := array[]::jsonb[];
 BEGIN
   FOR prm IN
     SELECT * FROM fhir.resource_indexables
@@ -78,5 +72,16 @@ BEGIN
 
   RETURN result;
 END
+$$;
+
+CREATE OR REPLACE FUNCTION
+_search_string_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+RETURNS text LANGUAGE sql AS $$
+  SELECT CASE
+    WHEN _modifier = '' THEN
+      quote_ident(_table) || '.value ilike ' || quote_literal('%' || _value || '%')
+    WHEN _modifier = 'exact' THEN
+      quote_ident(_table) || '.value = ' || quote_literal(_value)
+    END;
 $$;
 --}}}

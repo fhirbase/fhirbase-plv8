@@ -1,133 +1,25 @@
 --db:fhirb
 --{{{
-CREATE OR REPLACE FUNCTION
-_param_expression_string(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
-RETURNS text LANGUAGE sql AS $$
-  SELECT CASE
-    WHEN _modifier = '' THEN
-      quote_ident(_table) || '.value ilike ' || quote_literal('%' || _value || '%')
-    WHEN _modifier = 'exact' THEN
-      quote_ident(_table) || '.value = ' || quote_literal(_value)
-    END;
-$$;
-
-CREATE OR REPLACE FUNCTION
-_param_expression_reference(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
-RETURNS text LANGUAGE sql AS $$
-  SELECT
-    '(' || quote_ident(_table) || '.logical_id = ' || quote_literal(_value) || ' OR ' || quote_ident(_table) || '.url = ' || quote_literal(_value) || ')' ||
-    CASE WHEN _modifier <> '' THEN
-      ' AND ' || quote_ident(_table) || '.resource_type = ' || quote_literal(_modifier)
-    ELSE
-      ''
-    END;
-$$;
-
-CREATE OR REPLACE FUNCTION
-_param_expression_quantity(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
-RETURNS text LANGUAGE sql AS $$
-  SELECT
-  quote_ident(_table) || '.value ' ||
-
-  CASE
-  WHEN op = '' OR op IS NULL THEN
-    '= ' || quote_literal(p.val)
-  WHEN op = '<' THEN
-    '< ' || quote_literal(p.val)
-  WHEN op = '>' THEN
-    '>' || quote_literal(p.val)
-  WHEN op = '~' THEN
-    '<@ numrange(' || val - val * 0.05 || ',' || val + val * 0.05 || ')'
-  ELSE
-    '= "unknown operator: ' || op || '"'
-  END ||
-
-  CASE WHEN array_length(p.c, 1) = 3 THEN
-    CASE WHEN p.c[2] IS NOT NULL AND p.c[2] <> '' THEN
-      ' AND ' || quote_ident(_table) || '.system = ' || quote_literal(p.c[2])
-    ELSE
-      ''
-    END ||
-    CASE WHEN p.c[3] IS NOT NULL AND p.c[3] <> '' THEN
-      ' AND ' || quote_ident(_table) || '.units = ' || quote_literal(p.c[3])
-    ELSE
-      ''
-    END
-  WHEN array_length(p.c, 1) = 1 THEN
-    ''
-  ELSE
-    '"wrong number of compoments of search string, must be 1 or 3"'
-  END
-  FROM
-  (SELECT
-    regexp_split_to_array(_value, '\|') AS c,
-    (regexp_matches(split_part(_value, '|', 1), '^(<|>|~)?'))[1] AS op,
-    (regexp_matches(split_part(_value, '|', 1), '^(<|>|~)?(.+)$'))[2]::numeric AS val) p;
-$$;
-
-CREATE OR REPLACE FUNCTION
-_param_expression_token(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
-RETURNS text LANGUAGE sql AS $$
-  (SELECT
-  CASE WHEN _modifier = '' THEN
-    CASE WHEN p.count = 1 THEN
-      quote_ident(_table) || '.code = ' || quote_literal(p.c1)
-    WHEN p.count = 2 THEN
-      quote_ident(_table) || '.code = ' || quote_literal(p.c2) || ' AND ' ||
-      quote_ident(_table) || '.namespace = ' || quote_literal(p.c1)
-    END
-  WHEN _modifier = 'text' THEN
-    quote_ident(_table) || '.text = ' || quote_literal(_value)
-  ELSE
-    '"unknown modifier' || _modifier || '"'
-  END
-  FROM
-    (SELECT split_part(_value, '|', 1) AS c1,
-     split_part(_value, '|', 2) AS c2,
-     array_length(regexp_split_to_array(_value, '\|'), 1) AS count) p);
-$$;
-
-CREATE OR REPLACE FUNCTION
-_param_expression_date(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
-RETURNS text LANGUAGE sql AS $$
-  SELECT
-  CASE WHEN op IS NULL THEN
-    quote_literal(val) || '::tstzrange @> tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end")'
-  WHEN op = '>' THEN
-    'tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end") && ' || 'tstzrange(' || quote_literal(upper(val)) || ', NULL)'
-  WHEN op = '<' THEN
-    'tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end") && ' || 'tstzrange(NULL, ' || quote_literal(lower(val)) || ')'
-  ELSE
-  '1'
-  END
-  FROM
-  (SELECT
-    (regexp_matches(_value, '^(<|>)?'))[1] AS op,
-    convert_fhir_date_to_pgrange((regexp_matches(_value, '^(<|>)?(.+)$'))[2]) AS val) p;
-$$;
-
 -- TODO: all by convetion
 CREATE OR REPLACE FUNCTION
-param_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+_param_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
 RETURNS text LANGUAGE sql AS $$
 WITH val_cond AS (SELECT
   CASE WHEN _type = 'string' THEN
-    _param_expression_string(_table, _param, _type, _modifier, regexp_split_to_table)
+    _search_string_expression(_table, _param, _type, _modifier, regexp_split_to_table)
   WHEN _type = 'token' THEN
-    _param_expression_token(_table, _param, _type, _modifier, regexp_split_to_table)
+    _search_token_expression(_table, _param, _type, _modifier, regexp_split_to_table)
   WHEN _type = 'date' THEN
-    _param_expression_date(_table, _param, _type, _modifier, regexp_split_to_table)
+    _search_date_expression(_table, _param, _type, _modifier, regexp_split_to_table)
   WHEN _type = 'quantity' THEN
-    _param_expression_quantity(_table, _param, _type, _modifier, regexp_split_to_table)
+    _search_quantity_expression(_table, _param, _type, _modifier, regexp_split_to_table)
   WHEN _type = 'reference' THEN
-    _param_expression_reference(_table, _param, _type, _modifier, regexp_split_to_table)
+    _search_reference_expression(_table, _param, _type, _modifier, regexp_split_to_table)
   ELSE 'implement_me' END as cond
   FROM regexp_split_to_table(_value, ','))
 SELECT
-  _tpl($SQL$
-    ({{tbl}}.param = {{param}}
-     AND ({{vals_cond}}))
-  $SQL$, 'tbl', quote_ident(_table)
+  _tpl('({{tbl}}.param = {{param}} AND ({{vals_cond}}))'
+       , 'tbl', quote_ident(_table)
        , 'param', quote_literal(_param)
        , 'vals_cond',
        (SELECT string_agg(cond, ' OR ') FROM val_cond));
@@ -135,8 +27,8 @@ $$;
 
 
 CREATE OR REPLACE
-FUNCTION get_reference_type(_key text,  _types text[])
-RETURNS text language sql AS $$
+FUNCTION get_reference_type(_key text,  _types text[]) RETURNS text
+language sql AS $$
     SELECT
         CASE WHEN position(':' in _key ) > 0 THEN
            split_part(_key, ':', 2)
@@ -148,17 +40,17 @@ RETURNS text language sql AS $$
 $$ IMMUTABLE;
 
 CREATE OR REPLACE
-FUNCTION get_alias_from_path( _path text[])
-RETURNS text language sql AS $$
+FUNCTION get_alias_from_path( _path text[]) RETURNS text
+language sql AS $$
     SELECT
       regexp_replace(
        lower(array_to_string(_path, '_')),
        E'\\W', '') ;
 $$ IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION
-_param_expression_tag(_table varchar, _key varchar, _val varchar, _modifier varchar)
-RETURNS text LANGUAGE sql AS $$
+CREATE OR REPLACE
+FUNCTION _param_expression_tag(_table varchar, _key varchar, _val varchar, _modifier varchar) RETURNS text
+LANGUAGE sql AS $$
  SELECT
   '(' ||
   CASE
@@ -220,7 +112,7 @@ RETURNS text LANGUAGE sql AS $$
           'als',  get_alias_from_path(array_append(p.path, fri.search_type::text)),
           'prnt', get_alias_from_path(p.path),
           'cond', string_agg(
-                     param_expression( get_alias_from_path(array_append(p.path, fri.search_type::text)),
+                     _param_expression( get_alias_from_path(array_append(p.path, fri.search_type::text)),
                                        fri.param_name,
                                        fri.search_type,
                                        split_part(p.key, ':', 2),
@@ -450,27 +342,4 @@ RETURN QUERY EXECUTE (
   'search_sql',    build_search_query(_resource_type, query)));
 END
 $$ IMMUTABLE;
-
--- TODO absolete
-CREATE OR REPLACE FUNCTION
-search_bundle(_resource_type varchar, query jsonb)
-RETURNS jsonb LANGUAGE sql AS $$
-  SELECT
-    json_build_object(
-      'title', 'Search results for ' || query::varchar,
-      'resourceType', 'Bundle',
-      'totalResults', (SELECT search_results_count(_resource_type, query)),
-      'updated', now(),
-      'id', gen_random_uuid(),
-      'entry', COALESCE(json_agg(z.*), '[]'::json)
-    )::jsonb as json
-  FROM
-    (SELECT y.content AS content,
-            y.updated AS updated,
-            y.published AS published,
-            y.logical_id AS id,
-            y.category AS category
-       FROM search(_resource_type, query) y
-    ) z
-$$;
 --}}}

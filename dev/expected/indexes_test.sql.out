@@ -147,10 +147,10 @@ SELECT unnest(index_token_resource( E'{
                                                    unnest                                                   
 ------------------------------------------------------------------------------------------------------------
  {"code": "true", "text": "true", "param": "active"}
- {"code": "nl-NL", "text": "Dutch", "param": "language", "system": "urn:std:iso:639-1"}
  {"code": "248153007", "text": "Male", "param": "gender", "system": "http://snomed.info/sct"}
  {"code": "M", "text": "Male", "param": "gender", "system": "http://hl7.org/fhir/v3/AdministrativeGender"}
  {"code": "7777777", "text": "MRN", "param": "identifier", "system": "MRN"}
  {"code": "123456789", "text": "BSN", "param": "identifier", "system": "urn:oid:2.16.840.1.113883.2.4.6.3"}
+ {"code": "nl-NL", "text": "Dutch", "param": "language", "system": "urn:std:iso:639-1"}
 (6 rows)
 
