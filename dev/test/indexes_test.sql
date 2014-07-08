@@ -4,4 +4,6 @@ SET escape_string_warning=off;
 --{{{
 \set pt `cat test/fixtures/pt.json`
 SELECT unnest(index_token_resource(:'pt'::jsonb));
+
+SELECT unnest(index_string_resource(:'pt'::jsonb));
 --}}}

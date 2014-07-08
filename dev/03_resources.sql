@@ -97,6 +97,32 @@ CREATE TABLE fhir.search_type_to_type AS
   UNION SELECT 'string' as stp, '{Address,Attachment,CodeableConcept,Contact,HumanName,Period,Quantity,Ratio,Resource,SampledData,string,uri}'::varchar[] as tp
   UNION SELECT 'quantity' as stp, '{Quantity}'::varchar[] as tp;
 
+-- insead using recursive type resoultion
+-- we just hadcode missed
+DROP TABLE IF EXISTS fhir.hardcoded_complex_params;
+CREATE TABLE fhir.hardcoded_complex_params (
+  path varchar[],
+  type varchar
+);
+INSERT INTO fhir.hardcoded_complex_params
+(path, type) VALUES
+('{ConceptMap,concept,map,product,concept}','uri'),
+('{DiagnosticOrder,item,event,dateTime}'   ,'dataTime'),
+('{DiagnosticOrder,item,event,status}'     ,'code'),
+('{Patient,name,family}'                   ,'string'),
+('{Patient,name,given}'                    ,'string'),
+('{Provenance,period,end}'                 ,'dateTime'),
+('{Provenance,period,start}'               ,'dataTime');
+
+SELECT assert_eq(0::bigint,
+  (SELECT count(*)
+    FROM fhir.resource_search_params p
+    LEFT JOIN fhir.resource_elements e
+    ON e.path = p.path
+    LEFT JOIN fhir.hardcoded_complex_params hp
+    ON hp.path = p.path
+    WHERE (e.path IS NULL AND hp.path IS NULL)),
+  'Not all cases covered');
 
 
 -- TODO: fix lossed params
@@ -117,10 +143,12 @@ FROM (
   SELECT p.name,
          p.path,
          p.type as search_type,
-         unnest(e.type) as type
+         unnest(COALESCE(e.type, ARRAY[hp.type]::varchar[])) as type
   FROM fhir.resource_search_params p
   LEFT JOIN fhir.resource_elements e
   ON e.path = p.path
+  LEFT JOIN fhir.hardcoded_complex_params hp
+  ON hp.path = p.path
 ) x
 JOIN fhir.search_type_to_type tt
 ON tt.stp = x.search_type

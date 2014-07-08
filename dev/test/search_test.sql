@@ -68,6 +68,13 @@ SELECT assert_eq(:'pt_uuid',
     FROM search('Patient', '{"name": "Roelof",  "provider.name": "Health Level"}'))
  ,'pt by name & org name');
 
+
+SELECT assert_eq(:'pt_uuid',
+ (SELECT logical_id
+    FROM search('Patient', '{"family": "bor"}') LIMIT 1)
+ ,'pt by family');
+
+
 SELECT assert_eq('http://pt/vip',
  (SELECT string_agg(jsonb_array_elements#>>'{category,0,term}','')
     FROM jsonb_array_elements(

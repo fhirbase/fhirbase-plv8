@@ -8,25 +8,38 @@ DECLARE
   /* el fhir.expanded_resource_elements%rowtype; */
   vals varchar[] := array[]::varchar[];
 BEGIN
-  -- TODO: implement more reason algorithm
+  -- TODO: implement more semantic algorithm
   RETURN _item::text;
 END;
+$$;
+
+-- TODO: better handle arrays
+CREATE OR REPLACE
+FUNCTION build_string(v jsonb, keys varchar[]) RETURNS varchar
+LANGUAGE sql AS $$
+SELECT string_agg(x.part, ' ') FROM
+  (SELECT v->>unnest as part
+    FROM unnest(keys)) x
 $$;
 
 CREATE OR REPLACE FUNCTION
 index_string_human_name(v jsonb)
 RETURNS varchar LANGUAGE sql AS $$
-  WITH strings AS (
-  SELECT string_agg(jsonb_array_elements_text, ' ') as s
-    FROM jsonb_array_elements_text(v->'family')
-
-  UNION
-
-  SELECT string_agg(jsonb_array_elements_text, ' ') as s
-    FROM jsonb_array_elements_text(v->'given')
-  )
-  SELECT string_agg(s, ' ') FROM strings
+  SELECT build_string(v, '{use, prefix, text, family, given, suffix}');
 $$;
+
+CREATE OR REPLACE
+FUNCTION index_string_address(v jsonb) RETURNS varchar
+LANGUAGE sql AS $$
+  SELECT build_string(v, '{use, country, city, line, zip}');
+$$;
+
+CREATE OR REPLACE
+FUNCTION index_string_telecom(v jsonb) RETURNS varchar
+LANGUAGE sql AS $$
+  SELECT build_string(v, '{use, system, value}');
+$$;
+
 
 CREATE OR REPLACE FUNCTION
 index_string_resource(rsrs jsonb)
@@ -57,6 +70,10 @@ BEGIN
         CASE prm.type
         WHEN 'HumanName' THEN
           new_val := index_string_human_name(item);
+        WHEN 'Address' THEN
+          new_val := index_string_address(item);
+        WHEN 'Contact' THEN
+          new_val := index_string_telecom(item);
         ELSE
           new_val := index_string_complex_type(prm.path, item);
         END CASE;

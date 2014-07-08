@@ -400,6 +400,15 @@ SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
  OK pt by name & org name
 (1 row)
 
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
+ (SELECT logical_id
+    FROM search('Patient', '{"family": "bor"}') LIMIT 1)
+ ,'pt by family');
+    assert_eq    
+-----------------
+ OK pt by family
+(1 row)
+
 SELECT assert_eq('http://pt/vip',
  (SELECT string_agg(jsonb_array_elements#>>'{category,0,term}','')
     FROM jsonb_array_elements(
