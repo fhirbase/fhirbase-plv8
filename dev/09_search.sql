@@ -15,6 +15,8 @@ WITH val_cond AS (SELECT
     _search_quantity_expression(_table, _param, _type, _modifier, regexp_split_to_table)
   WHEN _type = 'reference' THEN
     _search_reference_expression(_table, _param, _type, _modifier, regexp_split_to_table)
+  WHEN _type = 'number' THEN
+    _search_number_expression(_table, _param, _type, _modifier, regexp_split_to_table)
   ELSE 'implement_me' END as cond
   FROM regexp_split_to_table(_value, ','))
 SELECT

@@ -13,11 +13,15 @@ SET escape_string_warning=off;
 \set pt2_uuid '550e8400-e29b-41d4-a716-446655440011'
 \set pt2_tags  '[{"scheme": "http://pt.com", "term": "http://pt/noise", "label":"noise"}]'
 
+\set doc_ref `cat test/fixtures/documentreference-example.json`
+\set doc_ref_uuid '550e8400-e29b-41d4-a716-446655440012'
+
 BEGIN;
 
 SELECT insert_resource(:'org_uuid'::uuid, :'org1'::jsonb, '[]'::jsonb);
 SELECT insert_resource(:'pt_uuid'::uuid, :'pt'::jsonb, :'pt_tags'::jsonb);
 SELECT insert_resource(:'pt2_uuid'::uuid, :'pt2'::jsonb, :'pt2_tags'::jsonb);
+SELECT insert_resource(:'doc_ref_uuid'::uuid, :'doc_ref'::jsonb, '[]'::jsonb);
 
 SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by name')
   FROM search('Patient', '{"name": "roel"}');
@@ -118,6 +122,19 @@ SELECT assert_eq(:'org_uuid' || '|' || :'pt_uuid', (SELECT string_agg(logical_id
 SELECT assert_eq(:'pt_uuid', (SELECT string_agg(logical_id::varchar, '|')),
   'search should ignore wrong paths in _include')
   FROM search('Patient', '{"name": "Roel", "_include": ["Patient.foobar"]}');
+
+
+SELECT assert_eq(:'doc_ref_uuid',
+   (SELECT string_agg(logical_id::varchar, '|')),
+  'search number')
+  FROM search('DocumentReference', '{"size":">100"}');
+
+SELECT assert_eq(NULL,
+   (SELECT string_agg(logical_id::varchar, '|')),
+  'search number')
+  FROM search('DocumentReference', '{"size":"<100"}');
+;
+
 
 
 ROLLBACK;

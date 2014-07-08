@@ -106,7 +106,7 @@ BEGIN
       WHEN prm.is_primitive = true THEN
         result := result || index_primitive_to_token(prm.param_name, item);
       ELSE
-        RAISE NOTICE 'unexpected index % : %', prm, attrs;
+        RAISE NOTICE 'unexpected token index % : %', prm, item;
       END CASE;
     END LOOP;
   END LOOP;

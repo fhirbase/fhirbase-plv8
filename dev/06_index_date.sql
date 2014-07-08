@@ -111,7 +111,7 @@ BEGIN
         WHEN prm.type = 'Schedule' THEN
           result := result || index_schedule_to_date(prm.param_name, item);
         ELSE
-          RAISE EXCEPTION 'unexpected index % : %', prm, attrs;
+          RAISE EXCEPTION 'unexpected date index % : %', prm, attrs;
         END CASE;
     END LOOP;
   END LOOP;

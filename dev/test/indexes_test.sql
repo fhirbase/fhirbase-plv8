@@ -6,4 +6,5 @@ SET escape_string_warning=off;
 SELECT unnest(index_token_resource(:'pt'::jsonb));
 
 SELECT unnest(index_string_resource(:'pt'::jsonb));
+
 --}}}

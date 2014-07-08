@@ -1,5 +1,6 @@
 --db:fhirb
 --{{{
+DROP TABLE IF EXISTS fhir.resource_elements CASCADE;
 CREATE TABLE fhir.resource_elements (
   version varchar,
   path varchar[],
@@ -10,6 +11,7 @@ CREATE TABLE fhir.resource_elements (
   PRIMARY KEY(path)
 );
 
+DROP TABLE IF EXISTS fhir.resource_search_params CASCADE;
 CREATE TABLE fhir.resource_search_params (
   _id SERIAL  PRIMARY KEY,
   path varchar[],
@@ -95,6 +97,7 @@ CREATE TABLE fhir.search_type_to_type AS
         SELECT 'date' as stp,  '{date,dateTime,instant,Period,Schedule}'::varchar[] as tp
   UNION SELECT 'token' as stp, '{boolean,code,CodeableConcept,Coding,Identifier,oid,Resource,string,uri}'::varchar[] as tp
   UNION SELECT 'string' as stp, '{Address,Attachment,CodeableConcept,Contact,HumanName,Period,Quantity,Ratio,Resource,SampledData,string,uri}'::varchar[] as tp
+  UNION SELECT 'number' as stp, '{integer,decimal,Duration,Quantity}'::varchar[] as tp
   UNION SELECT 'quantity' as stp, '{Quantity}'::varchar[] as tp;
 
 -- insead using recursive type resoultion
@@ -129,28 +132,35 @@ SELECT assert_eq(0::bigint,
 DROP MATERIALIZED VIEW IF EXISTS fhir.resource_indexables;
 CREATE MATERIALIZED
 VIEW fhir.resource_indexables AS (
-SELECT  x.name as param_name,
-        x.path[1] as resource_type,
-        CASE WHEN _last(x.path) ilike '%[x]' THEN
-          _butlast(x.path) || (replace(_last(x.path),'[x]','') || x.type)::varchar
-        ELSE
-          x.path
-        END as path,
-        x.search_type,
-        x.type,
-        substr(x.type, 1,1)=lower(substr(x.type, 1,1)) as is_primitive
+SELECT
+param_name, resource_type, path, search_type, type, is_primitive
 FROM (
-  SELECT p.name,
-         p.path,
-         p.type as search_type,
-         unnest(COALESCE(e.type, ARRAY[hp.type]::varchar[])) as type
-  FROM fhir.resource_search_params p
-  LEFT JOIN fhir.resource_elements e
-  ON e.path = p.path
-  LEFT JOIN fhir.hardcoded_complex_params hp
-  ON hp.path = p.path
-) x
-JOIN fhir.search_type_to_type tt
-ON tt.stp = x.search_type
-AND x.type = ANY(tt.tp));
+  SELECT  x.name as param_name,
+          x.path[1] as resource_type,
+          CASE WHEN _last(x.path) ilike '%[x]' THEN
+            _butlast(x.path) || (replace(_last(x.path),'[x]','') || x.type)::varchar
+          ELSE
+            x.path
+          END as path,
+          x.search_type,
+          x.type,
+          substr(x.type, 1,1)=lower(substr(x.type, 1,1)) as is_primitive
+  FROM (
+    SELECT p.name,
+           p.path,
+           p.type as search_type,
+           unnest(COALESCE(e.type, ARRAY[hp.type]::varchar[])) as type
+    FROM fhir.resource_search_params p
+    LEFT JOIN fhir.resource_elements e
+    ON e.path = p.path
+    LEFT JOIN fhir.hardcoded_complex_params hp
+    ON hp.path = p.path
+    WHERE array_length(p.path,1) > 1
+  ) x
+  JOIN fhir.search_type_to_type tt
+  ON tt.stp = x.search_type
+  AND x.type = ANY(tt.tp)
+) _
+GROUP BY param_name, resource_type, path, search_type, type, is_primitive
+);
 --}}}

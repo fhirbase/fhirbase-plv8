@@ -65,6 +65,15 @@ BEGIN
        WHERE resource_id = $1
     GROUP BY param, resource_id
 
+      UNION
+
+      SELECT resource_id, param,
+             numeric_to_sortable_varchar(MIN(value)),
+             numeric_to_sortable_varchar(MAX(value))
+        FROM {{tbl}}_search_number
+       WHERE resource_id = $1
+    GROUP BY param, resource_id
+
     -- TODO: don't forget about numerics
 
     $SQL$, 'tbl', res_type)
@@ -193,6 +202,19 @@ BEGIN
         INSERT INTO "{{tbl}}_search_quantity"
         (resource_id, param, value, comparator, units, system, code)
         SELECT $1, $2->>'param', ($2->>'value')::decimal, $2->>'comparator', $2->>'units', $2->>'system', $2->>'code'
+      $SQL$, 'tbl', res_type)
+    USING id, idx;
+  END LOOP;
+
+  -- indexing number
+  FOR idx IN
+  SELECT unnest(index_number_resource(_rsrs))
+  LOOP
+    EXECUTE
+      _tpl($SQL$
+        INSERT INTO "{{tbl}}_search_number"
+        (resource_id, param, value)
+        SELECT $1, $2->>'param', ($2->>'value')::decimal
       $SQL$, 'tbl', res_type)
     USING id, idx;
   END LOOP;

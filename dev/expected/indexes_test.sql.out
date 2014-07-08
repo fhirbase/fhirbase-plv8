@@ -148,9 +148,9 @@ SELECT unnest(index_token_resource( E'{
 ------------------------------------------------------------------------------------------------------------
  {"code": "7777777", "text": "MRN", "param": "identifier", "system": "MRN"}
  {"code": "123456789", "text": "BSN", "param": "identifier", "system": "urn:oid:2.16.840.1.113883.2.4.6.3"}
+ {"code": "true", "text": "true", "param": "active"}
  {"code": "248153007", "text": "Male", "param": "gender", "system": "http://snomed.info/sct"}
  {"code": "M", "text": "Male", "param": "gender", "system": "http://hl7.org/fhir/v3/AdministrativeGender"}
- {"code": "true", "text": "true", "param": "active"}
  {"code": "nl-NL", "text": "Dutch", "param": "language", "system": "urn:std:iso:639-1"}
 (6 rows)
 
@@ -300,10 +300,10 @@ SELECT unnest(index_string_resource( E'{
 }'::jsonb));
                                               unnest                                               
 ---------------------------------------------------------------------------------------------------
- {"param": "family", "value": ["Bor"]}
- {"param": "given", "value": ["Roelof Olaf"]}
+ {"param": "name", "value": ["official [\"Drs.\"] Roel [\"Bor\"] [\"Roelof Olaf\"] [\"PDEng.\"]"]}
  {"param": "telecom", "value": ["mobile phone +31612345678", "home phone +31201234567"]}
  {"param": "address", "value": ["home NLD Amsterdam [\"Bos en Lommerplein 280\"] 1055RW"]}
- {"param": "name", "value": ["official [\"Drs.\"] Roel [\"Bor\"] [\"Roelof Olaf\"] [\"PDEng.\"]"]}
+ {"param": "given", "value": ["Roelof Olaf"]}
+ {"param": "family", "value": ["Bor"]}
 (5 rows)
 

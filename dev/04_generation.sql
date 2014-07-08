@@ -97,6 +97,14 @@ CREATE TABLE search_quantity (
   code varchar
 );
 
+CREATE TABLE search_number (
+  _id SERIAL PRIMARY KEY,
+  resource_id uuid,
+  resource_type varchar,
+  param varchar,
+  value decimal
+);
+
 CREATE TABLE "references" (
   _id SERIAL PRIMARY KEY,
   resource_id uuid NOT NULL,
@@ -281,8 +289,24 @@ _eval(
 
     CREATE INDEX {{tbl_name}}_search_quantity_on_value_idx
     ON {{tbl_name}}_search_quantity (value);
-
     -- TODO: maybe index on units?
+
+    -- quantity
+    CREATE TABLE "{{tbl_name}}_search_number" (
+      _id SERIAL PRIMARY KEY,
+      resource_id uuid references "{{tbl_name}}"(logical_id),
+      resource_type varchar DEFAULT '{{resource_type}}',
+      param varchar,
+      value decimal
+    ) INHERITS (search_number);
+
+    -- index for join
+    CREATE INDEX {{tbl_name}}_search_number_on_resource_id_and_param_idx
+    ON {{tbl_name}}_search_number (resource_id, param);
+
+    CREATE INDEX {{tbl_name}}_search_number_on_value_idx
+    ON {{tbl_name}}_search_number (value);
+
 
     -- index for search includes
     -- TODO: use singular name
