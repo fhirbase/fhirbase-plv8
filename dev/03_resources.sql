@@ -1,5 +1,6 @@
 --db:fhirb
 --{{{
+DROP TABLE IF EXISTS fhir.resource_elements CASCADE;
 CREATE TABLE fhir.resource_elements (
   version varchar,
   path varchar[],
@@ -10,6 +11,7 @@ CREATE TABLE fhir.resource_elements (
   PRIMARY KEY(path)
 );
 
+DROP TABLE IF EXISTS fhir.resource_search_params CASCADE;
 CREATE TABLE fhir.resource_search_params (
   _id SERIAL  PRIMARY KEY,
   path varchar[],
@@ -90,94 +92,75 @@ select
   ) els
 ;
 
---}}}
---{{{
--- expand polimorphic types
-CREATE OR REPLACE
-VIEW fhir.polimorphic_expanded_resource_elements as (
-  SELECT
-    _butlast(path) || ARRAY[column_name(_last(path), type)] as path,
-    type,
-    min,
-    max
-  FROM (
-    SELECT
-      path,
-      CASE WHEN array_length(type, 1) is null
-        THEN '_NestedResource_'
-        ELSE unnest(type)
-      END as type,
-      min,
-      max
-    FROM fhir.resource_elements
-  ) e
-  WHERE type not in ('Extension', 'contained') OR type is null
-);
-
--- elements recursively expanded with complex datatypes
-CREATE OR REPLACE
-VIEW fhir.expanded_resource_elements as (
-  SELECT x.*
-        ,CASE WHEN fpt.type IS NULL THEN
-          false
-        ELSE
-          true
-        END AS is_primitive
-    FROM (
-    SELECT
-      e.path || _rest(t.path) as path,
-      CASE WHEN array_length(t.path,1) = 1
-        THEN e.min
-        ELSE t.min
-      END AS min,
-      CASE WHEN array_length(t.path,1) = 1
-        THEN e.max
-        ELSE t.max
-      END AS max,
-      CASE WHEN array_length(t.path,1) = 1
-        THEN e.type
-        ELSE t.type
-      END AS type
-    FROM fhir.polimorphic_expanded_resource_elements e
-    JOIN fhir.datatype_unified_elements t
-    ON t.path[1] = e.type
-
-    UNION ALL
-
-    SELECT path, min, max, type
-    FROM fhir.polimorphic_expanded_resource_elements e
-  ) x
-  LEFT JOIN fhir.primitive_types fpt
-    ON fpt.type = x.type
-  GROUP BY x.path, x.min, x.max, x.type, is_primitive
-);
-
-CREATE MATERIALIZED
-VIEW fhir.resource_indexables AS (
-WITH polimorphic_attrs_mapping AS (
+DROP TABLE IF EXISTS fhir.search_type_to_type CASCADE;
+CREATE TABLE fhir.search_type_to_type AS
         SELECT 'date' as stp,  '{date,dateTime,instant,Period,Schedule}'::varchar[] as tp
   UNION SELECT 'token' as stp, '{boolean,code,CodeableConcept,Coding,Identifier,oid,Resource,string,uri}'::varchar[] as tp
   UNION SELECT 'string' as stp, '{Address,Attachment,CodeableConcept,Contact,HumanName,Period,Quantity,Ratio,Resource,SampledData,string,uri}'::varchar[] as tp
-  UNION SELECT 'quantity' as stp, '{Quantity}'::varchar[] as tp )
+  UNION SELECT 'number' as stp, '{integer,decimal,Duration,Quantity}'::varchar[] as tp
+  UNION SELECT 'quantity' as stp, '{Quantity}'::varchar[] as tp;
+
+-- insead using recursive type resoultion
+-- we just hadcode missed
+DROP TABLE IF EXISTS fhir.hardcoded_complex_params;
+CREATE TABLE fhir.hardcoded_complex_params (
+  path varchar[],
+  type varchar
+);
+INSERT INTO fhir.hardcoded_complex_params
+(path, type) VALUES
+('{ConceptMap,concept,map,product,concept}','uri'),
+('{DiagnosticOrder,item,event,dateTime}'   ,'dataTime'),
+('{DiagnosticOrder,item,event,status}'     ,'code'),
+('{Patient,name,family}'                   ,'string'),
+('{Patient,name,given}'                    ,'string'),
+('{Provenance,period,end}'                 ,'dateTime'),
+('{Provenance,period,start}'               ,'dataTime');
+
+SELECT assert_eq(0::bigint,
+  (SELECT count(*)
+    FROM fhir.resource_search_params p
+    LEFT JOIN fhir.resource_elements e
+    ON e.path = p.path
+    LEFT JOIN fhir.hardcoded_complex_params hp
+    ON hp.path = p.path
+    WHERE (e.path IS NULL AND hp.path IS NULL)),
+  'Not all cases covered');
+
+
+-- TODO: fix lossed params
+DROP MATERIALIZED VIEW IF EXISTS fhir.resource_indexables;
+CREATE MATERIALIZED
+VIEW fhir.resource_indexables AS (
 SELECT
-  rsp.name as param_name
-  ,rsp.path[1] as resource_type
-  ,rsp.type as search_type
-  ,ere.type as type
-  ,ere.max
-  ,ere.path
-  ,ere.is_primitive
-  FROM fhir.resource_search_params rsp
-  JOIN fhir.expanded_resource_elements ere
-    ON ere.path = rsp.path
-       OR (_last(rsp.path) ilike '%[x]' -- handle polymorph
-           AND _butlast(ere.path) = _butlast(rsp.path)
-           AND position(
-              replace(_last(rsp.path), '[x]','')
-              in _last(ere.path)) = 1
-           AND EXISTS (
-             SELECT *
-             FROM polimorphic_attrs_mapping pam
-             WHERE pam.stp = rsp.type AND ere.type = ANY(pam.tp)))
+param_name, resource_type, path, search_type, type, is_primitive
+FROM (
+  SELECT  x.name as param_name,
+          x.path[1] as resource_type,
+          CASE WHEN _last(x.path) ilike '%[x]' THEN
+            _butlast(x.path) || (replace(_last(x.path),'[x]','') || x.type)::varchar
+          ELSE
+            x.path
+          END as path,
+          x.search_type,
+          x.type,
+          substr(x.type, 1,1)=lower(substr(x.type, 1,1)) as is_primitive
+  FROM (
+    SELECT p.name,
+           p.path,
+           p.type as search_type,
+           unnest(COALESCE(e.type, ARRAY[hp.type]::varchar[])) as type
+    FROM fhir.resource_search_params p
+    LEFT JOIN fhir.resource_elements e
+    ON e.path = p.path
+    LEFT JOIN fhir.hardcoded_complex_params hp
+    ON hp.path = p.path
+    WHERE array_length(p.path,1) > 1
+  ) x
+  JOIN fhir.search_type_to_type tt
+  ON tt.stp = x.search_type
+  AND x.type = ANY(tt.tp)
+) _
+GROUP BY param_name, resource_type, path, search_type, type, is_primitive
 );
 --}}}

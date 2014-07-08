@@ -1,7 +1,7 @@
 --db:fhirb
 --{{{
 CREATE OR REPLACE FUNCTION
-index_quantity_resource(rsrs jsonb)
+index_number_resource(rsrs jsonb)
 RETURNS jsonb[] LANGUAGE plpgsql AS $$
 DECLARE
   prm fhir.resource_indexables%rowtype;
@@ -12,18 +12,14 @@ BEGIN
   FOR prm IN
     SELECT * FROM fhir.resource_indexables
     WHERE resource_type = rsrs->>'resourceType'
-    AND search_type = 'quantity'
+    AND search_type = 'number'
   LOOP
     attrs := json_get_in(rsrs, _rest(prm.path));
     FOR item IN SELECT unnest(attrs)
     LOOP
       result := result || json_build_object(
        'param', prm.param_name,
-       'value', item->'value',
-       'comparator', item->'comparator',
-       'units', item->'units',
-       'system', item->'system',
-       'code', item->'code')::jsonb;
+       'value', item)::jsonb;
     END LOOP;
   END LOOP;
   RETURN result;
@@ -31,7 +27,7 @@ END
 $$;
 
 CREATE OR REPLACE FUNCTION
-_search_quantity_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+_search_number_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
 RETURNS text LANGUAGE sql AS $$
   SELECT
   quote_ident(_table) || '.value ' ||

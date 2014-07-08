@@ -138,10 +138,8 @@ FROM ( SELECT xsattr('/xs:complexType/@name', st) as datatype,
   ) n2;
 
 CREATE VIEW fhir.enums AS (
-  SELECT  replace(datatype, '-list','')
-      AS  enum
-          ,array_agg(value)
-      AS  options
+  SELECT  replace(datatype, '-list','') AS  enum
+          ,array_agg(value) AS  options
     FROM  fhir.datatype_enums
 GROUP BY  replace(datatype, '-list','')
 );
@@ -152,46 +150,5 @@ CREATE VIEW fhir.primitive_types as (
     FROM fhir.type_to_pg_type
    UNION SELECT enum, 'fhir."' || enum  || '"'
     FROM fhir.enums
-);
-
-CREATE VIEW fhir._datatype_unified_elements AS (
-  SELECT ARRAY[datatype, name] AS path
-         ,type
-         ,min_occurs AS min
-         ,CASE when max_occurs = 'unbounded'
-           THEN '*'
-           ELSE max_occurs
-          END
-      AS max
-    FROM fhir.datatype_elements
-   WHERE datatype <> 'Resource'
-);
-
-CREATE VIEW fhir.datatype_unified_elements AS (
-  WITH RECURSIVE tree( path ,type ,min ,max) AS (
-    SELECT r.* FROM fhir._datatype_unified_elements r
-    UNION
-    SELECT t.path || ARRAY[_last(r.path)] as path,
-           r.type as type,
-           t.min as min,
-           t.max as max
-      FROM fhir._datatype_unified_elements r
-      JOIN tree t on t.type = r.path[1]
-  )
-  SELECT * FROM tree t LIMIT 1000
-);
-
-CREATE VIEW fhir.unified_complex_datatype AS (
-  SELECT   ue.path as path
-           ,coalesce(tp.type, ue.path[1]) as type, tp.min, tp.max
-     FROM  (
-              SELECT _butlast(path)
-                  AS path
-                FROM fhir.datatype_unified_elements
-            GROUP BY _butlast(path)
-           )
-       AS  ue
-LEFT JOIN fhir.datatype_unified_elements tp
-       ON tp.path = ue.path
 );
 --}}}

@@ -5,45 +5,52 @@ CREATE OR REPLACE FUNCTION
 index_string_complex_type(_path varchar[], _item jsonb)
 RETURNS varchar LANGUAGE plpgsql AS $$
 DECLARE
-  el fhir.expanded_resource_elements%rowtype;
+  /* el fhir.expanded_resource_elements%rowtype; */
   vals varchar[] := array[]::varchar[];
 BEGIN
-  FOR el IN
-    SELECT * FROM fhir.expanded_resource_elements
-    WHERE _is_descedant(_path, path) = true
-    AND is_primitive = true
-  LOOP
-    vals := vals || json_array_to_str_array(json_get_in(_item, _subpath(_path, el.path)));
-  END LOOP;
-  RETURN array_to_string(vals, ' ');
+  -- TODO: implement more semantic algorithm
+  RETURN _item::text;
 END;
+$$;
+
+-- TODO: better handle arrays
+CREATE OR REPLACE
+FUNCTION build_string(v jsonb, keys varchar[]) RETURNS varchar
+LANGUAGE sql AS $$
+SELECT string_agg(x.part, ' ') FROM
+  (SELECT v->>unnest as part
+    FROM unnest(keys)) x
 $$;
 
 CREATE OR REPLACE FUNCTION
 index_string_human_name(v jsonb)
 RETURNS varchar LANGUAGE sql AS $$
-  WITH strings AS (
-  SELECT string_agg(jsonb_array_elements_text, ' ') as s
-    FROM jsonb_array_elements_text(v->'family')
-
-  UNION
-
-  SELECT string_agg(jsonb_array_elements_text, ' ') as s
-    FROM jsonb_array_elements_text(v->'given')
-  )
-  SELECT string_agg(s, ' ') FROM strings
+  SELECT build_string(v, '{use, prefix, text, family, given, suffix}');
 $$;
+
+CREATE OR REPLACE
+FUNCTION index_string_address(v jsonb) RETURNS varchar
+LANGUAGE sql AS $$
+  SELECT build_string(v, '{use, country, city, line, zip}');
+$$;
+
+CREATE OR REPLACE
+FUNCTION index_string_telecom(v jsonb) RETURNS varchar
+LANGUAGE sql AS $$
+  SELECT build_string(v, '{use, system, value}');
+$$;
+
 
 CREATE OR REPLACE FUNCTION
 index_string_resource(rsrs jsonb)
 RETURNS jsonb[] LANGUAGE plpgsql AS $$
 DECLARE
-prm fhir.resource_indexables%rowtype;
-attrs jsonb[];
-item jsonb;
-index_vals varchar[];
-new_val varchar;
-result jsonb[] := array[]::jsonb[];
+  prm fhir.resource_indexables%rowtype;
+  attrs jsonb[];
+  item jsonb;
+  index_vals varchar[];
+  new_val varchar;
+  result jsonb[] := array[]::jsonb[];
 BEGIN
   FOR prm IN
     SELECT * FROM fhir.resource_indexables
@@ -63,6 +70,10 @@ BEGIN
         CASE prm.type
         WHEN 'HumanName' THEN
           new_val := index_string_human_name(item);
+        WHEN 'Address' THEN
+          new_val := index_string_address(item);
+        WHEN 'Contact' THEN
+          new_val := index_string_telecom(item);
         ELSE
           new_val := index_string_complex_type(prm.path, item);
         END CASE;
@@ -78,5 +89,16 @@ BEGIN
 
   RETURN result;
 END
+$$;
+
+CREATE OR REPLACE FUNCTION
+_search_string_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+RETURNS text LANGUAGE sql AS $$
+  SELECT CASE
+    WHEN _modifier = '' THEN
+      quote_ident(_table) || '.value ilike ' || quote_literal('%' || _value || '%')
+    WHEN _modifier = 'exact' THEN
+      quote_ident(_table) || '.value = ' || quote_literal(_value)
+    END;
 $$;
 --}}}

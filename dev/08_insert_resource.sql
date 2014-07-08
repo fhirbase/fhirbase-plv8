@@ -16,7 +16,6 @@ $$;
 CREATE OR REPLACE FUNCTION
 numeric_to_sortable_varchar(_num decimal)
 RETURNS varchar LANGUAGE sql AS $$
-  /* SELECT to_char(i, 'SG0000000000000000D99999'); */
   SELECT lexit(_num);
 $$;
 
@@ -66,6 +65,15 @@ BEGIN
        WHERE resource_id = $1
     GROUP BY param, resource_id
 
+      UNION
+
+      SELECT resource_id, param,
+             numeric_to_sortable_varchar(MIN(value)),
+             numeric_to_sortable_varchar(MAX(value))
+        FROM {{tbl}}_search_number
+       WHERE resource_id = $1
+    GROUP BY param, resource_id
+
     -- TODO: don't forget about numerics
 
     $SQL$, 'tbl', res_type)
@@ -102,9 +110,9 @@ END
 $$;
 
 --private
-CREATE OR REPLACE FUNCTION
-create_tags(_id uuid, _vid uuid, res_type varchar, _tags jsonb)
-RETURNS uuid LANGUAGE plpgsql AS $$
+CREATE OR REPLACE
+FUNCTION create_tags(_id uuid, _vid uuid, res_type varchar, _tags jsonb) RETURNS uuid
+LANGUAGE plpgsql AS $$
 BEGIN
   EXECUTE
     _tpl($SQL$
@@ -119,9 +127,9 @@ END
 $$;
 
 --private
-CREATE OR REPLACE FUNCTION
-index_resource(id uuid, res_type varchar)
-RETURNS uuid LANGUAGE plpgsql AS $$
+CREATE OR REPLACE
+FUNCTION index_resource(id uuid, res_type varchar) RETURNS uuid
+LANGUAGE plpgsql AS $$
 DECLARE
   rec RECORD;
   rsrs jsonb;
@@ -137,9 +145,9 @@ BEGIN
 END
 $$;
 
-CREATE OR REPLACE FUNCTION
-index_resource(id uuid, res_type varchar, _rsrs jsonb)
-RETURNS uuid LANGUAGE plpgsql AS $$
+CREATE OR REPLACE
+FUNCTION index_resource(id uuid, res_type varchar, _rsrs jsonb) RETURNS uuid
+LANGUAGE plpgsql AS $$
 DECLARE
   rec RECORD;
   idx jsonb;
@@ -194,6 +202,19 @@ BEGIN
         INSERT INTO "{{tbl}}_search_quantity"
         (resource_id, param, value, comparator, units, system, code)
         SELECT $1, $2->>'param', ($2->>'value')::decimal, $2->>'comparator', $2->>'units', $2->>'system', $2->>'code'
+      $SQL$, 'tbl', res_type)
+    USING id, idx;
+  END LOOP;
+
+  -- indexing number
+  FOR idx IN
+  SELECT unnest(index_number_resource(_rsrs))
+  LOOP
+    EXECUTE
+      _tpl($SQL$
+        INSERT INTO "{{tbl}}_search_number"
+        (resource_id, param, value)
+        SELECT $1, $2->>'param', ($2->>'value')::decimal
       $SQL$, 'tbl', res_type)
     USING id, idx;
   END LOOP;
@@ -297,9 +318,9 @@ END
 $$;
 
 -- TODO: implement by UPDATE
-CREATE OR REPLACE FUNCTION
-update_resource(id uuid, _rsrs jsonb, _tags jsonb)
-RETURNS uuid LANGUAGE plpgsql AS $$
+CREATE OR REPLACE
+FUNCTION update_resource(id uuid, _rsrs jsonb, _tags jsonb) RETURNS uuid
+LANGUAGE plpgsql AS $$
 DECLARE
   res uuid;
   new_tags jsonb;

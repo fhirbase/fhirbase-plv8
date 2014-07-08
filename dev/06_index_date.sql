@@ -111,11 +111,30 @@ BEGIN
         WHEN prm.type = 'Schedule' THEN
           result := result || index_schedule_to_date(prm.param_name, item);
         ELSE
-          RAISE EXCEPTION 'unexpected index % : %', prm, attrs;
+          RAISE EXCEPTION 'unexpected date index % : %', prm, attrs;
         END CASE;
     END LOOP;
   END LOOP;
   RETURN result;
 END
+$$;
+
+CREATE OR REPLACE FUNCTION
+_search_date_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+RETURNS text LANGUAGE sql AS $$
+  SELECT
+  CASE WHEN op IS NULL THEN
+    quote_literal(val) || '::tstzrange @> tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end")'
+  WHEN op = '>' THEN
+    'tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end") && ' || 'tstzrange(' || quote_literal(upper(val)) || ', NULL)'
+  WHEN op = '<' THEN
+    'tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end") && ' || 'tstzrange(NULL, ' || quote_literal(lower(val)) || ')'
+  ELSE
+  '1'
+  END
+  FROM
+  (SELECT
+    (regexp_matches(_value, '^(<|>)?'))[1] AS op,
+    convert_fhir_date_to_pgrange((regexp_matches(_value, '^(<|>)?(.+)$'))[2]) AS val) p;
 $$;
 --}}}
