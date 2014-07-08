@@ -98,6 +98,7 @@ CREATE TABLE fhir.search_type_to_type AS
   UNION SELECT 'token' as stp, '{boolean,code,CodeableConcept,Coding,Identifier,oid,Resource,string,uri}'::varchar[] as tp
   UNION SELECT 'string' as stp, '{Address,Attachment,CodeableConcept,Contact,HumanName,Period,Quantity,Ratio,Resource,SampledData,string,uri}'::varchar[] as tp
   UNION SELECT 'number' as stp, '{integer,decimal,Duration,Quantity}'::varchar[] as tp
+  UNION SELECT 'reference' as stp, '{ResourceReference}'::varchar[] as tp
   UNION SELECT 'quantity' as stp, '{Quantity}'::varchar[] as tp;
 
 -- insead using recursive type resoultion

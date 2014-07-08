@@ -112,6 +112,7 @@ SELECT assert_eq(:'pt_uuid' || '|' || :'pt2_uuid', (SELECT string_agg(logical_id
   'search should combine several _sort columns')
   FROM search('Patient', '{"gender": "M", "_sort": ["gender:desc", "birthdate:asc"]}');
 
+
 -- TESTS ON _include
 -------------------------------------------------
 
@@ -138,4 +139,50 @@ SELECT assert_eq(NULL,
 
 
 ROLLBACK;
+--}}}
+
+--{{{
+-- testing _ids
+
+\set org1 `cat test/fixtures/org1.json`
+\set org_uuid '550e8400-e29b-41d4-a716-446655440009'
+\set org_tags  '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'
+\set pt `cat test/fixtures/pt.json`
+\set pt_uuid '550e8400-e29b-41d4-a716-446655440010'
+\set pt_tags  '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'
+
+\set pt2 `cat test/fixtures/pt2.json`
+\set pt2_uuid '550e8400-e29b-41d4-a716-446655440011'
+\set pt2_tags  '[{"scheme": "http://pt.com", "term": "http://pt/noise", "label":"noise"}]'
+
+BEGIN;
+
+SELECT insert_resource(:'org_uuid'::uuid, :'org1'::jsonb, '[]'::jsonb);
+SELECT insert_resource(:'pt_uuid'::uuid, :'pt'::jsonb, :'pt_tags'::jsonb);
+SELECT insert_resource(:'pt2_uuid'::uuid, :'pt2'::jsonb, :'pt2_tags'::jsonb);
+
+SELECT assert_eq(:'pt_uuid',
+  (SELECT string_agg(logical_id::varchar, '|')),
+  'search by _id')
+  FROM search('Patient', json_build_object('_id', :'pt_uuid')::jsonb);
+
+SELECT assert_eq(:'pt_uuid',
+  (SELECT string_agg(logical_id::varchar, '|')),
+  'chained search by provider._id')
+  FROM search('Patient', json_build_object('provider._id', :'org_uuid')::jsonb);
+
+
+ROLLBACK;
+--}}}
+--{{{
+
+SELECT *
+  FROM _build_references_joins('Patient'::text,
+                     json_build_object('provider._id', 'uuid',
+                                       'name', 'pups')::jsonb);
+--}}}
+
+--{{{
+select * from fhir.resource_indexables
+where resource_type = 'Patient'
 --}}}

@@ -171,6 +171,15 @@ END
 $$;
 
 CREATE OR REPLACE
+FUNCTION _debug(x anyelement) RETURNS anyelement
+LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE NOTICE 'DEBUG %', x;
+  RETURN x;
+END
+$$;
+
+CREATE OR REPLACE
 FUNCTION assert_eq(expec anyelement, res anyelement, mess varchar) RETURNS varchar
 LANGUAGE plpgsql AS $$
 DECLARE

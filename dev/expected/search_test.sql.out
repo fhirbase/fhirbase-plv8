@@ -472,6 +472,15 @@ SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010' || '|' || '550e8400-e29b
  OK search should combine several _sort columns
 (1 row)
 
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
+  (SELECT string_agg(logical_id::varchar, '|')),
+  'search by _id')
+  FROM search('Patient', json_build_object('_id', '550e8400-e29b-41d4-a716-446655440010')::jsonb);
+    assert_eq     
+------------------
+ OK search by _id
+(1 row)
+
 SELECT assert_eq('550e8400-e29b-41d4-a716-446655440009' || '|' || '550e8400-e29b-41d4-a716-446655440010', (SELECT string_agg(logical_id::varchar, '|')),
   'search should include resources specified in _include')
   FROM search('Patient', '{"name": "Roel", "_include": ["Patient.managingOrganization"]}');

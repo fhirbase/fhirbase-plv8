@@ -75,19 +75,18 @@ LANGUAGE sql AS $$
   || ')';
 $$;
 
-CREATE OR REPLACE FUNCTION
-build_search_joins(_resource_type text, _query jsonb)
-RETURNS text LANGUAGE sql AS $$
-  -- recursivelly expand chained params
+CREATE OR REPLACE
+FUNCTION expand_params(_resource_type text, _query jsonb)
+RETURNS table (parent_res text, res text, path text[], key text, value text)
+LANGUAGE sql AS $$
   WITH RECURSIVE params(parent_res, res, path, key, value) AS (
-
     SELECT null::text as parent_res,
            _resource_type::text as res,
            ARRAY[_resource_type]::text[] as path,
            x.key,
            x.value
       FROM jsonb_each_text(_query) x
-     WHERE split_part(x.key,':',1) NOT IN ('_tag', '_security', '_profile')
+     WHERE split_part(x.key,':',1) NOT IN ('_tag', '_security', '_profile', '_sort')
 
     UNION
 
@@ -96,19 +95,25 @@ RETURNS text LANGUAGE sql AS $$
            array_append(x.path,split_part(key, '.', 1)) as path,
            (regexp_matches(key, '^([^.]+)\.(.+)'))[2] AS key,
            value
-           FROM params x
+     FROM  params x
      JOIN  fhir.resource_indexables ri
        ON  ri.param_name = split_part(split_part(x.key, '.', 1), ':',1)
       AND  ri.resource_type = x.res
      JOIN  fhir.resource_elements re
        ON  re.path = ri.path
-  ),
-  search_index_joins AS (
-    -- joins for index search
+  )
+  SELECT * from params;
+$$;
+
+
+CREATE OR REPLACE
+FUNCTION _build_index_joins(_resource_type text, _query jsonb)
+RETURNS table (sql text, weight text)
+LANGUAGE sql AS $$
     SELECT _tpl($SQL$
             JOIN {{tbl}} {{als}}
               ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
-              AND {{cond}}
+             AND {{cond}}
           $SQL$,
           'tbl',  quote_ident(lower(p.res) || '_search_' || fri.search_type),
           'als',  get_alias_from_path(array_append(p.path, fri.search_type::text)),
@@ -120,14 +125,18 @@ RETURNS text LANGUAGE sql AS $$
                                        split_part(p.key, ':', 2),
                                        p.value), ' AND ')) as join_str
            ,p.path::text || '2' as weight
-       FROM params p
+       FROM expand_params(_resource_type, _query) p
        JOIN fhir.resource_indexables fri
          ON fri.param_name = split_part(p.key, ':', 1)
         AND fri.resource_type =  p.res
       WHERE position('.' in p.key) = 0
       GROUP BY p.res, p.path, fri.search_type
-  ),
-  references_joins AS (
+$$ IMMUTABLE;
+
+CREATE OR REPLACE
+FUNCTION _build_references_joins(_resource_type text, _query jsonb)
+RETURNS table (sql text, weight text)
+LANGUAGE sql AS $$
     -- joins trhough referenced resources for chained params
     SELECT _tpl($SQL$
             JOIN {{tbl}} {{als}}
@@ -138,11 +147,15 @@ RETURNS text LANGUAGE sql AS $$
            'prnt', get_alias_from_path(_butlast(p.path)))
            AS join_str
             ,p.path::text || '1'  as weight
-      FROM params p
+      FROM expand_params(_resource_type, _query) p
       WHERE parent_res is not null
       GROUP BY p.parent_res, res, path
-  ),
-  tag_joins AS (
+$$ IMMUTABLE;
+
+CREATE OR REPLACE
+FUNCTION _build_tags_joins(_resource_type text, _query jsonb)
+RETURNS table (sql text, weight text)
+LANGUAGE sql AS $$
     SELECT _tpl($SQL$
             JOIN {{tbl}} {{als}}
               ON {{als}}.resource_id = {{prnt}}.logical_id
@@ -152,7 +165,7 @@ RETURNS text LANGUAGE sql AS $$
            'als',  y.als,
            'cond', string_agg(_param_expression_tag(y.als, y.key, y.value, y.modifier), ' OR '),
            'prnt', quote_ident(lower(_resource_type)))
-            as join_str,
+            as sql,
             '0'::text as weight
       FROM (
         SELECT quote_ident('_' || md5(x.value::text)) as als,
@@ -164,18 +177,23 @@ RETURNS text LANGUAGE sql AS $$
          WHERE split_part(x.key,':',1) IN ('_tag', '_security', '_profile')
       ) y
       GROUP BY y.als, y.key, y.modifier
-  ),
-  -- mix joins together
-  joins AS  (
-    SELECT join_str, weight FROM tag_joins
+$$ IMMUTABLE;
+
+
+CREATE OR REPLACE
+FUNCTION build_search_joins(_resource_type text, _query jsonb) RETURNS text
+LANGUAGE sql AS $$
+  -- recursivelly expand chained params
+  WITH joins AS  (
+    SELECT * FROM _build_tags_joins(_resource_type, _query)
     UNION ALL
-    SELECT * FROM search_index_joins
+    SELECT * FROM _build_index_joins(_resource_type, _query)
     UNION ALL
-    SELECT * FROM references_joins
+    SELECT * FROM _build_references_joins(_resource_type, _query)
   )
   -- agg to SQL string
-  SELECT string_agg(join_str, '')
-    FROM (SELECT join_str  FROM joins ORDER BY weight LIMIT 1000) _ ;
+  SELECT string_agg(sql, '')
+    FROM (SELECT sql  FROM joins ORDER BY weight LIMIT 1000) _ ;
 $$;
 
 CREATE OR REPLACE FUNCTION
@@ -235,32 +253,54 @@ RETURNS text LANGUAGE sql AS $$
     FROM joins;
 $$ IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION
-build_search_query(_resource_type varchar, query jsonb)
-RETURNS text LANGUAGE plpgsql AS $$
+
+CREATE OR REPLACE
+FUNCTION _ids_expression(_tbl_ text, ids text) RETURNS text -- sql
+LANGUAGE sql AS $$
+SELECT CASE
+    WHEN ids IS NULL THEN NULL
+    ELSE
+      (
+        SELECT 'WHERE ( ' || string_agg(y.exp,' OR ') || ')' FROM (
+          SELECT _tbl_ || '.logical_id=' || quote_literal(x) AS exp
+           FROM regexp_split_to_table(ids, ',') x
+        ) y
+      )
+    END
+$$ IMMUTABLE;
+
+CREATE OR REPLACE
+FUNCTION build_search_query(_resource_type varchar, query jsonb) RETURNS text
+LANGUAGE plpgsql AS $$
 DECLARE
+  _tbl text;
   _count integer;
   _offset integer;
   _page integer;
+  _ids_exp text;
   res text;
 BEGIN
   _count := COALESCE(query->>'_count', '50')::integer;
   _page := COALESCE(query->>'_page', '0')::integer;
   _offset := _page * _count;
+  _tbl := quote_ident(lower(_resource_type));
+  _ids_exp := _ids_expression(_tbl, query->>'_id');
 
   SELECT INTO res
     _tpl($SQL$
       SELECT {{tbl}}.*
         FROM {{tbl}} {{tbl}}
         {{joins}}
+        {{ids_search}}
         {{order_clause}}
         LIMIT {{limit}}
         OFFSET {{offset}}
     $SQL$,
-    'tbl', quote_ident(lower(_resource_type)),
+    'tbl', _tbl,
     'joins', COALESCE(build_search_joins(_resource_type, query), '') || ' ' ||
              COALESCE(build_order_joins(_resource_type, query), ''),
     'order_clause', build_order_clause(_resource_type, query),
+    'ids_search', _ids_exp,
     'limit', _count::varchar,
     'offset', _offset::varchar);
 
