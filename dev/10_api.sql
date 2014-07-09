@@ -1,9 +1,15 @@
 --db:fhirb
 --{{{
 CREATE OR REPLACE FUNCTION
+_base_url() RETURNS text
+LANGUAGE sql AS $$
+  SELECT 'http://vpn2.waveaccess.kiev.ua:11188'::text
+$$;
+
+CREATE OR REPLACE FUNCTION
 _build_url(rel_path text) RETURNS text
 LANGUAGE sql AS $$
-  SELECT 'Base' || rel_path
+  SELECT _base_url() || '/' || rel_path
 $$;
 
 CREATE OR REPLACE FUNCTION
@@ -17,7 +23,7 @@ _build_link(_type_ varchar, _id_ uuid, _vid_  uuid) RETURNS jsonb
 LANGUAGE sql AS $$
   SELECT json_build_object(
     'rel', 'self',
-    'href', _build_url(lower(_type_) || '/' || _id_ || '/history/' || _vid_))::jsonb
+    'href', _build_url(_type_ || '/' || _id_ || '/_history/' || _vid_))::jsonb
 $$;
 
 --- # Instance Level Interactions
