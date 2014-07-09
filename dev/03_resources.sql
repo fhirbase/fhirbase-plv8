@@ -126,7 +126,7 @@ SELECT assert_eq(0::bigint,
     LEFT JOIN fhir.hardcoded_complex_params hp
     ON hp.path = p.path
     WHERE (e.path IS NULL AND hp.path IS NULL)),
-  'Not all cases covered');
+  'All cases covered');
 
 
 -- TODO: fix lossed params

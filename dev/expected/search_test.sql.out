@@ -467,7 +467,8 @@ SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
 SELECT assert_eq('http://pt/vip',
  (SELECT string_agg(jsonb_array_elements#>>'{category,0,term}','')
     FROM jsonb_array_elements(
-            fhir_search('Patient', '{"_tag": "http://pt/vip"}')->'entry'))
+            fhir_search('{"base":"https://test.me"}'::jsonb,
+              'Patient'::varchar, '{"_tag": "http://pt/vip"}'::jsonb)->'entry'))
  ,'pt by tag');
   assert_eq   
 --------------

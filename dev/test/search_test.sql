@@ -34,6 +34,8 @@ SELECT *
 \set doc_ref `cat test/fixtures/documentreference-example.json`
 \set doc_ref_uuid '550e8400-e29b-41d4-a716-446655440012'
 
+\set cfg '{"base":"https://test.me"}'
+
 BEGIN;
 
 SELECT insert_resource(:'org_uuid'::uuid, :'org1'::jsonb, '[]'::jsonb);
@@ -99,7 +101,8 @@ SELECT assert_eq(:'pt_uuid',
 SELECT assert_eq('http://pt/vip',
  (SELECT string_agg(jsonb_array_elements#>>'{category,0,term}','')
     FROM jsonb_array_elements(
-            fhir_search('Patient', '{"_tag": "http://pt/vip"}')->'entry'))
+            fhir_search(:'cfg'::jsonb,
+              'Patient'::varchar, '{"_tag": "http://pt/vip"}'::jsonb)->'entry'))
  ,'pt by tag');
 
 

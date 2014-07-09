@@ -1,15 +1,9 @@
 --db:fhirb
 --{{{
 CREATE OR REPLACE FUNCTION
-_base_url() RETURNS text
+_build_url(_cfg jsonb, rel_path text) RETURNS text
 LANGUAGE sql AS $$
-  SELECT 'http://vpn2.waveaccess.kiev.ua:11188'::text
-$$;
-
-CREATE OR REPLACE FUNCTION
-_build_url(rel_path text) RETURNS text
-LANGUAGE sql AS $$
-  SELECT _base_url() || '/' || rel_path
+  SELECT _cfg->'base' || '/' || rel_path
 $$;
 
 CREATE OR REPLACE FUNCTION
@@ -19,16 +13,16 @@ LANGUAGE sql AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION
-_build_link(_type_ varchar, _id_ uuid, _vid_  uuid) RETURNS jsonb
+_build_link(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_  uuid) RETURNS jsonb
 LANGUAGE sql AS $$
   SELECT json_build_object(
     'rel', 'self',
-    'href', _build_url(_type_ || '/' || _id_ || '/_history/' || _vid_))::jsonb
+    'href', _build_url(_cfg, _type_ || '/' || _id_ || '/_history/' || _vid_))::jsonb
 $$;
 
 --- # Instance Level Interactions
 CREATE OR REPLACE
-FUNCTION fhir_read(_type_ varchar, _id_ uuid) RETURNS jsonb -- bundle
+FUNCTION fhir_read(_cfg jsonb, _type_ varchar, _id_ uuid) RETURNS jsonb -- bundle
 LANGUAGE sql AS $$
   WITH entry AS (
     SELECT r.content AS content,
@@ -37,7 +31,7 @@ LANGUAGE sql AS $$
            r.logical_id AS id,
            r.category AS category,
            json_build_array(
-             _build_link(r.resource_type, r.logical_id, r.version_id)::json
+             _build_link(_cfg, r.resource_type, r.logical_id, r.version_id)::json
            )::jsonb   AS link
       FROM resource r
      WHERE r.resource_type = _type_
@@ -52,21 +46,21 @@ LANGUAGE sql AS $$
       'entry', (SELECT json_agg(e.*) FROM entry e)
     )::jsonb
 $$;
-COMMENT ON FUNCTION fhir_read(_type_ varchar, _id_ uuid)
-IS 'Read the current state of the resource\nreturn bundle with one entry';
+COMMENT ON FUNCTION fhir_read(_cfg jsonb, _type_ varchar, _id_ uuid)
+IS 'Read the current state of the resource\nReturn bundle with only one entry for uniformity';
 
 CREATE OR REPLACE
-FUNCTION fhir_create(_type_ varchar, _resource_ jsonb, _tags_ jsonb) RETURNS jsonb
+FUNCTION fhir_create(_cfg jsonb, _type_ varchar, _resource_ jsonb, _tags_ jsonb) RETURNS jsonb
 LANGUAGE sql AS $$
 --- Create a new resource with a server assigned id
 --- return bundle with one entry
-  SELECT fhir_read(_type_, insert_resource(_resource_, _tags_))
+  SELECT fhir_read(_cfg, _type_, insert_resource(_resource_, _tags_))
 $$;
-COMMENT ON FUNCTION fhir_create(_type_ varchar, _resource_ jsonb, _tags_ jsonb)
-IS 'Create a new resource with a server assigned id\nreturn bundle with one entry';
+COMMENT ON FUNCTION fhir_create(_cfg jsonb, _type_ varchar, _resource_ jsonb, _tags_ jsonb)
+IS 'Create a new resource with a server assigned id\n Return bundle with newly entry';
 
 CREATE OR REPLACE
-FUNCTION fhir_vread(_type_ varchar, _id_ uuid, _vid_ uuid) RETURNS jsonb
+FUNCTION fhir_vread(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid) RETURNS jsonb
 LANGUAGE sql AS $$
 --- Read the state of a specific version of the resource
 --- return bundle with one entry
@@ -77,7 +71,7 @@ LANGUAGE sql AS $$
            r.logical_id AS id,
            r.category AS category,
            json_build_array(
-             _build_link(r.resource_type, r.logical_id, r.version_id)::json
+             _build_link(_cfg, r.resource_type, r.logical_id, r.version_id)::json
            )::jsonb   AS link
       FROM (
         SELECT * FROM resource
@@ -99,32 +93,32 @@ LANGUAGE sql AS $$
       'entry', (SELECT json_agg(e.*) FROM entry e)
     )::jsonb
 $$;
-COMMENT ON FUNCTION fhir_vread(_type_ varchar, _id_ uuid, _vid_ uuid)
+COMMENT ON FUNCTION fhir_vread(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid)
 IS 'Read specific version of resource with _type_\nReturns bundle with one entry';
 
 CREATE OR REPLACE
-FUNCTION fhir_update(_type_ varchar, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb) returns jsonb
+FUNCTION fhir_update(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb) returns jsonb
 LANGUAGE sql AS $$
 --- Update an existing resource by its id (ORDER BY create it if it is new)
 --- return bundle with one entry
   SELECT update_resource(_id_, _resource_, _tags_);
-  SELECT fhir_read(_type_, _id_);
+  SELECT fhir_read(_cfg, _type_, _id_);
 $$;
-COMMENT ON FUNCTION fhir_update(_type_ varchar, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb)
+COMMENT ON FUNCTION fhir_update(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb)
 IS 'Update resource, creating new version\nReturns bundle with one entry';
 
 CREATE OR REPLACE
-FUNCTION fhir_delete(_type_ varchar, _id_ uuid) RETURNS jsonb
+FUNCTION fhir_delete(_cfg jsonb, _type_ varchar, _id_ uuid) RETURNS jsonb
 LANGUAGE sql AS $$
-  WITH bundle AS (SELECT fhir_read(_type_, _id_) as bundle)
+  WITH bundle AS (SELECT fhir_read(_cfg, _type_, _id_) as bundle)
   SELECT bundle.bundle
   FROM bundle, delete_resource(_id_, _type_);
 $$;
-COMMENT ON FUNCTION fhir_delete(_type_ varchar, _id_ uuid)
+COMMENT ON FUNCTION fhir_delete(_cfg jsonb, _type_ varchar, _id_ uuid)
 IS 'DELETE resource by its id AND return deleted version\nReturn bundle with one deleted version entry' ;
 
 CREATE OR REPLACE
-FUNCTION fhir_history(_type_ varchar, _id_ uuid, _params_ jsonb) RETURNS jsonb
+FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _id_ uuid, _params_ jsonb) RETURNS jsonb
 LANGUAGE sql AS $$
   WITH entry AS (
     SELECT r.content AS content,
@@ -133,7 +127,7 @@ LANGUAGE sql AS $$
            r.logical_id AS id,
            r.category AS category,
            json_build_array(
-             _build_link(r.resource_type, r.logical_id, r.version_id)::json
+             _build_link(_cfg, r.resource_type, r.logical_id, r.version_id)::json
            )::jsonb   AS link
       FROM (
         SELECT * FROM resource
@@ -156,7 +150,7 @@ LANGUAGE sql AS $$
     GROUP BY e.id
 
 $$;
-COMMENT ON FUNCTION fhir_history(_type_ varchar, _id_ uuid, _params_ jsonb)
+COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _id_ uuid, _params_ jsonb)
 IS 'Retrieve the changes history for a particular resource with logical id (_id_)\nReturn bundle with entries representing versions';
 
 /* FUNCTION fhir_history(_type_ varchar, _params_ jsonb) */
@@ -167,7 +161,7 @@ IS 'Retrieve the changes history for a particular resource with logical id (_id_
 
 
 CREATE OR REPLACE
-FUNCTION fhir_search(_type_ varchar, _params_ jsonb) RETURNS jsonb
+FUNCTION fhir_search(_cfg jsonb, _type_ varchar, _params_ jsonb) RETURNS jsonb
 LANGUAGE sql AS $$
 -- TODO build query twice
   SELECT
@@ -186,12 +180,12 @@ LANGUAGE sql AS $$
             y.logical_id AS id,
             y.category AS category,
             json_build_array(
-              _build_link(y.resource_type, y.logical_id, y.version_id)::json
+              _build_link(_cfg, y.resource_type, y.logical_id, y.version_id)::json
             )::jsonb  AS link
        FROM search(_type_, _params_) y
     ) z
 $$;
-COMMENT ON FUNCTION fhir_search(_type_ varchar, _params_ jsonb)
+COMMENT ON FUNCTION fhir_search(_cfg jsonb, _type_ varchar, _params_ jsonb)
 IS 'Search in resources with _type_ by _params_\nReturns bundle with entries';
 
 /* FUNCTION fhir_search(_params_ jsonb) */
