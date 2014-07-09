@@ -62,6 +62,12 @@ And there is option to break FHIR specification abstraction (if required) and
 go into database by generic SQL interface and complete your business task.
 
 
+## Features
+
+
+TODO:
+
+
 ## Overview
 
 We heavily use PostgreSQL [inheritance](http://www.postgresql.org/docs/9.4/static/tutorial-inheritance.html) feature,

@@ -141,3 +141,21 @@ select assert_eq(
  OK json_array_to_str_array
 (1 row)
 
+SELECT assert_eq('a,b$c|d',
+   _fhir_unescape_param('a\,b\$c\|d'),
+   '_fhir_unescape_param');
+        assert_eq        
+-------------------------
+ OK _fhir_unescape_param
+(1 row)
+
+SELECT assert_eq(ARRAY['a,b','c,d'],
+   (SELECT array_agg(value)
+     FROM _fhir_spilt_to_table('a\,b,c\,d')),
+    '_fhir_spilt_to_table'
+   );
+        assert_eq        
+-------------------------
+ OK _fhir_spilt_to_table
+(1 row)
+

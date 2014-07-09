@@ -1,24 +1,27 @@
 --db:fhirb
 --{{{
+
+
 -- TODO: all by convetion
-CREATE OR REPLACE FUNCTION
-_param_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
-RETURNS text LANGUAGE sql AS $$
-WITH val_cond AS (SELECT
+CREATE OR REPLACE
+FUNCTION _param_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar) RETURNS text
+LANGUAGE sql AS $$
+WITH val_cond AS (
+  SELECT
   CASE WHEN _type = 'string' THEN
-    _search_string_expression(_table, _param, _type, _modifier, regexp_split_to_table)
+    _search_string_expression(_table, _param, _type, _modifier, y.value)
   WHEN _type = 'token' THEN
-    _search_token_expression(_table, _param, _type, _modifier, regexp_split_to_table)
+    _search_token_expression(_table, _param, _type, _modifier, y.value)
   WHEN _type = 'date' THEN
-    _search_date_expression(_table, _param, _type, _modifier, regexp_split_to_table)
+    _search_date_expression(_table, _param, _type, _modifier, y.value)
   WHEN _type = 'quantity' THEN
-    _search_quantity_expression(_table, _param, _type, _modifier, regexp_split_to_table)
+    _search_quantity_expression(_table, _param, _type, _modifier, y.value)
   WHEN _type = 'reference' THEN
-    _search_reference_expression(_table, _param, _type, _modifier, regexp_split_to_table)
+    _search_reference_expression(_table, _param, _type, _modifier, y.value)
   WHEN _type = 'number' THEN
-    _search_number_expression(_table, _param, _type, _modifier, regexp_split_to_table)
+    _search_number_expression(_table, _param, _type, _modifier, y.value)
   ELSE 'implement_me' END as cond
-  FROM regexp_split_to_table(_value, ','))
+  FROM _fhir_spilt_to_table(_value) y)
 SELECT
   _tpl('({{tbl}}.param = {{param}} AND ({{vals_cond}}))'
        , 'tbl', quote_ident(_table)
@@ -192,9 +195,9 @@ LANGUAGE sql AS $$
         SELECT quote_ident('_' || md5(x.value::text)) as als,
                split_part(x.key,':',1) as key,
                split_part(x.key,':',2) as modifier,
-               regexp_split_to_table as value
+               y.value as value
           FROM jsonb_each_text(_query) x,
-               regexp_split_to_table(x.value, ',')
+               _fhir_spilt_to_table(x.value) y
          WHERE split_part(x.key,':',1) IN ('_tag', '_security', '_profile')
       ) y
       GROUP BY y.als, y.key, y.modifier

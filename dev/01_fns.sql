@@ -194,4 +194,18 @@ BEGIN
   END IF;
 END
 $$;
+
+CREATE OR REPLACE
+FUNCTION _fhir_unescape_param(_str text) RETURNS text
+LANGUAGE sql AS $$
+  SELECT regexp_replace(_str, $RE$\\([,$|])$RE$, E'\\1', 'g')
+$$;
+
+CREATE OR REPLACE
+FUNCTION _fhir_spilt_to_table(_str text) RETURNS table (value text)
+LANGUAGE sql AS $$
+  SELECT _fhir_unescape_param(x)
+   FROM regexp_split_to_table(regexp_replace(_str, $RE$([^\\]),$RE$, E'\\1,,,,,'), ',,,,,') x
+$$;
+
 --}}}

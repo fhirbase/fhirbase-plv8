@@ -77,4 +77,14 @@ select assert_eq(
   json_array_to_str_array(ARRAY['"a"'::jsonb,'"b"'::jsonb]),
   '{a,b}'::varchar[],
   'json_array_to_str_array');
+
+SELECT assert_eq('a,b$c|d',
+   _fhir_unescape_param('a\,b\$c\|d'),
+   '_fhir_unescape_param');
+
+SELECT assert_eq(ARRAY['a,b','c,d'],
+   (SELECT array_agg(value)
+     FROM _fhir_spilt_to_table('a\,b,c\,d')),
+    '_fhir_spilt_to_table'
+   );
 --}}}
