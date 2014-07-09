@@ -3,7 +3,7 @@
 CREATE OR REPLACE FUNCTION
 _build_url(_cfg jsonb, rel_path text) RETURNS text
 LANGUAGE sql AS $$
-  SELECT _cfg->'base' || '/' || rel_path
+  SELECT _cfg->>'base' || '/' || rel_path
 $$;
 
 CREATE OR REPLACE FUNCTION
