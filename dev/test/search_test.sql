@@ -1,6 +1,24 @@
 --db:fhirb -e
 SET escape_string_warning=off;
 --{{{
+SELECT *
+  FROM _expand_search_params('Patient'::text,
+                     json_build_object('provider._id', '1,2',
+                                       'provider.name', 'ups',
+                                       'name', 'pups')::jsonb);
+
+SELECT *
+  FROM _build_references_joins('Patient'::text,
+                     json_build_object('provider._id', '1,2',
+                                       'name', 'pups')::jsonb);
+SELECT *
+  FROM build_search_joins('Patient'::text,
+                     json_build_object('provider._id', '1,2',
+                                       'provider.name', 'ups',
+                                       'name', 'pups')::jsonb);
+
+--}}}
+--{{{
 \set org1 `cat test/fixtures/org1.json`
 \set org_uuid '550e8400-e29b-41d4-a716-446655440009'
 \set org_tags  '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'
@@ -39,7 +57,6 @@ SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by status')
 
 SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by status')
   FROM search('Patient', '{"active": "true"}');
-
 
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
@@ -173,16 +190,4 @@ SELECT assert_eq(:'pt_uuid',
 
 
 ROLLBACK;
---}}}
---{{{
-
-SELECT *
-  FROM _build_references_joins('Patient'::text,
-                     json_build_object('provider._id', 'uuid',
-                                       'name', 'pups')::jsonb);
---}}}
-
---{{{
-select * from fhir.resource_indexables
-where resource_type = 'Patient'
 --}}}

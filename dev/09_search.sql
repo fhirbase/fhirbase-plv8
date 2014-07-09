@@ -76,7 +76,7 @@ LANGUAGE sql AS $$
 $$;
 
 CREATE OR REPLACE
-FUNCTION expand_params(_resource_type text, _query jsonb)
+FUNCTION _expand_search_params(_resource_type text, _query jsonb)
 RETURNS table (parent_res text, res text, path text[], key text, value text)
 LANGUAGE sql AS $$
   WITH RECURSIVE params(parent_res, res, path, key, value) AS (
@@ -125,7 +125,7 @@ LANGUAGE sql AS $$
                                        split_part(p.key, ':', 2),
                                        p.value), ' AND ')) as join_str
            ,p.path::text || '2' as weight
-       FROM expand_params(_resource_type, _query) p
+       FROM _expand_search_params(_resource_type, _query) p
        JOIN fhir.resource_indexables fri
          ON fri.param_name = split_part(p.key, ':', 1)
         AND fri.resource_type =  p.res
@@ -134,22 +134,43 @@ LANGUAGE sql AS $$
 $$ IMMUTABLE;
 
 CREATE OR REPLACE
+FUNCTION _ids_expression(_prefix text, _tbl_ text, ids text) RETURNS text -- sql
+LANGUAGE sql AS $$
+SELECT CASE
+    WHEN ids IS NULL THEN NULL
+    ELSE
+      (
+        SELECT _prefix || ' ( ' || string_agg(y.exp,' OR ') || ')' FROM (
+          SELECT _tbl_ || '.logical_id=' || quote_literal(x) AS exp
+           FROM regexp_split_to_table(ids, ',') x
+        ) y
+      )
+    END
+$$ IMMUTABLE;
+
+CREATE OR REPLACE
 FUNCTION _build_references_joins(_resource_type text, _query jsonb)
 RETURNS table (sql text, weight text)
 LANGUAGE sql AS $$
+   WITH params AS (
+      SELECT * FROM _expand_search_params(_resource_type, _query)
+   )
     -- joins trhough referenced resources for chained params
     SELECT _tpl($SQL$
             JOIN {{tbl}} {{als}}
               ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
+              {{ids}}
            $SQL$,
            'tbl', quote_ident(lower(p.parent_res) || '_references'),
            'als', get_alias_from_path(p.path),
-           'prnt', get_alias_from_path(_butlast(p.path)))
-           AS join_str
-            ,p.path::text || '1'  as weight
-      FROM expand_params(_resource_type, _query) p
-      WHERE parent_res is not null
-      GROUP BY p.parent_res, res, path
+           'prnt', get_alias_from_path(_butlast(p.path)),
+           'ids', CASE WHEN ids.value IS NOT NULL THEN _ids_expression(' AND ', get_alias_from_path(p.path), ids.value) ELSE '' END)
+        AS join_str
+           ,p.path::text || '1'  as weight
+      FROM params p
+ LEFT JOIN params ids ON ids.key = '_id' AND ids.path = p.path AND ids.parent_res = p.parent_res AND ids.res = p.res
+     WHERE p.parent_res IS NOT NULL
+  GROUP BY p.parent_res, p.res, p.path, ids.value
 $$ IMMUTABLE;
 
 CREATE OR REPLACE
@@ -193,7 +214,7 @@ LANGUAGE sql AS $$
   )
   -- agg to SQL string
   SELECT string_agg(sql, '')
-    FROM (SELECT sql  FROM joins ORDER BY weight LIMIT 1000) _ ;
+    FROM (SELECT sql  FROM joins ORDER BY weight) _ ;
 $$;
 
 CREATE OR REPLACE FUNCTION
@@ -254,20 +275,6 @@ RETURNS text LANGUAGE sql AS $$
 $$ IMMUTABLE;
 
 
-CREATE OR REPLACE
-FUNCTION _ids_expression(_tbl_ text, ids text) RETURNS text -- sql
-LANGUAGE sql AS $$
-SELECT CASE
-    WHEN ids IS NULL THEN NULL
-    ELSE
-      (
-        SELECT 'WHERE ( ' || string_agg(y.exp,' OR ') || ')' FROM (
-          SELECT _tbl_ || '.logical_id=' || quote_literal(x) AS exp
-           FROM regexp_split_to_table(ids, ',') x
-        ) y
-      )
-    END
-$$ IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION build_search_query(_resource_type varchar, query jsonb) RETURNS text
@@ -284,7 +291,7 @@ BEGIN
   _page := COALESCE(query->>'_page', '0')::integer;
   _offset := _page * _count;
   _tbl := quote_ident(lower(_resource_type));
-  _ids_exp := _ids_expression(_tbl, query->>'_id');
+  _ids_exp := _ids_expression(' WHERE ', _tbl, query->>'_id');
 
   SELECT INTO res
     _tpl($SQL$
