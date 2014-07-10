@@ -1,17 +1,85 @@
 SET escape_string_warning=off;
 SET
 SELECT *
+  FROM build_search_query('Patient'::text,
+                     json_build_object('provider._id', '1,2',
+                                       'provider.name', 'ups',
+                                       '_id', '1,2',
+                                       '_page', 10,
+                                       'birthdate:missing', true,
+                                       'identifier', 'MRN|7777777',
+                                       '_count', 100,
+                                       '_sort', ARRAY['name:desc', 'address:asc'],
+                                       'name', 'pups')::jsonb);
+                                                       build_search_query                                                       
+--------------------------------------------------------------------------------------------------------------------------------
+                                                                                                                               +
+     SELECT DISTINCT patient_address_order_idx.lower                                                                           +
+ ,patient.category                                                                                                             +
+ ,patient.content                                                                                                              +
+ ,patient.logical_id                                                                                                           +
+ ,patient_name_order_idx.upper                                                                                                 +
+ ,patient.published                                                                                                            +
+ ,patient.resource_type                                                                                                        +
+ ,patient.updated                                                                                                              +
+ ,patient.version_id                                                                                                           +
+       FROM patient patient                                                                                                    +
+                                                                                                                               +
+       LEFT JOIN patient_sort patient_name_order_idx                                                                           +
+              ON patient_name_order_idx.resource_id =                                                                          +
+                 patient.logical_id                                                                                            +
+                 AND patient_name_order_idx.param = 'name'                                                                     +
+                                                                                                                               +
+       LEFT JOIN patient_sort patient_address_order_idx                                                                        +
+              ON patient_address_order_idx.resource_id =                                                                       +
+                 patient.logical_id                                                                                            +
+                 AND patient_address_order_idx.param = 'address'                                                               +
+                                                                                                                               +
+                                                                                                                               +
+             JOIN patient_search_token patient_token                                                                           +
+               ON patient_token.resource_id::varchar = patient.logical_id::varchar                                             +
+              AND (patient_token.param = 'identifier' AND (patient_token.code = '7777777' AND patient_token.namespace = 'MRN'))+
+                                                                                                                               +
+             JOIN patient_search_string patient_string                                                                         +
+               ON patient_string.resource_id::varchar = patient.logical_id::varchar                                            +
+              AND (patient_string.param = 'name' AND (patient_string.value ilike '%pups%'))                                    +
+                                                                                                                               +
+             JOIN patient_references patient_provider                                                                          +
+               ON patient_provider.resource_id::varchar = patient.logical_id::varchar                                          +
+                AND  ( patient_provider.logical_id='1' OR patient_provider.logical_id='2')                                     +
+                                                                                                                               +
+             JOIN organization_search_string patient_provider_string                                                           +
+               ON patient_provider_string.resource_id::varchar = patient_provider.logical_id::varchar                          +
+              AND (patient_provider_string.param = 'name' AND (patient_provider_string.value ilike '%ups%'))                   +
+                                                                                                                               +
+                                                                                                                               +
+              LEFT JOIN patient_search_date patient_date                                                                       +
+                   ON patient_date.resource_id::varchar = patient.logical_id::varchar                                          +
+                  AND patient_date.param = 'birthdate'                                                                         +
+                                                                                                                               +
+       WHERE patient_date.resource_id IS NULL  AND  ( patient.logical_id='1' OR patient.logical_id='2')                        +
+       ORDER BY                                                                                                                +
+              patient_name_order_idx.upper DESC                                                                                +
+            ,                                                                                                                  +
+              patient_address_order_idx.lower ASC                                                                              +
+                                                                                                                               +
+       LIMIT 100                                                                                                               +
+       OFFSET 10                                                                                                               +
+   
+(1 row)
+
+SELECT *
   FROM _expand_search_params('Patient'::text,
                      json_build_object('provider._id', '1,2',
                                        'provider.name', 'ups',
                                        'name', 'pups')::jsonb);
- parent_res |     res      |        path        |      key      | value 
-------------+--------------+--------------------+---------------+-------
-            | Patient      | {Patient}          | name          | pups
-            | Patient      | {Patient}          | provider._id  | 1,2
-            | Patient      | {Patient}          | provider.name | ups
- Patient    | Organization | {Patient,provider} | _id           | 1,2
- Patient    | Organization | {Patient,provider} | name          | ups
+ parent_res |     res      |        path        |      key      | modifier | value 
+------------+--------------+--------------------+---------------+----------+-------
+            | Patient      | {Patient}          | name          |          | pups
+            | Patient      | {Patient}          | provider._id  |          | 1,2
+            | Patient      | {Patient}          | provider.name |          | ups
+ Patient    | Organization | {Patient,provider} | _id           |          | 1,2
+ Patient    | Organization | {Patient,provider} | name          |          | ups
 (5 rows)
 
 SELECT *
@@ -276,16 +344,6 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440011'::uuid,  E'{
       ]
     }
   ],
-  "telecom": [
-    {
-      "use": "home"
-    },
-    {
-      "system": "phone",
-      "value": "(03) 5555 6473",
-      "use": "work"
-    }
-  ],
   "gender": {
     "coding": [
       {
@@ -378,6 +436,30 @@ SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', logical_id, 'pt found b
  OK pt found by identifier
 (1 row)
 
+SELECT build_search_query('Patient', '{"identifier": "MRN|7777777"}');
+                                                       build_search_query                                                       
+--------------------------------------------------------------------------------------------------------------------------------
+                                                                                                                               +
+     SELECT DISTINCT patient.category                                                                                          +
+ ,patient.content                                                                                                              +
+ ,patient.logical_id                                                                                                           +
+ ,patient.published                                                                                                            +
+ ,patient.resource_type                                                                                                        +
+ ,patient.updated                                                                                                              +
+ ,patient.version_id                                                                                                           +
+       FROM patient patient                                                                                                    +
+                                                                                                                               +
+             JOIN patient_search_token patient_token                                                                           +
+               ON patient_token.resource_id::varchar = patient.logical_id::varchar                                             +
+              AND (patient_token.param = 'identifier' AND (patient_token.code = '7777777' AND patient_token.namespace = 'MRN'))+
+                                                                                                                               +
+       WHERE (true = true)                                                                                                     +
+       ORDER BY  updated DESC                                                                                                  +
+       LIMIT 100                                                                                                               +
+       OFFSET 0                                                                                                                +
+   
+(1 row)
+
 SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
  (SELECT logical_id
     FROM search('Patient', '{"identifier": "MRN|7777777"}'))
@@ -408,6 +490,48 @@ SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
       assert_eq       
 ----------------------
  OK pt found by phone
+(1 row)
+
+SELECT build_search_query('Patient', '{"telecom:missing": "true"}');
+                                   build_search_query                                   
+----------------------------------------------------------------------------------------
+                                                                                       +
+     SELECT DISTINCT patient.category                                                  +
+ ,patient.content                                                                      +
+ ,patient.logical_id                                                                   +
+ ,patient.published                                                                    +
+ ,patient.resource_type                                                                +
+ ,patient.updated                                                                      +
+ ,patient.version_id                                                                   +
+       FROM patient patient                                                            +
+                                                                                       +
+              LEFT JOIN patient_search_string patient_string                           +
+                   ON patient_string.resource_id::varchar = patient.logical_id::varchar+
+                  AND patient_string.param = 'telecom'                                 +
+                                                                                       +
+       WHERE (true = true) AND patient_string.resource_id IS NULL                      +
+       ORDER BY  updated DESC                                                          +
+       LIMIT 100                                                                       +
+       OFFSET 0                                                                        +
+   
+(1 row)
+
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440011',
+ (SELECT string_agg(logical_id::text,'|')
+    FROM search('Patient', '{"telecom:missing": "true"}'))
+ ,'test missing true');
+      assert_eq       
+----------------------
+ OK test missing true
+(1 row)
+
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
+ (SELECT string_agg(logical_id::text,'|')
+    FROM search('Patient', '{"telecom:missing": "false"}'))
+ ,'test missing false');
+       assert_eq       
+-----------------------
+ OK test missing false
 (1 row)
 
 SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
@@ -480,6 +604,34 @@ SELECT assert_eq('1', (SELECT COUNT(*)::varchar), 'search respects _count option
             assert_eq             
 ----------------------------------
  OK search respects _count option
+(1 row)
+
+SELECT build_search_query('Patient', '{"_count": 1, "_page": 1, "_sort": ["birthdate"]}');
+                         build_search_query                          
+---------------------------------------------------------------------
+                                                                    +
+     SELECT DISTINCT patient_birthdate_order_idx.lower              +
+ ,patient.category                                                  +
+ ,patient.content                                                   +
+ ,patient.logical_id                                                +
+ ,patient.published                                                 +
+ ,patient.resource_type                                             +
+ ,patient.updated                                                   +
+ ,patient.version_id                                                +
+       FROM patient patient                                         +
+                                                                    +
+       LEFT JOIN patient_sort patient_birthdate_order_idx           +
+              ON patient_birthdate_order_idx.resource_id =          +
+                 patient.logical_id                                 +
+                 AND patient_birthdate_order_idx.param = 'birthdate'+
+                                                                    +
+       WHERE (true = true)                                          +
+       ORDER BY                                                     +
+              patient_birthdate_order_idx.lower ASC                 +
+                                                                    +
+       LIMIT 1                                                      +
+       OFFSET 1                                                     +
+   
 (1 row)
 
 SELECT assert_eq('550e8400-e29b-41d4-a716-446655440011', (SELECT string_agg(logical_id::varchar, '')),
@@ -784,16 +936,6 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440011'::uuid,  E'{
       "given": [
         "Jim"
       ]
-    }
-  ],
-  "telecom": [
-    {
-      "use": "home"
-    },
-    {
-      "system": "phone",
-      "value": "(03) 5555 6473",
-      "use": "work"
     }
   ],
   "gender": {

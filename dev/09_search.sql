@@ -78,15 +78,17 @@ LANGUAGE sql AS $$
   || ')';
 $$;
 
-CREATE OR REPLACE
+DROP FUNCTION IF EXISTS _expand_search_params(_resource_type text, _query jsonb);
+CREATE
 FUNCTION _expand_search_params(_resource_type text, _query jsonb)
-RETURNS table (parent_res text, res text, path text[], key text, value text)
+RETURNS table (parent_res text, res text, path text[], key text, modifier text, value text)
 LANGUAGE sql AS $$
-  WITH RECURSIVE params(parent_res, res, path, key, value) AS (
+  WITH RECURSIVE params(parent_res, res, path, key, modifier, value) AS (
     SELECT null::text as parent_res,
            _resource_type::text as res,
            ARRAY[_resource_type]::text[] as path,
-           x.key,
+           split_part(x.key,':',1) as key,
+           split_part(x.key,':',2) as modifier,
            x.value
       FROM jsonb_each_text(_query) x
      WHERE split_part(x.key,':',1) NOT IN ('_tag', '_security', '_profile', '_sort')
@@ -95,9 +97,10 @@ LANGUAGE sql AS $$
 
     SELECT res as parent_res,
            get_reference_type(split_part(x.key, '.', 1), re.ref_type) as res,
-           array_append(x.path,split_part(key, '.', 1)) as path,
+           array_append(x.path,split_part(key, '.', 1)) AS path,
            (regexp_matches(key, '^([^.]+)\.(.+)'))[2] AS key,
-           value
+           split_part(split_part(x.key, '.', 1), ':',2) AS modifier,
+           x.value
      FROM  params x
      JOIN  fhir.resource_indexables ri
        ON  ri.param_name = split_part(split_part(x.key, '.', 1), ':',1)
@@ -113,37 +116,85 @@ CREATE OR REPLACE
 FUNCTION _build_index_joins(_resource_type text, _query jsonb)
 RETURNS table (sql text, weight text)
 LANGUAGE sql AS $$
+    WITH index_params AS (
+     SELECT quote_ident(lower(p.res) || '_search_' || fri.search_type) as tbl,
+            get_alias_from_path(array_append(p.path, fri.search_type::text)) AS als,
+            get_alias_from_path(p.path) prnt,
+            fri.param_name,
+            fri.search_type,
+            p.modifier,
+            p.path,
+            p.value
+       FROM _expand_search_params(_resource_type, _query) p
+       JOIN fhir.resource_indexables fri
+         ON fri.param_name = p.key
+        AND fri.resource_type =  p.res
+      WHERE position('.' in p.key) = 0
+    )
     SELECT _tpl($SQL$
             JOIN {{tbl}} {{als}}
               ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
              AND {{cond}}
           $SQL$,
-          'tbl',  quote_ident(lower(p.res) || '_search_' || fri.search_type),
-          'als',  get_alias_from_path(array_append(p.path, fri.search_type::text)),
-          'prnt', get_alias_from_path(p.path),
+          'tbl',  p.tbl,
+          'als',  p.als,
+          'prnt', p.prnt,
           'cond', string_agg(
-                     _param_expression( get_alias_from_path(array_append(p.path, fri.search_type::text)),
-                                       fri.param_name,
-                                       fri.search_type,
-                                       split_part(p.key, ':', 2),
+                     _param_expression(p.als,
+                                       p.param_name,
+                                       p.search_type,
+                                       p.modifier,
                                        p.value), ' AND ')) as join_str
            ,p.path::text || '2' as weight
-       FROM _expand_search_params(_resource_type, _query) p
-       JOIN fhir.resource_indexables fri
-         ON fri.param_name = split_part(p.key, ':', 1)
-        AND fri.resource_type =  p.res
-      WHERE position('.' in p.key) = 0
-      GROUP BY p.res, p.path, fri.search_type
+       FROM index_params p
+       WHERE p.modifier <> 'missing'
+       GROUP BY p.tbl, p.als, p.prnt, p.path, p.search_type
 $$ IMMUTABLE;
 
 CREATE OR REPLACE
-FUNCTION _ids_expression(_prefix text, _tbl_ text, ids text) RETURNS text -- sql
+FUNCTION build_search_missing_parts(_resource_type text, _query jsonb)
+RETURNS table (part text, sql text)
+LANGUAGE sql AS $$
+    WITH index_params AS (
+     SELECT quote_ident(lower(p.res) || '_search_' || fri.search_type) as tbl,
+            get_alias_from_path(array_append(p.path, fri.search_type::text)) AS als,
+            get_alias_from_path(p.path) prnt,
+            p.modifier,
+            fri.param_name,
+            p.value
+       FROM _expand_search_params(_resource_type, _query) p
+       JOIN fhir.resource_indexables fri
+         ON fri.param_name = p.key
+        AND fri.resource_type =  p.res
+      WHERE position('.' in p.key) = 0
+        AND p.modifier = 'missing'
+    )
+    SELECT 'JOIN'::text,
+           _tpl($SQL$
+             LEFT JOIN {{tbl}} {{als}}
+                  ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
+                 AND {{als}}.param = {{param_name}}
+           $SQL$,
+           'tbl',  p.tbl,
+           'als',  p.als,
+           'prnt', p.prnt,
+           'param_name', quote_literal(p.param_name))
+       FROM index_params p
+   UNION
+   SELECT 'WHERE'::text,
+     p.als || '.resource_id IS ' ||
+     CASE WHEN p.value = 'true' THEN 'NULL ' ELSE 'NOT NULL' END
+     FROM index_params p
+$$ IMMUTABLE;
+
+CREATE OR REPLACE
+FUNCTION _ids_expression(_tbl_ text, ids text) RETURNS text -- sql
 LANGUAGE sql AS $$
 SELECT CASE
-    WHEN ids IS NULL THEN NULL
+    WHEN ids IS NULL THEN '(true = true)'
     ELSE
       (
-        SELECT _prefix || ' ( ' || string_agg(y.exp,' OR ') || ')' FROM (
+        SELECT ' ( ' || string_agg(y.exp,' OR ') || ')' FROM (
           SELECT _tbl_ || '.logical_id=' || quote_literal(x) AS exp
            FROM regexp_split_to_table(ids, ',') x
         ) y
@@ -167,7 +218,7 @@ LANGUAGE sql AS $$
            'tbl', quote_ident(lower(p.parent_res) || '_references'),
            'als', get_alias_from_path(p.path),
            'prnt', get_alias_from_path(_butlast(p.path)),
-           'ids', CASE WHEN ids.value IS NOT NULL THEN _ids_expression(' AND ', get_alias_from_path(p.path), ids.value) ELSE '' END)
+           'ids', CASE WHEN ids.value IS NOT NULL THEN ' AND ' || _ids_expression(get_alias_from_path(p.path), ids.value) ELSE '' END)
         AS join_str
            ,p.path::text || '1'  as weight
       FROM params p
@@ -207,17 +258,24 @@ $$ IMMUTABLE;
 CREATE OR REPLACE
 FUNCTION build_search_joins(_resource_type text, _query jsonb) RETURNS text
 LANGUAGE sql AS $$
-  -- recursivelly expand chained params
   WITH joins AS  (
     SELECT * FROM _build_tags_joins(_resource_type, _query)
     UNION ALL
-    SELECT * FROM _build_index_joins(_resource_type, _query)
-    UNION ALL
     SELECT * FROM _build_references_joins(_resource_type, _query)
+    UNION ALL
+    SELECT * FROM _build_index_joins(_resource_type, _query)
   )
   -- agg to SQL string
   SELECT string_agg(sql, '')
     FROM (SELECT sql  FROM joins ORDER BY weight) _ ;
+$$;
+
+CREATE OR REPLACE
+FUNCTION build_search_part(_resource_type varchar, query jsonb) RETURNS table(part text, sql text)
+LANGUAGE sql AS $$
+  SELECT 'JOIN'::text, build_search_joins(_resource_type, query)
+  UNION ALL
+  SELECT * FROM build_search_missing_parts(_resource_type, query)
 $$;
 
 CREATE OR REPLACE FUNCTION
@@ -235,6 +293,7 @@ RETURNS TABLE(param text, direction text) LANGUAGE sql AS $$
          END AS direction
     FROM jsonb_array_elements_text(query->'_sort')
    WHERE position('.' IN jsonb_array_elements_text) = 0
+   -- we do not sort by chained params
 $$;
 
 CREATE OR REPLACE FUNCTION
@@ -250,9 +309,9 @@ RETURNS text LANGUAGE sql AS $$
       FROM parse_order_params(_resource_type, query)
   )
   SELECT CASE WHEN length(string_agg(str, '')) > 0 THEN
-           'ORDER BY ' || string_agg(str, ', ')
+           string_agg(str, ', ')
          ELSE
-           'ORDER BY logical_id ASC'
+           ' updated DESC '
          END
     FROM order_strs
 $$ IMMUTABLE;
@@ -280,43 +339,86 @@ $$ IMMUTABLE;
 
 
 CREATE OR REPLACE
+FUNCTION build_offset_part(_resource_type varchar, query jsonb) RETURNS table(part text, sql text)
+LANGUAGE sql AS $$
+  SELECT 'OFFSET'::text, (COALESCE(query->>'_page', '0')::integer)::text;
+$$;
+
+CREATE OR REPLACE
+FUNCTION build_limit_part(_resource_type varchar, query jsonb) RETURNS table(part text, sql text)
+LANGUAGE sql AS $$
+  SELECT 'LIMIT'::text, (COALESCE(query->>'_count', '100')::integer)::text;
+$$;
+
+CREATE OR REPLACE
+FUNCTION build_order_part(_resource_type varchar, query jsonb) RETURNS table(part text, sql text)
+LANGUAGE sql AS $$
+  SELECT 'JOIN'::text, build_order_joins(_resource_type, query)
+  UNION
+  SELECT 'ORDER'::text, build_order_clause(_resource_type, query)
+  UNION
+  SELECT 'SELECT'::text, lower(_resource_type) || '_' || param || '_order_idx.' || CASE WHEN direction = 'ASC' THEN 'lower' ELSE 'upper' END
+    FROM parse_order_params(_resource_type, query)
+$$;
+
+CREATE OR REPLACE
+FUNCTION build_ids_search_part(_resource_type varchar, query jsonb) RETURNS table(part text, sql text)
+LANGUAGE sql AS $$
+  SELECT 'WHERE'::text, _ids_expression(quote_ident(lower(_resource_type)), query->>'_id')
+$$;
+
+CREATE OR REPLACE
+FUNCTION build_select_part(_resource_type varchar, query jsonb) RETURNS table(part text, sql text)
+LANGUAGE sql AS $$
+  SELECT 'SELECT'::text, quote_ident(lower(_resource_type)) || '.' || x as sql
+    FROM unnest('{logical_id,version_id,content, category, updated, published, resource_type}'::text[]) x
+$$;
+
+
+-- TODO add to documentation
+-- custom sort param _sort:asc=a, _sort:desc=b => { _sort:["a:asc", "b:desc"] }
+CREATE OR REPLACE
 FUNCTION build_search_query(_resource_type varchar, query jsonb) RETURNS text
-LANGUAGE plpgsql AS $$
-DECLARE
-  _tbl text;
-  _count integer;
-  _offset integer;
-  _page integer;
-  _ids_exp text;
-  res text;
-BEGIN
-  _count := COALESCE(query->>'_count', '50')::integer;
-  _page := COALESCE(query->>'_page', '0')::integer;
-  _offset := _page * _count;
-  _tbl := quote_ident(lower(_resource_type));
-  _ids_exp := _ids_expression(' WHERE ', _tbl, query->>'_id');
+LANGUAGE sql AS $$
+-- we get query jsonb and return query sql string
+-- i.e. we build query
+-- build is complex, so we split it into parts (i.e. search part, chain part, order part, ids part)
+-- query is represented as simple relation table(query_part enum, sql text), where query_part one of SELECT, JOIN, WHERE, ORDER, LIMIT
+-- for example build_paging_part(query) => [('LIMIT', 100), ('OFFSET', 50)]
+-- then we union all parts and generate SQL string
+  WITH sql_query AS (
+    SELECT * FROM build_select_part(_resource_type, query)
+    UNION
+    SELECT * FROM build_search_part(_resource_type, query)
+    UNION
+    SELECT * FROM build_ids_search_part(_resource_type, query)
+    UNION
+    SELECT * FROM build_order_part(_resource_type, query)
+    UNION
+    SELECT * FROM build_offset_part(_resource_type, query)
+    UNION
+    SELECT * FROM build_limit_part(_resource_type,query)
+  )
+  SELECT
+  _tpl($SQL$
+    SELECT DISTINCT {{select}}
+      FROM {{tbl}} {{tbl}}
+      {{join}}
+      WHERE {{where}}
+      ORDER BY {{order}}
+      LIMIT {{limit}}
+      OFFSET {{offset}}
+  $SQL$,
+  'tbl',   quote_ident(lower(_resource_type)),
+  'select', (SELECT string_agg(DISTINCT(sql), E'\n,')  FROM sql_query WHERE part = 'SELECT' and sql IS NOT NULL),
+  'join',   (SELECT string_agg(sql, E'\n')   FROM sql_query WHERE part = 'JOIN' and sql IS NOT NULL),
+  'where',  COALESCE((SELECT string_agg(sql, ' AND ') FROM sql_query WHERE part = 'WHERE' and sql IS NOT NULL), ' true = true'),
+  'order',  COALESCE((SELECT string_agg(sql, ' , ') FROM sql_query WHERE part = 'ORDER' and sql IS NOT NULL), ' updated:desc '),
+  'limit',  (SELECT sql FROM sql_query WHERE part = 'LIMIT' limit 1),
+  'offset', (SELECT sql FROM sql_query WHERE part = 'OFFSET' limit 1)
+  );
+$$;
 
-  SELECT INTO res
-    _tpl($SQL$
-      SELECT {{tbl}}.*
-        FROM {{tbl}} {{tbl}}
-        {{joins}}
-        {{ids_search}}
-        {{order_clause}}
-        LIMIT {{limit}}
-        OFFSET {{offset}}
-    $SQL$,
-    'tbl', _tbl,
-    'joins', COALESCE(build_search_joins(_resource_type, query), '') || ' ' ||
-             COALESCE(build_order_joins(_resource_type, query), ''),
-    'order_clause', build_order_clause(_resource_type, query),
-    'ids_search', _ids_exp,
-    'limit', _count::varchar,
-    'offset', _offset::varchar);
-
-  RETURN res;
-END
-$$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
 search_results_count(_resource_type varchar, query jsonb)

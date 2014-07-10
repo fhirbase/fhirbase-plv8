@@ -36,16 +36,6 @@
       ]
     }
   ],
-  "telecom": [
-    {
-      "use": "home"
-    },
-    {
-      "system": "phone",
-      "value": "(03) 5555 6473",
-      "use": "work"
-    }
-  ],
   "gender": {
     "coding": [
       {

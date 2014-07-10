@@ -72,15 +72,15 @@ BEGIN
 END
 $$;
 
-CREATE OR REPLACE FUNCTION
-index_all_resource_references(res jsonb)
-RETURNS jsonb[] LANGUAGE sql AS $$
+CREATE OR REPLACE
+FUNCTION index_all_resource_references(res jsonb) RETURNS jsonb[]
+LANGUAGE sql AS $$
   SELECT _index_res_ref_recur(ARRAY[res->>'resourceType']::varchar[], res);
 $$;
 
-CREATE OR REPLACE FUNCTION
-_search_reference_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
-RETURNS text LANGUAGE sql AS $$
+CREATE OR REPLACE
+FUNCTION _search_reference_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar) RETURNS text
+LANGUAGE sql AS $$
   SELECT
     '(' || quote_ident(_table) || '.logical_id = ' || quote_literal(_value) || ' OR ' || quote_ident(_table) || '.url = ' || quote_literal(_value) || ')' ||
     CASE WHEN _modifier <> '' THEN

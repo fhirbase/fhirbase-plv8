@@ -2,6 +2,17 @@
 SET escape_string_warning=off;
 --{{{
 SELECT *
+  FROM build_search_query('Patient'::text,
+                     json_build_object('provider._id', '1,2',
+                                       'provider.name', 'ups',
+                                       '_id', '1,2',
+                                       '_page', 10,
+                                       'birthdate:missing', true,
+                                       'identifier', 'MRN|7777777',
+                                       '_count', 100,
+                                       '_sort', ARRAY['name:desc', 'address:asc'],
+                                       'name', 'pups')::jsonb);
+SELECT *
   FROM _expand_search_params('Patient'::text,
                      json_build_object('provider._id', '1,2',
                                        'provider.name', 'ups',
@@ -49,6 +60,8 @@ SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by name')
 SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by identifier')
   FROM search('Patient', '{"identifier": "123456789"}');
 
+SELECT build_search_query('Patient', '{"identifier": "MRN|7777777"}');
+
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
     FROM search('Patient', '{"identifier": "MRN|7777777"}'))
@@ -64,6 +77,19 @@ SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
     FROM search('Patient', '{"telecom": "+31612345678"}'))
  ,'pt found by phone');
+
+SELECT build_search_query('Patient', '{"telecom:missing": "true"}');
+
+SELECT assert_eq(:'pt2_uuid',
+ (SELECT string_agg(logical_id::text,'|')
+    FROM search('Patient', '{"telecom:missing": "true"}'))
+ ,'test missing true');
+
+SELECT assert_eq(:'pt_uuid',
+ (SELECT string_agg(logical_id::text,'|')
+    FROM search('Patient', '{"telecom:missing": "false"}'))
+ ,'test missing false');
+
 
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
@@ -111,6 +137,7 @@ SELECT assert_eq('http://pt/vip',
 SELECT assert_eq('1', (SELECT COUNT(*)::varchar), 'search respects _count option')
   FROM search('Patient', '{"_count": 1}');
 
+SELECT build_search_query('Patient', '{"_count": 1, "_page": 1, "_sort": ["birthdate"]}');
 SELECT assert_eq(:'pt2_uuid', (SELECT string_agg(logical_id::varchar, '')),
                  'search respects _count and _page option')
   FROM search('Patient', '{"_count": 1, "_page": 1, "_sort": ["birthdate"]}');
@@ -118,6 +145,7 @@ SELECT assert_eq(:'pt2_uuid', (SELECT string_agg(logical_id::varchar, '')),
 SELECT assert_eq(:'pt2_uuid', (SELECT string_agg(logical_id::varchar, '')),
   'search respects _count and _page option')
   FROM search('Patient', '{"gender": "M", "_count": 1, "_page": 0, "_sort": ["birthdate:desc"]}');
+
 
 SELECT assert_eq(:'pt2_uuid' || :'pt_uuid', (SELECT string_agg(logical_id::varchar, '')),
   'search respects _sort option')
