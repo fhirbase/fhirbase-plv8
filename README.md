@@ -141,7 +141,7 @@ You can install FHIRBase:
 ```
 source local_cfg.sh
 echo 'CREATE DATABASE mydb' | psql postgres
-psql mydb < fhirplace--1.0.sql
+psql mydb < fhirbase--1.0.sql
 ```
 
 TODO: test script to verify installation
