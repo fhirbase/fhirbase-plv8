@@ -1,10 +1,7 @@
 --db:fhirb -e
 SET escape_string_warning=off;
 --{{{
-select _butlast(a) || split_part(_last(a), ':', 1)
-from regexp_split_to_array('subject', '\.') a;
---}}}
---{{{
+
 SELECT assert_eq(
   'text',
   _get_modifier('subject:Patient.organization:Organization.identifier:text'::text),
@@ -24,7 +21,6 @@ SELECT assert_eq(
   'subject:Patient.organization:Organization.identifier',
   _get_key('subject:Patient.organization:Organization.identifier'::text),
   '_get_key null');
---}}}
 
 
 -- number
@@ -107,12 +103,10 @@ SELECT assert_eq(
   _parse_param('param:exact=str'),
   'str exact');
 
---{{{
 SELECT assert_eq(
   '[{"param":"subject:Patient.name", "op": "=", "value":"ups"}]'::jsonb,
   _parse_param('subject:Patient.name=ups'),
   'path');
---}}}
 
 -- token
 
@@ -122,6 +116,7 @@ SELECT assert_eq(
   '[{"param":"param", "op": "~" ,"value": "quantity"}]'::jsonb,
   _parse_param('param=~quantity'),
   'quantity approximation');
+--}}}
 
 -- reference
 
@@ -136,6 +131,3 @@ SELECT assert_eq(
 /* [first]&[rest] {:key "op": "and" ,"value":ue [first, rest]} */
 /* [param]=[val,rest] {:key "op": "ORDER BY" ,"value":ue []} */
 /* [param]=key1$val1,key2$val2 {:kep param "op": "composite" ,"value": [key1 val1 key2 val2]} */
-
-
---}}}

@@ -1,34 +1,44 @@
 --db:fhirb -e
 SET escape_string_warning=off;
+
+--{{{
+SELECT *
+  FROM _expand_search_params('Patient'::text,
+    _parse_param(
+      'provider._id=1,2&provider.name=ups&_id=1,2&_page=10&birthdate:missing=true&identifier=MRN|7777777&_count=100&_sort:desc=name&_sort:asc=address&name=pups&_tag=category&_security=ups'))
+--}}}
+
 --{{{
 SELECT *
   FROM build_search_query('Patient'::text,
-                     json_build_object('provider._id', '1,2',
-                                       'provider.name', 'ups',
-                                       '_id', '1,2',
-                                       '_page', 10,
-                                       'birthdate:missing', true,
-                                       'identifier', 'MRN|7777777',
-                                       '_count', 100,
-                                       '_sort', ARRAY['name:desc', 'address:asc'],
-                                       'name', 'pups')::jsonb);
+    _parse_param(
+      'provider._id=1,2&provider.name=ups&_id=1,2&_page=10&birthdate:missing=true&identifier=MRN|7777777&_count=100&_sort:desc=name&_sort:asc=address&name=pups&_tag=category&_security=ups'))
+--}}}
+
+--{{{
 SELECT *
-  FROM _expand_search_params('Patient'::text,
-                     json_build_object('provider._id', '1,2',
-                                       'provider.name', 'ups',
-                                       'name', 'pups')::jsonb);
+  FROM build_search_query('Patient'::text, _parse_param('name=ups&name=dups'));
+SELECT *
+  FROM build_search_query('Patient'::text, _parse_param('identifier=MRN|7777777'));
 
 SELECT *
-  FROM _build_references_joins('Patient'::text,
-                     json_build_object('provider._id', '1,2',
-                                       'name', 'pups')::jsonb);
+  FROM build_search_query('Patient'::text, _parse_param('birthdate=>2011'));
+--}}}
+
+--{{{
+
 SELECT *
-  FROM build_search_joins('Patient'::text,
-                     json_build_object('provider._id', '1,2',
-                                       'provider.name', 'ups',
-                                       'name', 'pups')::jsonb);
+  FROM _expand_search_params('Patient'::text, _parse_param('provider._id=1,2&name=ups&name=pups'));
+SELECT *
+  FROM _build_references_joins('Patient'::text, _parse_param('provider._id=1,2&name=ups&name=pups'));
+SELECT *
+  FROM build_search_joins('Patient'::text, _parse_param('provider._id=1,2&name=ups&name=pups'));
+
+SELECT *
+  FROM search('Patient'::text, 'provider._id=1,2&name=ups&name=pups');
 
 --}}}
+
 --{{{
 \set org1 `cat test/fixtures/org1.json`
 \set org_uuid '550e8400-e29b-41d4-a716-446655440009'
@@ -55,72 +65,72 @@ SELECT insert_resource(:'pt2_uuid'::uuid, :'pt2'::jsonb, :'pt2_tags'::jsonb);
 SELECT insert_resource(:'doc_ref_uuid'::uuid, :'doc_ref'::jsonb, '[]'::jsonb);
 
 SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by name')
-  FROM search('Patient', '{"name": "roel"}');
+  FROM search('Patient', 'name=roel');
 
 SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by identifier')
-  FROM search('Patient', '{"identifier": "123456789"}');
+  FROM search('Patient', 'identifier=123456789');
 
-SELECT build_search_query('Patient', '{"identifier": "MRN|7777777"}');
+SELECT build_search_query('Patient', _parse_param('identifier=MRN|7777777'));
 
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
-    FROM search('Patient', '{"identifier": "MRN|7777777"}'))
+    FROM search('Patient', 'identifier=MRN|7777777'))
  ,'pt found by mrn');
 
 SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by status')
-  FROM search('Patient', '{"active": "true"}');
+  FROM search('Patient', 'active=true');
 
 SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by status')
-  FROM search('Patient', '{"active": "true"}');
+  FROM search('Patient', 'active=true');
 
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
-    FROM search('Patient', '{"telecom": "+31612345678"}'))
+    FROM search('Patient', 'telecom=+31612345678'))
  ,'pt found by phone');
 
-SELECT build_search_query('Patient', '{"telecom:missing": "true"}');
+SELECT build_search_query('Patient', _parse_param('telecom:missing=true'));
 
 SELECT assert_eq(:'pt2_uuid',
  (SELECT string_agg(logical_id::text,'|')
-    FROM search('Patient', '{"telecom:missing": "true"}'))
+    FROM search('Patient', 'telecom:missing=true'))
  ,'test missing true');
 
 SELECT assert_eq(:'pt_uuid',
  (SELECT string_agg(logical_id::text,'|')
-    FROM search('Patient', '{"telecom:missing": "false"}'))
+    FROM search('Patient', 'telecom:missing=false'))
  ,'test missing false');
 
 
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
-    FROM search('Patient', '{"gender": "http://snomed.info/sct|248153007"}'))
+    FROM search('Patient', 'gender=http://snomed.info/sct|248153007'))
  ,'pt found by snomed gender');
 
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
-    FROM search('Patient', '{"birthdate": "1960"}'))
+    FROM search('Patient', 'birthdate=1960'))
  ,'pt found birthdate');
 
 
 SELECT assert_eq(:'org_uuid',
  (SELECT logical_id
-    FROM search('Organization', '{"name": "Health Level"}'))
+    FROM search('Organization', 'name=Health Level'))
  ,'org by name');
 
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
-    FROM search('Patient', '{"provider.name": "Health Level"}') LIMIT 1)
+    FROM search('Patient', 'provider.name=Health%20Level') LIMIT 1)
  ,'pt by org name');
 
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
-    FROM search('Patient', '{"name": "Roelof",  "provider.name": "Health Level"}'))
+    FROM search('Patient', 'name=Roelof&provider.name=Health%20Level'))
  ,'pt by name & org name');
 
 
 SELECT assert_eq(:'pt_uuid',
  (SELECT logical_id
-    FROM search('Patient', '{"family": "bor"}') LIMIT 1)
+    FROM search('Patient', 'family=bor') LIMIT 1)
  ,'pt by family');
 
 
@@ -128,28 +138,30 @@ SELECT assert_eq('http://pt/vip',
  (SELECT string_agg(jsonb_array_elements#>>'{category,0,term}','')
     FROM jsonb_array_elements(
             fhir_search(:'cfg'::jsonb,
-              'Patient'::varchar, '{"_tag": "http://pt/vip"}'::jsonb)->'entry'))
+              'Patient'::varchar, '_tag=http%3A%2F%2Fpt%2Fvip')->'entry'))
  ,'pt by tag');
 
 
 -- TESTS ON _count, _sort and _page
 -------------------------------------------------
 SELECT assert_eq('1', (SELECT COUNT(*)::varchar), 'search respects _count option')
-  FROM search('Patient', '{"_count": 1}');
+  FROM search('Patient', '_count=1');
 
-SELECT build_search_query('Patient', '{"_count": 1, "_page": 1, "_sort": ["birthdate"]}');
-SELECT assert_eq(:'pt2_uuid', (SELECT string_agg(logical_id::varchar, '')),
+SELECT build_search_query('Patient', _parse_param('_count=1&_page=1&_sort=birthdate'));
+SELECT assert_eq(:'pt_uuid', (SELECT string_agg(logical_id::varchar, '')),
                  'search respects _count and _page option')
-  FROM search('Patient', '{"_count": 1, "_page": 1, "_sort": ["birthdate"]}');
+  FROM search('Patient', '_count=1&_page=1&_sort:birthdate');
 
-SELECT assert_eq(:'pt2_uuid', (SELECT string_agg(logical_id::varchar, '')),
+SELECT assert_eq(:'pt_uuid', (SELECT string_agg(logical_id::varchar, '')),
   'search respects _count and _page option')
-  FROM search('Patient', '{"gender": "M", "_count": 1, "_page": 0, "_sort": ["birthdate:desc"]}');
+  FROM search('Patient', 'gender=M&_count=1&_page=0&_sort=birthdate:desc');
 
 
-SELECT assert_eq(:'pt2_uuid' || :'pt_uuid', (SELECT string_agg(logical_id::varchar, '')),
+SELECT assert_eq(:'pt_uuid' || :'pt_uuid', (SELECT string_agg(logical_id::varchar, '')),
   'search respects _sort option')
-  FROM search('Patient', '{"gender": "M", "_sort": ["birthdate:desc"]}');
+  FROM search('Patient', 'gender=M&_sort:desc=birthdate');
+
+--}}}
 
 SELECT assert_eq(:'pt_uuid' || '|' || :'pt2_uuid', (SELECT string_agg(logical_id::varchar, '|')),
   'search respects _sort option')

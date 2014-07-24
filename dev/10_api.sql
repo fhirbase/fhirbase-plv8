@@ -161,7 +161,7 @@ IS 'Retrieve the changes history for a particular resource with logical id (_id_
 
 
 CREATE OR REPLACE
-FUNCTION fhir_search(_cfg jsonb, _type_ varchar, _params_ jsonb) RETURNS jsonb
+FUNCTION fhir_search(_cfg jsonb, _type_ varchar, _params_ text) RETURNS jsonb
 LANGUAGE sql AS $$
 -- TODO build query twice
   SELECT
@@ -185,7 +185,7 @@ LANGUAGE sql AS $$
        FROM search(_type_, _params_) y
     ) z
 $$;
-COMMENT ON FUNCTION fhir_search(_cfg jsonb, _type_ varchar, _params_ jsonb)
+COMMENT ON FUNCTION fhir_search(_cfg jsonb, _type_ varchar, _params_ text)
 IS 'Search in resources with _type_ by _params_\nReturns bundle with entries';
 
 /* FUNCTION fhir_search(_params_ jsonb) */

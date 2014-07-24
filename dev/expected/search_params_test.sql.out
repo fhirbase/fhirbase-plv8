@@ -1,12 +1,5 @@
 SET escape_string_warning=off;
 SET
-select _butlast(a) || split_part(_last(a), ':', 1)
-from regexp_split_to_array('subject', '\.') a;
- ?column?  
------------
- {subject}
-(1 row)
-
 SELECT assert_eq(
   'text',
   _get_modifier('subject:Patient.organization:Organization.identifier:text'::text),
@@ -222,4 +215,3 @@ SELECT assert_eq(
 /* [first]&[rest] {:key "op": "and" ,"value":ue [first, rest]} */
 /* [param]=[val,rest] {:key "op": "ORDER BY" ,"value":ue []} */
 /* [param]=key1$val1,key2$val2 {:kep param "op": "composite" ,"value": [key1 val1 key2 val2]} */
-

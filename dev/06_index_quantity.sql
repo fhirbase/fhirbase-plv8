@@ -31,44 +31,41 @@ END
 $$;
 
 CREATE OR REPLACE FUNCTION
-_search_quantity_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar)
+_search_quantity_expression(_table varchar, _param varchar, _type varchar, _op varchar, _value varchar)
 RETURNS text LANGUAGE sql AS $$
   SELECT
   quote_ident(_table) || '.value ' ||
 
   CASE
-  WHEN op = '' OR op IS NULL THEN
-    '= ' || quote_literal(p.val)
-  WHEN op = '<' THEN
-    '< ' || quote_literal(p.val)
-  WHEN op = '>' THEN
-    '>' || quote_literal(p.val)
-  WHEN op = '~' THEN
-    '<@ numrange(' || val - val * 0.05 || ',' || val + val * 0.05 || ')'
+  WHEN _op = '=' THEN
+    '= ' || quote_literal(_value)
+  WHEN _op = '<' THEN
+    '< ' || quote_literal(_value)
+  WHEN _op = '>' THEN
+    '>' || quote_literal(_value)
+  WHEN _op = '~' THEN
+    '<@ numrange(' || _value::decimal - _value::decimal * 0.05 || ',' || _value::decimal + _value::decimal * 0.05 || ')'
   ELSE
-    '= "unknown operator: ' || op || '"'
+    '= "unknown operator: ' || _op || '"'
   END ||
 
-  CASE WHEN array_length(p.c, 1) = 3 THEN
-    CASE WHEN p.c[2] IS NOT NULL AND p.c[2] <> '' THEN
-      ' AND ' || quote_ident(_table) || '.system = ' || quote_literal(p.c[2])
+  CASE WHEN array_length(c, 1) = 3 THEN
+    CASE WHEN c[2] IS NOT NULL AND c[2] <> '' THEN
+      ' AND ' || quote_ident(_table) || '.system = ' || quote_literal(c[2])
     ELSE
       ''
     END ||
-    CASE WHEN p.c[3] IS NOT NULL AND p.c[3] <> '' THEN
-      ' AND ' || quote_ident(_table) || '.units = ' || quote_literal(p.c[3])
+    CASE WHEN c[3] IS NOT NULL AND c[3] <> '' THEN
+      ' AND ' || quote_ident(_table) || '.units = ' || quote_literal(c[3])
     ELSE
       ''
     END
-  WHEN array_length(p.c, 1) = 1 THEN
+  WHEN array_length(c, 1) = 1 THEN
     ''
   ELSE
     '"wrong number of compoments of search string, must be 1 or 3"'
   END
   FROM
-  (SELECT
-    regexp_split_to_array(_value, '\|') AS c,
-    (regexp_matches(split_part(_value, '|', 1), '^(<|>|~)?'))[1] AS op,
-    (regexp_matches(split_part(_value, '|', 1), '^(<|>|~)?(.+)$'))[2]::numeric AS val) p;
+  (SELECT regexp_split_to_array(_value, '\|') AS c, split_part(_value, '|', 1)::numeric AS p) _
 $$;
 --}}}

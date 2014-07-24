@@ -79,14 +79,18 @@ LANGUAGE sql AS $$
 $$;
 
 CREATE OR REPLACE
-FUNCTION _search_reference_expression(_table varchar, _param varchar, _type varchar, _modifier varchar, _value varchar) RETURNS text
+FUNCTION _search_reference_expression(_table varchar, _param varchar, _type varchar, _op varchar, _value varchar) RETURNS text
 LANGUAGE sql AS $$
-  SELECT
-    '(' || quote_ident(_table) || '.logical_id = ' || quote_literal(_value) || ' OR ' || quote_ident(_table) || '.url = ' || quote_literal(_value) || ')' ||
-    CASE WHEN _modifier <> '' THEN
-      ' AND ' || quote_ident(_table) || '.resource_type = ' || quote_literal(_modifier)
-    ELSE
-      ''
-    END;
+  SELECT '('
+      ||  quote_ident(_table) || '.logical_id = ' || quote_literal(_value)
+      ||  ' OR '
+      ||  quote_ident(_table) || '.url = ' || quote_literal(_value)
+      ||  ')'
+      ||
+          CASE WHEN _op <> '=' THEN
+            ' AND ' || quote_ident(_table) || '.resource_type = ' || quote_literal(_op)
+          ELSE
+            ''
+          END;
 $$;
 --}}}
