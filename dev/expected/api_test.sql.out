@@ -1340,7 +1340,7 @@ WITH roel AS (
   "active": false
 }', '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'::jsonb) AS entry
 ), searched AS (
-  SELECT fhir_search('{"base":"https://test.me"}', 'Patient', '{"name":"roel"}'::jsonb) as bundle
+  SELECT fhir_search('{"base":"https://test.me"}', 'Patient', 'name=roel') as bundle
 )
 SELECT assert(jsonb_array_length(s.bundle#>'{entry}') > 0, 'search')
 FROM roel, not_roel, searched s;

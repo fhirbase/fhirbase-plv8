@@ -305,206 +305,22 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440012'::uuid,  E'{"resour
  550e8400-e29b-41d4-a716-446655440012
 (1 row)
 
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', logical_id, 'pt found by name')
-  FROM search('Patient', 'name=roel');
-      assert_eq      
----------------------
- OK pt found by name
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440009' || '|' || '550e8400-e29b-41d4-a716-446655440010',
+(
+  SELECT string_agg(logical_id::varchar, '|')
+    FROM search('Patient', 'name=Roel&_include=Patient.managingOrganization')
+),
+'search should include resources specified in _include');
+                        assert_eq                         
+----------------------------------------------------------
+ OK search should include resources specified in _include
 (1 row)
 
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', logical_id, 'pt found by identifier')
-  FROM search('Patient', 'identifier=123456789');
-         assert_eq         
----------------------------
- OK pt found by identifier
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', (SELECT string_agg(logical_id::varchar, '|')),
+  'search should ignore wrong paths in _include')
+  FROM search('Patient', 'name=Roel&_include=Patient.foobar');
+                    assert_eq                    
+-------------------------------------------------
+ OK search should ignore wrong paths in _include
 (1 row)
 
-SELECT build_search_query('Patient', _parse_param('identifier=MRN|7777777'));
-                                                       build_search_query                                                       
---------------------------------------------------------------------------------------------------------------------------------
-                                                                                                                               +
-     SELECT ROW_NUMBER() OVER () as weight, x.*                                                                                +
-       FROM (                                                                                                                  +
-             SELECT DISTINCT patient.category                                                                                  +
- ,patient.content                                                                                                              +
- ,patient.logical_id                                                                                                           +
- ,patient.published                                                                                                            +
- ,patient.resource_type                                                                                                        +
- ,patient.updated                                                                                                              +
- ,patient.version_id                                                                                                           +
-               FROM patient patient                                                                                            +
-                                                                                                                               +
-             JOIN patient_search_token patient_token                                                                           +
-               ON patient_token.resource_id::varchar = patient.logical_id::varchar                                             +
-              AND (patient_token.param = 'identifier' AND (patient_token.code = '7777777' AND patient_token.namespace = 'MRN'))+
-                                                                                                                               +
-               WHERE  true = true                                                                                              +
-               ORDER BY  updated DESC                                                                                          +
-               LIMIT 100                                                                                                       +
-               OFFSET 0                                                                                                        +
-             ) x                                                                                                               +
-   
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'identifier=MRN|7777777'))
- ,'pt found by mrn');
-     assert_eq      
---------------------
- OK pt found by mrn
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', logical_id, 'pt found by status')
-  FROM search('Patient', 'active=true');
-       assert_eq       
------------------------
- OK pt found by status
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', logical_id, 'pt found by status')
-  FROM search('Patient', 'active=true');
-       assert_eq       
------------------------
- OK pt found by status
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'telecom=+31612345678'))
- ,'pt found by phone');
-      assert_eq       
-----------------------
- OK pt found by phone
-(1 row)
-
-SELECT build_search_query('Patient', _parse_param('telecom:missing=true'));
-                                   build_search_query                                   
-----------------------------------------------------------------------------------------
-                                                                                       +
-     SELECT ROW_NUMBER() OVER () as weight, x.*                                        +
-       FROM (                                                                          +
-             SELECT DISTINCT patient.category                                          +
- ,patient.content                                                                      +
- ,patient.logical_id                                                                   +
- ,patient.published                                                                    +
- ,patient.resource_type                                                                +
- ,patient.updated                                                                      +
- ,patient.version_id                                                                   +
-               FROM patient patient                                                    +
-                                                                                       +
-              LEFT JOIN patient_search_string patient_string                           +
-                   ON patient_string.resource_id::varchar = patient.logical_id::varchar+
-                  AND patient_string.param = 'telecom'                                 +
-                                                                                       +
-               WHERE patient_string.resource_id IS NULL                                +
-               ORDER BY  updated DESC                                                  +
-               LIMIT 100                                                               +
-               OFFSET 0                                                                +
-             ) x                                                                       +
-   
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440011',
- (SELECT string_agg(logical_id::text,'|')
-    FROM search('Patient', 'telecom:missing=true'))
- ,'test missing true');
-      assert_eq       
-----------------------
- OK test missing true
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT string_agg(logical_id::text,'|')
-    FROM search('Patient', 'telecom:missing=false'))
- ,'test missing false');
-       assert_eq       
------------------------
- OK test missing false
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'gender=http://snomed.info/sct|248153007'))
- ,'pt found by snomed gender');
-          assert_eq           
-------------------------------
- OK pt found by snomed gender
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'birthdate=1960'))
- ,'pt found birthdate');
-       assert_eq       
------------------------
- OK pt found birthdate
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440009',
- (SELECT logical_id
-    FROM search('Organization', 'name=Health Level'))
- ,'org by name');
-   assert_eq    
-----------------
- OK org by name
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'provider.name=Health%20Level') LIMIT 1)
- ,'pt by org name');
-     assert_eq     
--------------------
- OK pt by org name
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'name=Roelof&provider.name=Health%20Level'))
- ,'pt by name & org name');
-        assert_eq         
---------------------------
- OK pt by name & org name
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'family=bor') LIMIT 1)
- ,'pt by family');
-    assert_eq    
------------------
- OK pt by family
-(1 row)
-
-SELECT assert_eq('http://pt/vip',
- (SELECT string_agg(jsonb_array_elements#>>'{category,0,term}','')
-    FROM jsonb_array_elements(
-            fhir_search('{"base":"https://test.me"}'::jsonb,
-              'Patient'::varchar, '_tag=http%3A%2F%2Fpt%2Fvip')->'entry'))
- ,'pt by tag');
-  assert_eq   
---------------
- OK pt by tag
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440012',
-   (SELECT string_agg(logical_id::varchar, '|')),
-  'search number')
-  FROM search('DocumentReference', 'size=>100');
-    assert_eq     
-------------------
- OK search number
-(1 row)
-
-SELECT assert_eq(NULL,
-   (SELECT string_agg(logical_id::varchar, '|')),
-  'search number')
-  FROM search('DocumentReference', 'size=<100');
-    assert_eq     
-------------------
- OK search number
-(1 row)
-
-ROLLBACK;
-ROLLBACK

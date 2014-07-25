@@ -305,7 +305,10 @@ CREATE OR REPLACE FUNCTION
 parse_order_params(_resource_type varchar, query jsonb)
 RETURNS TABLE(param text, direction text) LANGUAGE sql AS $$
   SELECT x->>'value' AS param,
-         x->>'op' as direction
+    CASE WHEN lower(x->>'op') = 'desc'
+      THEN 'desc'
+      ELSE 'asc'
+    END AS direction
     FROM jsonb_array_elements(query) x
     WHERE x->>'param' = '_sort'
    -- we do not sort by chained params
@@ -319,8 +322,8 @@ RETURNS text LANGUAGE sql AS $$
              {{param_tbl}}.{{param_clmn}} {{dir}}
            $SQL$,
            'param_tbl', lower(_resource_type) || '_' || param || '_order_idx',
-           'param_clmn', CASE WHEN direction = 'ASC' THEN 'lower' ELSE 'upper' END,
-           'dir', CASE WHEN direction = 'ASC' THEN 'ASC' ELSE 'DESC' END) AS str
+           'param_clmn', CASE WHEN direction = 'asc' THEN 'lower' ELSE 'upper' END,
+           'dir', direction) AS str
       FROM parse_order_params(_resource_type, query)
   )
   SELECT CASE WHEN length(string_agg(str, '')) > 0 THEN
@@ -342,32 +345,44 @@ RETURNS text LANGUAGE sql AS $$
                 AND {{order_idx_alias}}.param = {{param}}
            $SQL$,
            'order_idx_tbl', lower(_resource_type) || '_sort',
-           'order_idx_alias', lower(_resource_type) || '_' || param || '_order_idx',
+           'order_idx_alias', lower(_resource_type) || '_' || t.param || '_order_idx',
            'resource_tbl', lower(_resource_type),
-           'param', quote_literal(param)) AS j
-      FROM parse_order_params(_resource_type, query)
+           'param', quote_literal(t.param)) AS j
+      FROM parse_order_params(_resource_type, query) t
   )
   SELECT string_agg(j, ' ')
     FROM joins;
 $$ IMMUTABLE;
 
 
+CREATE OR REPLACE
+FUNCTION _param_at(query jsonb, _param_name_ text) RETURNS text
+LANGUAGE sql AS $$
+  SELECT x->>'value'
+   FROM jsonb_array_elements(query) x
+  WHERE x->>'param' = _param_name_
+  LIMIT 1
+$$ IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION build_offset_part(_resource_type varchar, query jsonb) RETURNS table(part text, sql text)
 LANGUAGE sql AS $$
-  SELECT 'OFFSET'::text, (COALESCE(x->>'value', '0')::integer)::text
-   FROM jsonb_array_elements(query) x
-  WHERE x->>'param' = '_offset'
+  SELECT 'OFFSET'::text,
+  (
+    (COALESCE(x->>'value', '0')::integer)*COALESCE(_param_at(query, '_count')::integer,100)
+   )::text
+  FROM jsonb_array_elements(query) x
+  WHERE x->>'param' = '_page'
   LIMIT 1
 $$;
 
 CREATE OR REPLACE
 FUNCTION build_limit_part(_resource_type varchar, query jsonb) RETURNS table(part text, sql text)
 LANGUAGE sql AS $$
-  SELECT 'LIMIT'::text, (COALESCE(x->>'value', '100')::integer)::text
-   FROM jsonb_array_elements(query) x
-  WHERE x->>'param' = '_count'
+  SELECT 'LIMIT'::text,
+  (
+    COALESCE(_param_at(query, '_count'), '100')::integer
+  )::text
   LIMIT 1
 $$;
 
@@ -378,8 +393,9 @@ LANGUAGE sql AS $$
   UNION
   SELECT 'ORDER'::text, build_order_clause(_resource_type, query)
   UNION
-  SELECT 'SELECT'::text, lower(_resource_type) || '_' || param || '_order_idx.' || CASE WHEN direction = 'ASC' THEN 'lower' ELSE 'upper' END
-    FROM parse_order_params(_resource_type, query)
+  SELECT 'SELECT'::text, lower(_resource_type) || '_' || t.param || '_order_idx.'
+    || CASE WHEN direction = 'asc' THEN 'lower' ELSE 'upper' END
+    FROM parse_order_params(_resource_type, query) t
 $$;
 
 CREATE OR REPLACE
@@ -424,19 +440,22 @@ LANGUAGE sql AS $$
   )
   SELECT
   _tpl($SQL$
-    SELECT DISTINCT {{select}}
-      FROM {{tbl}} {{tbl}}
-      {{join}}
-      WHERE {{where}}
-      ORDER BY {{order}}
-      LIMIT {{limit}}
-      OFFSET {{offset}}
+    SELECT ROW_NUMBER() OVER () as weight, x.*
+      FROM (
+            SELECT DISTINCT {{select}}
+              FROM {{tbl}} {{tbl}}
+              {{join}}
+              WHERE {{where}}
+              ORDER BY {{order}}
+              LIMIT {{limit}}
+              OFFSET {{offset}}
+            ) x
   $SQL$,
   'tbl',   quote_ident(lower(_resource_type)),
   'select', (SELECT string_agg(DISTINCT(sql), E'\n,')  FROM sql_query WHERE part = 'SELECT' and sql IS NOT NULL),
   'join',   (SELECT string_agg(sql, E'\n')   FROM sql_query WHERE part = 'JOIN' and sql IS NOT NULL),
   'where',  COALESCE((SELECT string_agg(sql, ' AND ') FROM sql_query WHERE part = 'WHERE' and sql IS NOT NULL), ' true = true'),
-  'order',  COALESCE((SELECT string_agg(sql, ' , ') FROM sql_query WHERE part = 'ORDER' and sql IS NOT NULL), ' updated:desc '),
+  'order',  COALESCE((SELECT string_agg(sql, ' , ') FROM sql_query WHERE part = 'ORDER' and sql IS NOT NULL), ' updated desc '),
   'limit',  COALESCE((SELECT sql FROM sql_query WHERE part = 'LIMIT' limit 1), '100'),
   'offset', COALESCE((SELECT sql FROM sql_query WHERE part = 'OFFSET' limit 1),'0')
   );
@@ -463,10 +482,17 @@ BEGIN
 END
 $$;
 
+CREATE OR REPLACE FUNCTION
+_array_of_includes(query text) RETURNS jsonb
+LANGUAGE sql AS $$
+  SELECT json_agg((x->'value')::json)::jsonb
+    FROM jsonb_array_elements(_parse_param(query)) x
+    WHERE x->>'param' = '_include'
+$$ IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION
 search(_resource_type varchar, query text)
-RETURNS TABLE (resource_type varchar, logical_id uuid, version_id uuid, content jsonb, category jsonb, updated timestamptz, published timestamptz, weight bigint, is_included boolean)
+RETURNS TABLE (resource_type varchar, logical_id uuid, version_id uuid, content jsonb, category jsonb, updated timestamptz, published timestamptz, weight bigint)
 LANGUAGE plpgsql AS $$
 BEGIN
 RETURN QUERY EXECUTE (
@@ -480,8 +506,7 @@ RETURN QUERY EXECUTE (
              x.category,
              x.updated,
              x.published,
-             ROW_NUMBER() OVER () as weight,
-             FALSE as is_included
+             x.weight
         FROM ({{search_sql}}) AS x
     ),
 
@@ -501,19 +526,19 @@ RETURN QUERY EXECUTE (
              incres.category,
              incres.updated,
              incres.published,
-             0 as weight,
-             TRUE as is_included
+             0 as weight
         FROM resource incres, refs_to_include
        WHERE incres.logical_id::varchar = refs_to_include.id
          AND incres.resource_type = refs_to_include.type
     )
-
-    SELECT * from found_resources
-    UNION
-    SELECT * from included_resources
-    ORDER BY is_included DESC, weight
+    SELECT * FROM (
+      SELECT * from found_resources
+      UNION ALL
+      SELECT * from included_resources
+    ) _
+    ORDER BY weight
   $SQL$,
-  'json_includes', quote_literal( '[]'), --- TODO: COALESCE(query->'_include', '[]')),
+  'json_includes', quote_literal(COALESCE(_array_of_includes(query),'[]'::jsonb)),
   'tbl',           LOWER(_resource_type),
   'search_sql',    build_search_query(_resource_type, _parse_param(query))));
 END

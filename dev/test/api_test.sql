@@ -87,7 +87,7 @@ WITH roel AS (
 ), not_roel AS (
   SELECT fhir_create(:'cfg', 'Patient', :'pt2', :'pt_tags'::jsonb) AS entry
 ), searched AS (
-  SELECT fhir_search(:'cfg', 'Patient', '{"name":"roel"}'::jsonb) as bundle
+  SELECT fhir_search(:'cfg', 'Patient', 'name=roel') as bundle
 )
 SELECT assert(jsonb_array_length(s.bundle#>'{entry}') > 0, 'search')
 FROM roel, not_roel, searched s;
