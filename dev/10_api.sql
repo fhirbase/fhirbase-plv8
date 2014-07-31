@@ -153,12 +153,69 @@ $$;
 COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _id_ uuid, _params_ jsonb)
 IS 'Retrieve the changes history for a particular resource with logical id (_id_)\nReturn bundle with entries representing versions';
 
-/* FUNCTION fhir_history(_type_ varchar, _params_ jsonb) */
-/* --- Retrieve the update history for a particular resource type */
+CREATE OR REPLACE
+FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _params_ jsonb) RETURNS jsonb
+LANGUAGE sql AS $$
+  WITH entry AS (
+    SELECT r.content AS content,
+           r.updated AS updated,
+           r.published AS published,
+           r.logical_id AS id,
+           r.category AS category,
+           json_build_array(
+             _build_link(_cfg, r.resource_type, r.logical_id, r.version_id)::json
+           )::jsonb   AS link
+      FROM (
+        SELECT * FROM resource
+         WHERE resource_type = _type_
+        UNION
+        SELECT * FROM resource_history
+         WHERE resource_type = _type_
+  SELECT
+    json_build_object(
+      'title', 'History of resource with type=' || _type_ ,
+      'id', gen_random_uuid(),
+      'resourceType', 'Bundle',
+      'totalResults', count(e.*),
+      'updated', now(),
+      'entry', json_agg(e.*)
+    )::jsonb
+    FROM entry e
+    GROUP BY e.id
+$$;
+COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _params_ jsonb)
+IS 'Retrieve the update history for a particular resource type\nReturn bundle with entries representing versions';
 
-/* FUNCTION fhir_history(_params_ jsonb) */
-/* --- Retrieve the update history for all resources */
-
+CREATE OR REPLACE
+FUNCTION fhir_history(_cfg jsonb, _params_ jsonb) RETURNS jsonb
+LANGUAGE sql AS $$
+  WITH entry AS (
+    SELECT r.content AS content,
+           r.updated AS updated,
+           r.published AS published,
+           r.logical_id AS id,
+           r.category AS category,
+           json_build_array(
+             _build_link(_cfg, r.resource_type, r.logical_id, r.version_id)::json
+           )::jsonb   AS link
+      FROM (
+        SELECT * FROM resource
+        UNION
+        SELECT * FROM resource_history
+  SELECT
+    json_build_object(
+      'title', 'History of all resources',
+      'id', gen_random_uuid(),
+      'resourceType', 'Bundle',
+      'totalResults', count(e.*),
+      'updated', now(),
+      'entry', json_agg(e.*)
+    )::jsonb
+    FROM entry e
+    GROUP BY e.id
+$$;
+COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _params_ jsonb)
+IS 'Retrieve the update history for all resources\nReturn bundle with entries representing versions';
 
 CREATE OR REPLACE
 FUNCTION fhir_search(_cfg jsonb, _type_ varchar, _params_ text) RETURNS jsonb
