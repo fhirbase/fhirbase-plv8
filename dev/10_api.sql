@@ -144,11 +144,9 @@ LANGUAGE sql AS $$
       'resourceType', 'Bundle',
       'totalResults', count(e.*),
       'updated', now(),
-      'entry', json_agg(e.*)
+      'entry', COALESCE(json_agg(e.*), '[]'::json)
     )::jsonb
-    FROM entry e
-    GROUP BY e.id
-
+    FROM entry e;
 $$;
 COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _id_ uuid, _params_ jsonb)
 IS 'Retrieve the changes history for a particular resource with logical id (_id_)\nReturn bundle with entries representing versions';
@@ -178,10 +176,9 @@ LANGUAGE sql AS $$
       'resourceType', 'Bundle',
       'totalResults', count(e.*),
       'updated', now(),
-      'entry', json_agg(e.*)
+      'entry', COALESCE(json_agg(e.*), '[]'::json)
     )::jsonb
-    FROM entry e
-    GROUP BY e.id
+    FROM entry e;
 $$;
 COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _params_ jsonb)
 IS 'Retrieve the update history for a particular resource type\nReturn bundle with entries representing versions';
@@ -209,10 +206,9 @@ LANGUAGE sql AS $$
       'resourceType', 'Bundle',
       'totalResults', count(e.*),
       'updated', now(),
-      'entry', json_agg(e.*)
+      'entry', COALESCE(json_agg(e.*), '[]'::json)
     )::jsonb
-    FROM entry e
-    GROUP BY e.id
+    FROM entry e;
 $$;
 COMMENT ON FUNCTION fhir_history(_cfg jsonb, _params_ jsonb)
 IS 'Retrieve the update history for all resources\nReturn bundle with entries representing versions';
