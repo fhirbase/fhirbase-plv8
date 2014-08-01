@@ -170,10 +170,10 @@ LANGUAGE sql AS $$
          WHERE resource_type = _type_
         UNION
         SELECT * FROM resource_history
-         WHERE resource_type = _type_
+         WHERE resource_type = _type_) r)
   SELECT
     json_build_object(
-      'title', 'History of resource with type=' || _type_ ,
+      'title', 'History of resource with type=' || _type_,
       'id', gen_random_uuid(),
       'resourceType', 'Bundle',
       'totalResults', count(e.*),
@@ -201,7 +201,7 @@ LANGUAGE sql AS $$
       FROM (
         SELECT * FROM resource
         UNION
-        SELECT * FROM resource_history
+        SELECT * FROM resource_history) r)
   SELECT
     json_build_object(
       'title', 'History of all resources',
@@ -214,7 +214,7 @@ LANGUAGE sql AS $$
     FROM entry e
     GROUP BY e.id
 $$;
-COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _params_ jsonb)
+COMMENT ON FUNCTION fhir_history(_cfg jsonb, _params_ jsonb)
 IS 'Retrieve the update history for all resources\nReturn bundle with entries representing versions';
 
 CREATE OR REPLACE

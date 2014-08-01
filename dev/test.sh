@@ -3,6 +3,9 @@
 if [ `hostname` = 'mlapshin' ]; then
     PSQL_ARGS='-h localhost -U fhirbase -p 5556'
     DB='fhirbase'
+elif [ `hostname` = 'max' ]; then
+    PSQL_ARGS='-p 5455'
+    DB='fhirbase'
 else
     PSQL_ARGS=''
     DB='fhirb'
