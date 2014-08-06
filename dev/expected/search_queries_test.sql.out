@@ -1,20 +1,16 @@
 SET escape_string_warning=off;
 SET
-SELECT *
+SELECT assert_eq(8::bigint,
+(
+SELECT count(*)
   FROM _expand_search_params('Patient'::text,
     _parse_param(
-      'provider._id=1,2&provider.name=ups&_id=1,2&_page=10&birthdate:missing=true&identifier=MRN|7777777&_count=100&_sort:desc=name&_sort:asc=address&name=pups&_tag=category&_security=ups'));
- parent_res |     res      |        path        |    key     | modifier |    value    
-------------+--------------+--------------------+------------+----------+-------------
-            | Patient      | {Patient}          | _id        | =        | 1,2
-            | Patient      | {Patient}          | _page      | =        | 10
-            | Patient      | {Patient}          | birthdate  | missing  | true
-            | Patient      | {Patient}          | identifier | =        | MRN|7777777
-            | Patient      | {Patient}          | _count     | =        | 100
-            | Patient      | {Patient}          | name       | =        | pups
- Patient    | Organization | {Patient,provider} | name       | =        | ups
- Patient    | Organization | {Patient,provider} | _id        | =        | 1,2
-(8 rows)
+      'provider._id=1,2&provider.name=ups&_id=1,2&birthdate:missing=true&identifier=MRN|7777777&_count=100&name=pups&_sort:desc=name&_sort:asc=address&_page=10&_tag=category&_security=ups'))
+), 'should split into 8 params and filter _page _sort and _tags');
+                           assert_eq                            
+----------------------------------------------------------------
+ OK should split into 8 params and filter _page _sort and _tags
+(1 row)
 
 SELECT *
   FROM build_search_query('Patient'::text,
@@ -88,128 +84,17 @@ SELECT *
    
 (1 row)
 
-SELECT *
-  FROM build_search_query('Patient'::text, _parse_param('name=ups&name=dups'));
-                                                                           build_search_query                                                                            
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-                                                                                                                                                                        +
-     SELECT ROW_NUMBER() OVER () as weight, x.*                                                                                                                         +
-       FROM (                                                                                                                                                           +
-             SELECT DISTINCT patient.category                                                                                                                           +
- ,patient.content                                                                                                                                                       +
- ,patient.logical_id                                                                                                                                                    +
- ,patient.published                                                                                                                                                     +
- ,patient.resource_type                                                                                                                                                 +
- ,patient.updated                                                                                                                                                       +
- ,patient.version_id                                                                                                                                                    +
-               FROM patient patient                                                                                                                                     +
-                                                                                                                                                                        +
-             JOIN patient_search_string patient_string                                                                                                                  +
-               ON patient_string.resource_id::varchar = patient.logical_id::varchar                                                                                     +
-              AND (patient_string.param = 'name' AND (patient_string.value ilike '%dups%')) AND (patient_string.param = 'name' AND (patient_string.value ilike '%ups%'))+
-                                                                                                                                                                        +
-               WHERE  true = true                                                                                                                                       +
-               ORDER BY  updated DESC                                                                                                                                   +
-               LIMIT 100                                                                                                                                                +
-               OFFSET 0                                                                                                                                                 +
-             ) x                                                                                                                                                        +
-   
-(1 row)
-
-SELECT *
-  FROM build_search_query('Patient'::text, _parse_param('identifier=MRN|7777777'));
-                                                       build_search_query                                                       
---------------------------------------------------------------------------------------------------------------------------------
-                                                                                                                               +
-     SELECT ROW_NUMBER() OVER () as weight, x.*                                                                                +
-       FROM (                                                                                                                  +
-             SELECT DISTINCT patient.category                                                                                  +
- ,patient.content                                                                                                              +
- ,patient.logical_id                                                                                                           +
- ,patient.published                                                                                                            +
- ,patient.resource_type                                                                                                        +
- ,patient.updated                                                                                                              +
- ,patient.version_id                                                                                                           +
-               FROM patient patient                                                                                            +
-                                                                                                                               +
-             JOIN patient_search_token patient_token                                                                           +
-               ON patient_token.resource_id::varchar = patient.logical_id::varchar                                             +
-              AND (patient_token.param = 'identifier' AND (patient_token.code = '7777777' AND patient_token.namespace = 'MRN'))+
-                                                                                                                               +
-               WHERE  true = true                                                                                              +
-               ORDER BY  updated DESC                                                                                          +
-               LIMIT 100                                                                                                       +
-               OFFSET 0                                                                                                        +
-             ) x                                                                                                               +
-   
-(1 row)
-
-SELECT *
-  FROM build_search_query('Patient'::text, _parse_param('birthdate=>2011'));
-                                                                     build_search_query                                                                     
-------------------------------------------------------------------------------------------------------------------------------------------------------------
-                                                                                                                                                           +
-     SELECT ROW_NUMBER() OVER () as weight, x.*                                                                                                            +
-       FROM (                                                                                                                                              +
-             SELECT DISTINCT patient.category                                                                                                              +
- ,patient.content                                                                                                                                          +
- ,patient.logical_id                                                                                                                                       +
- ,patient.published                                                                                                                                        +
- ,patient.resource_type                                                                                                                                    +
- ,patient.updated                                                                                                                                          +
- ,patient.version_id                                                                                                                                       +
-               FROM patient patient                                                                                                                        +
-                                                                                                                                                           +
-             JOIN patient_search_date patient_date                                                                                                         +
-               ON patient_date.resource_id::varchar = patient.logical_id::varchar                                                                          +
-              AND (patient_date.param = 'birthdate' AND (tstzrange(patient_date."start", patient_date."end") && tstzrange('2011-12-31 23:59:59+04', NULL)))+
-                                                                                                                                                           +
-               WHERE  true = true                                                                                                                          +
-               ORDER BY  updated DESC                                                                                                                      +
-               LIMIT 100                                                                                                                                   +
-               OFFSET 0                                                                                                                                    +
-             ) x                                                                                                                                           +
-   
-(1 row)
-
-SELECT *
-  FROM _expand_search_params('Patient'::text, _parse_param('provider._id=1,2&name=ups&name=pups'));
- parent_res |     res      |        path        | key  | modifier | value 
-------------+--------------+--------------------+------+----------+-------
-            | Patient      | {Patient}          | name | =        | ups
-            | Patient      | {Patient}          | name | =        | pups
- Patient    | Organization | {Patient,provider} | _id  | =        | 1,2
-(3 rows)
-
-SELECT *
-  FROM _build_references_joins('Patient'::text, _parse_param('provider._id=1,2&name=ups&name=pups'));
-                                          sql                                          |       weight        
----------------------------------------------------------------------------------------+---------------------
-                                                                                      +| {Patient,provider}1
-         JOIN patient_references patient_provider                                     +| 
-           ON patient_provider.resource_id::varchar = patient.logical_id::varchar     +| 
-            AND  ( patient_provider.logical_id='1' OR patient_provider.logical_id='2')+| 
-                                                                                       | 
-(1 row)
-
-SELECT *
-  FROM build_search_joins('Patient'::text, _parse_param('provider._id=1,2&name=ups&name=pups'));
-                                                                           build_search_joins                                                                            
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-                                                                                                                                                                        +
-             JOIN patient_search_string patient_string                                                                                                                  +
-               ON patient_string.resource_id::varchar = patient.logical_id::varchar                                                                                     +
-              AND (patient_string.param = 'name' AND (patient_string.value ilike '%pups%')) AND (patient_string.param = 'name' AND (patient_string.value ilike '%ups%'))+
-                                                                                                                                                                        +
-         JOIN patient_references patient_provider                                                                                                                       +
-           ON patient_provider.resource_id::varchar = patient.logical_id::varchar                                                                                       +
-            AND  ( patient_provider.logical_id='1' OR patient_provider.logical_id='2')                                                                                  +
-        
-(1 row)
-
-SELECT *
-  FROM search('Patient'::text, 'provider._id=1,2&name=ups&name=pups');
- resource_type | logical_id | version_id | content | category | updated | published | weight 
----------------+------------+------------+---------+----------+---------+-----------+--------
-(0 rows)
+/* SELECT * */
+/*   FROM build_search_query('Patient'::text, _parse_param('name=ups&name=dups')); */
+/* SELECT * */
+/*   FROM build_search_query('Patient'::text, _parse_param('identifier=MRN|7777777')); */
+/* SELECT * */
+/*   FROM build_search_query('Patient'::text, _parse_param('birthdate=>2011')); */
+/* SELECT * */
+/*   FROM _expand_search_params('Patient'::text, _parse_param('provider._id=1,2&name=ups&name=pups')); */
+/* SELECT * */
+/*   FROM _build_references_joins('Patient'::text, _parse_param('provider._id=1,2&name=ups&name=pups')); */
+/* SELECT * */
+/*   FROM build_search_joins('Patient'::text, _parse_param('provider._id=1,2&name=ups&name=pups')); */
+/* SELECT * FROM search('Patient'::text, 'provider._id=1,2&name=ups&name=pups'); */
 

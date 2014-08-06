@@ -89,7 +89,7 @@ LANGUAGE sql AS $$
            x->>'op' as op,
            x->>'value' as value
     FROM jsonb_array_elements(_query) x
-    WHERE x->>'param' NOT IN ('_tag', '_security', '_profile', '_sort')
+    WHERE x->>'param' NOT IN ('_tag', '_security', '_profile', '_sort', '_count', '_page')
 
     UNION
 
