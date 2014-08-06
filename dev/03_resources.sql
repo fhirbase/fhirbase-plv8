@@ -129,7 +129,7 @@ SELECT assert_eq(0::bigint,
   'All cases covered');
 
 
--- TODO: fix lossed params
+-- TODO: fix lost params
 DROP MATERIALIZED VIEW IF EXISTS fhir.resource_indexables;
 CREATE MATERIALIZED
 VIEW fhir.resource_indexables AS (

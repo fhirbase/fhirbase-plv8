@@ -1,7 +1,7 @@
 --db:fhirb
 --{{{
 
---- Here we load metadata about datatypes
+--- load metadata about datatypes from xsd
 --- into meta tables
 
 drop schema if exists fhir cascade;
@@ -59,30 +59,7 @@ CREATE TABLE fhir.datatype_enums (
   PRIMARY KEY(datatype, value)
 );
 
-/* CREATE TABLE fhir.type_to_pg_type ( */
-/*   type varchar, */
-/*   pg_type varchar */
-/* ); */
-
-/* INSERT INTO fhir.type_to_pg_type (type, pg_type) */
-/* VALUES */
-/* ('code', 'varchar'), */
-/* ('date_time', 'timestamp'), */
-/* ('string', 'varchar'), */
-/* ('text', 'text'), */
-/* ('uri', 'varchar'), */
-/* ('datetime', 'timestamp'), */
-/* ('instant', 'timestamp'), */
-/* ('boolean', 'boolean'), */
-/* ('base64_binary', 'bytea'), */
-/* ('integer', 'integer'), */
-/* ('decimal', 'decimal'), */
-/* ('sampled_data_data_type', 'text'), */
-/* ('date', 'date'), */
-/* ('id', 'varchar'), */
-/* ('oid', 'varchar'); */
-
--- Here we load metadata from xsd file
+-- Load metadata from xsd file
 \set datatypes `cat fhir-base.xsd`
 
 INSERT INTO fhir.datatypes (version, type)
@@ -142,12 +119,4 @@ CREATE VIEW fhir.enums AS (
     FROM  fhir.datatype_enums
 GROUP BY  replace(datatype, '-list','')
 );
-
-/* CREATE VIEW fhir.primitive_types as ( */
-/*   SELECT type */
-/*          ,pg_type */
-/*     FROM fhir.type_to_pg_type */
-/*    UNION SELECT enum, 'fhir."' || enum  || '"' */
-/*     FROM fhir.enums */
-/* ); */
 --}}}

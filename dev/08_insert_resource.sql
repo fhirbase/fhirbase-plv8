@@ -73,9 +73,6 @@ BEGIN
         FROM {{tbl}}_search_number
        WHERE resource_id = $1
     GROUP BY param, resource_id
-
-    -- TODO: don't forget about numerics
-
     $SQL$, 'tbl', res_type)
   USING _id;
   RETURN _id;
