@@ -4,7 +4,6 @@
 --- Here we load metadata about datatypes
 --- into meta tables
 
-
 drop schema if exists fhir cascade;
 create schema fhir;
 
@@ -60,28 +59,28 @@ CREATE TABLE fhir.datatype_enums (
   PRIMARY KEY(datatype, value)
 );
 
-CREATE TABLE fhir.type_to_pg_type (
-  type varchar,
-  pg_type varchar
-);
+/* CREATE TABLE fhir.type_to_pg_type ( */
+/*   type varchar, */
+/*   pg_type varchar */
+/* ); */
 
-INSERT INTO fhir.type_to_pg_type (type, pg_type)
-VALUES
-('code', 'varchar'),
-('date_time', 'timestamp'),
-('string', 'varchar'),
-('text', 'text'),
-('uri', 'varchar'),
-('datetime', 'timestamp'),
-('instant', 'timestamp'),
-('boolean', 'boolean'),
-('base64_binary', 'bytea'),
-('integer', 'integer'),
-('decimal', 'decimal'),
-('sampled_data_data_type', 'text'),
-('date', 'date'),
-('id', 'varchar'),
-('oid', 'varchar');
+/* INSERT INTO fhir.type_to_pg_type (type, pg_type) */
+/* VALUES */
+/* ('code', 'varchar'), */
+/* ('date_time', 'timestamp'), */
+/* ('string', 'varchar'), */
+/* ('text', 'text'), */
+/* ('uri', 'varchar'), */
+/* ('datetime', 'timestamp'), */
+/* ('instant', 'timestamp'), */
+/* ('boolean', 'boolean'), */
+/* ('base64_binary', 'bytea'), */
+/* ('integer', 'integer'), */
+/* ('decimal', 'decimal'), */
+/* ('sampled_data_data_type', 'text'), */
+/* ('date', 'date'), */
+/* ('id', 'varchar'), */
+/* ('oid', 'varchar'); */
 
 -- Here we load metadata from xsd file
 \set datatypes `cat fhir-base.xsd`
@@ -144,11 +143,11 @@ CREATE VIEW fhir.enums AS (
 GROUP BY  replace(datatype, '-list','')
 );
 
-CREATE VIEW fhir.primitive_types as (
-  SELECT type
-         ,pg_type
-    FROM fhir.type_to_pg_type
-   UNION SELECT enum, 'fhir."' || enum  || '"'
-    FROM fhir.enums
-);
+/* CREATE VIEW fhir.primitive_types as ( */
+/*   SELECT type */
+/*          ,pg_type */
+/*     FROM fhir.type_to_pg_type */
+/*    UNION SELECT enum, 'fhir."' || enum  || '"' */
+/*     FROM fhir.enums */
+/* ); */
 --}}}

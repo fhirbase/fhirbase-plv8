@@ -3,7 +3,7 @@ SET escape_string_warning=off;
 
 --{{{
 
-SELECT assert_eq(8::bigint,
+SELECT assert_eq(6::bigint,
 (
 SELECT count(*)
   FROM _expand_search_params('Patient'::text,
