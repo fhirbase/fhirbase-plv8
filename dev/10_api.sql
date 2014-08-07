@@ -245,9 +245,21 @@ IS 'Search in resources with _type_ by _params_\nReturns bundle with entries';
 /* --- SearchSearch across all resource types based on some filter criteria */
 
 
-/* FUNCTION fhir_transaction(_bundle_ jsonb) */
-/* --- Update, create ORDER BY delete a set of resources as a single transaction */
-
+CREATE OR REPLACE
+FUNCTION fhir_transaction(_cfg jsonb,_bundle_ jsonb) RETURNS jsonb
+LANGUAGE sql AS $$
+  SELECT
+    json_build_object(
+      'title', 'Transaction results',
+      'resourceType', 'Bundle',
+      'totalResults', 0,
+      'updated', now(),
+      'id', gen_random_uuid(),
+      'entry', '[]'::json
+    )::jsonb as json;
+$$;
+COMMENT ON FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb)
+IS 'Update, create or delete a set of resources as a single transaction\nReturns bundle with entries';
 
 /* FUNCTION fhir_conformance() */
 /* --- Get a conformance statement for the system */
