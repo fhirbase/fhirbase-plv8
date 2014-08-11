@@ -1,4 +1,47 @@
 --db:fhirb
+
+--- Search algorithm:
+---  * start from http query string
+---  * split & decode to params relation (param, op, value)
+---
+---  * search resources - build search query
+---    we represent query as relation  (part, sql_string),
+---    where part - SELECT, LIMIT, OFFSET, JOINS
+---
+---    * build select part - just enumeration of fixed columns
+---    * build search part
+---       * build search joins
+---          * build tags joins
+---            * filter _tag, _security & _profile params
+---            * JOIN string on tag aliased by md5 of value
+---            * with tag condition scheme= label=
+---          * build references joins
+---            * expand params
+---            * filter only chained params (i.e. having parent resource)
+---            * JOIN string with _references table and aliases by path
+---            * and condition based on ids
+---          * build index joins
+---            * filter leaf params (i.e without '.')
+---            * build join with table calculated by path
+---            * with condition by param type (custom implementations for each type)
+---       * build search missing parts
+---         * expand params
+---         * join with params meta info
+---         * filter out all chains '.'
+---         * take only missings
+---         * build LEFT JOIN string with index table by type
+---         * build WHERE string with IS NULL or IS NOT NULL
+---    * build search by ids - WHERE by logical_id
+---    * build order part
+---       * filter sort params
+---       * build JOIN with _sort table
+---       * build ORDER part
+---    * build offset & limit part - just LIMIT/OFFSET parts
+---    * compose query from query relation
+---  * load includes
+---    * select resources ids by _references table & search result
+---    * select included resources joining ids relation
+
 --{{{
 
 -- TODO: all by convetion

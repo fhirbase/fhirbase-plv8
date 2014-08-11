@@ -37,18 +37,18 @@ LANGUAGE sql AS $$
 
 WITH initial AS (
   SELECT url_decode(split_part(x,'=',1)) as key,
-  url_decode(split_part(x, '=', 2)) as val
-  FROM regexp_split_to_table(_params_,'&') x
+         url_decode(split_part(x, '=', 2)) as val
+    FROM regexp_split_to_table(_params_,'&') x
   ), with_op_mod AS (
   SELECT  _get_key(key) as key,
-  _get_modifier(key) as mod,
-  CASE WHEN val ~ E'^(>=|<=|<|>|~).*' THEN
-    regexp_replace(val, E'^(>=|<=|<|>|~).*','\1')
-  ELSE
-    NULL
-  END as op,
-  regexp_replace(val, E'^(>|<|<=|>=|~)(.*)','\2') as val
-  FROM  initial
+          _get_modifier(key) as mod,
+          CASE WHEN val ~ E'^(>=|<=|<|>|~).*' THEN
+            regexp_replace(val, E'^(>=|<=|<|>|~).*','\1')
+          ELSE
+            NULL
+          END as op,
+          regexp_replace(val, E'^(>|<|<=|>=|~)(.*)','\2') as val
+    FROM  initial
 )
 SELECT json_agg(
   json_build_object(
