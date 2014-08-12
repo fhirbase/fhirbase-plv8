@@ -2,31 +2,39 @@
   "resourceType" : "Bundle",
   "entry" : [
     {
-      "id" : "@create-note",
+      "id" : "@create-device",
+      "content" : {
+        "resourceType": "Device",
+        "type": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "86184003",
+              "display": "Electrocardiographic monitor and recorder"
+            }
+          ],
+          "text": "ECG"
+        }
+      }
+    },
+    {
+      "id" : "@update-note",
       "content" : {
         "resourceType": "Alert",
         "status": "active",
         "subject": {
-          "reference": "Patient/example",
+          "reference": "@create-device",
           "display": "Peter Patient"
         },
-        "note": "create-note"
+        "note": "current-note",
+        "author": {
+          "reference": "@delete-device",
+          "display": "Nancy Nurse"
+        }
       }
     },
     {
-      "id" : "@previous-note",
-      "content" : {
-        "resourceType": "Alert",
-        "status": "active",
-        "subject": {
-          "reference": "Patient/example",
-          "display": "Peter Patient"
-        },
-        "note": "current-note"
-      }
-    },
-    {
-      "id" : "@delete-note",
+      "id" : "@delete-device",
       "deleted" : "2012-05-29T23:45:32+00:00"
     }
   ]

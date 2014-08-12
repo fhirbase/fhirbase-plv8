@@ -1,0 +1,13 @@
+{
+  "resourceType": "Device",
+  "type": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "86184003",
+        "display": "Electrocardiographic monitor and recorder"
+      }
+    ],
+    "text": "ECG"
+  }
+}

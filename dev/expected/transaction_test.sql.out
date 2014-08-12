@@ -13,14 +13,18 @@ WITH previous AS (
    },
    "note": "previous-note"
 }'::jsonb, '[]'::jsonb)#>>'{entry,0,id}' AS update_id,
-      fhir_create('{"base":"https://test.me"}', 'Alert', '{
-  "resourceType": "Alert",
-   "status": "active",
-   "subject": {
-     "reference": "Patient/example",
-     "display": "Peter Patient"
-   },
-   "note": "previous-note"
+      fhir_create('{"base":"https://test.me"}', 'Device', '{
+  "resourceType": "Device",
+  "type": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "86184003",
+        "display": "Electrocardiographic monitor and recorder"
+      }
+    ],
+    "text": "ECG"
+  }
 }'::jsonb, '[]'::jsonb)#>>'{entry,0,id}' AS delete_id
   ), bundle AS (
     SELECT
@@ -29,35 +33,43 @@ WITH previous AS (
   "resourceType" : "Bundle",
   "entry" : [
     {
-      "id" : "@create-note",
+      "id" : "@create-device",
+      "content" : {
+        "resourceType": "Device",
+        "type": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "86184003",
+              "display": "Electrocardiographic monitor and recorder"
+            }
+          ],
+          "text": "ECG"
+        }
+      }
+    },
+    {
+      "id" : "@update-note",
       "content" : {
         "resourceType": "Alert",
         "status": "active",
         "subject": {
-          "reference": "Patient/example",
+          "reference": "@create-device",
           "display": "Peter Patient"
         },
-        "note": "create-note"
+        "note": "current-note",
+        "author": {
+          "reference": "@delete-device",
+          "display": "Nancy Nurse"
+        }
       }
     },
     {
-      "id" : "@previous-note",
-      "content" : {
-        "resourceType": "Alert",
-        "status": "active",
-        "subject": {
-          "reference": "Patient/example",
-          "display": "Peter Patient"
-        },
-        "note": "current-note"
-      }
-    },
-    {
-      "id" : "@delete-note",
+      "id" : "@delete-device",
       "deleted" : "2012-05-29T23:45:32+00:00"
     }
   ]
-}', '@previous-note', p.update_id), '@delete-note', p.delete_id) as bundle
+}', '@update-note', p.update_id), '@delete-device', p.delete_id) as bundle
     FROM previous p
   ), trans AS (
     SELECT
@@ -77,9 +89,9 @@ WITH previous AS (
   ), testing AS (
     SELECT
       e.*,
-      fhir_read('{"base":"https://test.me"}', 'Alert', e.created_id::uuid) as created,
+      fhir_read('{"base":"https://test.me"}', 'Device', e.created_id::uuid) as created,
       fhir_read('{"base":"https://test.me"}', 'Alert', e.updated_id::uuid) as updated,
-      fhir_read('{"base":"https://test.me"}', 'Alert', e.deleted_id::uuid) as deleted
+      fhir_read('{"base":"https://test.me"}', 'Device', e.deleted_id::uuid) as deleted
     FROM expanded e
   )
   SELECT
@@ -96,21 +108,29 @@ WITH previous AS (
       '3',
       'totalResults'),
     assert_eq(
-      t.created#>>'{entry,0,content,note}',
-      'create-note',
-      'created note'),
+      t.created#>>'{entry,0,content,type,text}',
+      'ECG',
+      'created device'),
     assert_eq(
       t.updated#>>'{entry,0,content,note}',
       'current-note',
       'updated note'),
     assert_eq(
-      t.updated#>>'{entry,0,content,note}',
-      'current-note',
-      'updated note')
+      t.deleted->>'entry',
+      NULL,
+      'updated device'),
+    assert_eq(
+      t.updated#>>'{entry,0,content,subject,reference}',
+      t.created_id,
+      'update created reference'),
+    assert_eq(
+      t.updated#>>'{entry,0,content,author,reference}',
+      t.deleted_id,
+      'update deleted reference')
   FROM testing t;
-         assert_eq          |         assert_eq         |    assert_eq    |    assert_eq    |    assert_eq    |    assert_eq    
-----------------------------+---------------------------+-----------------+-----------------+-----------------+-----------------
- OK update_id == updated_id | OK delete_id & deleted_id | OK totalResults | OK created note | OK updated note | OK updated note
+         assert_eq          |         assert_eq         |    assert_eq    |     assert_eq     |    assert_eq    |     assert_eq     |          assert_eq          |          assert_eq          
+----------------------------+---------------------------+-----------------+-------------------+-----------------+-------------------+-----------------------------+-----------------------------
+ OK update_id == updated_id | OK delete_id & deleted_id | OK totalResults | OK created device | OK updated note | OK updated device | OK update created reference | OK update deleted reference
 (1 row)
 
 ROLLBACK;
