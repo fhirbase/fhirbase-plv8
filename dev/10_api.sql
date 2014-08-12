@@ -234,7 +234,7 @@ LANGUAGE sql AS $$
             y.category AS category,
             json_build_array(
               _build_link(_cfg, y.resource_type, y.logical_id, y.version_id)::json
-            )::jsonb  AS link
+            )::jsonb AS link
        FROM search(_type_, _params_) y
     ) z
 $$;
@@ -246,17 +246,81 @@ IS 'Search in resources with _type_ by _params_\nReturns bundle with entries';
 
 
 CREATE OR REPLACE
-FUNCTION fhir_transaction(_cfg jsonb,_bundle_ jsonb) RETURNS jsonb
+FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb
 LANGUAGE sql AS $$
+  WITH entries AS (
+    SELECT jsonb_array_elements(_bundle_->'entry') AS entry
+  ), items AS (
+    SELECT
+      e.entry->>'id' AS id,
+      e.entry#>>'{content,resourceType}' AS resource_type,
+      e.entry->'content' AS content,
+      e.entry->>'deleted' AS deleted
+    FROM entries e
+  ), create_resources AS (
+    SELECT i.*
+    FROM items i
+    LEFT JOIN resource r on r.logical_id::text = i.id
+    WHERE i.deleted is null and r.logical_id is null
+  ), update_resources AS (
+    SELECT i.*
+    FROM items i
+    LEFT JOIN resource r on r.logical_id::text = i.id
+    WHERE i.deleted is null and r.logical_id is not null
+  ), delete_resources AS (
+    SELECT i.*
+    FROM items i
+    WHERE i.deleted is not null
+  ), created_resources AS (
+    SELECT
+      r.id as alternative,
+      fhir_create(_cfg, r.resource_type, r.content::jsonb, '[]'::jsonb)#>'{entry,0}' as entry 
+    FROM create_resources r
+  ), updated_resources AS (
+    SELECT
+      r.id as alternative,
+      fhir_update(_cfg, r.resource_type, r.id::uuid, r.id::uuid, r.content::jsonb, '[]'::jsonb)#>'{entry,0}' as entry 
+    FROM update_resources r
+  ), deleted_resources AS (
+    SELECT d.alternative, d.entry
+    FROM (
+      SELECT
+        r.id as alternative,
+        ('{"id": "' || r.id || '"}')::jsonb as entry,
+        fhir_delete(_cfg, rs.resource_type, r.id::uuid) as deleted
+      FROM delete_resources r
+      JOIN resource rs on rs.logical_id::text = r.id
+    ) d
+  ), created AS (
+    SELECT
+      r.entry->'content' as content,
+      r.entry->'updated' as updated,
+      r.entry->'published' as published,
+      r.entry->'id' as id,
+      r.entry->'category' as category,
+      r.entry->'link' as link,
+      r.alternative as alternative
+    FROM (
+      SELECT *
+      FROM created_resources
+      UNION ALL
+      SELECT *
+      FROM updated_resources
+      UNION ALL
+      SELECT *
+      FROM deleted_resources
+    ) r
+  )
   SELECT
     json_build_object(
       'title', 'Transaction results',
       'resourceType', 'Bundle',
-      'totalResults', 0,
+      'totalResults', count(r.*),
       'updated', now(),
       'id', gen_random_uuid(),
-      'entry', '[]'::json
-    )::jsonb as json;
+       'entry', COALESCE(json_agg(r.*), '[]'::json)
+    )::jsonb as json
+  FROM created r;
 $$;
 COMMENT ON FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb)
 IS 'Update, create or delete a set of resources as a single transaction\nReturns bundle with entries';

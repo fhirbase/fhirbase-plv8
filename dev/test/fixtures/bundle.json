@@ -1,0 +1,33 @@
+{
+  "resourceType" : "Bundle",
+  "entry" : [
+    {
+      "id" : "@create-note",
+      "content" : {
+        "resourceType": "Alert",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/example",
+          "display": "Peter Patient"
+        },
+        "note": "create-note"
+      }
+    },
+    {
+      "id" : "@previous-note",
+      "content" : {
+        "resourceType": "Alert",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/example",
+          "display": "Peter Patient"
+        },
+        "note": "current-note"
+      }
+    },
+    {
+      "id" : "@delete-note",
+      "deleted" : "2012-05-29T23:45:32+00:00"
+    }
+  ]
+}
