@@ -1,0 +1,117 @@
+SET escape_string_warning=off;
+SET
+BEGIN;
+BEGIN
+WITH previous AS (
+    SELECT
+      fhir_create('{"base":"https://test.me"}', 'Alert', '{
+  "resourceType": "Alert",
+   "status": "active",
+   "subject": {
+     "reference": "Patient/example",
+     "display": "Peter Patient"
+   },
+   "note": "previous-note"
+}'::jsonb, '[]'::jsonb)#>>'{entry,0,id}' AS update_id,
+      fhir_create('{"base":"https://test.me"}', 'Alert', '{
+  "resourceType": "Alert",
+   "status": "active",
+   "subject": {
+     "reference": "Patient/example",
+     "display": "Peter Patient"
+   },
+   "note": "previous-note"
+}'::jsonb, '[]'::jsonb)#>>'{entry,0,id}' AS delete_id
+  ), bundle AS (
+    SELECT
+      p.*,
+      replace(replace('{
+  "resourceType" : "Bundle",
+  "entry" : [
+    {
+      "id" : "@create-note",
+      "content" : {
+        "resourceType": "Alert",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/example",
+          "display": "Peter Patient"
+        },
+        "note": "create-note"
+      }
+    },
+    {
+      "id" : "@previous-note",
+      "content" : {
+        "resourceType": "Alert",
+        "status": "active",
+        "subject": {
+          "reference": "Patient/example",
+          "display": "Peter Patient"
+        },
+        "note": "current-note"
+      }
+    },
+    {
+      "id" : "@delete-note",
+      "deleted" : "2012-05-29T23:45:32+00:00"
+    }
+  ]
+}', '@previous-note', p.update_id), '@delete-note', p.delete_id) as bundle
+    FROM previous p
+  ), trans AS (
+    SELECT
+      b.update_id,
+      b.delete_id,
+      fhir_transaction('{"base":"https://test.me"}', b.bundle::jsonb) as bundle
+    FROM bundle b
+  ), expanded AS (
+    SELECT
+      t.update_id,
+      t.delete_id,
+      t.bundle,
+      t.bundle#>>'{entry,0,id}' as created_id,
+      t.bundle#>>'{entry,1,id}' as updated_id,
+      t.bundle#>>'{entry,2,id}' as deleted_id
+    FROM trans t
+  ), testing AS (
+    SELECT
+      e.*,
+      fhir_read('{"base":"https://test.me"}', 'Alert', e.created_id::uuid) as created,
+      fhir_read('{"base":"https://test.me"}', 'Alert', e.updated_id::uuid) as updated,
+      fhir_read('{"base":"https://test.me"}', 'Alert', e.deleted_id::uuid) as deleted
+    FROM expanded e
+  )
+  SELECT
+    assert_eq(
+      t.update_id,
+      t.updated_id,
+      'update_id == updated_id'),
+    assert_eq(
+      t.delete_id,
+      t.deleted_id,
+      'delete_id & deleted_id'),
+    assert_eq(
+     t.bundle->>'totalResults',
+      '3',
+      'totalResults'),
+    assert_eq(
+      t.created#>>'{entry,0,content,note}',
+      'create-note',
+      'created note'),
+    assert_eq(
+      t.updated#>>'{entry,0,content,note}',
+      'current-note',
+      'updated note'),
+    assert_eq(
+      t.updated#>>'{entry,0,content,note}',
+      'current-note',
+      'updated note')
+  FROM testing t;
+         assert_eq          |         assert_eq         |    assert_eq    |    assert_eq    |    assert_eq    |    assert_eq    
+----------------------------+---------------------------+-----------------+-----------------+-----------------+-----------------
+ OK update_id == updated_id | OK delete_id & deleted_id | OK totalResults | OK created note | OK updated note | OK updated note
+(1 row)
+
+ROLLBACK;
+ROLLBACK
