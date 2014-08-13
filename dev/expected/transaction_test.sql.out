@@ -12,7 +12,7 @@ WITH previous AS (
      "display": "Peter Patient"
    },
    "note": "previous-note"
-}'::jsonb, '[]'::jsonb)#>>'{entry,0,id}' AS update_id,
+}'::jsonb, '[{"scheme": "http://hl7.org/fhir/tag", "term": "sound", "label": "noise"}]'::jsonb)#>>'{entry,0,id}' AS update_id,
       fhir_create('{"base":"https://test.me"}', 'Device', '{
   "resourceType": "Device",
   "type": {
@@ -34,6 +34,11 @@ WITH previous AS (
   "entry" : [
     {
       "id" : "@create-device",
+      "category" : [{
+        "term" : "sound",
+        "label" : "noise",
+        "scheme" : "http://hl7.org/fhir/tag"
+      }],
       "content" : {
         "resourceType": "Device",
         "type": {
@@ -50,6 +55,11 @@ WITH previous AS (
     },
     {
       "id" : "@update-note",
+      "category" : [{
+        "term" : "music",
+        "label" : "silence",
+        "scheme" : "http://hl7.org/fhir/tag"
+      }],
       "content" : {
         "resourceType": "Alert",
         "status": "active",
@@ -104,34 +114,57 @@ WITH previous AS (
       t.deleted_id,
       'delete_id & deleted_id'),
     assert_eq(
-     t.bundle->>'totalResults',
       '3',
-      'totalResults'),
+      t.bundle->>'totalResults',
+      'totalResults')
+  FROM testing t
+  UNION ALL
+  SELECT
     assert_eq(
-      t.created#>>'{entry,0,content,type,text}',
       'ECG',
+      t.created#>>'{entry,0,content,type,text}',
       'created device'),
     assert_eq(
-      t.updated#>>'{entry,0,content,note}',
       'current-note',
+      t.updated#>>'{entry,0,content,note}',
       'updated note'),
     assert_eq(
-      t.deleted->>'entry',
       NULL,
-      'updated device'),
+      t.deleted->>'entry',
+      'updated device')
+  FROM testing t
+  UNION ALL
+  SELECT
     assert_eq(
-      t.updated#>>'{entry,0,content,subject,reference}',
       t.created_id,
+      t.updated#>>'{entry,0,content,subject,reference}',
       'update created reference'),
     assert_eq(
-      t.updated#>>'{entry,0,content,author,reference}',
       t.deleted_id,
-      'update deleted reference')
+      t.updated#>>'{entry,0,content,author,reference}',
+      'update deleted reference'),
+    assert_eq(
+      'noise',
+      t.created#>>'{entry,0,category,0,label}',
+      'created tag')
+  FROM testing t
+  UNION ALL
+  SELECT
+    assert_eq(
+      '{noise,silence}',
+      (SELECT array_agg(e.value->>'label' ORDER BY e.value->>'label')
+        FROM jsonb_array_elements(t.updated#>'{entry,0,category}') e),
+      'original and updated tags'),
+    null,
+    null
   FROM testing t;
-         assert_eq          |         assert_eq         |    assert_eq    |     assert_eq     |    assert_eq    |     assert_eq     |          assert_eq          |          assert_eq          
-----------------------------+---------------------------+-----------------+-------------------+-----------------+-------------------+-----------------------------+-----------------------------
- OK update_id == updated_id | OK delete_id & deleted_id | OK totalResults | OK created device | OK updated note | OK updated device | OK update created reference | OK update deleted reference
-(1 row)
+          assert_eq           |          assert_eq          |     assert_eq     
+------------------------------+-----------------------------+-------------------
+ OK update_id == updated_id   | OK delete_id & deleted_id   | OK totalResults
+ OK created device            | OK updated note             | OK updated device
+ OK update created reference  | OK update deleted reference | OK created tag
+ OK original and updated tags |                             | 
+(4 rows)
 
 ROLLBACK;
 ROLLBACK

@@ -7,9 +7,6 @@ SET escape_string_warning=off;
 \set tags '[{"scheme": "http://hl7.org/fhir/tag", "term": "sound", "label": "noise"}]'
 
 BEGIN;
-  SELECT array_agg(e.value->>'label' order by e.value->>'label')
-  FROM jsonb_array_elements(:'tags'::jsonb) e;
-
   WITH previous AS (
     SELECT
       fhir_create(:'cfg', 'Alert', :'alert'::jsonb, :'tags'::jsonb)#>>'{entry,0,id}' AS update_id,
