@@ -3,6 +3,11 @@
   "entry" : [
     {
       "id" : "@create-device",
+      "category" : [{
+        "term" : "sound",
+        "label" : "noise",
+        "scheme" : "http://hl7.org/fhir/tag"
+      }],
       "content" : {
         "resourceType": "Device",
         "type": {
@@ -19,6 +24,11 @@
     },
     {
       "id" : "@update-note",
+      "category" : [{
+        "term" : "music",
+        "label" : "silence",
+        "scheme" : "http://hl7.org/fhir/tag"
+      }],
       "content" : {
         "resourceType": "Alert",
         "status": "active",

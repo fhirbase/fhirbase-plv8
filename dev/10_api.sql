@@ -269,6 +269,7 @@ LANGUAGE sql AS $$
       e.entry->>'id' AS id,
       e.entry#>>'{content,resourceType}' AS resource_type,
       e.entry->'content' AS content,
+      e.entry->'category' as category,
       e.entry->>'deleted' AS deleted
     FROM entries e
   ), create_resources AS (
@@ -279,7 +280,7 @@ LANGUAGE sql AS $$
   ), created_resources AS (
     SELECT
       r.id as alternative,
-      fhir_create(_cfg, r.resource_type, r.content::jsonb, '[]'::jsonb)#>'{entry,0}' as entry 
+      fhir_create(_cfg, r.resource_type, r.content::jsonb, r.category::jsonb)#>'{entry,0}' as entry 
     FROM create_resources r
   ), reference AS (
     SELECT array(
@@ -300,7 +301,7 @@ LANGUAGE sql AS $$
     UNION ALL
     SELECT
       r.id as alternative,
-      fhir_update(_cfg, r.resource_type, r.id::uuid, r.id::uuid, _replace_references(r.content::text, rf.refs)::jsonb, '[]'::jsonb)#>'{entry,0}' as entry 
+      fhir_update(_cfg, r.resource_type, r.id::uuid, r.id::uuid, _replace_references(r.content::text, rf.refs)::jsonb, r.category::jsonb)#>'{entry,0}' as entry 
     FROM update_resources r, reference rf
   ), delete_resources AS (
     SELECT i.*

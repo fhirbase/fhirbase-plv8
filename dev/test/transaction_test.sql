@@ -4,12 +4,15 @@ SET escape_string_warning=off;
 \set alert `cat test/fixtures/alert.json`
 \set device `cat test/fixtures/device.json`
 \set bundle `cat test/fixtures/bundle.json`
+\set tags '[{"scheme": "http://hl7.org/fhir/tag", "term": "sound", "label": "noise"}]'
 
 BEGIN;
+  SELECT array_agg(e.value->>'label' order by e.value->>'label')
+  FROM jsonb_array_elements(:'tags'::jsonb) e;
 
   WITH previous AS (
     SELECT
-      fhir_create(:'cfg', 'Alert', :'alert'::jsonb, '[]'::jsonb)#>>'{entry,0,id}' AS update_id,
+      fhir_create(:'cfg', 'Alert', :'alert'::jsonb, :'tags'::jsonb)#>>'{entry,0,id}' AS update_id,
       fhir_create(:'cfg', 'Device', :'device'::jsonb, '[]'::jsonb)#>>'{entry,0,id}' AS delete_id
   ), bundle AS (
     SELECT
@@ -50,29 +53,49 @@ BEGIN;
       t.deleted_id,
       'delete_id & deleted_id'),
     assert_eq(
-     t.bundle->>'totalResults',
       '3',
-      'totalResults'),
+      t.bundle->>'totalResults',
+      'totalResults')
+  FROM testing t
+  UNION ALL
+  SELECT
     assert_eq(
-      t.created#>>'{entry,0,content,type,text}',
       'ECG',
+      t.created#>>'{entry,0,content,type,text}',
       'created device'),
     assert_eq(
-      t.updated#>>'{entry,0,content,note}',
       'current-note',
+      t.updated#>>'{entry,0,content,note}',
       'updated note'),
     assert_eq(
-      t.deleted->>'entry',
       NULL,
-      'updated device'),
+      t.deleted->>'entry',
+      'updated device')
+  FROM testing t
+  UNION ALL
+  SELECT
     assert_eq(
-      t.updated#>>'{entry,0,content,subject,reference}',
       t.created_id,
+      t.updated#>>'{entry,0,content,subject,reference}',
       'update created reference'),
     assert_eq(
-      t.updated#>>'{entry,0,content,author,reference}',
       t.deleted_id,
-      'update deleted reference')
+      t.updated#>>'{entry,0,content,author,reference}',
+      'update deleted reference'),
+    assert_eq(
+      'noise',
+      t.created#>>'{entry,0,category,0,label}',
+      'created tag')
+  FROM testing t
+  UNION ALL
+  SELECT
+    assert_eq(
+      '{noise,silence}',
+      (SELECT array_agg(e.value->>'label' ORDER BY e.value->>'label')
+        FROM jsonb_array_elements(t.updated#>'{entry,0,category}') e),
+      'original and updated tags'),
+    null,
+    null
   FROM testing t;
 
 ROLLBACK;
