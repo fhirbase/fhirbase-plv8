@@ -1349,5 +1349,53 @@ FROM roel, not_roel, searched s;
  OK search
 (1 row)
 
+WITH previous AS (
+  SELECT
+    alert.alert#>>'{entry,0,id}' AS id,
+    _get_vid_from_url(alert.alert#>>'{entry,0,link,0,href}') AS vid
+  FROM fhir_create('{"base":"https://test.me"}', 'Alert', '{
+  "resourceType": "Alert",
+   "status": "active",
+   "subject": {
+     "reference": "Patient/example",
+     "display": "Peter Patient"
+   },
+   "note": "previous-note"
+}'::jsonb, '[]'::jsonb) alert
+), updated AS (
+  SELECT
+    p.id,
+    p.vid,
+    _get_vid_from_url(
+      fhir_update('{"base":"https://test.me"}', 'Alert', p.id::uuid, p.vid::uuid, '{
+  "resourceType": "Alert",
+   "status": "active",
+   "subject": {
+     "reference": "Patient/example",
+     "display": "Peter Patient"
+   },
+   "note": "previous-note"
+}'::jsonb, '[]'::jsonb)
+    #>>'{entry,0,link,0,href}') AS new_vid
+  FROM previous p
+)
+SELECT assert_raise(
+  'Wrong version_id ' || u.vid || '.Current is ' || u.new_vid,
+  'SELECT fhir_update(''' || '{"base":"https://test.me"}' || ''', ''Alert'', ''' || u.id || ''', ''' || u.vid || ''', ''' || '{
+  "resourceType": "Alert",
+   "status": "active",
+   "subject": {
+     "reference": "Patient/example",
+     "display": "Peter Patient"
+   },
+   "note": "previous-note"
+}' || ''', ''[]''::jsonb)',
+  'update with no current version_id')
+FROM updated u;
+             assert_raise             
+--------------------------------------
+ OK update with no current version_id
+(1 row)
+
 ROLLBACK;
 ROLLBACK

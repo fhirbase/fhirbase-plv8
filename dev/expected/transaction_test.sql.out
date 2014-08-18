@@ -4,7 +4,12 @@ BEGIN;
 BEGIN
 WITH previous AS (
     SELECT
-      fhir_create('{"base":"https://test.me"}', 'Alert', '{
+      c.alert#>>'{entry,0,id}' AS update_id,
+      _get_vid_from_url(c.alert#>>'{entry,0,link,0,href}') AS update_vid,
+      c.device#>>'{entry,0,id}' AS delete_id
+    FROM (
+      SELECT
+        fhir_create('{"base":"https://test.me"}', 'Alert', '{
   "resourceType": "Alert",
    "status": "active",
    "subject": {
@@ -12,8 +17,8 @@ WITH previous AS (
      "display": "Peter Patient"
    },
    "note": "previous-note"
-}'::jsonb, '[{"scheme": "http://hl7.org/fhir/tag", "term": "sound", "label": "noise"}]'::jsonb)#>>'{entry,0,id}' AS update_id,
-      fhir_create('{"base":"https://test.me"}', 'Device', '{
+}'::jsonb, '[{"scheme": "http://hl7.org/fhir/tag", "term": "sound", "label": "noise"}]'::jsonb) as alert,
+        fhir_create('{"base":"https://test.me"}', 'Device', '{
   "resourceType": "Device",
   "type": {
     "coding": [
@@ -25,11 +30,12 @@ WITH previous AS (
     ],
     "text": "ECG"
   }
-}'::jsonb, '[]'::jsonb)#>>'{entry,0,id}' AS delete_id
+}'::jsonb, '[]'::jsonb) as device
+    ) c
   ), bundle AS (
     SELECT
       p.*,
-      replace(replace('{
+      replace(replace(replace('{
   "resourceType" : "Bundle",
   "entry" : [
     {
@@ -54,7 +60,11 @@ WITH previous AS (
       }
     },
     {
-      "id" : "@update-note",
+      "id" : "@update-alert",
+      "link" : [{
+        "rel" : "self",
+        "href" : "@update-vid-alert"
+      }],
       "category" : [{
         "term" : "music",
         "label" : "silence",
@@ -79,7 +89,7 @@ WITH previous AS (
       "deleted" : "2012-05-29T23:45:32+00:00"
     }
   ]
-}', '@update-note', p.update_id), '@delete-device', p.delete_id) as bundle
+}', '@update-alert', p.update_id), '@delete-device', p.delete_id), '@update-vid-alert', p.update_vid) as bundle
     FROM previous p
   ), trans AS (
     SELECT
