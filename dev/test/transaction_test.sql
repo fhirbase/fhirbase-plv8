@@ -9,12 +9,18 @@ SET escape_string_warning=off;
 BEGIN;
   WITH previous AS (
     SELECT
-      fhir_create(:'cfg', 'Alert', :'alert'::jsonb, :'tags'::jsonb)#>>'{entry,0,id}' AS update_id,
-      fhir_create(:'cfg', 'Device', :'device'::jsonb, '[]'::jsonb)#>>'{entry,0,id}' AS delete_id
+      c.alert#>>'{entry,0,id}' AS update_id,
+      _get_vid_from_url(c.alert#>>'{entry,0,link,0,href}') AS update_vid,
+      c.device#>>'{entry,0,id}' AS delete_id
+    FROM (
+      SELECT
+        fhir_create(:'cfg', 'Alert', :'alert'::jsonb, :'tags'::jsonb) as alert,
+        fhir_create(:'cfg', 'Device', :'device'::jsonb, '[]'::jsonb) as device
+    ) c
   ), bundle AS (
     SELECT
       p.*,
-      replace(replace(:'bundle', '@update-note', p.update_id), '@delete-device', p.delete_id) as bundle
+      replace(replace(replace(:'bundle', '@update-alert', p.update_id), '@delete-device', p.delete_id), '@update-vid-alert', p.update_vid) as bundle
     FROM previous p
   ), trans AS (
     SELECT

@@ -113,11 +113,23 @@ IS 'Read specific version of resource with _type_\nReturns bundle with one entry
 
 CREATE OR REPLACE
 FUNCTION fhir_update(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb) returns jsonb
-LANGUAGE sql AS $$
+LANGUAGE plpgsql AS $$
+DECLARE
+  vid uuid;
+BEGIN
 --- Update an existing resource by its id (ORDER BY create it if it is new)
 --- return bundle with one entry
-  SELECT update_resource(_id_, _resource_, _tags_);
-  SELECT fhir_read(_cfg, _type_, _id_);
+  vid := (
+    SELECT version_id
+    FROM resource
+    WHERE logical_id = _id_);
+  IF _vid_ = vid THEN
+    PERFORM update_resource(_id_, _resource_, _tags_);
+    RETURN fhir_read(_cfg, _type_, _id_);
+  ELSE
+    RAISE EXCEPTION E'Wrong version_id %.Current is %', _vid_, vid;
+  END IF;
+END
 $$;
 COMMENT ON FUNCTION fhir_update(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb)
 IS 'Update resource, creating new version\nReturns bundle with one entry';
@@ -267,6 +279,7 @@ LANGUAGE sql AS $$
   ), items AS (
     SELECT
       e.entry->>'id' AS id,
+      _get_vid_from_url(e.entry#>>'{link,0,href}') AS vid,
       e.entry#>>'{content,resourceType}' AS resource_type,
       e.entry->'content' AS content,
       e.entry->'category' as category,
@@ -294,14 +307,16 @@ LANGUAGE sql AS $$
   ), updated_resources AS (
     SELECT
       r.id as alternative,
-      fhir_update(_cfg, r.resource_type, (cr.entry->>'id')::uuid, null::uuid, _replace_references(r.content::text, rf.refs)::jsonb, '[]'::jsonb)#>'{entry,0}' as entry 
+      fhir_update(_cfg, r.resource_type, (cr.entry->>'id')::uuid,
+        _get_vid_from_url(cr.entry#>>'{link,0,href}')::uuid,
+        _replace_references(r.content::text, rf.refs)::jsonb, '[]'::jsonb)#>'{entry,0}' as entry 
     FROM create_resources r
     JOIN created_resources cr on cr.alternative = r.id
     JOIN reference rf on 1=1
     UNION ALL
     SELECT
       r.id as alternative,
-      fhir_update(_cfg, r.resource_type, r.id::uuid, r.id::uuid, _replace_references(r.content::text, rf.refs)::jsonb, r.category::jsonb)#>'{entry,0}' as entry 
+      fhir_update(_cfg, r.resource_type, r.id::uuid, r.vid::uuid, _replace_references(r.content::text, rf.refs)::jsonb, r.category::jsonb)#>'{entry,0}' as entry 
     FROM update_resources r, reference rf
   ), delete_resources AS (
     SELECT i.*

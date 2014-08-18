@@ -5,7 +5,7 @@ SET escape_string_warning=off;
 \set pt `cat test/fixtures/pt.json`
 \set pt2 `cat test/fixtures/pt2.json`
 \set pt_tags  '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'
-
+\set alert `cat test/fixtures/alert.json`
 
 BEGIN;
 
@@ -46,7 +46,6 @@ BEGIN;
     'Roel',
     'fhir_update & fhir_vread')
   FROM vread x;
-
 
 -- test delete
 WITH created AS (
@@ -91,6 +90,28 @@ WITH roel AS (
 )
 SELECT assert(jsonb_array_length(s.bundle#>'{entry}') > 0, 'search')
 FROM roel, not_roel, searched s;
+
+-- test update version_id
+WITH previous AS (
+  SELECT
+    alert.alert#>>'{entry,0,id}' AS id,
+    _get_vid_from_url(alert.alert#>>'{entry,0,link,0,href}') AS vid
+  FROM fhir_create(:'cfg', 'Alert', :'alert'::jsonb, '[]'::jsonb) alert
+), updated AS (
+  SELECT
+    p.id,
+    p.vid,
+    _get_vid_from_url(
+      fhir_update(:'cfg', 'Alert', p.id::uuid, p.vid::uuid, :'alert'::jsonb, '[]'::jsonb)
+    #>>'{entry,0,link,0,href}') AS new_vid
+  FROM previous p
+)
+
+SELECT assert_raise(
+  'Wrong version_id ' || u.vid || '.Current is ' || u.new_vid,
+  'SELECT fhir_update(''' || :'cfg' || ''', ''Alert'', ''' || u.id || ''', ''' || u.vid || ''', ''' || :'alert' || ''', ''[]''::jsonb)',
+  'update with no current version_id')
+FROM updated u;
 
 ROLLBACK;
 --}}}

@@ -23,7 +23,11 @@
       }
     },
     {
-      "id" : "@update-note",
+      "id" : "@update-alert",
+      "link" : [{
+        "rel" : "self",
+        "href" : "@update-vid-alert"
+      }],
       "category" : [{
         "term" : "music",
         "label" : "silence",
