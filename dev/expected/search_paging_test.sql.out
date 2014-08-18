@@ -381,38 +381,38 @@ SELECT assert_eq(('550e8400-e29b-41d4-a716-446655440010' || '|' || '550e8400-e29
 (1 row)
 
 SELECT build_search_query('Patient', _parse_param('gender=M&_sort:asc=given'));
-                                build_search_query                                 
------------------------------------------------------------------------------------
-                                                                                  +
-     SELECT ROW_NUMBER() OVER () as weight, x.*                                   +
-       FROM (                                                                     +
-             SELECT DISTINCT patient.category                                     +
- ,patient.content                                                                 +
- ,patient_given_order_idx.lower                                                   +
- ,patient.logical_id                                                              +
- ,patient.published                                                               +
- ,patient.resource_type                                                           +
- ,patient.updated                                                                 +
- ,patient.version_id                                                              +
-               FROM patient patient                                               +
-                                                                                  +
-       LEFT JOIN patient_sort patient_given_order_idx                             +
-              ON patient_given_order_idx.resource_id =                            +
-                 patient.logical_id                                               +
-                 AND patient_given_order_idx.param = 'given'                      +
-                                                                                  +
-                                                                                  +
-             JOIN patient_search_token patient_token                              +
-               ON patient_token.resource_id::varchar = patient.logical_id::varchar+
-              AND (patient_token.param = 'gender' AND (patient_token.code = 'M')) +
-                                                                                  +
-               WHERE  true = true                                                 +
-               ORDER BY                                                           +
-              patient_given_order_idx.lower asc                                   +
-                                                                                  +
-               LIMIT 100                                                          +
-               OFFSET 0                                                           +
-             ) x                                                                  +
+                                 build_search_query                                 
+------------------------------------------------------------------------------------
+                                                                                   +
+     SELECT ROW_NUMBER() OVER () as weight, x.*                                    +
+       FROM (                                                                      +
+             SELECT DISTINCT patient.category                                      +
+ ,patient.content                                                                  +
+ ,patient_given_order_idx.lower                                                    +
+ ,patient.logical_id                                                               +
+ ,patient.published                                                                +
+ ,patient.resource_type                                                            +
+ ,patient.updated                                                                  +
+ ,patient.version_id                                                               +
+               FROM patient patient                                                +
+                                                                                   +
+             JOIN patient_search_token patient_gender                              +
+               ON patient_gender.resource_id::varchar = patient.logical_id::varchar+
+              AND (patient_gender.param = 'gender' AND (patient_gender.code = 'M'))+
+                                                                                   +
+                                                                                   +
+       LEFT JOIN patient_sort patient_given_order_idx                              +
+              ON patient_given_order_idx.resource_id =                             +
+                 patient.logical_id                                                +
+                 AND patient_given_order_idx.param = 'given'                       +
+                                                                                   +
+               WHERE  true = true                                                  +
+               ORDER BY                                                            +
+              patient_given_order_idx.lower asc                                    +
+                                                                                   +
+               LIMIT 100                                                           +
+               OFFSET 0                                                            +
+             ) x                                                                   +
    
 (1 row)
 

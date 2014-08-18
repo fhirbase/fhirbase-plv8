@@ -1,6 +1,8 @@
 --db:fhirb
 --{{{
 
+
+-- decode url-encoded string
 CREATE OR REPLACE
 FUNCTION _url_decode(input text) RETURNS text
 LANGUAGE plpgsql IMMUTABLE STRICT AS $$
@@ -50,8 +52,12 @@ LANGUAGE sql AS $$
    SELECT regexp_replace(val, E'^(>|<|<=|>=|~)(.*)','\2')
 $$ IMMUTABLE;
 
+-- FHIR use operators & modifiers a:modifier=[operator]value
+-- this concepts are orthogonal so
+-- for the sake of simplicity we merge both them into only operator
+-- get url encoded string and return relation (key, operator, value)
 CREATE OR REPLACE
-FUNCTION _query_string_to_params(_params_ text) RETURNS table( key text, operation text, value text)
+FUNCTION _query_string_to_params(_params_ text) RETURNS table(key text, operation text, value text)
 LANGUAGE sql AS $$
   WITH
   initial AS (
@@ -71,4 +77,12 @@ LANGUAGE sql AS $$
          val as value
   FROM with_op_mod
 $$ IMMUTABLE;
+
+CREATE OR REPLACE
+FUNCTION _build_query(_parts_ jsonb[]) RETURNS text
+LANGUAGE sql AS $$
+  SELECT 'ok'::text
+$$ IMMUTABLE;
+
+
 --}}}

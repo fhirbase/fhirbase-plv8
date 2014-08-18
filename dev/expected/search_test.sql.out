@@ -320,29 +320,29 @@ SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', logical_id, 'pt found b
 (1 row)
 
 SELECT build_search_query('Patient', _parse_param('identifier=MRN|7777777'));
-                                                       build_search_query                                                       
---------------------------------------------------------------------------------------------------------------------------------
-                                                                                                                               +
-     SELECT ROW_NUMBER() OVER () as weight, x.*                                                                                +
-       FROM (                                                                                                                  +
-             SELECT DISTINCT patient.category                                                                                  +
- ,patient.content                                                                                                              +
- ,patient.logical_id                                                                                                           +
- ,patient.published                                                                                                            +
- ,patient.resource_type                                                                                                        +
- ,patient.updated                                                                                                              +
- ,patient.version_id                                                                                                           +
-               FROM patient patient                                                                                            +
-                                                                                                                               +
-             JOIN patient_search_token patient_token                                                                           +
-               ON patient_token.resource_id::varchar = patient.logical_id::varchar                                             +
-              AND (patient_token.param = 'identifier' AND (patient_token.code = '7777777' AND patient_token.namespace = 'MRN'))+
-                                                                                                                               +
-               WHERE  true = true                                                                                              +
-               ORDER BY  updated DESC                                                                                          +
-               LIMIT 100                                                                                                       +
-               OFFSET 0                                                                                                        +
-             ) x                                                                                                               +
+                                                              build_search_query                                                               
+-----------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                                                                              +
+     SELECT ROW_NUMBER() OVER () as weight, x.*                                                                                               +
+       FROM (                                                                                                                                 +
+             SELECT DISTINCT patient.category                                                                                                 +
+ ,patient.content                                                                                                                             +
+ ,patient.logical_id                                                                                                                          +
+ ,patient.published                                                                                                                           +
+ ,patient.resource_type                                                                                                                       +
+ ,patient.updated                                                                                                                             +
+ ,patient.version_id                                                                                                                          +
+               FROM patient patient                                                                                                           +
+                                                                                                                                              +
+             JOIN patient_search_token patient_identifier                                                                                     +
+               ON patient_identifier.resource_id::varchar = patient.logical_id::varchar                                                       +
+              AND (patient_identifier.param = 'identifier' AND (patient_identifier.code = '7777777' AND patient_identifier.namespace = 'MRN'))+
+                                                                                                                                              +
+               WHERE  true = true                                                                                                             +
+               ORDER BY  updated DESC                                                                                                         +
+               LIMIT 100                                                                                                                      +
+               OFFSET 0                                                                                                                       +
+             ) x                                                                                                                              +
    
 (1 row)
 
@@ -475,6 +475,15 @@ SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
     assert_eq    
 -----------------
  OK pt by family
+(1 row)
+
+SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
+ (SELECT logical_id
+    FROM search('Patient', 'family=bor&name=bor') LIMIT 1)
+ ,'pt by family & name');
+       assert_eq        
+------------------------
+ OK pt by family & name
 (1 row)
 
 SELECT assert_eq('http://pt/vip',

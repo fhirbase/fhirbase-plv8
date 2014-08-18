@@ -51,21 +51,21 @@ SELECT *
                ON _c4ef352f74e502ef5e7bc98e6f4e493d.resource_id = patient.logical_id                                                                +
               AND (_c4ef352f74e502ef5e7bc98e6f4e493d.term = 'category')                                                                             +
                                                                                                                                                     +
-             JOIN patient_search_token patient_token                                                                                                +
-               ON patient_token.resource_id::varchar = patient.logical_id::varchar                                                                  +
-              AND (patient_token.param = 'identifier' AND (patient_token.code = '7777777' AND patient_token.namespace = 'MRN'))                     +
+             JOIN patient_search_string patient_name                                                                                                +
+               ON patient_name.resource_id::varchar = patient.logical_id::varchar                                                                   +
+              AND (patient_name.param = 'name' AND (patient_name.value ilike '%pups%'))                                                             +
                                                                                                                                                     +
-             JOIN patient_search_string patient_string                                                                                              +
-               ON patient_string.resource_id::varchar = patient.logical_id::varchar                                                                 +
-              AND (patient_string.param = 'name' AND (patient_string.value ilike '%pups%'))                                                         +
+             JOIN patient_search_token patient_identifier                                                                                           +
+               ON patient_identifier.resource_id::varchar = patient.logical_id::varchar                                                             +
+              AND (patient_identifier.param = 'identifier' AND (patient_identifier.code = '7777777' AND patient_identifier.namespace = 'MRN'))      +
                                                                                                                                                     +
          JOIN patient_references patient_provider                                                                                                   +
            ON patient_provider.resource_id::varchar = patient.logical_id::varchar                                                                   +
             AND  ( patient_provider.logical_id='1' OR patient_provider.logical_id='2')                                                              +
                                                                                                                                                     +
-             JOIN organization_search_string patient_provider_string                                                                                +
-               ON patient_provider_string.resource_id::varchar = patient_provider.logical_id::varchar                                               +
-              AND (patient_provider_string.param = 'name' AND (patient_provider_string.value ilike '%ups%'))                                        +
+             JOIN organization_search_string patient_provider_name                                                                                  +
+               ON patient_provider_name.resource_id::varchar = patient_provider.logical_id::varchar                                                 +
+              AND (patient_provider_name.param = 'name' AND (patient_provider_name.value ilike '%ups%'))                                            +
                                                                                                                                                     +
                                                                                                                                                     +
               LEFT JOIN patient_search_date patient_date                                                                                            +

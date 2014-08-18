@@ -9,34 +9,33 @@
 ---    where part - SELECT, LIMIT, OFFSET, JOINS
 ---
 ---    * build select part - just enumeration of fixed columns
----    * build search part
----       * build search joins
----          * build tags joins
----            * filter _tag, _security & _profile params
----            * JOIN string on tag aliased by md5 of value
----            * with tag condition scheme= label=
----          * build references joins
----            * expand params
----            * filter only chained params (i.e. having parent resource)
----            * JOIN string with _references table and aliases by path
----            * and condition based on ids
----          * build index joins
----            * filter leaf params (i.e without '.')
----            * build join with table calculated by path
----            * with condition by param type (custom implementations for each type)
----       * build search missing parts
----         * expand params
----         * join with params meta info
----         * filter out all chains '.'
----         * take only missings
----         * build LEFT JOIN string with index table by type
----         * build WHERE string with IS NULL or IS NOT NULL
----    * build search by ids - WHERE by logical_id
----    * build order part
+---    * TAGS
+---      * filter _tag, _security & _profile params
+---      * JOIN string on tag aliased by md5 of value
+---      * with tag condition scheme= label=
+---    * SEARCH
+---      * build references joins
+---        * expand params
+---        * filter only chained params (i.e. having parent resource)
+---        * JOIN string with _references table and aliases by path
+---        * and condition based on ids
+---      * build index joins
+---        * filter leaf params (i.e without '.')
+---        * build join with table calculated by path
+---        * with condition by param type (custom implementations for each type)
+---    * MISSING
+---      * expand params
+---      * join with params meta info
+---      * filter out all chains '.'
+---      * take only missings
+---      * build LEFT JOIN string with index table by type
+---      * build WHERE string with IS NULL or IS NOT NULL
+---    * BY IDS
+---    * ORDER
 ---       * filter sort params
 ---       * build JOIN with _sort table
 ---       * build ORDER part
----    * build offset & limit part - just LIMIT/OFFSET parts
+---    * LIMIT build offset & limit part - just LIMIT/OFFSET parts
 ---    * compose query from query relation
 ---  * load includes
 ---    * select resources ids by _references table & search result
@@ -155,14 +154,13 @@ LANGUAGE sql AS $$
   ;
 $$;
 
-
 CREATE OR REPLACE
 FUNCTION _build_index_joins(_resource_type text, _query jsonb)
 RETURNS table (sql text, weight text)
 LANGUAGE sql AS $$
     WITH index_params AS (
      SELECT quote_ident(lower(p.res) || '_search_' || fri.search_type) as tbl,
-            get_alias_from_path(array_append(p.path, fri.search_type::text)) AS als,
+            get_alias_from_path(array_append(p.path, p.key::text)) AS als,
             get_alias_from_path(p.path) prnt,
             fri.param_name,
             fri.search_type,
