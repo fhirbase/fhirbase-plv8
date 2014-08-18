@@ -293,7 +293,7 @@ LANGUAGE sql AS $$
   ), created_resources AS (
     SELECT
       r.id as alternative,
-      fhir_create(_cfg, r.resource_type, r.content::jsonb, r.category::jsonb)#>'{entry,0}' as entry 
+      fhir_create(_cfg, r.resource_type, r.content::jsonb, r.category::jsonb)#>'{entry,0}' as entry
     FROM create_resources r
   ), reference AS (
     SELECT array(
@@ -309,14 +309,14 @@ LANGUAGE sql AS $$
       r.id as alternative,
       fhir_update(_cfg, r.resource_type, (cr.entry->>'id')::uuid,
         _get_vid_from_url(cr.entry#>>'{link,0,href}')::uuid,
-        _replace_references(r.content::text, rf.refs)::jsonb, '[]'::jsonb)#>'{entry,0}' as entry 
+        _replace_references(r.content::text, rf.refs)::jsonb, '[]'::jsonb)#>'{entry,0}' as entry
     FROM create_resources r
     JOIN created_resources cr on cr.alternative = r.id
     JOIN reference rf on 1=1
     UNION ALL
     SELECT
       r.id as alternative,
-      fhir_update(_cfg, r.resource_type, r.id::uuid, r.vid::uuid, _replace_references(r.content::text, rf.refs)::jsonb, r.category::jsonb)#>'{entry,0}' as entry 
+      fhir_update(_cfg, r.resource_type, r.id::uuid, r.vid::uuid, _replace_references(r.content::text, rf.refs)::jsonb, r.category::jsonb)#>'{entry,0}' as entry
     FROM update_resources r, reference rf
   ), delete_resources AS (
     SELECT i.*
