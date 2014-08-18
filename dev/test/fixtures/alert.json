@@ -1,0 +1,9 @@
+{
+  "resourceType": "Alert",
+   "status": "active",
+   "subject": {
+     "reference": "Patient/example",
+     "display": "Peter Patient"
+   },
+   "note": "previous-note"
+}

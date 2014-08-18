@@ -196,6 +196,26 @@ END
 $$;
 
 CREATE OR REPLACE
+FUNCTION assert_raise(exp varchar, str text, mess varchar) RETURNS varchar
+LANGUAGE plpgsql AS $$
+BEGIN
+  BEGIN
+    EXECUTE str;
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF exp = SQLERRM THEN
+        RETURN 'OK ' || mess;
+    ELSE
+      RAISE EXCEPTION E'assert_raise % FAILED:\nEXPECTED: %\nACTUAL:   %', mess, exp, SQLERRM;
+      RETURN 'NOT OK';
+    END IF;
+  END;
+  RAISE EXCEPTION E'assert_raise % FAILED:\nEXPECTED: %', mess, exp;
+  RETURN 'NOT OK';
+END
+$$;
+
+CREATE OR REPLACE
 FUNCTION _fhir_unescape_param(_str text) RETURNS text
 LANGUAGE sql AS $$
   SELECT regexp_replace(_str, $RE$\\([,$|])$RE$, E'\\1', 'g')
