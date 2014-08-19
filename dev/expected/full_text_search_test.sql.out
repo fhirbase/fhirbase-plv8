@@ -38,10 +38,5 @@ WITH alert AS (
       jsonb_array_length(s.absent#>'{entry}'),
       'full text search not found')
   FROM searching s;
-         assert_eq         |           assert_eq           
----------------------------+-------------------------------
- OK full text search found | OK full text search not found
-(1 row)
-
 ROLLBACK;
 ROLLBACK
