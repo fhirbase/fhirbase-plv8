@@ -15,7 +15,7 @@ BEGIN;
     FROM fhir_create(:'cfg', 'Alert', :'alert'::jsonb, '[]'::jsonb) as bundle
   ), searching AS (
     SELECT a.*,
-      fhir_search(:'cfg', 'Alert', '_text=(previous%20and%20active%20and%20note)%20OR%20absent_text') as present,
+      fhir_search(:'cfg', 'Alert', '_text=%28previous%20and%20active%20and%20note%29%20OR%20absent_text') as present,
       fhir_search(:'cfg', 'Alert', '_text=absent_text') as absent
     FROM alert a
   )
