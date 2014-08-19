@@ -457,7 +457,7 @@ CREATE OR REPLACE
 FUNCTION build_full_text_search_part(_resource_type varchar, query jsonb) RETURNS table(part text, sql text)
 LANGUAGE sql AS $$
   SELECT 'WHERE'::text,
-    'to_tsvector(' ||
+    'to_tsvector(''english'',' ||
     quote_ident(lower(_resource_type)) ||
     '."content"::text) @@ to_tsquery(' || quote_literal(_text_to_query(x->>'value')) || ')'
   FROM jsonb_array_elements(query) x
