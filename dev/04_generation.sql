@@ -132,6 +132,8 @@ _eval(
     CREATE UNIQUE INDEX {{tbl_name}}_logical_id_as_varchar_idx
     ON "{{tbl_name}}" (CAST(logical_id AS varchar));
 
+    CREATE INDEX {{tbl_name}}_full_text_idx ON "{{tbl_name}}" USING gin(to_tsvector('english', content::text));
+
     CREATE TABLE {{tbl_name}}_tag (
       _id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       resource_id uuid REFERENCES "{{tbl_name}}" (logical_id),

@@ -447,6 +447,23 @@ LANGUAGE sql AS $$
   WHERE x->>'param' = '_id'
 $$;
 
+CREATE OR REPLACE FUNCTION
+_text_to_query(_text text) RETURNS text
+LANGUAGE sql AS $$
+  SELECT replace(replace(lower(_text), 'and', '&'), 'or', '|');
+$$;
+
+CREATE OR REPLACE
+FUNCTION build_full_text_search_part(_resource_type varchar, query jsonb) RETURNS table(part text, sql text)
+LANGUAGE sql AS $$
+  SELECT 'WHERE'::text,
+    'to_tsvector(''english'',' ||
+    quote_ident(lower(_resource_type)) ||
+    '."content"::text) @@ to_tsquery(' || quote_literal(_text_to_query(x->>'value')) || ')'
+  FROM jsonb_array_elements(query) x
+  WHERE x->>'param' = '_text'
+$$;
+
 CREATE OR REPLACE
 FUNCTION build_select_part(_resource_type varchar) RETURNS table(part text, sql text)
 LANGUAGE sql AS $$
@@ -472,6 +489,8 @@ LANGUAGE sql AS $$
     SELECT * FROM build_search_part(_resource_type, query)
     UNION
     SELECT * FROM build_ids_search_part(_resource_type, query)
+    UNION
+    SELECT * FROM build_full_text_search_part(_resource_type, query)
     UNION
     SELECT * FROM build_order_part(_resource_type, query)
     UNION
