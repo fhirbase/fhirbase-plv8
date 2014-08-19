@@ -126,7 +126,7 @@ Requirements:
 * pg_trgm
 
 
-You can build Postgresql from source  on debian/ubuntu
+You can download postgresql 9.4 pre-release or build Postgresql from source  on debian/ubuntu
 and create local user cluster with:
 
 
@@ -180,6 +180,9 @@ Return bundle with entries representing versions;
 #### FUNCTION fhir_search(_cfg jsonb, _type_ varchar, _params_ jsonb)
 Search in resources with _type_ by _params_
 Returns bundle with entries;
+
+#### FUNCTION fhir_conformance(_cfg jsonb)
+Returns conformance resource jsonb;
 
 
 ## Contribution

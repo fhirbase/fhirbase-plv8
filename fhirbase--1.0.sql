@@ -61,6 +61,357 @@ COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
 SET search_path = public, pg_catalog;
 
 --
+-- Name: _array_of_includes(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _array_of_includes(query text) RETURNS jsonb
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT json_agg((x->'value')::json)::jsonb
+    FROM jsonb_array_elements(_parse_param(query)) x
+    WHERE x->>'param' = '_include'
+$$;
+
+
+--
+-- Name: _build_index_joins(text, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _build_index_joins(_resource_type text, _query jsonb) RETURNS TABLE(sql text, weight text)
+    LANGUAGE sql IMMUTABLE
+    AS $_$
+    WITH index_params AS (
+     SELECT quote_ident(lower(p.res) || '_search_' || fri.search_type) as tbl,
+            get_alias_from_path(array_append(p.path, p.key::text)) AS als,
+            get_alias_from_path(p.path) prnt,
+            fri.param_name,
+            fri.search_type,
+            p.modifier,
+            p.path,
+            p.value
+       FROM _expand_search_params(_resource_type, _query) p
+       JOIN fhir.resource_indexables fri
+         ON fri.param_name = p.key
+        AND fri.resource_type =  p.res
+      WHERE position('.' in p.key) = 0
+    )
+    SELECT _tpl($SQL$
+            JOIN {{tbl}} {{als}}
+              ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
+             AND {{cond}}
+          $SQL$,
+          'tbl',  p.tbl,
+          'als',  p.als,
+          'prnt', p.prnt,
+          'cond', string_agg(
+                     _param_expression(p.als,
+                                       p.param_name,
+                                       p.search_type,
+                                       p.modifier,
+                                       p.value), ' AND ')) as join_str
+           ,p.path::text || '2' as weight
+       FROM index_params p
+       WHERE p.modifier <> 'missing'
+       GROUP BY p.tbl, p.als, p.prnt, p.path, p.search_type
+$_$;
+
+
+--
+-- Name: _build_link(jsonb, character varying, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _build_link(_cfg jsonb, _type_ character varying, _id_ uuid, _vid_ uuid) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+  SELECT json_build_object(
+    'rel', 'self',
+    'href', _build_url(_cfg, _type_ || '/' || _id_ || '/_history/' || _vid_))::jsonb
+$$;
+
+
+--
+-- Name: _build_query(jsonb[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _build_query(_parts_ jsonb[]) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT 'ok'::text
+$$;
+
+
+--
+-- Name: _build_references_joins(text, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _build_references_joins(_resource_type text, _query jsonb) RETURNS TABLE(sql text, weight text)
+    LANGUAGE sql IMMUTABLE
+    AS $_$
+-- joins trhough referenced resources for chained params
+WITH params AS
+(
+    SELECT *
+      FROM _expand_search_params(_resource_type, _query)
+     WHERE parent_res IS NOT NULL
+),
+with_ids AS
+(
+     SELECT quote_ident(lower(p.parent_res) || '_references') as tbl,
+            get_alias_from_path(p.path) as als,
+            get_alias_from_path(_butlast(p.path)) as prnt,
+            CASE WHEN ids.value IS NOT NULL
+              THEN ' AND ' || _ids_expression(get_alias_from_path(p.path), ids.value)
+            ELSE
+              ''
+            END as ids,
+            p.path::text || '1'  as weight
+       FROM params p
+  LEFT JOIN params ids ON ids.key = '_id' AND ids.path = p.path AND ids.parent_res = p.parent_res AND ids.res = p.res
+   GROUP BY p.parent_res, p.res, p.path, ids.value
+)
+SELECT _tpl($SQL$
+        JOIN {{tbl}} {{als}}
+          ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
+          {{ids}}
+       $SQL$,
+       'tbl', tbl, 'als', als, 'prnt', prnt, 'ids', ids)
+    AS join_str,
+    weight as weight
+  FROM with_ids
+$_$;
+
+
+--
+-- Name: _build_tags_joins(text, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _build_tags_joins(_resource_type text, _query jsonb) RETURNS TABLE(sql text, weight text)
+    LANGUAGE sql IMMUTABLE
+    AS $_$
+    WITH params AS (
+      SELECT x->>'param' as key,
+             x->>'op' as modifier,
+             x->>'value' as value
+        FROM jsonb_array_elements(_query) x
+    ), expand_values AS (
+        SELECT quote_ident('_' || md5(x.value::text)) as als,
+               x.key,
+               x.modifier,
+               y.value as value
+          FROM params x,
+               _fhir_spilt_to_table(x.value) y
+         WHERE x.key IN ('_tag', '_security', '_profile')
+    )
+    SELECT _tpl($SQL$
+            JOIN {{tbl}} {{als}}
+              ON {{als}}.resource_id = {{prnt}}.logical_id
+             AND {{cond}}
+           $SQL$,
+           'tbl', lower(_resource_type || '_tag'),
+           'als',  y.als,
+           'cond', string_agg(_param_expression_tag(y.als, y.key, y.value, y.modifier), ' OR '),
+           'prnt', quote_ident(lower(_resource_type)))
+            as sql,
+            '0'::text as weight
+      FROM expand_values y
+      GROUP BY y.als, y.key, y.modifier
+$_$;
+
+
+--
+-- Name: _build_url(jsonb, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _build_url(_cfg jsonb, rel_path text) RETURNS text
+    LANGUAGE sql
+    AS $$
+  SELECT _cfg->>'base' || '/' || rel_path
+$$;
+
+
+--
+-- Name: _butlast(anyarray); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _butlast(_ar_ anyarray) RETURNS anyarray
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT _ar_[array_lower(_ar_,1) : array_upper(_ar_,1) - 1];
+$$;
+
+
+--
+-- Name: _debug(anyelement); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _debug(x anyelement) RETURNS anyelement
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RAISE NOTICE 'DEBUG %', x;
+  RETURN x;
+END
+$$;
+
+
+--
+-- Name: _eval(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _eval(_str_ text) RETURNS text
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  EXECUTE _str_;
+  RETURN _str_;
+END;
+$$;
+
+
+--
+-- Name: _expand_search_params(text, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _expand_search_params(_resource_type text, _query jsonb) RETURNS TABLE(parent_res text, res text, path text[], key text, modifier text, value text)
+    LANGUAGE sql
+    AS $$
+  WITH RECURSIVE params(parent_res, res, path, key_path, op, value) AS (
+    SELECT null::text as parent_res,
+           _resource_type::text as res,
+           ARRAY[_resource_type]::text[] || regexp_split_to_array(x->>'param', '\.') as path,
+           regexp_split_to_array(x->>'param', '\.') as key_path,
+           x->>'op' as op,
+           x->>'value' as value
+    FROM jsonb_array_elements(_query) x
+    WHERE x->>'param' NOT IN ('_tag', '_security', '_profile', '_sort', '_count', '_page')
+
+    UNION
+
+    SELECT res as parent_res,
+           get_reference_type(x.path[1], re.ref_type) as res,
+           x.path AS path,
+           _rest(x.key_path) AS key_path,
+           x.op,
+           x.value
+     FROM  params x
+     JOIN  fhir.resource_indexables ri
+       ON  ri.param_name = split_part(key_path[1], ':',1)
+      AND  ri.resource_type = x.res
+     JOIN  fhir.resource_elements re
+       ON  re.path = ri.path
+  )
+  SELECT parent_res, res, _butlast(path), key_path[1] as key, op, value from params
+  where res is not null
+  and array_length(key_path,1) = 1
+  ;
+$$;
+
+
+--
+-- Name: _fhir_spilt_to_table(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _fhir_spilt_to_table(_str text) RETURNS TABLE(value text)
+    LANGUAGE sql
+    AS $_$
+  SELECT _fhir_unescape_param(x)
+   FROM regexp_split_to_table(regexp_replace(_str, $RE$([^\\]),$RE$, E'\\1,,,,,'), ',,,,,') x
+$_$;
+
+
+--
+-- Name: _fhir_unescape_param(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _fhir_unescape_param(_str text) RETURNS text
+    LANGUAGE sql
+    AS $_$
+  SELECT regexp_replace(_str, $RE$\\([,$|])$RE$, E'\\1', 'g')
+$_$;
+
+
+--
+-- Name: _get_key(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _get_key(_key_ text) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT array_to_string(_butlast(a) || split_part(_last(a), ':', 1), '.')
+from regexp_split_to_array(_key_, '\.') a;
+$$;
+
+
+--
+-- Name: _get_modifier(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _get_modifier(_key_ text) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT nullif(split_part(_last(regexp_split_to_array(_key_,'\.')), ':',2), '');
+$$;
+
+
+--
+-- Name: _get_operator(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _get_operator(val text) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$
+   SELECT
+   CASE WHEN val ~ E'^(>=|<=|<|>|~).*' THEN
+     regexp_replace(val, E'^(>=|<=|<|>|~).*','\1')
+   ELSE
+     NULL
+   END
+$$;
+
+
+--
+-- Name: _get_value(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _get_value(val text) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$
+   SELECT regexp_replace(val, E'^(>|<|<=|>=|~)(.*)','\2')
+$$;
+
+
+--
+-- Name: _get_vid_from_url(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _get_vid_from_url(_url_ text) RETURNS text
+    LANGUAGE sql
+    AS $$
+  SELECT _last(regexp_split_to_array(_url_, '/'))
+$$;
+
+
+--
+-- Name: _ids_expression(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _ids_expression(_tbl_ text, ids text) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$
+SELECT CASE
+    WHEN ids IS NULL THEN '(true = true)'
+    ELSE
+      (
+        SELECT ' ( ' || string_agg(y.exp,' OR ') || ')' FROM (
+          SELECT _tbl_ || '.logical_id=' || quote_literal(x) AS exp
+           FROM regexp_split_to_table(ids, ',') x
+        ) y
+      )
+    END
+$$;
+
+
+--
 -- Name: _index_res_ref_recur(character varying[], jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -105,6 +456,50 @@ $_$;
 
 
 --
+-- Name: _is_array(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _is_array(_json jsonb) RETURNS boolean
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT jsonb_typeof(_json) = 'array';
+$$;
+
+
+--
+-- Name: _is_descedant(anyarray, anyarray); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _is_descedant(_parent_ anyarray, _child_ anyarray) RETURNS boolean
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT _child_[array_lower(_parent_,1) : array_upper(_parent_,1)] = _parent_;
+$$;
+
+
+--
+-- Name: _is_object(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _is_object(_json jsonb) RETURNS boolean
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT jsonb_typeof(_json) = 'object';
+$$;
+
+
+--
+-- Name: _last(anyarray); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _last(_ar_ anyarray) RETURNS anyelement
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT _ar_[array_length(_ar_,1)];
+$$;
+
+
+--
 -- Name: _lexit_int(numeric); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -124,106 +519,48 @@ $$;
 
 
 --
--- Name: _param_expression_date(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _param_at(jsonb, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION _param_expression_date(_table character varying, _param character varying, _type character varying, _modifier character varying, _value character varying) RETURNS text
-    LANGUAGE sql
-    AS $_$
-  SELECT
-  CASE WHEN op IS NULL THEN
-    quote_literal(val) || '::tstzrange @> tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end")'
-  WHEN op = '>' THEN
-    'tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end") && ' || 'tstzrange(' || quote_literal(upper(val)) || ', NULL)'
-  WHEN op = '<' THEN
-    'tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end") && ' || 'tstzrange(NULL, ' || quote_literal(lower(val)) || ')'
-  ELSE
-  '1'
-  END
-  FROM
-  (SELECT
-    (regexp_matches(_value, '^(<|>)?'))[1] AS op,
-    convert_fhir_date_to_pgrange((regexp_matches(_value, '^(<|>)?(.+)$'))[2]) AS val) p;
-$_$;
-
-
---
--- Name: _param_expression_quantity(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION _param_expression_quantity(_table character varying, _param character varying, _type character varying, _modifier character varying, _value character varying) RETURNS text
-    LANGUAGE sql
-    AS $_$
-  SELECT
-  quote_ident(_table) || '.value ' ||
-
-  CASE
-  WHEN op = '' OR op IS NULL THEN
-    '= ' || quote_literal(p.val)
-  WHEN op = '<' THEN
-    '< ' || quote_literal(p.val)
-  WHEN op = '>' THEN
-    '>' || quote_literal(p.val)
-  WHEN op = '~' THEN
-    '<@ numrange(' || val - val * 0.05 || ',' || val + val * 0.05 || ')'
-  ELSE
-    '= "unknown operator: ' || op || '"'
-  END ||
-
-  CASE WHEN array_length(p.c, 1) = 3 THEN
-    CASE WHEN p.c[2] IS NOT NULL AND p.c[2] <> '' THEN
-      ' AND ' || quote_ident(_table) || '.system = ' || quote_literal(p.c[2])
-    ELSE
-      ''
-    END ||
-    CASE WHEN p.c[3] IS NOT NULL AND p.c[3] <> '' THEN
-      ' AND ' || quote_ident(_table) || '.units = ' || quote_literal(p.c[3])
-    ELSE
-      ''
-    END
-  WHEN array_length(p.c, 1) = 1 THEN
-    ''
-  ELSE
-    '"wrong number of compoments of search string, must be 1 or 3"'
-  END
-  FROM
-  (SELECT
-    regexp_split_to_array(_value, '\|') AS c,
-    (regexp_matches(split_part(_value, '|', 1), '^(<|>|~)?'))[1] AS op,
-    (regexp_matches(split_part(_value, '|', 1), '^(<|>|~)?(.+)$'))[2]::numeric AS val) p;
-$_$;
-
-
---
--- Name: _param_expression_reference(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION _param_expression_reference(_table character varying, _param character varying, _type character varying, _modifier character varying, _value character varying) RETURNS text
-    LANGUAGE sql
+CREATE FUNCTION _param_at(query jsonb, _param_name_ text) RETURNS text
+    LANGUAGE sql IMMUTABLE
     AS $$
-  SELECT
-    '(' || quote_ident(_table) || '.logical_id = ' || quote_literal(_value) || ' OR ' || quote_ident(_table) || '.url = ' || quote_literal(_value) || ')' ||
-    CASE WHEN _modifier <> '' THEN
-      ' AND ' || quote_ident(_table) || '.resource_type = ' || quote_literal(_modifier)
-    ELSE
-      ''
-    END;
+  SELECT x->>'value'
+   FROM jsonb_array_elements(query) x
+  WHERE x->>'param' = _param_name_
+  LIMIT 1
 $$;
 
 
 --
--- Name: _param_expression_string(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _param_expression(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION _param_expression_string(_table character varying, _param character varying, _type character varying, _modifier character varying, _value character varying) RETURNS text
+CREATE FUNCTION _param_expression(_table character varying, _param character varying, _type character varying, _modifier character varying, _value character varying) RETURNS text
     LANGUAGE sql
     AS $$
-  SELECT CASE
-    WHEN _modifier = '' THEN
-      quote_ident(_table) || '.value ilike ' || quote_literal('%' || _value || '%')
-    WHEN _modifier = 'exact' THEN
-      quote_ident(_table) || '.value = ' || quote_literal(_value)
-    END;
+WITH val_cond AS (
+  SELECT
+  CASE WHEN _type = 'string' THEN
+    _search_string_expression(_table, _param, _type, _modifier, y.value)
+  WHEN _type = 'token' THEN
+    _search_token_expression(_table, _param, _type, _modifier, y.value)
+  WHEN _type = 'date' THEN
+    _search_date_expression(_table, _param, _type, _modifier, y.value)
+  WHEN _type = 'quantity' THEN
+    _search_quantity_expression(_table, _param, _type, _modifier, y.value)
+  WHEN _type = 'reference' THEN
+    _search_reference_expression(_table, _param, _type, _modifier, y.value)
+  WHEN _type = 'number' THEN
+    _search_number_expression(_table, _param, _type, _modifier, y.value)
+  ELSE 'implement_me' END as cond
+  FROM _fhir_spilt_to_table(_value) y)
+SELECT
+  _tpl('({{tbl}}.param = {{param}} AND ({{vals_cond}}))'
+       , 'tbl', quote_ident(_table)
+       , 'param', quote_literal(_param)
+       , 'vals_cond',
+       (SELECT string_agg(cond, ' OR ') FROM val_cond));
 $$;
 
 
@@ -258,14 +595,229 @@ $$;
 
 
 --
--- Name: _param_expression_token(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _parse_param(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION _param_expression_token(_table character varying, _param character varying, _type character varying, _modifier character varying, _value character varying) RETURNS text
+CREATE FUNCTION _parse_param(_params_ text) RETURNS jsonb
+    LANGUAGE sql IMMUTABLE
+    AS $$
+
+WITH initial AS (
+  SELECT url_decode(split_part(x,'=',1)) as key,
+         url_decode(split_part(x, '=', 2)) as val
+    FROM regexp_split_to_table(_params_,'&') x
+  ), with_op_mod AS (
+  SELECT  _get_key(key) as key,
+          _get_modifier(key) as mod,
+          CASE WHEN val ~ E'^(>=|<=|<|>|~).*' THEN
+            regexp_replace(val, E'^(>=|<=|<|>|~).*','\1')
+          ELSE
+            NULL
+          END as op,
+          regexp_replace(val, E'^(>|<|<=|>=|~)(.*)','\2') as val
+    FROM  initial
+)
+SELECT json_agg(
+  json_build_object(
+    'param', key,
+    'op',    COALESCE(op,mod,'='),
+    'value', val))::jsonb
+FROM with_op_mod;
+
+$$;
+
+
+--
+-- Name: _query_string_to_params(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _query_string_to_params(_params_ text) RETURNS TABLE(key text, operation text, value text)
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  WITH
+  initial AS (
+    SELECT _url_decode(split_part(x,'=',1)) as key,
+           _url_decode(split_part(x, '=', 2)) as val
+      FROM regexp_split_to_table(_params_,'&') x
+  ),
+  with_op_mod AS (
+    SELECT _get_key(key) as key,
+           _get_modifier(key) as mod,
+           _get_operator(val) as op,
+           _get_value(val) as val
+      FROM initial
+  )
+  SELECT key as param,
+         COALESCE(op, mod, '=') as operation,
+         val as value
+  FROM with_op_mod
+$$;
+
+
+--
+-- Name: _replace_references(text, json[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _replace_references(_resource_ text, _references_ json[]) RETURNS text
+    LANGUAGE sql
+    AS $$
+  SELECT
+    CASE
+    WHEN array_length(_references_, 1) > 0 THEN
+     _replace_references(
+       replace(_resource_, _references_[1]->>'alternative', _references_[1]->>'id'),
+       _rest(_references_))
+    ELSE _resource_
+    END;
+$$;
+
+
+--
+-- Name: _rest(anyarray); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _rest(_ar_ anyarray) RETURNS anyarray
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT _ar_[2 : array_upper(_ar_,1)];
+$$;
+
+
+--
+-- Name: _search_date_expression(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _search_date_expression(_table character varying, _param character varying, _type character varying, _op character varying, _value character varying) RETURNS text
+    LANGUAGE sql
+    AS $$
+  SELECT
+  CASE WHEN _op = '=' THEN
+    quote_literal(val) || '::tstzrange @> tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end")'
+  WHEN _op = '>' THEN
+    'tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end") && ' || 'tstzrange(' || quote_literal(upper(val)) || ', NULL)'
+  WHEN _op = '<' THEN
+    'tstzrange(' || quote_ident(_table) || '."start", ' || quote_ident(_table) || '."end") && ' || 'tstzrange(NULL, ' || quote_literal(lower(val)) || ')'
+  ELSE
+  '1'
+  END
+  FROM (SELECT convert_fhir_date_to_pgrange(_value) AS val) _;
+$$;
+
+
+--
+-- Name: _search_number_expression(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _search_number_expression(_table character varying, _param character varying, _type character varying, _op character varying, _value character varying) RETURNS text
+    LANGUAGE sql
+    AS $$
+  SELECT
+  quote_ident(_table) || '.value ' ||
+  CASE
+  WHEN _op = '=' THEN
+    '= ' || quote_literal(_value)
+  WHEN _op = '<' THEN
+    '< ' || quote_literal(_value)
+  WHEN _op = '>' THEN
+    '>' || quote_literal(_value)
+  WHEN _op = '~' THEN
+    '<@ numrange(' || _value::decimal - _value::decimal * 0.05 || ',' || _value::decimal + _value::decimal * 0.05 || ')'
+  ELSE
+    '= "unknown operator: ' || _op || '"'
+  END
+$$;
+
+
+--
+-- Name: _search_quantity_expression(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _search_quantity_expression(_table character varying, _param character varying, _type character varying, _op character varying, _value character varying) RETURNS text
+    LANGUAGE sql
+    AS $$
+  SELECT
+  quote_ident(_table) || '.value ' ||
+
+  CASE
+  WHEN _op = '=' THEN
+    '= ' || quote_literal(_value)
+  WHEN _op = '<' THEN
+    '< ' || quote_literal(_value)
+  WHEN _op = '>' THEN
+    '>' || quote_literal(_value)
+  WHEN _op = '~' THEN
+    '<@ numrange(' || _value::decimal - _value::decimal * 0.05 || ',' || _value::decimal + _value::decimal * 0.05 || ')'
+  ELSE
+    '= "unknown operator: ' || _op || '"'
+  END ||
+
+  CASE WHEN array_length(c, 1) = 3 THEN
+    CASE WHEN c[2] IS NOT NULL AND c[2] <> '' THEN
+      ' AND ' || quote_ident(_table) || '.system = ' || quote_literal(c[2])
+    ELSE
+      ''
+    END ||
+    CASE WHEN c[3] IS NOT NULL AND c[3] <> '' THEN
+      ' AND ' || quote_ident(_table) || '.units = ' || quote_literal(c[3])
+    ELSE
+      ''
+    END
+  WHEN array_length(c, 1) = 1 THEN
+    ''
+  ELSE
+    '"wrong number of compoments of search string, must be 1 or 3"'
+  END
+  FROM
+  (SELECT regexp_split_to_array(_value, '\|') AS c, split_part(_value, '|', 1)::numeric AS p) _
+$$;
+
+
+--
+-- Name: _search_reference_expression(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _search_reference_expression(_table character varying, _param character varying, _type character varying, _op character varying, _value character varying) RETURNS text
+    LANGUAGE sql
+    AS $$
+  SELECT '('
+      ||  quote_ident(_table) || '.logical_id = ' || quote_literal(_value)
+      ||  ' OR '
+      ||  quote_ident(_table) || '.url = ' || quote_literal(_value)
+      ||  ')'
+      ||
+          CASE WHEN _op <> '=' THEN
+            ' AND ' || quote_ident(_table) || '.resource_type = ' || quote_literal(_op)
+          ELSE
+            ''
+          END;
+$$;
+
+
+--
+-- Name: _search_string_expression(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _search_string_expression(_table character varying, _param character varying, _type character varying, _modifier character varying, _value character varying) RETURNS text
+    LANGUAGE sql
+    AS $$
+  SELECT CASE
+    WHEN _modifier = '=' THEN
+      quote_ident(_table) || '.value ilike ' || quote_literal('%' || _value || '%')
+    WHEN _modifier = 'exact' THEN
+      quote_ident(_table) || '.value = ' || quote_literal(_value)
+    END;
+$$;
+
+
+--
+-- Name: _search_token_expression(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _search_token_expression(_table character varying, _param character varying, _type character varying, _modifier character varying, _value character varying) RETURNS text
     LANGUAGE sql
     AS $$
   (SELECT
-  CASE WHEN _modifier = '' THEN
+  CASE WHEN _modifier = '=' THEN
     CASE WHEN p.count = 1 THEN
       quote_ident(_table) || '.code = ' || quote_literal(p.c1)
     WHEN p.count = 2 THEN
@@ -285,151 +837,57 @@ $$;
 
 
 --
--- Name: affix_tags(character varying, uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _subpath(anyarray, anyarray); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION affix_tags(_res_type character varying, _id_ uuid, _tags jsonb) RETURNS jsonb
-    LANGUAGE plpgsql
-    AS $_$
+CREATE FUNCTION _subpath(_parent_ anyarray, _child_ anyarray) RETURNS character varying[]
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT _child_[array_upper(_parent_,1) + 1 : array_upper(_child_,1)];
+$$;
+
+
+--
+-- Name: _tpl(text, character varying[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _tpl(_tpl_ text, VARIADIC _bindings character varying[]) RETURNS text
+    LANGUAGE plpgsql IMMUTABLE
+    AS $$
+--- replace {{var}} in template string
+---  EXAMPLE:
+---    _tpl('{{a}}={{b}}', 'a', 'A','b','B') => 'A=B'
 DECLARE
-  res jsonb;
+  result text := _tpl_;
 BEGIN
-  EXECUTE
-    eval_template($SQL$
-      WITH rsrs AS (
-        SELECT logical_id, version_id
-        FROM  "{{tbl}}"
-        WHERE logical_id = $1
-      ),
-      old_tags AS (
-        SELECT scheme, term, label FROM {{tbl}}_tag
-        WHERE resource_id = $1
-      ),
-      new_tags AS (
-        SELECT x->>'scheme' as scheme,
-               x->>'term' as term,
-               x->>'label' as label
-        FROM jsonb_array_elements($2) x
-        EXCEPT
-        SELECT * from old_tags
-      ),
-      inserted AS (
-        INSERT INTO "{{tbl}}_tag"
-        (resource_id, resource_version_id, scheme, term, label)
-        SELECT rsrs.logical_id,
-               rsrs.version_id,
-               new_tags.scheme,
-               new_tags.term,
-               new_tags.label
-          FROM new_tags, rsrs
-        RETURNING scheme, term, label)
-      SELECT coalesce(json_agg(row_to_json(inserted)), '[]'::json)::jsonb
-        FROM inserted
-      $SQL$, 'tbl', lower(_res_type))
-    INTO res USING _id_, _tags;
-
-    UPDATE resource SET category = (SELECT json_agg(x)::jsonb FROM (SELECT t.term, t.scheme, t.label FROM tag t WHERE  t.resource_id = _id_) x)
-     WHERE resource_type = _res_type
-      AND logical_id = _id_;
-    RETURN res;
-END;
-$_$;
+  FOR i IN 1..(array_upper(_bindings, 1)/2) LOOP
+    result := replace(result, '{{' || _bindings[i*2 - 1] || '}}', coalesce(_bindings[i*2], ''));
+  END LOOP;
+  RETURN result;
+END
+$$;
 
 
 --
--- Name: affix_tags(character varying, uuid, uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: _url_decode(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION affix_tags(_res_type character varying, _id_ uuid, _vid_ uuid, _tags jsonb) RETURNS jsonb
-    LANGUAGE plpgsql
-    AS $_$
+CREATE FUNCTION _url_decode(input text) RETURNS text
+    LANGUAGE plpgsql IMMUTABLE STRICT
+    AS $$
 DECLARE
-  res jsonb;
+bin bytea = '';
+byte text;
 BEGIN
-  EXECUTE
-    eval_template($SQL$
-      WITH rsrs AS (
-        SELECT logical_id,
-               version_id
-        FROM  "{{tbl}}_history"
-        WHERE version_id = $1
-      ),
-      old_tags AS (
-        SELECT scheme, term, label FROM {{tbl}}_tag_history
-        WHERE resource_version_id = $1
-      ),
-      new_tags AS (
-        SELECT x->>'scheme' as scheme,
-               x->>'term' as term,
-               x->>'label' as label
-        FROM jsonb_array_elements($2) x
-        EXCEPT
-        SELECT * from old_tags
-      ),
-      inserted AS (
-        INSERT INTO "{{tbl}}_tag_history"
-        (resource_id, resource_version_id, scheme, term, label)
-        SELECT rsrs.logical_id,
-               rsrs.version_id,
-               new_tags.scheme,
-               new_tags.term,
-               new_tags.label
-          FROM new_tags, rsrs
-        RETURNING scheme, term, label)
-      SELECT coalesce(json_agg(row_to_json(inserted)), '[]'::json)::jsonb
-        FROM inserted
-      $SQL$, 'tbl', lower(_res_type))
-    INTO res USING _vid_, _tags;
-
-    UPDATE resource_history SET category = (SELECT json_agg(x)::jsonb FROM (SELECT t.term, t.scheme, t.label FROM tag_history t WHERE  t.resource_version_id = _vid_) x)
-     WHERE resource_type = _res_type
-      AND version_id = _vid_;
-    RETURN res;
-END;
-$_$;
-
-
---
--- Name: array_discard_nulls(character varying[]); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION array_discard_nulls(a character varying[]) RETURNS character varying[]
-    LANGUAGE sql
-    AS $$
-SELECT array_agg("unnest") FROM unnest(a) WHERE "unnest" IS NOT NULL;
-$$;
-
-
---
--- Name: array_last(character varying[]); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION array_last(_ar_ character varying[]) RETURNS character varying
-    LANGUAGE sql IMMUTABLE
-    AS $$
-    SELECT _ar_[array_length(_ar_,1)];
-$$;
-
-
---
--- Name: array_pop(character varying[]); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION array_pop(_ar_ character varying[]) RETURNS character varying[]
-    LANGUAGE sql IMMUTABLE
-    AS $$
-  SELECT _ar_[array_lower(_ar_,1) : array_upper(_ar_,1) - 1];
-$$;
-
-
---
--- Name: array_tail(character varying[]); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION array_tail(_ar_ character varying[]) RETURNS character varying[]
-    LANGUAGE sql IMMUTABLE
-    AS $$
-    SELECT _ar_[2 : array_upper(_ar_,1)];
+  FOR byte IN (select (regexp_matches(input, '(%..|.)', 'g'))[1]) LOOP
+    IF length(byte) = 3 THEN
+      bin = bin || decode(substring(byte, 2, 2), 'hex');
+    ELSE
+      bin = bin || byte::bytea;
+    END IF;
+  END LOOP;
+  RETURN convert_from(bin, 'utf8');
+END
 $$;
 
 
@@ -441,8 +899,8 @@ CREATE FUNCTION assert(_pred boolean, mess character varying) RETURNS character 
     LANGUAGE plpgsql
     AS $$
 DECLARE
-item jsonb;
-acc varchar[] := array[]::varchar[];
+  item jsonb;
+  acc varchar[] := array[]::varchar[];
 BEGIN
   IF _pred THEN
     RETURN 'OK ' || mess;
@@ -462,16 +920,86 @@ CREATE FUNCTION assert_eq(expec anyelement, res anyelement, mess character varyi
     LANGUAGE plpgsql
     AS $$
 DECLARE
-item jsonb;
-acc varchar[] := array[]::varchar[];
+  item jsonb;
+  acc varchar[] := array[]::varchar[];
 BEGIN
   IF expec = res  OR (expec IS NULL AND res IS NULL) THEN
     RETURN 'OK ' || mess;
   ELSE
     RAISE EXCEPTION E'assert_eq % FAILED:\nEXPECTED: %\nACTUAL:   %', mess, expec, res;
-    RETURN 'not ok';
+    RETURN 'NOT OK';
   END IF;
 END
+$$;
+
+
+--
+-- Name: assert_raise(character varying, text, character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION assert_raise(exp character varying, str text, mess character varying) RETURNS character varying
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  BEGIN
+    EXECUTE str;
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF exp = SQLERRM THEN
+        RETURN 'OK ' || mess;
+    ELSE
+      RAISE EXCEPTION E'assert_raise % FAILED:\nEXPECTED: %\nACTUAL:   %', mess, exp, SQLERRM;
+      RETURN 'NOT OK';
+    END IF;
+  END;
+  RAISE EXCEPTION E'assert_raise % FAILED:\nEXPECTED: %', mess, exp;
+  RETURN 'NOT OK';
+END
+$$;
+
+
+--
+-- Name: build_ids_search_part(character varying, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION build_ids_search_part(_resource_type character varying, query jsonb) RETURNS TABLE(part text, sql text)
+    LANGUAGE sql
+    AS $$
+  SELECT 'WHERE'::text, _ids_expression(quote_ident(lower(_resource_type)), x->>'value')
+  FROM jsonb_array_elements(query) x
+  WHERE x->>'param' = '_id'
+$$;
+
+
+--
+-- Name: build_limit_part(character varying, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION build_limit_part(_resource_type character varying, query jsonb) RETURNS TABLE(part text, sql text)
+    LANGUAGE sql
+    AS $$
+  SELECT 'LIMIT'::text,
+  (
+    COALESCE(_param_at(query, '_count'), '100')::integer
+  )::text
+  LIMIT 1
+$$;
+
+
+--
+-- Name: build_offset_part(character varying, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION build_offset_part(_resource_type character varying, query jsonb) RETURNS TABLE(part text, sql text)
+    LANGUAGE sql
+    AS $$
+  SELECT 'OFFSET'::text,
+  (
+    (COALESCE(x->>'value', '0')::integer)*COALESCE(_param_at(query, '_count')::integer,100)
+   )::text
+  FROM jsonb_array_elements(query) x
+  WHERE x->>'param' = '_page'
+  LIMIT 1
 $$;
 
 
@@ -483,18 +1011,18 @@ CREATE FUNCTION build_order_clause(_resource_type character varying, query jsonb
     LANGUAGE sql IMMUTABLE
     AS $_$
   WITH order_strs AS (
-    SELECT eval_template($SQL$
+    SELECT _tpl($SQL$
              {{param_tbl}}.{{param_clmn}} {{dir}}
            $SQL$,
            'param_tbl', lower(_resource_type) || '_' || param || '_order_idx',
-           'param_clmn', CASE WHEN direction = 'ASC' THEN 'lower' ELSE 'upper' END,
-           'dir', CASE WHEN direction = 'ASC' THEN 'ASC' ELSE 'DESC' END) AS str
+           'param_clmn', CASE WHEN direction = 'asc' THEN 'lower' ELSE 'upper' END,
+           'dir', direction) AS str
       FROM parse_order_params(_resource_type, query)
   )
   SELECT CASE WHEN length(string_agg(str, '')) > 0 THEN
-           'ORDER BY ' || string_agg(str, ', ')
+           string_agg(str, ', ')
          ELSE
-           'ORDER BY logical_id ASC'
+           ' updated DESC '
          END
     FROM order_strs
 $_$;
@@ -508,21 +1036,38 @@ CREATE FUNCTION build_order_joins(_resource_type character varying, query jsonb)
     LANGUAGE sql IMMUTABLE
     AS $_$
   WITH joins AS (
-    SELECT eval_template($SQL$
+    SELECT _tpl($SQL$
       LEFT JOIN {{order_idx_tbl}} {{order_idx_alias}}
              ON {{order_idx_alias}}.resource_id =
                 {{resource_tbl}}.logical_id
                 AND {{order_idx_alias}}.param = {{param}}
            $SQL$,
            'order_idx_tbl', lower(_resource_type) || '_sort',
-           'order_idx_alias', lower(_resource_type) || '_' || param || '_order_idx',
+           'order_idx_alias', lower(_resource_type) || '_' || t.param || '_order_idx',
            'resource_tbl', lower(_resource_type),
-           'param', quote_literal(param)) AS j
-      FROM parse_order_params(_resource_type, query)
+           'param', quote_literal(t.param)) AS j
+      FROM parse_order_params(_resource_type, query) t
   )
   SELECT string_agg(j, ' ')
     FROM joins;
 $_$;
+
+
+--
+-- Name: build_order_part(character varying, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION build_order_part(_resource_type character varying, query jsonb) RETURNS TABLE(part text, sql text)
+    LANGUAGE sql
+    AS $$
+  SELECT 'JOIN'::text, build_order_joins(_resource_type, query)
+  UNION
+  SELECT 'ORDER'::text, build_order_clause(_resource_type, query)
+  UNION
+  SELECT 'SELECT'::text, lower(_resource_type) || '_' || t.param || '_order_idx.'
+    || CASE WHEN direction = 'asc' THEN 'lower' ELSE 'upper' END
+    FROM parse_order_params(_resource_type, query) t
+$$;
 
 
 --
@@ -531,106 +1076,75 @@ $_$;
 
 CREATE FUNCTION build_search_joins(_resource_type text, _query jsonb) RETURNS text
     LANGUAGE sql
-    AS $_$
-  -- recursivelly expand chained params
-  WITH RECURSIVE params(parent_res, res, path, key, value) AS (
-
-    SELECT null::text as parent_res,
-           _resource_type::text as res,
-           ARRAY[_resource_type]::text[] as path,
-           x.key,
-           x.value
-      FROM jsonb_each_text(_query) x
-     WHERE split_part(x.key,':',1) NOT IN ('_tag', '_security', '_profile')
-
-    UNION
-
-    SELECT res as parent_res,
-           get_reference_type(split_part(x.key, '.', 1), re.ref_type) as res,
-           array_append(x.path,split_part(key, '.', 1)) as path,
-           (regexp_matches(key, '^([^.]+)\.(.+)'))[2] AS key,
-           value
-           FROM params x
-     JOIN  fhir.resource_indexables ri
-       ON  ri.param_name = split_part(split_part(x.key, '.', 1), ':',1)
-      AND  ri.resource_type = x.res
-     JOIN  fhir.resource_elements re
-       ON  re.path = ri.path
-  ),
-  search_index_joins AS (
-    -- joins for index search
-    SELECT eval_template($SQL$
-            JOIN {{tbl}} {{als}}
-              ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
-              AND {{cond}}
-          $SQL$,
-          'tbl',  quote_ident(lower(p.res) || '_search_' || fri.search_type),
-          'als',  get_alias_from_path(array_append(p.path, fri.search_type::text)),
-          'prnt', get_alias_from_path(p.path),
-          'cond', string_agg(
-                     param_expression( get_alias_from_path(array_append(p.path, fri.search_type::text)),
-                                       fri.param_name,
-                                       fri.search_type,
-                                       split_part(p.key, ':', 2),
-                                       p.value), ' AND ')) as join_str
-           ,p.path::text || '2' as weight
-       FROM params p
-       JOIN fhir.resource_indexables fri
-         ON fri.param_name = split_part(p.key, ':', 1)
-        AND fri.resource_type =  p.res
-      WHERE position('.' in p.key) = 0
-      GROUP BY p.res, p.path, fri.search_type
-  ),
-  references_joins AS (
-    -- joins trhough referenced resources for chained params
-    SELECT eval_template($SQL$
-            JOIN {{tbl}} {{als}}
-              ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
-           $SQL$,
-           'tbl', quote_ident(lower(p.parent_res) || '_references'),
-           'als', get_alias_from_path(p.path),
-           'prnt', get_alias_from_path(butlast(p.path)))
-           AS join_str
-            ,p.path::text || '1'  as weight
-      FROM params p
-      WHERE parent_res is not null
-      GROUP BY p.parent_res, res, path
-  ),
-  tag_joins AS (
-    SELECT eval_template($SQL$
-            JOIN {{tbl}} {{als}}
-              ON {{als}}.resource_id = {{prnt}}.logical_id
-             AND {{cond}}
-           $SQL$,
-           'tbl', lower(_resource_type || '_tag'),
-           'als',  y.als,
-           'cond', string_agg(_param_expression_tag(y.als, y.key, y.value, y.modifier), ' OR '),
-           'prnt', quote_ident(lower(_resource_type)))
-            as join_str,
-            '0'::text as weight
-      FROM (
-        SELECT quote_ident('_' || md5(x.value::text)) as als,
-               split_part(x.key,':',1) as key,
-               split_part(x.key,':',2) as modifier,
-               regexp_split_to_table as value
-          FROM jsonb_each_text(_query) x,
-               regexp_split_to_table(x.value, ',')
-         WHERE split_part(x.key,':',1) IN ('_tag', '_security', '_profile')
-      ) y
-      GROUP BY y.als, y.key, y.modifier
-  ),
-  -- mix joins together
-  joins AS  (
-    SELECT join_str, weight FROM tag_joins
+    AS $$
+  WITH joins AS  (
+    SELECT * FROM _build_tags_joins(_resource_type, _query)
     UNION ALL
-    SELECT * FROM search_index_joins
+    SELECT * FROM _build_references_joins(_resource_type, _query)
     UNION ALL
-    SELECT * FROM references_joins
+    SELECT * FROM _build_index_joins(_resource_type, _query)
   )
   -- agg to SQL string
-  SELECT string_agg(join_str, '')
-    FROM (SELECT join_str  FROM joins ORDER BY weight LIMIT 1000) _ ;
+  SELECT string_agg(sql, '')
+    FROM (SELECT sql  FROM joins ORDER BY weight) _ ;
+$$;
+
+
+--
+-- Name: build_search_missing_parts(text, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION build_search_missing_parts(_resource_type text, _query jsonb) RETURNS TABLE(part text, sql text)
+    LANGUAGE sql IMMUTABLE
+    AS $_$
+    WITH index_params AS (
+     SELECT quote_ident(lower(p.res) || '_search_' || fri.search_type) as tbl,
+            get_alias_from_path(array_append(p.path, fri.search_type::text)) AS als,
+            get_alias_from_path(p.path) prnt,
+            p.modifier,
+            fri.param_name,
+            p.value
+       FROM _expand_search_params(_resource_type, _query) p
+       JOIN fhir.resource_indexables fri
+         ON fri.param_name = p.key
+        AND fri.resource_type =  p.res
+      WHERE position('.' in p.key) = 0
+        AND p.modifier = 'missing'
+    )
+    SELECT 'JOIN'::text,
+           _tpl($SQL$
+             LEFT JOIN {{tbl}} {{als}}
+                  ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
+                 AND {{als}}.param = {{param_name}}
+           $SQL$,
+           'tbl',  p.tbl,
+           'als',  p.als,
+           'prnt', p.prnt,
+           'param_name', quote_literal(p.param_name))
+       FROM index_params p
+   UNION
+   SELECT 'WHERE'::text,
+     p.als || '.resource_id IS ' ||
+     CASE WHEN p.value = 'true' THEN
+      'NULL '
+     ELSE
+      'NOT NULL'
+     END
+     FROM index_params p
 $_$;
+
+
+--
+-- Name: build_search_part(character varying, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION build_search_part(_resource_type character varying, query jsonb) RETURNS TABLE(part text, sql text)
+    LANGUAGE sql
+    AS $$
+  SELECT 'JOIN'::text, build_search_joins(_resource_type, query)
+  UNION ALL
+  SELECT * FROM build_search_missing_parts(_resource_type, query)
+$$;
 
 
 --
@@ -638,47 +1152,73 @@ $_$;
 --
 
 CREATE FUNCTION build_search_query(_resource_type character varying, query jsonb) RETURNS text
-    LANGUAGE plpgsql IMMUTABLE
+    LANGUAGE sql
     AS $_$
-DECLARE
-  _count integer;
-  _offset integer;
-  _page integer;
-  res text;
-BEGIN
-  _count := COALESCE(query->>'_count', '50')::integer;
-  _page := COALESCE(query->>'_page', '0')::integer;
-  _offset := _page * _count;
-
-  SELECT INTO res
-    eval_template($SQL$
-      SELECT {{tbl}}.*
-        FROM {{tbl}} {{tbl}}
-        {{joins}}
-        {{order_clause}}
-        LIMIT {{limit}}
-        OFFSET {{offset}}
-    $SQL$,
-    'tbl', quote_ident(lower(_resource_type)),
-    'joins', COALESCE(build_search_joins(_resource_type, query), '') || ' ' ||
-             COALESCE(build_order_joins(_resource_type, query), ''),
-    'order_clause', build_order_clause(_resource_type, query),
-    'limit', _count::varchar,
-    'offset', _offset::varchar);
-
-  RETURN res;
-END
+-- we get query jsonb and return query sql string
+-- i.e. we build query
+-- build is complex, so we split it into parts (i.e. search part, chain part, order part, ids part)
+-- query is represented as simple relation table(query_part enum, sql text), where query_part one of SELECT, JOIN, WHERE, ORDER, LIMIT
+-- for example build_paging_part(query) => [('LIMIT', 100), ('OFFSET', 50)]
+-- then we union all parts and generate SQL string
+  WITH sql_query AS (
+    SELECT * FROM build_select_part(_resource_type)
+    UNION
+    SELECT * FROM build_search_part(_resource_type, query)
+    UNION
+    SELECT * FROM build_ids_search_part(_resource_type, query)
+    UNION
+    SELECT * FROM build_order_part(_resource_type, query)
+    UNION
+    SELECT * FROM build_offset_part(_resource_type, query)
+    UNION
+    SELECT * FROM build_limit_part(_resource_type,query)
+  )
+  SELECT
+  _tpl($SQL$
+    SELECT ROW_NUMBER() OVER () as weight, x.*
+      FROM (
+            SELECT DISTINCT {{select}}
+              FROM {{tbl}} {{tbl}}
+              {{join}}
+              WHERE {{where}}
+              ORDER BY {{order}}
+              LIMIT {{limit}}
+              OFFSET {{offset}}
+            ) x
+  $SQL$,
+  'tbl',   quote_ident(lower(_resource_type)),
+  'select', (SELECT string_agg(DISTINCT(sql), E'\n,')  FROM sql_query WHERE part = 'SELECT' and sql IS NOT NULL),
+  'join',   (SELECT string_agg(sql, E'\n')   FROM sql_query WHERE part = 'JOIN' and sql IS NOT NULL),
+  'where',  COALESCE((SELECT string_agg(sql, ' AND ') FROM sql_query WHERE part = 'WHERE' and sql IS NOT NULL), ' true = true'),
+  'order',  COALESCE((SELECT string_agg(sql, ' , ') FROM sql_query WHERE part = 'ORDER' and sql IS NOT NULL), ' updated desc '),
+  'limit',  COALESCE((SELECT sql FROM sql_query WHERE part = 'LIMIT' limit 1), '100'),
+  'offset', COALESCE((SELECT sql FROM sql_query WHERE part = 'OFFSET' limit 1),'0')
+  );
 $_$;
 
 
 --
--- Name: butlast(character varying[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: build_select_part(character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION butlast(_ar_ character varying[]) RETURNS character varying[]
-    LANGUAGE sql IMMUTABLE
+CREATE FUNCTION build_select_part(_resource_type character varying) RETURNS TABLE(part text, sql text)
+    LANGUAGE sql
     AS $$
-    SELECT _ar_[array_lower(_ar_,1) : array_upper(_ar_,1) - 1];
+  SELECT 'SELECT'::text, quote_ident(lower(_resource_type)) || '.' || x as sql
+    FROM unnest('{logical_id,version_id,content, category, updated, published, resource_type}'::text[]) x
+$$;
+
+
+--
+-- Name: build_string(jsonb, character varying[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION build_string(v jsonb, keys character varying[]) RETURNS character varying
+    LANGUAGE sql
+    AS $$
+SELECT string_agg(x.part, ' ') FROM
+  (SELECT v->>unnest as part
+    FROM unnest(keys)) x
 $$;
 
 
@@ -689,7 +1229,7 @@ $$;
 CREATE FUNCTION column_name(name character varying, type character varying) RETURNS character varying
     LANGUAGE sql IMMUTABLE
     AS $$
-    SELECT replace(name, '[x]', '' || type);
+  SELECT replace(name, '[x]', '' || type);
 $$;
 
 
@@ -736,7 +1276,7 @@ CREATE FUNCTION create_tags(_id uuid, _vid uuid, res_type character varying, _ta
     AS $_$
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO {{tbl}}_tag
       (resource_id, resource_version_id, scheme, term, label)
       SELECT $1, $2, tg->>'scheme', tg->>'term', tg->>'label'
@@ -758,7 +1298,7 @@ CREATE FUNCTION delete_resource(id uuid, res_type character varying) RETURNS uui
 DECLARE
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO "{{tbl}}_history"
       (version_id, logical_id, updated, published, content)
       SELECT version_id, logical_id, updated, published, content
@@ -789,35 +1329,749 @@ $_$;
 
 
 --
--- Name: eval_ddl(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fhir_affix_tags(character varying, uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION eval_ddl(_str_ text) RETURNS text
+CREATE FUNCTION fhir_affix_tags(_res_type character varying, _id_ uuid, _tags jsonb) RETURNS jsonb
     LANGUAGE plpgsql
+    AS $_$
+DECLARE
+  res jsonb;
+BEGIN
+  EXECUTE
+    _tpl($SQL$
+      WITH rsrs AS (
+        SELECT logical_id, version_id
+        FROM  "{{tbl}}"
+        WHERE logical_id = $1
+      ),
+      old_tags AS (
+        SELECT scheme, term, label FROM {{tbl}}_tag
+        WHERE resource_id = $1
+      ),
+      new_tags AS (
+        SELECT x->>'scheme' as scheme,
+               x->>'term' as term,
+               x->>'label' as label
+        FROM jsonb_array_elements($2) x
+        EXCEPT
+        SELECT * from old_tags
+      ),
+      inserted AS (
+        INSERT INTO "{{tbl}}_tag"
+        (resource_id, resource_version_id, scheme, term, label)
+        SELECT rsrs.logical_id,
+               rsrs.version_id,
+               new_tags.scheme,
+               new_tags.term,
+               new_tags.label
+          FROM new_tags, rsrs
+        RETURNING scheme, term, label)
+      SELECT coalesce(json_agg(row_to_json(inserted)), '[]'::json)::jsonb
+        FROM inserted
+      $SQL$, 'tbl', lower(_res_type))
+    INTO res USING _id_, _tags;
+
+    UPDATE resource SET category = (SELECT json_agg(x)::jsonb FROM (SELECT t.term, t.scheme, t.label FROM tag t WHERE  t.resource_id = _id_) x)
+     WHERE resource_type = _res_type
+      AND logical_id = _id_;
+    RETURN res;
+END;
+$_$;
+
+
+--
+-- Name: fhir_affix_tags(character varying, uuid, uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_affix_tags(_res_type character varying, _id_ uuid, _vid_ uuid, _tags jsonb) RETURNS jsonb
+    LANGUAGE plpgsql
+    AS $_$
+DECLARE
+  res jsonb;
+BEGIN
+  EXECUTE
+    _tpl($SQL$
+      WITH rsrs AS (
+        SELECT logical_id,
+               version_id
+        FROM  "{{tbl}}_history"
+        WHERE version_id = $1
+      ),
+      old_tags AS (
+        SELECT scheme, term, label FROM {{tbl}}_tag_history
+        WHERE resource_version_id = $1
+      ),
+      new_tags AS (
+        SELECT x->>'scheme' as scheme,
+               x->>'term' as term,
+               x->>'label' as label
+        FROM jsonb_array_elements($2) x
+        EXCEPT
+        SELECT * from old_tags
+      ),
+      inserted AS (
+        INSERT INTO "{{tbl}}_tag_history"
+        (resource_id, resource_version_id, scheme, term, label)
+        SELECT rsrs.logical_id,
+               rsrs.version_id,
+               new_tags.scheme,
+               new_tags.term,
+               new_tags.label
+          FROM new_tags, rsrs
+        RETURNING scheme, term, label)
+      SELECT coalesce(json_agg(row_to_json(inserted)), '[]'::json)::jsonb
+        FROM inserted
+      $SQL$, 'tbl', lower(_res_type))
+    INTO res USING _vid_, _tags;
+
+    UPDATE resource_history SET category = (SELECT json_agg(x)::jsonb FROM (SELECT t.term, t.scheme, t.label FROM tag_history t WHERE  t.resource_version_id = _vid_) x)
+     WHERE resource_type = _res_type
+      AND version_id = _vid_;
+    RETURN res;
+END;
+$_$;
+
+
+--
+-- Name: fhir_conformance(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_conformance(_cfg jsonb) RETURNS jsonb
+    LANGUAGE sql
     AS $$
-  begin
-    EXECUTE _str_;
-    RETURN _str_;
-  end;
+SELECT json_build_object(
+  'resourceType', 'Conformance',
+  'identifier', _cfg->'identifier',
+  'version', _cfg->'version',
+  'name', _cfg->'name',
+  'publisher', _cfg->'publisher',
+  'telecom', _cfg->'telecom',
+  'description', _cfg->'description',
+  'status', 'active',
+  'date', _cfg->'date',
+  'software', _cfg->'software',
+  'fhirVersion', _cfg->'fhirVersion',
+  'acceptUnknown', _cfg->'acceptUnknown',
+  'format', _cfg->'format',
+  'rest', ARRAY[json_build_object(
+    'mode', 'server',
+    'operation', '[ { "code": "transaction" }, { "code": "history-system" } ]',
+    'cors', _cfg->'cors',
+    'resource',
+      (SELECT json_agg(
+          json_build_object(
+            'type', e.path[1],
+            'profile', json_build_object(
+              'reference', _cfg->>'base' || '/Profile/' || e.path[1]
+            ),
+            'readHistory', true,
+            'updateCreate', true,
+            'operation', '[{ "code": "read" }, { "code": "vread" }, { "code": "update" }, { "code": "history-instance" }, { "code": "create" }, { "code": "history-type" } ]'::json,
+            'searchParam',  (
+              SELECT  json_agg(t.*)  FROM (
+                SELECT sp.name, sp.type, sp.documentation
+                FROM fhir.resource_search_params sp
+                  WHERE sp.path[1] = e.path[1]
+              ) t
+            )
+
+          )
+        )
+        FROM fhir.resource_elements e
+        WHERE array_length(path,1) = 1
+      )
+  )]
+)::jsonb;
 $$;
 
 
 --
--- Name: eval_template(text, character varying[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fhir_create(jsonb, character varying, jsonb, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION eval_template(_tpl_ text, VARIADIC _bindings character varying[]) RETURNS text
+CREATE FUNCTION fhir_create(_cfg jsonb, _type_ character varying, _resource_ jsonb, _tags_ jsonb) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+--- Create a new resource with a server assigned id
+--- return bundle with one entry
+  SELECT fhir_read(_cfg, _type_, insert_resource(_resource_, _tags_))
+$$;
+
+
+--
+-- Name: FUNCTION fhir_create(_cfg jsonb, _type_ character varying, _resource_ jsonb, _tags_ jsonb); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_create(_cfg jsonb, _type_ character varying, _resource_ jsonb, _tags_ jsonb) IS 'Create a new resource with a server assigned id\n Return bundle with newly entry';
+
+
+--
+-- Name: fhir_delete(jsonb, character varying, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_delete(_cfg jsonb, _type_ character varying, _id_ uuid) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+  WITH bundle AS (SELECT fhir_read(_cfg, _type_, _id_) as bundle)
+  SELECT bundle.bundle
+  FROM bundle, delete_resource(_id_, _type_);
+$$;
+
+
+--
+-- Name: FUNCTION fhir_delete(_cfg jsonb, _type_ character varying, _id_ uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_delete(_cfg jsonb, _type_ character varying, _id_ uuid) IS 'DELETE resource by its id AND return deleted version\nReturn bundle with one deleted version entry';
+
+
+--
+-- Name: fhir_history(jsonb, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_history(_cfg jsonb, _params_ jsonb) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+  WITH entry AS (
+    SELECT r.content AS content,
+           r.updated AS updated,
+           r.published AS published,
+           r.logical_id AS id,
+           r.category AS category,
+           json_build_array(
+             _build_link(_cfg, r.resource_type, r.logical_id, r.version_id)::json
+           )::jsonb   AS link
+      FROM (
+        SELECT * FROM resource
+        UNION
+        SELECT * FROM resource_history) r)
+  SELECT
+    json_build_object(
+      'title', 'History of all resources',
+      'id', gen_random_uuid(),
+      'resourceType', 'Bundle',
+      'totalResults', count(e.*),
+      'updated', now(),
+      'entry', COALESCE(json_agg(e.*), '[]'::json)
+    )::jsonb
+    FROM entry e;
+$$;
+
+
+--
+-- Name: FUNCTION fhir_history(_cfg jsonb, _params_ jsonb); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_history(_cfg jsonb, _params_ jsonb) IS 'Retrieve the update history for all resources\nReturn bundle with entries representing versions';
+
+
+--
+-- Name: fhir_history(jsonb, character varying, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _params_ jsonb) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+  WITH entry AS (
+    SELECT r.content AS content,
+           r.updated AS updated,
+           r.published AS published,
+           r.logical_id AS id,
+           r.category AS category,
+           json_build_array(
+             _build_link(_cfg, r.resource_type, r.logical_id, r.version_id)::json
+           )::jsonb   AS link
+      FROM (
+        SELECT * FROM resource
+         WHERE resource_type = _type_
+        UNION
+        SELECT * FROM resource_history
+         WHERE resource_type = _type_) r)
+  SELECT
+    json_build_object(
+      'title', 'History of resource with type=' || _type_,
+      'id', gen_random_uuid(),
+      'resourceType', 'Bundle',
+      'totalResults', count(e.*),
+      'updated', now(),
+      'entry', COALESCE(json_agg(e.*), '[]'::json)
+    )::jsonb
+    FROM entry e;
+$$;
+
+
+--
+-- Name: FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _params_ jsonb); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _params_ jsonb) IS 'Retrieve the update history for a particular resource type\nReturn bundle with entries representing versions';
+
+
+--
+-- Name: fhir_history(jsonb, character varying, uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _id_ uuid, _params_ jsonb) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+  WITH entry AS (
+    SELECT r.content AS content,
+           r.updated AS updated,
+           r.published AS published,
+           r.logical_id AS id,
+           r.category AS category,
+           json_build_array(
+             _build_link(_cfg, r.resource_type, r.logical_id, r.version_id)::json
+           )::jsonb   AS link
+      FROM (
+        SELECT * FROM resource
+         WHERE resource_type = _type_
+           AND logical_id = _id_
+        UNION
+        SELECT * FROM resource_history
+         WHERE resource_type = _type_
+           AND logical_id = _id_) r)
+  SELECT
+    json_build_object(
+      'title', 'History of resource with id=' || _id_ ,
+      'id', gen_random_uuid(),
+      'resourceType', 'Bundle',
+      'totalResults', count(e.*),
+      'updated', now(),
+      'entry', COALESCE(json_agg(e.*), '[]'::json)
+    )::jsonb
+    FROM entry e;
+$$;
+
+
+--
+-- Name: FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _id_ uuid, _params_ jsonb); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _id_ uuid, _params_ jsonb) IS 'Retrieve the changes history for a particular resource with logical id (_id_)\nReturn bundle with entries representing versions';
+
+
+--
+-- Name: fhir_profile(jsonb, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_profile(_cfg jsonb, _resource_name_ text) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+WITH elems AS (
+  SELECT array_to_string(e.path,'.') as path,
+         json_build_object(
+           'min', e.min,
+           'max', e.max,
+           'type', (SELECT json_agg(tt.*) FROM (SELECT t as code FROM unnest(e.type) t) tt)
+         ) as definition
+    FROM fhir.resource_elements e
+   WHERE path[1]=_resource_name_
+), params AS (
+  SELECT sp.name, sp.type, sp.documentation
+  FROM fhir.resource_search_params sp
+    WHERE sp.path[1] = _resource_name_
+)
+SELECT json_build_object(
+   'name', _resource_name_,
+   'structure', ARRAY[json_build_object(
+     'type', _resource_name_,
+     'publish', true,
+     'element', (SELECT json_agg(t.*) FROM elems  t),
+     'searchParam',  (SELECT  json_agg(t.*)  FROM params t)
+   )]
+)::jsonb
+$$;
+
+
+--
+-- Name: fhir_read(jsonb, character varying, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_read(_cfg jsonb, _type_ character varying, _id_ uuid) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+  WITH entry AS (
+    SELECT r.content AS content,
+           r.updated AS updated,
+           r.published AS published,
+           r.logical_id AS id,
+           r.category AS category,
+           json_build_array(
+             _build_link(_cfg, r.resource_type, r.logical_id, r.version_id)::json
+           )::jsonb   AS link
+      FROM resource r
+     WHERE r.resource_type = _type_
+       AND r.logical_id = _id_)
+  SELECT
+    json_build_object(
+      'title', 'Concrete resource by id ' || _id_,
+      'id', gen_random_uuid(),
+      'resourceType', 'Bundle',
+      'totalResults', 1,
+      'updated', now(),
+      'entry', (SELECT json_agg(e.*) FROM entry e)
+    )::jsonb
+$$;
+
+
+--
+-- Name: FUNCTION fhir_read(_cfg jsonb, _type_ character varying, _id_ uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_read(_cfg jsonb, _type_ character varying, _id_ uuid) IS 'Read the current state of the resource\nReturn bundle with only one entry for uniformity';
+
+
+--
+-- Name: fhir_remove_tags(character varying, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_remove_tags(_res_type character varying, _id_ uuid) RETURNS bigint
+    LANGUAGE sql
+    AS $$
+  UPDATE resource SET category = NULL
+  WHERE resource_type = _res_type
+    AND logical_id = _id_;
+
+  WITH DELETED AS (
+  DELETE FROM tag t
+    WHERE t.resource_type = _res_type
+    AND t.resource_id = _id_ RETURNING * )
+  SELECT count(*) FROM DELETED;
+$$;
+
+
+--
+-- Name: fhir_remove_tags(character varying, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_remove_tags(_res_type character varying, _id_ uuid, _vid uuid) RETURNS bigint
+    LANGUAGE sql
+    AS $$
+  UPDATE resource_history SET category = NULL
+  WHERE resource_type = _res_type
+    AND logical_id = _id_;
+
+  WITH DELETED AS (
+  DELETE FROM tag_history ht
+    WHERE ht.resource_type = _res_type
+    AND ht.resource_id = _id_
+    AND ht.resource_version_id = _vid RETURNING *)
+  SELECT count(*) FROM DELETED;
+$$;
+
+
+--
+-- Name: fhir_search(jsonb, character varying, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_search(_cfg jsonb, _type_ character varying, _params_ text) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+-- TODO build query twice
+  SELECT
+    json_build_object(
+      'title', 'Search results for ' || _params_::varchar,
+      'resourceType', 'Bundle',
+      'totalResults', (SELECT search_results_count(_type_, _params_)),
+      'updated', now(),
+      'id', gen_random_uuid(),
+      'entry', COALESCE(json_agg(z.*), '[]'::json)
+    )::jsonb as json
+  FROM
+    (SELECT y.content AS content,
+            y.updated AS updated,
+            y.published AS published,
+            y.logical_id AS id,
+            y.category AS category,
+            json_build_array(
+              _build_link(_cfg, y.resource_type, y.logical_id, y.version_id)::json
+            )::jsonb AS link
+       FROM search(_type_, _params_) y
+    ) z
+$$;
+
+
+--
+-- Name: FUNCTION fhir_search(_cfg jsonb, _type_ character varying, _params_ text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_search(_cfg jsonb, _type_ character varying, _params_ text) IS 'Search in resources with _type_ by _params_\nReturns bundle with entries';
+
+
+--
+-- Name: fhir_tags(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_tags() RETURNS jsonb
+    LANGUAGE sql IMMUTABLE
+    AS $$
+SELECT
+  json_build_object(
+    'resourceType',  'TagList',
+    'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
+  FROM (
+    SELECT scheme, term, label
+    FROM tag
+    GROUP BY scheme, term, label) tgs
+$$;
+
+
+--
+-- Name: FUNCTION fhir_tags(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_tags() IS 'Return all tags in system';
+
+
+--
+-- Name: fhir_tags(character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_tags(_res_type character varying) RETURNS jsonb
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT
+  json_build_object(
+    'resourceType',  'TagList',
+    'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
+  FROM (
+    SELECT scheme, term, label
+    FROM tag
+    WHERE resource_type = _res_type
+    GROUP BY scheme, term, label) tgs
+$$;
+
+
+--
+-- Name: FUNCTION fhir_tags(_res_type character varying); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_tags(_res_type character varying) IS 'Return tags for resources with type = _type_';
+
+
+--
+-- Name: fhir_tags(character varying, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_tags(_res_type character varying, _id_ uuid) RETURNS jsonb
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT
+  json_build_object(
+    'resourceType',  'TagList',
+    'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
+  FROM (
+    SELECT t.scheme, t.term, t.label
+    FROM tag t
+    WHERE t.resource_type = _res_type
+    AND t.resource_id = _id_
+    GROUP BY scheme, term, label) tgs
+$$;
+
+
+--
+-- Name: fhir_tags(character varying, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_tags(_res_type character varying, _id_ uuid, _vid uuid) RETURNS jsonb
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT
+  json_build_object(
+    'resourceType',  'TagList',
+    'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
+  FROM (
+    SELECT t.scheme, t.term, t.label
+    FROM tag_history t
+    WHERE t.resource_type = _res_type
+    AND t.resource_id = _id_
+    AND t.resource_version_id = _vid
+    GROUP BY scheme, term, label) tgs
+$$;
+
+
+--
+-- Name: fhir_transaction(jsonb, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+  WITH entries AS (
+    SELECT jsonb_array_elements(_bundle_->'entry') AS entry
+  ), items AS (
+    SELECT
+      e.entry->>'id' AS id,
+      _get_vid_from_url(e.entry#>>'{link,0,href}') AS vid,
+      e.entry#>>'{content,resourceType}' AS resource_type,
+      e.entry->'content' AS content,
+      e.entry->'category' as category,
+      e.entry->>'deleted' AS deleted
+    FROM entries e
+  ), create_resources AS (
+    SELECT i.*
+    FROM items i
+    LEFT JOIN resource r on r.logical_id::text = i.id
+    WHERE i.deleted is null and r.logical_id is null
+  ), created_resources AS (
+    SELECT
+      r.id as alternative,
+      fhir_create(_cfg, r.resource_type, r.content::jsonb, r.category::jsonb)#>'{entry,0}' as entry
+    FROM create_resources r
+  ), reference AS (
+    SELECT array(
+      SELECT json_build_object('alternative', r.alternative, 'id', r.entry->>'id')
+      FROM created_resources r) as refs
+  ), update_resources AS (
+    SELECT i.*
+    FROM items i
+    LEFT JOIN resource r on r.logical_id::text = i.id
+    WHERE i.deleted is null and r.logical_id is not null
+  ), updated_resources AS (
+    SELECT
+      r.id as alternative,
+      fhir_update(_cfg, r.resource_type, (cr.entry->>'id')::uuid,
+        _get_vid_from_url(cr.entry#>>'{link,0,href}')::uuid,
+        _replace_references(r.content::text, rf.refs)::jsonb, '[]'::jsonb)#>'{entry,0}' as entry
+    FROM create_resources r
+    JOIN created_resources cr on cr.alternative = r.id
+    JOIN reference rf on 1=1
+    UNION ALL
+    SELECT
+      r.id as alternative,
+      fhir_update(_cfg, r.resource_type, r.id::uuid, r.vid::uuid, _replace_references(r.content::text, rf.refs)::jsonb, r.category::jsonb)#>'{entry,0}' as entry
+    FROM update_resources r, reference rf
+  ), delete_resources AS (
+    SELECT i.*
+    FROM items i
+    WHERE i.deleted is not null
+  ), deleted_resources AS (
+    SELECT d.alternative, d.entry
+    FROM (
+      SELECT
+        r.id as alternative,
+        ('{"id": "' || r.id || '"}')::jsonb as entry,
+        fhir_delete(_cfg, rs.resource_type, r.id::uuid) as deleted
+      FROM delete_resources r
+      JOIN resource rs on rs.logical_id::text = r.id
+    ) d
+  ), created AS (
+    SELECT
+      r.entry->'content' as content,
+      r.entry->'updated' as updated,
+      r.entry->'published' as published,
+      r.entry->'id' as id,
+      r.entry->'category' as category,
+      r.entry->'link' as link,
+      r.alternative as alternative
+    FROM (
+      SELECT *
+      FROM updated_resources
+      UNION ALL
+      SELECT *
+      FROM deleted_resources
+    ) r
+  )
+  SELECT
+    json_build_object(
+      'title', 'Transaction results',
+      'resourceType', 'Bundle',
+      'totalResults', count(r.*),
+      'updated', now(),
+      'id', gen_random_uuid(),
+       'entry', COALESCE(json_agg(r.*), '[]'::json)
+    )::jsonb as json
+  FROM created r;
+$$;
+
+
+--
+-- Name: FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb) IS 'Update, create or delete a set of resources as a single transaction\nReturns bundle with entries';
+
+
+--
+-- Name: fhir_update(jsonb, character varying, uuid, uuid, jsonb, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_update(_cfg jsonb, _type_ character varying, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb) RETURNS jsonb
     LANGUAGE plpgsql
     AS $$
 DECLARE
-result text := _tpl_;
+  vid uuid;
 BEGIN
-  FOR i IN 1..(array_upper(_bindings, 1)/2) LOOP
-    result := replace(result, '{{' || _bindings[i*2 - 1] || '}}', coalesce(_bindings[i*2], ''));
-  END LOOP;
-  RETURN result;
+--- Update an existing resource by its id (ORDER BY create it if it is new)
+--- return bundle with one entry
+  vid := (
+    SELECT version_id
+    FROM resource
+    WHERE logical_id = _id_);
+  IF _vid_ = vid THEN
+    PERFORM update_resource(_id_, _resource_, _tags_);
+    RETURN fhir_read(_cfg, _type_, _id_);
+  ELSE
+    RAISE EXCEPTION E'Wrong version_id %.Current is %', _vid_, vid;
+  END IF;
 END
 $$;
+
+
+--
+-- Name: FUNCTION fhir_update(_cfg jsonb, _type_ character varying, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_update(_cfg jsonb, _type_ character varying, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb) IS 'Update resource, creating new version\nReturns bundle with one entry';
+
+
+--
+-- Name: fhir_vread(jsonb, character varying, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_vread(_cfg jsonb, _type_ character varying, _id_ uuid, _vid_ uuid) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+--- Read the state of a specific version of the resource
+--- return bundle with one entry
+  WITH entry AS (
+    SELECT r.content AS content,
+           r.updated AS updated,
+           r.published AS published,
+           r.logical_id AS id,
+           r.category AS category,
+           json_build_array(
+             _build_link(_cfg, r.resource_type, r.logical_id, r.version_id)::json
+           )::jsonb   AS link
+      FROM (
+        SELECT * FROM resource
+         WHERE resource_type = _type_
+           AND logical_id = _id_
+           AND version_id = _vid_
+        UNION
+        SELECT * FROM resource_history
+         WHERE resource_type = _type_
+           AND logical_id = _id_
+           AND version_id = _vid_) r)
+  SELECT
+    json_build_object(
+      'title', 'Version of resource by id=' || _id_ || ' vid=' || _vid_,
+      'id', gen_random_uuid(),
+      'resourceType', 'Bundle',
+      'totalResults', 1,
+      'updated', now(),
+      'entry', (SELECT json_agg(e.*) FROM entry e)
+    )::jsonb
+$$;
+
+
+--
+-- Name: FUNCTION fhir_vread(_cfg jsonb, _type_ character varying, _id_ uuid, _vid_ uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_vread(_cfg jsonb, _type_ character varying, _id_ uuid, _vid_ uuid) IS 'Read specific version of resource with _type_\nReturns bundle with one entry';
 
 
 --
@@ -848,54 +2102,6 @@ $$;
 
 
 --
--- Name: get_in_path(jsonb, character varying[]); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION get_in_path(json jsonb, path character varying[]) RETURNS jsonb[]
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-item jsonb;
-acc jsonb[] := array[]::jsonb[];
-BEGIN
-  --RAISE NOTICE 'in with % and path %', json, path;
-  IF json is NULL THEN
-    --RAISE NOTICE 'ups';
-    RETURN array[]::jsonb[];
-  END IF;
-
-  IF array_length(path, 1) IS NULL THEN
-    -- expand array
-    IF is_array(json) THEN
-      FOR item IN
-        SELECT jsonb_array_elements(json)
-      LOOP
-        acc := acc || item;
-      END LOOP;
-      RETURN acc;
-    RETURN acc;
-    ELSE
-      RETURN array[json];
-    END IF;
-  END IF;
-
-  IF is_array(json) THEN
-    FOR item IN
-      SELECT jsonb_array_elements(json)
-    LOOP
-      acc := acc || get_in_path(item,path);
-    END LOOP;
-    RETURN acc;
-  ELSIF is_obj(json) THEN
-    RETURN get_in_path(json->path[1], rest(path));
-  ELSE
-    RETURN array[]::jsonb[];
-  END IF;
-END
-$$;
-
-
---
 -- Name: get_reference_type(text, text[]); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -911,53 +2117,6 @@ CREATE FUNCTION get_reference_type(_key text, _types text[]) RETURNS text
           null -- TODO: think about this case
         END
 $$;
-
-
---
--- Name: history_resource(character varying, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION history_resource(_resource_type character varying, _id uuid) RETURNS jsonb
-    LANGUAGE plpgsql
-    AS $_$
-DECLARE
-  res record;
-BEGIN
-  EXECUTE
-    eval_template($SQL$
-      WITH entries AS
-      (SELECT
-          x.logical_id as id
-          ,x.updated as updated
-          ,x.published as published
-          ,x.content as content
-          ,x.category as category
-        FROM "{{tbl}}" x
-        WHERE x.logical_id  = $1
-        UNION
-        SELECT
-          x.logical_id as id
-          ,x.updated as updated
-          ,x.published as published
-          ,x.content as content
-          ,x.category as category
-        FROM {{tbl}}_history x
-        WHERE x.logical_id  = $1)
-      SELECT
-        json_build_object(
-          'title', 'search',
-          'resourceType', 'Bundle',
-          'updated', now(),
-          'id', gen_random_uuid(),
-          'entry', COALESCE(json_agg(y.*), '[]'::json)
-        ) as json
-        FROM entries y
-   $SQL$, 'tbl', lower(_resource_type))
-  INTO res USING _id;
-
-  RETURN res.json;
-END
-$_$;
 
 
 --
@@ -1054,7 +2213,7 @@ BEGIN
     WHERE resource_type = rsrs->>'resourceType'
     AND search_type = 'date'
   LOOP
-    attrs := get_in_path(rsrs, rest(prm.path));
+    attrs := json_get_in(rsrs, _rest(prm.path));
 
     FOR item IN SELECT unnest(attrs)
     LOOP
@@ -1066,7 +2225,7 @@ BEGIN
         WHEN prm.type = 'Schedule' THEN
           result := result || index_schedule_to_date(prm.param_name, item);
         ELSE
-          RAISE EXCEPTION 'unexpected index % : %', prm, attrs;
+          RAISE EXCEPTION 'unexpected date index % : %', prm, attrs;
         END CASE;
     END LOOP;
   END LOOP;
@@ -1092,6 +2251,37 @@ BEGIN
     'system', _item->>'system'
   )::jsonb];
 END;
+$$;
+
+
+--
+-- Name: index_number_resource(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION index_number_resource(rsrs jsonb) RETURNS jsonb[]
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  prm fhir.resource_indexables%rowtype;
+  attrs jsonb[];
+  item jsonb;
+  result jsonb[] := array[]::jsonb[];
+BEGIN
+  FOR prm IN
+    SELECT * FROM fhir.resource_indexables
+    WHERE resource_type = rsrs->>'resourceType'
+    AND search_type = 'number'
+  LOOP
+    attrs := json_get_in(rsrs, _rest(prm.path));
+    FOR item IN SELECT unnest(attrs)
+    LOOP
+      result := result || json_build_object(
+       'param', prm.param_name,
+       'value', item)::jsonb;
+    END LOOP;
+  END LOOP;
+  RETURN result;
+END
 $$;
 
 
@@ -1152,7 +2342,7 @@ BEGIN
     WHERE resource_type = rsrs->>'resourceType'
     AND search_type = 'quantity'
   LOOP
-    attrs := get_in_path(rsrs, rest(prm.path));
+    attrs := json_get_in(rsrs, _rest(prm.path));
     FOR item IN SELECT unnest(attrs)
     LOOP
       result := result || json_build_object(
@@ -1190,7 +2380,7 @@ BEGIN
     AND search_type = 'reference'
     AND array_length(path, 1) > 1
   LOOP
-    attrs := get_in_path(res, rest(prm.path));
+    attrs := json_get_in(res, _rest(prm.path));
     -- RAISE NOTICE 'param % | %', prm, attrs;
 
     FOR item IN SELECT unnest(attrs) LOOP
@@ -1219,7 +2409,7 @@ DECLARE
   rsrs jsonb;
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       SELECT content FROM "{{tbl}}"
         WHERE logical_id = $1
         LIMIT 1
@@ -1246,7 +2436,7 @@ BEGIN
     SELECT unnest(index_string_resource(_rsrs))
   LOOP
     EXECUTE
-      eval_template($SQL$
+      _tpl($SQL$
         INSERT INTO "{{tbl}}_search_string"
         (resource_id, param, value)
         SELECT $1,$2, jsonb_array_elements_text($3)
@@ -1261,7 +2451,7 @@ BEGIN
     SELECT json_build_object('param', '_id', 'code', id, 'text', id)::jsonb
   LOOP
     EXECUTE
-      eval_template($SQL$
+      _tpl($SQL$
         INSERT INTO "{{tbl}}_search_token"
         (resource_id, param, namespace, code, text)
         SELECT $1, $2->>'param', $2->>'system', $2->>'code', $2->>'text'
@@ -1274,7 +2464,7 @@ BEGIN
     SELECT unnest(index_date_resource(_rsrs))
   LOOP
     EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO "{{tbl}}_search_date"
       (resource_id, param, "start", "end")
       SELECT $1, $2->>'param', ($2->>'start')::timestamptz, ($2->>'end')::timestamptz
@@ -1287,10 +2477,23 @@ BEGIN
   SELECT unnest(index_quantity_resource(_rsrs))
   LOOP
     EXECUTE
-      eval_template($SQL$
+      _tpl($SQL$
         INSERT INTO "{{tbl}}_search_quantity"
         (resource_id, param, value, comparator, units, system, code)
         SELECT $1, $2->>'param', ($2->>'value')::decimal, $2->>'comparator', $2->>'units', $2->>'system', $2->>'code'
+      $SQL$, 'tbl', res_type)
+    USING id, idx;
+  END LOOP;
+
+  -- indexing number
+  FOR idx IN
+  SELECT unnest(index_number_resource(_rsrs))
+  LOOP
+    EXECUTE
+      _tpl($SQL$
+        INSERT INTO "{{tbl}}_search_number"
+        (resource_id, param, value)
+        SELECT $1, $2->>'param', ($2->>'value')::decimal
       $SQL$, 'tbl', res_type)
     USING id, idx;
   END LOOP;
@@ -1300,7 +2503,7 @@ BEGIN
   SELECT unnest(index_reference_resource(_rsrs))
   LOOP
     EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO "{{tbl}}_search_reference"
       (resource_id, param, logical_id, resource_type, url)
       SELECT $1, $2->>'param', $2->>'logical_id', $2->>'resource_type', $2->>'url';
@@ -1313,7 +2516,7 @@ BEGIN
   SELECT unnest(index_all_resource_references(_rsrs))
   LOOP
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO "{{tbl}}_references"
       (resource_id, path, reference_type, logical_id)
       SELECT $1, $2->>'path', $2->>'reference_type', $2->>'logical_id';
@@ -1368,7 +2571,7 @@ CREATE FUNCTION index_sorting(_id uuid, res_type character varying) RETURNS text
     AS $_$
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO {{tbl}}_sort
       (resource_id, param, lower, upper)
 
@@ -1407,13 +2610,30 @@ BEGIN
        WHERE resource_id = $1
     GROUP BY param, resource_id
 
-    -- TODO: don't forget about numerics
+      UNION
 
+      SELECT resource_id, param,
+             numeric_to_sortable_varchar(MIN(value)),
+             numeric_to_sortable_varchar(MAX(value))
+        FROM {{tbl}}_search_number
+       WHERE resource_id = $1
+    GROUP BY param, resource_id
     $SQL$, 'tbl', res_type)
   USING _id;
   RETURN _id;
 END
 $_$;
+
+
+--
+-- Name: index_string_address(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION index_string_address(v jsonb) RETURNS character varying
+    LANGUAGE sql
+    AS $$
+  SELECT build_string(v, '{use, country, city, line, zip}');
+$$;
 
 
 --
@@ -1424,17 +2644,11 @@ CREATE FUNCTION index_string_complex_type(_path character varying[], _item jsonb
     LANGUAGE plpgsql
     AS $$
 DECLARE
-  el fhir.expanded_resource_elements%rowtype;
+  /* el fhir.expanded_resource_elements%rowtype; */
   vals varchar[] := array[]::varchar[];
 BEGIN
-  FOR el IN
-    SELECT * FROM fhir.expanded_resource_elements
-    WHERE is_subpath(_path, path) = true
-    AND is_primitive = true
-  LOOP
-    vals := vals || json_array_to_str_array(get_in_path(_item, relative_path(_path, el.path)));
-  END LOOP;
-  RETURN array_to_string(vals, ' ');
+  -- TODO: implement more semantic algorithm
+  RETURN _item::text;
 END;
 $$;
 
@@ -1446,16 +2660,7 @@ $$;
 CREATE FUNCTION index_string_human_name(v jsonb) RETURNS character varying
     LANGUAGE sql
     AS $$
-  WITH strings AS (
-  SELECT string_agg(jsonb_array_elements_text, ' ') as s
-    FROM jsonb_array_elements_text(v->'family')
-
-  UNION
-
-  SELECT string_agg(jsonb_array_elements_text, ' ') as s
-    FROM jsonb_array_elements_text(v->'given')
-  )
-  SELECT string_agg(s, ' ') FROM strings
+  SELECT build_string(v, '{use, prefix, text, family, given, suffix}');
 $$;
 
 
@@ -1467,12 +2672,12 @@ CREATE FUNCTION index_string_resource(rsrs jsonb) RETURNS jsonb[]
     LANGUAGE plpgsql
     AS $$
 DECLARE
-prm fhir.resource_indexables%rowtype;
-attrs jsonb[];
-item jsonb;
-index_vals varchar[];
-new_val varchar;
-result jsonb[] := array[]::jsonb[];
+  prm fhir.resource_indexables%rowtype;
+  attrs jsonb[];
+  item jsonb;
+  index_vals varchar[];
+  new_val varchar;
+  result jsonb[] := array[]::jsonb[];
 BEGIN
   FOR prm IN
     SELECT * FROM fhir.resource_indexables
@@ -1482,7 +2687,7 @@ BEGIN
   LOOP
     index_vals := ARRAY[]::varchar[];
 
-    attrs := get_in_path(rsrs, rest(prm.path));
+    attrs := json_get_in(rsrs, _rest(prm.path));
 
     IF prm.is_primitive THEN
       index_vals := json_array_to_str_array(attrs);
@@ -1492,6 +2697,10 @@ BEGIN
         CASE prm.type
         WHEN 'HumanName' THEN
           new_val := index_string_human_name(item);
+        WHEN 'Address' THEN
+          new_val := index_string_address(item);
+        WHEN 'Contact' THEN
+          new_val := index_string_telecom(item);
         ELSE
           new_val := index_string_complex_type(prm.path, item);
         END CASE;
@@ -1507,6 +2716,17 @@ BEGIN
 
   RETURN result;
 END
+$$;
+
+
+--
+-- Name: index_string_telecom(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION index_string_telecom(v jsonb) RETURNS character varying
+    LANGUAGE sql
+    AS $$
+  SELECT build_string(v, '{use, system, value}');
 $$;
 
 
@@ -1529,7 +2749,7 @@ BEGIN
     AND search_type = 'token'
     AND param_name <> '_id'
   LOOP
-    attrs := get_in_path(rsrs, rest(prm.path));
+    attrs := json_get_in(rsrs, _rest(prm.path));
 
     --RAISE NOTICE 'item %', attrs;
 
@@ -1545,7 +2765,7 @@ BEGIN
       WHEN prm.is_primitive = true THEN
         result := result || index_primitive_to_token(prm.param_name, item);
       ELSE
-        RAISE NOTICE 'unexpected index % : %', prm, attrs;
+        RAISE NOTICE 'unexpected token index % : %', prm, item;
       END CASE;
     END LOOP;
   END LOOP;
@@ -1584,7 +2804,7 @@ BEGIN
   res_type := lower(_rsrs->>'resourceType');
 
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       INSERT INTO "{{tbl}}"
       (logical_id, version_id, published, updated, content, category)
       VALUES
@@ -1602,45 +2822,6 @@ $_$;
 
 
 --
--- Name: is_array(jsonb); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION is_array(json jsonb) RETURNS boolean
-    LANGUAGE sql IMMUTABLE
-    AS $$
-    SELECT
-    CASE WHEN substring(json::text  from 1 for 1) = '['
-      THEN true ELSE false
-    END;
-$$;
-
-
---
--- Name: is_obj(jsonb); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION is_obj(json jsonb) RETURNS boolean
-    LANGUAGE sql IMMUTABLE
-    AS $$
-    SELECT
-    CASE WHEN substring(json::text  from 1 for 1) = '{'
-      THEN true ELSE false
-    END;
-$$;
-
-
---
--- Name: is_subpath(character varying[], character varying[]); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION is_subpath(_parent_ character varying[], _child_ character varying[]) RETURNS boolean
-    LANGUAGE sql IMMUTABLE
-    AS $$
-  SELECT _child_[array_lower(_parent_,1) : array_upper(_parent_,1)] = _parent_;
-$$;
-
-
---
 -- Name: json_array_to_str_array(jsonb[]); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1648,8 +2829,8 @@ CREATE FUNCTION json_array_to_str_array(_jsons jsonb[]) RETURNS character varyin
     LANGUAGE plpgsql
     AS $$
 DECLARE
-item jsonb;
-acc varchar[] := array[]::varchar[];
+  item jsonb;
+  acc varchar[] := array[]::varchar[];
 BEGIN
   FOR item IN
     SELECT unnest(_jsons)
@@ -1662,34 +2843,58 @@ $$;
 
 
 --
--- Name: jsonb_text_value(jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: json_get_in(jsonb, character varying[]); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION jsonb_text_value(j jsonb) RETURNS character varying
-    LANGUAGE sql
+CREATE FUNCTION json_get_in(json jsonb, path character varying[]) RETURNS jsonb[]
+    LANGUAGE plpgsql
     AS $$
-  SELECT (json_build_object('x', j::json)->>'x')::varchar
+DECLARE
+  item jsonb;
+  acc jsonb[] := array[]::jsonb[];
+BEGIN
+  --RAISE NOTICE 'in with % and path %', json, path;
+  IF json is NULL THEN
+    --RAISE NOTICE 'ups';
+    RETURN array[]::jsonb[];
+  END IF;
+
+  IF array_length(path, 1) IS NULL THEN
+    -- expand array
+    IF _is_array(json) THEN
+      FOR item IN SELECT jsonb_array_elements(json)
+      LOOP
+        acc := acc || item;
+      END LOOP;
+      RETURN acc;
+    ELSE
+      RETURN array[json];
+    END IF;
+  END IF;
+
+  IF _is_array(json) THEN
+    FOR item IN SELECT jsonb_array_elements(json)
+    LOOP
+      acc := acc || json_get_in(item,path);
+    END LOOP;
+    RETURN acc;
+  ELSIF _is_object(json) THEN
+    RETURN json_get_in(json->path[1], _rest(path));
+  ELSE
+    RETURN array[]::jsonb[];
+  END IF;
+END
 $$;
 
 
 --
--- Name: keys_and_values_to_jsonb(character varying[], character varying[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: jsonb_text_value(jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION keys_and_values_to_jsonb(keys character varying[], vals character varying[]) RETURNS jsonb
-    LANGUAGE plpgsql
+CREATE FUNCTION jsonb_text_value(j jsonb) RETURNS character varying
+    LANGUAGE sql IMMUTABLE
     AS $$
-DECLARE
-  res text[];
-  i integer;
-BEGIN
-  FOR i IN 1..array_upper(keys, 1)
-  LOOP
-    res := res || (to_json(keys[i])::varchar || ':' || to_json(vals[i])::varchar);
-  END LOOP;
-
-  RETURN ('{' || array_to_string(res, ', ') || '}')::jsonb;
-END
+  SELECT (json_build_object('x', j::json)->>'x')::varchar
 $$;
 
 
@@ -1784,7 +2989,7 @@ DECLARE
   res jsonb;
 BEGIN
   EXECUTE
-    eval_template($SQL$
+    _tpl($SQL$
       SELECT json_agg(row_to_json(tgs))::jsonb
         FROM (
           SELECT tg->>'scheme' as scheme,
@@ -1813,40 +3018,8 @@ $_$;
 CREATE FUNCTION numeric_to_sortable_varchar(_num numeric) RETURNS character varying
     LANGUAGE sql
     AS $$
-  /* SELECT to_char(i, 'SG0000000000000000D99999'); */
   SELECT lexit(_num);
 $$;
-
-
---
--- Name: param_expression(character varying, character varying, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION param_expression(_table character varying, _param character varying, _type character varying, _modifier character varying, _value character varying) RETURNS text
-    LANGUAGE sql
-    AS $_$
-WITH val_cond AS (SELECT
-  CASE WHEN _type = 'string' THEN
-    _param_expression_string(_table, _param, _type, _modifier, regexp_split_to_table)
-  WHEN _type = 'token' THEN
-    _param_expression_token(_table, _param, _type, _modifier, regexp_split_to_table)
-  WHEN _type = 'date' THEN
-    _param_expression_date(_table, _param, _type, _modifier, regexp_split_to_table)
-  WHEN _type = 'quantity' THEN
-    _param_expression_quantity(_table, _param, _type, _modifier, regexp_split_to_table)
-  WHEN _type = 'reference' THEN
-    _param_expression_reference(_table, _param, _type, _modifier, regexp_split_to_table)
-  ELSE 'implement_me' END as cond
-  FROM regexp_split_to_table(_value, ','))
-SELECT
-  eval_template($SQL$
-    ({{tbl}}.param = {{param}}
-     AND ({{vals_cond}}))
-  $SQL$, 'tbl', quote_ident(_table)
-       , 'param', quote_literal(_param)
-       , 'vals_cond',
-       (SELECT string_agg(cond, ' OR ') FROM val_cond));
-$_$;
 
 
 --
@@ -1856,18 +3029,14 @@ $_$;
 CREATE FUNCTION parse_order_params(_resource_type character varying, query jsonb) RETURNS TABLE(param text, direction text)
     LANGUAGE sql
     AS $$
-  SELECT split_part(jsonb_array_elements_text, ':', 1) AS param,
-         CASE WHEN split_part(jsonb_array_elements_text, ':', 2) = '' THEN
-           'ASC'
-         ELSE
-           CASE WHEN upper(split_part(jsonb_array_elements_text, ':', 2)) = 'ASC' THEN
-             'ASC'
-           ELSE
-             'DESC'
-           END
-         END AS direction
-    FROM jsonb_array_elements_text(query->'_sort')
-   WHERE position('.' IN jsonb_array_elements_text) = 0
+  SELECT x->>'value' AS param,
+    CASE WHEN lower(x->>'op') = 'desc'
+      THEN 'desc'
+      ELSE 'asc'
+    END AS direction
+    FROM jsonb_array_elements(query) x
+    WHERE x->>'param' = '_sort'
+   -- we do not sort by chained params
 $$;
 
 
@@ -1884,103 +3053,25 @@ $$;
 
 
 --
--- Name: read(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: search(character varying, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION read(_resource_type text, _id uuid) RETURNS TABLE(id uuid, version_id uuid, updated timestamp with time zone, published timestamp with time zone, content jsonb, category jsonb)
-    LANGUAGE sql IMMUTABLE
-    AS $$
-  SELECT   r.logical_id AS id,
-           r.version_id AS version_id,
-           r.updated AS updated,
-           r.published AS published,
-           r.content AS content,
-           r.category AS category
-       FROM resource r
-$$;
-
-
---
--- Name: relative_path(character varying[], character varying[]); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION relative_path(_parent_ character varying[], _child_ character varying[]) RETURNS character varying[]
-    LANGUAGE sql IMMUTABLE
-    AS $$
-    SELECT _child_[array_upper(_parent_,1) + 1 : array_upper(_child_,1)];
-$$;
-
-
---
--- Name: remove_tags(character varying, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION remove_tags(_res_type character varying, _id_ uuid) RETURNS bigint
-    LANGUAGE sql
-    AS $$
-  UPDATE resource SET category = NULL
-  WHERE resource_type = _res_type
-    AND logical_id = _id_;
-
-  WITH DELETED AS (
-  DELETE FROM tag t
-    WHERE t.resource_type = _res_type
-    AND t.resource_id = _id_ RETURNING * )
-  SELECT count(*) FROM DELETED;
-$$;
-
-
---
--- Name: remove_tags(character varying, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION remove_tags(_res_type character varying, _id_ uuid, _vid uuid) RETURNS bigint
-    LANGUAGE sql
-    AS $$
-  UPDATE resource_history SET category = NULL
-  WHERE resource_type = _res_type
-    AND logical_id = _id_;
-
-  WITH DELETED AS (
-  DELETE FROM tag_history ht
-    WHERE ht.resource_type = _res_type
-    AND ht.resource_id = _id_
-    AND ht.resource_version_id = _vid RETURNING *)
-  SELECT count(*) FROM DELETED;
-$$;
-
-
---
--- Name: rest(character varying[]); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION rest(_ar_ character varying[]) RETURNS character varying[]
-    LANGUAGE sql IMMUTABLE
-    AS $$
-    SELECT _ar_[2 : array_upper(_ar_,1)];
-$$;
-
-
---
--- Name: search(character varying, jsonb); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION search(_resource_type character varying, query jsonb) RETURNS TABLE(resource_type character varying, logical_id uuid, content jsonb, category jsonb, updated timestamp with time zone, published timestamp with time zone, weight bigint, is_included boolean)
+CREATE FUNCTION search(_resource_type character varying, query text) RETURNS TABLE(resource_type character varying, logical_id uuid, version_id uuid, content jsonb, category jsonb, updated timestamp with time zone, published timestamp with time zone, weight bigint)
     LANGUAGE plpgsql IMMUTABLE
     AS $_$
 BEGIN
 RETURN QUERY EXECUTE (
-  eval_template($SQL$
+  _tpl($SQL$
     WITH
     found_resources AS (
       SELECT x.resource_type,
              x.logical_id,
+             x.version_id,
              x.content,
              x.category,
              x.updated,
              x.published,
-             ROW_NUMBER() OVER () as weight,
-             FALSE as is_included
+             x.weight
         FROM ({{search_sql}}) AS x
     ),
 
@@ -1995,184 +3086,53 @@ RETURN QUERY EXECUTE (
     included_resources AS (
       SELECT incres.resource_type,
              incres.logical_id,
+             incres.version_id,
              incres.content,
              incres.category,
              incres.updated,
              incres.published,
-             0 as weight,
-             TRUE as is_included
+             0 as weight
         FROM resource incres, refs_to_include
        WHERE incres.logical_id::varchar = refs_to_include.id
          AND incres.resource_type = refs_to_include.type
     )
-
-    SELECT * from found_resources
-    UNION
-    SELECT * from included_resources
-    ORDER BY is_included DESC, weight
+    SELECT * FROM (
+      SELECT * from found_resources
+      UNION ALL
+      SELECT * from included_resources
+    ) _
+    ORDER BY weight
   $SQL$,
-  'json_includes', quote_literal(COALESCE(query->'_include', '[]')),
+  'json_includes', quote_literal(COALESCE(_array_of_includes(query),'[]'::jsonb)),
   'tbl',           LOWER(_resource_type),
-  'search_sql',    build_search_query(_resource_type, query)));
+  'search_sql',    build_search_query(_resource_type, _parse_param(query))));
 END
 $_$;
 
 
 --
--- Name: search_bundle(character varying, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: search_results_count(character varying, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION search_bundle(_resource_type character varying, query jsonb) RETURNS jsonb
-    LANGUAGE sql
-    AS $$
-  SELECT
-    json_build_object(
-      'title', 'Search results for ' || query::varchar,
-      'resourceType', 'Bundle',
-      'totalResults', (SELECT search_results_count(_resource_type, query)),
-      'updated', now(),
-      'id', gen_random_uuid(),
-      'entry', COALESCE(json_agg(z.*), '[]'::json)
-    )::jsonb as json
-  FROM
-    (SELECT y.content AS content,
-            y.updated AS updated,
-            y.published AS published,
-            y.logical_id AS id,
-            y.category AS category
-       FROM search(_resource_type, query) y
-    ) z
-$$;
-
-
---
--- Name: search_results_count(character varying, jsonb); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION search_results_count(_resource_type character varying, query jsonb) RETURNS bigint
+CREATE FUNCTION search_results_count(_resource_type character varying, query text) RETURNS bigint
     LANGUAGE plpgsql
     AS $_$
 DECLARE
   res bigint;
 BEGIN
   EXECUTE (
-    eval_template($SQL$
+    _tpl($SQL$
       SELECT COUNT({{tbl}}.*)
         FROM {{tbl}} {{tbl}}
         {{joins}}
     $SQL$,
     'tbl', quote_ident(lower(_resource_type)),
-    'joins', COALESCE(build_search_joins(_resource_type, query), '')))
+    'joins', COALESCE(build_search_joins(_resource_type, _parse_param(query)), '')))
   INTO res;
 
   RETURN res;
 END
 $_$;
-
-
---
--- Name: tables_with_aliases(character varying[], character varying[]); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION tables_with_aliases(_tbls character varying[], _als character varying[]) RETURNS text
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  res text = '';
-  tbls varchar[] = array_discard_nulls(_tbls);
-  als varchar[] = array_discard_nulls(_als);
-  i integer;
-BEGIN
-  FOR i IN 1..array_upper(tbls, 1)
-  LOOP
-    res := res || quote_ident(tbls[i]) || ' ' || quote_ident(als[i]);
-
-    IF i < array_upper(tbls, 1) AND length(res) > 0 THEN
-      res := res || ', ';
-    END IF;
-  END LOOP;
-
-  RETURN res;
-END
-$$;
-
-
---
--- Name: tags(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION tags() RETURNS jsonb
-    LANGUAGE sql IMMUTABLE
-    AS $$
-SELECT
-  json_build_object(
-    'resourceType',  'TagList',
-    'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
-  FROM (
-    SELECT scheme, term, label
-    FROM tag
-    GROUP BY scheme, term, label) tgs
-$$;
-
-
---
--- Name: tags(character varying); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION tags(_res_type character varying) RETURNS jsonb
-    LANGUAGE sql IMMUTABLE
-    AS $$
-  SELECT
-  json_build_object(
-    'resourceType',  'TagList',
-    'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
-  FROM (
-    SELECT scheme, term, label
-    FROM tag
-    WHERE resource_type = _res_type
-    GROUP BY scheme, term, label) tgs
-$$;
-
-
---
--- Name: tags(character varying, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION tags(_res_type character varying, _id_ uuid) RETURNS jsonb
-    LANGUAGE sql IMMUTABLE
-    AS $$
-  SELECT
-  json_build_object(
-    'resourceType',  'TagList',
-    'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
-  FROM (
-    SELECT t.scheme, t.term, t.label
-    FROM tag t
-    WHERE t.resource_type = _res_type
-    AND t.resource_id = _id_
-    GROUP BY scheme, term, label) tgs
-$$;
-
-
---
--- Name: tags(character varying, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION tags(_res_type character varying, _id_ uuid, _vid uuid) RETURNS jsonb
-    LANGUAGE sql IMMUTABLE
-    AS $$
-  SELECT
-  json_build_object(
-    'resourceType',  'TagList',
-    'category', coalesce(json_agg(row_to_json(tgs)), NULL::json))::jsonb
-  FROM (
-    SELECT t.scheme, t.term, t.label
-    FROM tag_history t
-    WHERE t.resource_type = _res_type
-    AND t.resource_id = _id_
-    AND t.resource_version_id = _vid
-    GROUP BY scheme, term, label) tgs
-$$;
 
 
 --
@@ -2197,6 +3157,29 @@ $$;
 
 
 --
+-- Name: url_decode(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION url_decode(input text) RETURNS text
+    LANGUAGE plpgsql IMMUTABLE STRICT
+    AS $$
+DECLARE
+bin bytea = '';
+byte text;
+BEGIN
+  FOR byte IN (select (regexp_matches(input, '(%..|.)', 'g'))[1]) LOOP
+    IF length(byte) = 3 THEN
+      bin = bin || decode(substring(byte, 2, 2), 'hex');
+    ELSE
+      bin = bin || byte::bytea;
+    END IF;
+  END LOOP;
+  RETURN convert_from(bin, 'utf8');
+END
+$$;
+
+
+--
 -- Name: xarrattr(character varying, xml); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2216,9 +3199,9 @@ $$;
 CREATE FUNCTION xattr(pth character varying, x xml) RETURNS character varying
     LANGUAGE plpgsql
     AS $$
-  BEGIN
-    return  unnest(xpath(pth, x, ARRAY[ARRAY['fh', 'http://hl7.org/fhir']])) limit 1;
-  END
+BEGIN
+  RETURN unnest(xpath(pth, x, ARRAY[ARRAY['fh', 'http://hl7.org/fhir']])) limit 1;
+END
 $$;
 
 
@@ -2229,9 +3212,9 @@ $$;
 CREATE FUNCTION xsattr(pth character varying, x xml) RETURNS character varying
     LANGUAGE plpgsql IMMUTABLE
     AS $$
-  BEGIN
-    return  unnest(xspath( pth,x)) limit 1;
-  END
+BEGIN
+  RETURN unnest(xspath( pth,x)) limit 1;
+END
 $$;
 
 
@@ -2242,9 +3225,9 @@ $$;
 CREATE FUNCTION xspath(pth character varying, x xml) RETURNS xml[]
     LANGUAGE plpgsql IMMUTABLE
     AS $$
-  BEGIN
-    return  xpath('/xml' || pth, xml('<xml xmlns:xs="xs">' || x || '</xml>'), ARRAY[ARRAY['xs','xs']]);
-  END
+BEGIN
+  return  xpath('/xml' || pth, xml('<xml xmlns:xs="xs">' || x || '</xml>'), ARRAY[ARRAY['xs','xs']]);
+END
 $$;
 
 
@@ -2270,22 +3253,6 @@ CREATE TABLE datatype_elements (
 
 
 --
--- Name: _datatype_unified_elements; Type: VIEW; Schema: fhir; Owner: -
---
-
-CREATE VIEW _datatype_unified_elements AS
- SELECT ARRAY[datatype_elements.datatype, datatype_elements.name] AS path,
-    datatype_elements.type,
-    datatype_elements.min_occurs AS min,
-        CASE
-            WHEN ((datatype_elements.max_occurs)::text = 'unbounded'::text) THEN '*'::character varying
-            ELSE datatype_elements.max_occurs
-        END AS max
-   FROM datatype_elements
-  WHERE ((datatype_elements.datatype)::text <> 'Resource'::text);
-
-
---
 -- Name: datatype_enums; Type: TABLE; Schema: fhir; Owner: -; Tablespace: 
 --
 
@@ -2295,33 +3262,6 @@ CREATE TABLE datatype_enums (
     value character varying NOT NULL,
     documentation text
 );
-
-
---
--- Name: datatype_unified_elements; Type: VIEW; Schema: fhir; Owner: -
---
-
-CREATE VIEW datatype_unified_elements AS
- WITH RECURSIVE tree(path, type, min, max) AS (
-         SELECT r.path,
-            r.type,
-            r.min,
-            r.max
-           FROM _datatype_unified_elements r
-        UNION
-         SELECT (t_1.path || ARRAY[public.array_last(r.path)]) AS path,
-            r.type,
-            t_1.min,
-            t_1.max
-           FROM (_datatype_unified_elements r
-             JOIN tree t_1 ON (((t_1.type)::text = (r.path[1])::text)))
-        )
- SELECT t.path,
-    t.type,
-    t.min,
-    t.max
-   FROM tree t
- LIMIT 1000;
 
 
 --
@@ -2350,6 +3290,16 @@ CREATE VIEW enums AS
 
 
 --
+-- Name: hardcoded_complex_params; Type: TABLE; Schema: fhir; Owner: -; Tablespace: 
+--
+
+CREATE TABLE hardcoded_complex_params (
+    path character varying[],
+    type character varying
+);
+
+
+--
 -- Name: resource_elements; Type: TABLE; Schema: fhir; Owner: -; Tablespace: 
 --
 
@@ -2361,92 +3311,6 @@ CREATE TABLE resource_elements (
     type character varying[],
     ref_type character varying[]
 );
-
-
---
--- Name: polimorphic_expanded_resource_elements; Type: VIEW; Schema: fhir; Owner: -
---
-
-CREATE VIEW polimorphic_expanded_resource_elements AS
- SELECT (public.array_pop(e.path) || ARRAY[public.column_name(public.array_last(e.path), e.type)]) AS path,
-    e.type,
-    e.min,
-    e.max
-   FROM ( SELECT resource_elements.path,
-                CASE
-                    WHEN (array_length(resource_elements.type, 1) IS NULL) THEN '_NestedResource_'::character varying
-                    ELSE unnest(resource_elements.type)
-                END AS type,
-            resource_elements.min,
-            resource_elements.max
-           FROM resource_elements) e
-  WHERE (((e.type)::text <> ALL ((ARRAY['Extension'::character varying, 'contained'::character varying])::text[])) OR (e.type IS NULL));
-
-
---
--- Name: type_to_pg_type; Type: TABLE; Schema: fhir; Owner: -; Tablespace: 
---
-
-CREATE TABLE type_to_pg_type (
-    type character varying,
-    pg_type character varying
-);
-
-
---
--- Name: primitive_types; Type: VIEW; Schema: fhir; Owner: -
---
-
-CREATE VIEW primitive_types AS
- SELECT type_to_pg_type.type,
-    type_to_pg_type.pg_type
-   FROM type_to_pg_type
-UNION
- SELECT enums.enum AS type,
-    (('fhir."'::text || enums.enum) || '"'::text) AS pg_type
-   FROM enums;
-
-
---
--- Name: expanded_resource_elements; Type: VIEW; Schema: fhir; Owner: -
---
-
-CREATE VIEW expanded_resource_elements AS
- SELECT x.path,
-    x.min,
-    x.max,
-    x.type,
-        CASE
-            WHEN (fpt.type IS NULL) THEN false
-            ELSE true
-        END AS is_primitive
-   FROM (( SELECT (e.path || public.array_tail(t.path)) AS path,
-                CASE
-                    WHEN (array_length(t.path, 1) = 1) THEN e.min
-                    ELSE t.min
-                END AS min,
-                CASE
-                    WHEN (array_length(t.path, 1) = 1) THEN e.max
-                    ELSE t.max
-                END AS max,
-                CASE
-                    WHEN (array_length(t.path, 1) = 1) THEN e.type
-                    ELSE t.type
-                END AS type
-           FROM (polimorphic_expanded_resource_elements e
-             JOIN datatype_unified_elements t ON (((t.path[1])::text = (e.type)::text)))
-        UNION ALL
-         SELECT e.path,
-            e.min,
-            e.max,
-            e.type
-           FROM polimorphic_expanded_resource_elements e) x
-     LEFT JOIN primitive_types fpt ON (((fpt.type)::text = (x.type)::text)))
-  GROUP BY x.path, x.min, x.max, x.type,
-        CASE
-            WHEN (fpt.type IS NULL) THEN false
-            ELSE true
-        END;
 
 
 --
@@ -2464,35 +3328,45 @@ CREATE TABLE resource_search_params (
 
 
 --
+-- Name: search_type_to_type; Type: TABLE; Schema: fhir; Owner: -; Tablespace: 
+--
+
+CREATE TABLE search_type_to_type (
+    stp text,
+    tp character varying[]
+);
+
+
+--
 -- Name: resource_indexables; Type: MATERIALIZED VIEW; Schema: fhir; Owner: -; Tablespace: 
 --
 
 CREATE MATERIALIZED VIEW resource_indexables AS
- WITH polimorphic_attrs_mapping AS (
-         SELECT 'date'::text AS stp,
-            '{date,dateTime,instant,Period,Schedule}'::character varying[] AS tp
-        UNION
-         SELECT 'token'::text AS stp,
-            '{boolean,code,CodeableConcept,Coding,Identifier,oid,Resource,string,uri}'::character varying[] AS tp
-        UNION
-         SELECT 'string'::text AS stp,
-            '{Address,Attachment,CodeableConcept,Contact,HumanName,Period,Quantity,Ratio,Resource,SampledData,string,uri}'::character varying[] AS tp
-        UNION
-         SELECT 'quantity'::text AS stp,
-            '{Quantity}'::character varying[] AS tp
-        )
- SELECT rsp.name AS param_name,
-    rsp.path[1] AS resource_type,
-    rsp.type AS search_type,
-    ere.type,
-    ere.max,
-    ere.path,
-    ere.is_primitive
-   FROM (resource_search_params rsp
-     JOIN expanded_resource_elements ere ON (((ere.path = rsp.path) OR (((((public.array_last(rsp.path))::text ~~* '%[x]'::text) AND (public.butlast(ere.path) = public.butlast(rsp.path))) AND ("position"((public.array_last(ere.path))::text, replace((public.array_last(rsp.path))::text, '[x]'::text, ''::text)) = 1)) AND (EXISTS ( SELECT pam.stp,
-            pam.tp
-           FROM polimorphic_attrs_mapping pam
-          WHERE ((pam.stp = (rsp.type)::text) AND ((ere.type)::text = ANY ((pam.tp)::text[])))))))))
+ SELECT _.param_name,
+    _.resource_type,
+    _.path,
+    _.search_type,
+    _.type,
+    _.is_primitive
+   FROM ( SELECT x.name AS param_name,
+            x.path[1] AS resource_type,
+                CASE
+                    WHEN ((public._last(x.path))::text ~~* '%[x]'::text) THEN (public._butlast(x.path) || ((replace((public._last(x.path))::text, '[x]'::text, ''::text) || (x.type)::text))::character varying)
+                    ELSE x.path
+                END AS path,
+            x.search_type,
+            x.type,
+            (substr((x.type)::text, 1, 1) = lower(substr((x.type)::text, 1, 1))) AS is_primitive
+           FROM (( SELECT p.name,
+                    p.path,
+                    p.type AS search_type,
+                    unnest(COALESCE(e.type, ARRAY[hp.type])) AS type
+                   FROM ((resource_search_params p
+                     LEFT JOIN resource_elements e ON ((e.path = p.path)))
+                     LEFT JOIN hardcoded_complex_params hp ON ((hp.path = p.path)))
+                  WHERE (array_length(p.path, 1) > 1)) x
+             JOIN search_type_to_type tt ON (((tt.stp = (x.search_type)::text) AND ((x.type)::text = ANY ((tt.tp)::text[])))))) _
+  GROUP BY _.param_name, _.resource_type, _.path, _.search_type, _.type, _.is_primitive
   WITH NO DATA;
 
 
@@ -2513,21 +3387,6 @@ CREATE SEQUENCE resource_search_params__id_seq
 --
 
 ALTER SEQUENCE resource_search_params__id_seq OWNED BY resource_search_params._id;
-
-
---
--- Name: unified_complex_datatype; Type: VIEW; Schema: fhir; Owner: -
---
-
-CREATE VIEW unified_complex_datatype AS
- SELECT ue.path,
-    COALESCE(tp.type, ue.path[1]) AS type,
-    tp.min,
-    tp.max
-   FROM (( SELECT public.array_pop(datatype_unified_elements.path) AS path
-           FROM datatype_unified_elements
-          GROUP BY public.array_pop(datatype_unified_elements.path)) ue
-     LEFT JOIN datatype_unified_elements tp ON ((tp.path = ue.path)));
 
 
 SET search_path = public, pg_catalog;
@@ -2595,16 +3454,32 @@ INHERITS (resource_history);
 
 
 --
--- Name: adversereaction_references; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+-- Name: references; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE TABLE adversereaction_references (
+CREATE TABLE "references" (
     _id integer NOT NULL,
     resource_id uuid NOT NULL,
+    _resource_type character varying,
     path character varying NOT NULL,
     reference_type character varying NOT NULL,
     logical_id character varying NOT NULL
 );
+
+
+--
+-- Name: adversereaction_references; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE adversereaction_references (
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'AdverseReaction'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -2627,16 +3502,32 @@ ALTER SEQUENCE adversereaction_references__id_seq OWNED BY adversereaction_refer
 
 
 --
--- Name: adversereaction_search_date; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+-- Name: search_date; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE TABLE adversereaction_search_date (
+CREATE TABLE search_date (
     _id integer NOT NULL,
     resource_id uuid,
+    resource_type character varying,
     param character varying NOT NULL,
     start timestamp with time zone,
     "end" timestamp with time zone
 );
+
+
+--
+-- Name: adversereaction_search_date; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE adversereaction_search_date (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'AdverseReaction'::character varying,
+    param character varying,
+    start timestamp with time zone,
+    "end" timestamp with time zone
+)
+INHERITS (search_date);
 
 
 --
@@ -2659,12 +3550,59 @@ ALTER SEQUENCE adversereaction_search_date__id_seq OWNED BY adversereaction_sear
 
 
 --
--- Name: adversereaction_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+-- Name: search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE TABLE adversereaction_search_quantity (
+CREATE TABLE search_number (
     _id integer NOT NULL,
     resource_id uuid,
+    resource_type character varying,
+    param character varying,
+    value numeric
+);
+
+
+--
+-- Name: adversereaction_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE adversereaction_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'AdverseReaction'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: adversereaction_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE adversereaction_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: adversereaction_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE adversereaction_search_number__id_seq OWNED BY adversereaction_search_number._id;
+
+
+--
+-- Name: search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE search_quantity (
+    _id integer NOT NULL,
+    resource_id uuid,
+    resource_type character varying,
     param character varying,
     value numeric,
     comparator character varying,
@@ -2672,6 +3610,24 @@ CREATE TABLE adversereaction_search_quantity (
     system character varying,
     code character varying
 );
+
+
+--
+-- Name: adversereaction_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE adversereaction_search_quantity (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'AdverseReaction'::character varying,
+    param character varying,
+    value numeric,
+    comparator character varying,
+    units character varying,
+    system character varying,
+    code character varying
+)
+INHERITS (search_quantity);
 
 
 --
@@ -2694,17 +3650,34 @@ ALTER SEQUENCE adversereaction_search_quantity__id_seq OWNED BY adversereaction_
 
 
 --
--- Name: adversereaction_search_reference; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+-- Name: search_reference; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE TABLE adversereaction_search_reference (
+CREATE TABLE search_reference (
     _id integer NOT NULL,
     resource_id uuid,
     param character varying NOT NULL,
     resource_type character varying NOT NULL,
+    _resource_type character varying NOT NULL,
     logical_id character varying NOT NULL,
     url character varying
 );
+
+
+--
+-- Name: adversereaction_search_reference; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE adversereaction_search_reference (
+    _id integer,
+    resource_id uuid,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'AdverseReaction'::character varying,
+    logical_id character varying,
+    url character varying
+)
+INHERITS (search_reference);
 
 
 --
@@ -2727,15 +3700,30 @@ ALTER SEQUENCE adversereaction_search_reference__id_seq OWNED BY adversereaction
 
 
 --
+-- Name: search_string; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE search_string (
+    _id integer NOT NULL,
+    resource_id uuid,
+    resource_type character varying,
+    param character varying NOT NULL,
+    value character varying
+);
+
+
+--
 -- Name: adversereaction_search_string; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE adversereaction_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'AdverseReaction'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -2758,17 +3746,34 @@ ALTER SEQUENCE adversereaction_search_string__id_seq OWNED BY adversereaction_se
 
 
 --
--- Name: adversereaction_search_token; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+-- Name: search_token; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE TABLE adversereaction_search_token (
+CREATE TABLE search_token (
     _id integer NOT NULL,
     resource_id uuid,
     param character varying NOT NULL,
+    resource_type character varying,
     namespace character varying,
     code character varying,
     text character varying
 );
+
+
+--
+-- Name: adversereaction_search_token; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE adversereaction_search_token (
+    _id integer,
+    resource_id uuid,
+    param character varying,
+    resource_type character varying DEFAULT 'AdverseReaction'::character varying,
+    namespace character varying,
+    code character varying,
+    text character varying
+)
+INHERITS (search_token);
 
 
 --
@@ -2921,12 +3926,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE alert_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Alert'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -2953,12 +3960,14 @@ ALTER SEQUENCE alert_references__id_seq OWNED BY alert_references._id;
 --
 
 CREATE TABLE alert_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Alert'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -2981,19 +3990,54 @@ ALTER SEQUENCE alert_search_date__id_seq OWNED BY alert_search_date._id;
 
 
 --
+-- Name: alert_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE alert_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Alert'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: alert_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE alert_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: alert_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE alert_search_number__id_seq OWNED BY alert_search_number._id;
+
+
+--
 -- Name: alert_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE alert_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Alert'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -3020,13 +4064,15 @@ ALTER SEQUENCE alert_search_quantity__id_seq OWNED BY alert_search_quantity._id;
 --
 
 CREATE TABLE alert_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Alert'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -3053,11 +4099,13 @@ ALTER SEQUENCE alert_search_reference__id_seq OWNED BY alert_search_reference._i
 --
 
 CREATE TABLE alert_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Alert'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -3084,13 +4132,15 @@ ALTER SEQUENCE alert_search_string__id_seq OWNED BY alert_search_string._id;
 --
 
 CREATE TABLE alert_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Alert'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -3213,12 +4263,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE allergyintolerance_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'AllergyIntolerance'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -3245,12 +4297,14 @@ ALTER SEQUENCE allergyintolerance_references__id_seq OWNED BY allergyintolerance
 --
 
 CREATE TABLE allergyintolerance_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'AllergyIntolerance'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -3273,19 +4327,54 @@ ALTER SEQUENCE allergyintolerance_search_date__id_seq OWNED BY allergyintoleranc
 
 
 --
+-- Name: allergyintolerance_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE allergyintolerance_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'AllergyIntolerance'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: allergyintolerance_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE allergyintolerance_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: allergyintolerance_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE allergyintolerance_search_number__id_seq OWNED BY allergyintolerance_search_number._id;
+
+
+--
 -- Name: allergyintolerance_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE allergyintolerance_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'AllergyIntolerance'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -3312,13 +4401,15 @@ ALTER SEQUENCE allergyintolerance_search_quantity__id_seq OWNED BY allergyintole
 --
 
 CREATE TABLE allergyintolerance_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'AllergyIntolerance'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -3345,11 +4436,13 @@ ALTER SEQUENCE allergyintolerance_search_reference__id_seq OWNED BY allergyintol
 --
 
 CREATE TABLE allergyintolerance_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'AllergyIntolerance'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -3376,13 +4469,15 @@ ALTER SEQUENCE allergyintolerance_search_string__id_seq OWNED BY allergyintolera
 --
 
 CREATE TABLE allergyintolerance_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'AllergyIntolerance'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -3505,12 +4600,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE careplan_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'CarePlan'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -3537,12 +4634,14 @@ ALTER SEQUENCE careplan_references__id_seq OWNED BY careplan_references._id;
 --
 
 CREATE TABLE careplan_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'CarePlan'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -3565,19 +4664,54 @@ ALTER SEQUENCE careplan_search_date__id_seq OWNED BY careplan_search_date._id;
 
 
 --
+-- Name: careplan_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE careplan_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'CarePlan'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: careplan_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE careplan_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: careplan_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE careplan_search_number__id_seq OWNED BY careplan_search_number._id;
+
+
+--
 -- Name: careplan_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE careplan_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'CarePlan'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -3604,13 +4738,15 @@ ALTER SEQUENCE careplan_search_quantity__id_seq OWNED BY careplan_search_quantit
 --
 
 CREATE TABLE careplan_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'CarePlan'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -3637,11 +4773,13 @@ ALTER SEQUENCE careplan_search_reference__id_seq OWNED BY careplan_search_refere
 --
 
 CREATE TABLE careplan_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'CarePlan'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -3668,13 +4806,15 @@ ALTER SEQUENCE careplan_search_string__id_seq OWNED BY careplan_search_string._i
 --
 
 CREATE TABLE careplan_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'CarePlan'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -3797,12 +4937,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE composition_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Composition'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -3829,12 +4971,14 @@ ALTER SEQUENCE composition_references__id_seq OWNED BY composition_references._i
 --
 
 CREATE TABLE composition_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Composition'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -3857,19 +5001,54 @@ ALTER SEQUENCE composition_search_date__id_seq OWNED BY composition_search_date.
 
 
 --
+-- Name: composition_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE composition_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Composition'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: composition_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE composition_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: composition_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE composition_search_number__id_seq OWNED BY composition_search_number._id;
+
+
+--
 -- Name: composition_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE composition_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Composition'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -3896,13 +5075,15 @@ ALTER SEQUENCE composition_search_quantity__id_seq OWNED BY composition_search_q
 --
 
 CREATE TABLE composition_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Composition'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -3929,11 +5110,13 @@ ALTER SEQUENCE composition_search_reference__id_seq OWNED BY composition_search_
 --
 
 CREATE TABLE composition_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Composition'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -3960,13 +5143,15 @@ ALTER SEQUENCE composition_search_string__id_seq OWNED BY composition_search_str
 --
 
 CREATE TABLE composition_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Composition'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -4089,12 +5274,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE conceptmap_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'ConceptMap'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -4121,12 +5308,14 @@ ALTER SEQUENCE conceptmap_references__id_seq OWNED BY conceptmap_references._id;
 --
 
 CREATE TABLE conceptmap_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'ConceptMap'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -4149,19 +5338,54 @@ ALTER SEQUENCE conceptmap_search_date__id_seq OWNED BY conceptmap_search_date._i
 
 
 --
+-- Name: conceptmap_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE conceptmap_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'ConceptMap'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: conceptmap_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE conceptmap_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: conceptmap_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE conceptmap_search_number__id_seq OWNED BY conceptmap_search_number._id;
+
+
+--
 -- Name: conceptmap_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE conceptmap_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'ConceptMap'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -4188,13 +5412,15 @@ ALTER SEQUENCE conceptmap_search_quantity__id_seq OWNED BY conceptmap_search_qua
 --
 
 CREATE TABLE conceptmap_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'ConceptMap'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -4221,11 +5447,13 @@ ALTER SEQUENCE conceptmap_search_reference__id_seq OWNED BY conceptmap_search_re
 --
 
 CREATE TABLE conceptmap_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'ConceptMap'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -4252,13 +5480,15 @@ ALTER SEQUENCE conceptmap_search_string__id_seq OWNED BY conceptmap_search_strin
 --
 
 CREATE TABLE conceptmap_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'ConceptMap'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -4381,12 +5611,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE condition_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Condition'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -4413,12 +5645,14 @@ ALTER SEQUENCE condition_references__id_seq OWNED BY condition_references._id;
 --
 
 CREATE TABLE condition_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Condition'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -4441,19 +5675,54 @@ ALTER SEQUENCE condition_search_date__id_seq OWNED BY condition_search_date._id;
 
 
 --
+-- Name: condition_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE condition_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Condition'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: condition_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE condition_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: condition_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE condition_search_number__id_seq OWNED BY condition_search_number._id;
+
+
+--
 -- Name: condition_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE condition_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Condition'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -4480,13 +5749,15 @@ ALTER SEQUENCE condition_search_quantity__id_seq OWNED BY condition_search_quant
 --
 
 CREATE TABLE condition_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Condition'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -4513,11 +5784,13 @@ ALTER SEQUENCE condition_search_reference__id_seq OWNED BY condition_search_refe
 --
 
 CREATE TABLE condition_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Condition'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -4544,13 +5817,15 @@ ALTER SEQUENCE condition_search_string__id_seq OWNED BY condition_search_string.
 --
 
 CREATE TABLE condition_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Condition'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -4673,12 +5948,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE conformance_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Conformance'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -4705,12 +5982,14 @@ ALTER SEQUENCE conformance_references__id_seq OWNED BY conformance_references._i
 --
 
 CREATE TABLE conformance_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Conformance'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -4733,19 +6012,54 @@ ALTER SEQUENCE conformance_search_date__id_seq OWNED BY conformance_search_date.
 
 
 --
+-- Name: conformance_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE conformance_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Conformance'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: conformance_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE conformance_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: conformance_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE conformance_search_number__id_seq OWNED BY conformance_search_number._id;
+
+
+--
 -- Name: conformance_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE conformance_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Conformance'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -4772,13 +6086,15 @@ ALTER SEQUENCE conformance_search_quantity__id_seq OWNED BY conformance_search_q
 --
 
 CREATE TABLE conformance_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Conformance'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -4805,11 +6121,13 @@ ALTER SEQUENCE conformance_search_reference__id_seq OWNED BY conformance_search_
 --
 
 CREATE TABLE conformance_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Conformance'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -4836,13 +6154,15 @@ ALTER SEQUENCE conformance_search_string__id_seq OWNED BY conformance_search_str
 --
 
 CREATE TABLE conformance_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Conformance'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -4965,12 +6285,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE device_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Device'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -4997,12 +6319,14 @@ ALTER SEQUENCE device_references__id_seq OWNED BY device_references._id;
 --
 
 CREATE TABLE device_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Device'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -5025,19 +6349,54 @@ ALTER SEQUENCE device_search_date__id_seq OWNED BY device_search_date._id;
 
 
 --
+-- Name: device_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE device_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Device'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: device_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE device_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: device_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE device_search_number__id_seq OWNED BY device_search_number._id;
+
+
+--
 -- Name: device_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE device_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Device'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -5064,13 +6423,15 @@ ALTER SEQUENCE device_search_quantity__id_seq OWNED BY device_search_quantity._i
 --
 
 CREATE TABLE device_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Device'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -5097,11 +6458,13 @@ ALTER SEQUENCE device_search_reference__id_seq OWNED BY device_search_reference.
 --
 
 CREATE TABLE device_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Device'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -5128,13 +6491,15 @@ ALTER SEQUENCE device_search_string__id_seq OWNED BY device_search_string._id;
 --
 
 CREATE TABLE device_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Device'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -5257,12 +6622,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE deviceobservationreport_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'DeviceObservationReport'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -5289,12 +6656,14 @@ ALTER SEQUENCE deviceobservationreport_references__id_seq OWNED BY deviceobserva
 --
 
 CREATE TABLE deviceobservationreport_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'DeviceObservationReport'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -5317,19 +6686,54 @@ ALTER SEQUENCE deviceobservationreport_search_date__id_seq OWNED BY deviceobserv
 
 
 --
+-- Name: deviceobservationreport_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE deviceobservationreport_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'DeviceObservationReport'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: deviceobservationreport_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE deviceobservationreport_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: deviceobservationreport_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE deviceobservationreport_search_number__id_seq OWNED BY deviceobservationreport_search_number._id;
+
+
+--
 -- Name: deviceobservationreport_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE deviceobservationreport_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'DeviceObservationReport'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -5356,13 +6760,15 @@ ALTER SEQUENCE deviceobservationreport_search_quantity__id_seq OWNED BY deviceob
 --
 
 CREATE TABLE deviceobservationreport_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'DeviceObservationReport'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -5389,11 +6795,13 @@ ALTER SEQUENCE deviceobservationreport_search_reference__id_seq OWNED BY deviceo
 --
 
 CREATE TABLE deviceobservationreport_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'DeviceObservationReport'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -5420,13 +6828,15 @@ ALTER SEQUENCE deviceobservationreport_search_string__id_seq OWNED BY deviceobse
 --
 
 CREATE TABLE deviceobservationreport_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'DeviceObservationReport'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -5549,12 +6959,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE diagnosticorder_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'DiagnosticOrder'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -5581,12 +6993,14 @@ ALTER SEQUENCE diagnosticorder_references__id_seq OWNED BY diagnosticorder_refer
 --
 
 CREATE TABLE diagnosticorder_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'DiagnosticOrder'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -5609,19 +7023,54 @@ ALTER SEQUENCE diagnosticorder_search_date__id_seq OWNED BY diagnosticorder_sear
 
 
 --
+-- Name: diagnosticorder_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE diagnosticorder_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'DiagnosticOrder'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: diagnosticorder_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE diagnosticorder_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: diagnosticorder_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE diagnosticorder_search_number__id_seq OWNED BY diagnosticorder_search_number._id;
+
+
+--
 -- Name: diagnosticorder_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE diagnosticorder_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'DiagnosticOrder'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -5648,13 +7097,15 @@ ALTER SEQUENCE diagnosticorder_search_quantity__id_seq OWNED BY diagnosticorder_
 --
 
 CREATE TABLE diagnosticorder_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'DiagnosticOrder'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -5681,11 +7132,13 @@ ALTER SEQUENCE diagnosticorder_search_reference__id_seq OWNED BY diagnosticorder
 --
 
 CREATE TABLE diagnosticorder_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'DiagnosticOrder'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -5712,13 +7165,15 @@ ALTER SEQUENCE diagnosticorder_search_string__id_seq OWNED BY diagnosticorder_se
 --
 
 CREATE TABLE diagnosticorder_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'DiagnosticOrder'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -5841,12 +7296,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE diagnosticreport_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'DiagnosticReport'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -5873,12 +7330,14 @@ ALTER SEQUENCE diagnosticreport_references__id_seq OWNED BY diagnosticreport_ref
 --
 
 CREATE TABLE diagnosticreport_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'DiagnosticReport'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -5901,19 +7360,54 @@ ALTER SEQUENCE diagnosticreport_search_date__id_seq OWNED BY diagnosticreport_se
 
 
 --
+-- Name: diagnosticreport_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE diagnosticreport_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'DiagnosticReport'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: diagnosticreport_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE diagnosticreport_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: diagnosticreport_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE diagnosticreport_search_number__id_seq OWNED BY diagnosticreport_search_number._id;
+
+
+--
 -- Name: diagnosticreport_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE diagnosticreport_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'DiagnosticReport'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -5940,13 +7434,15 @@ ALTER SEQUENCE diagnosticreport_search_quantity__id_seq OWNED BY diagnosticrepor
 --
 
 CREATE TABLE diagnosticreport_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'DiagnosticReport'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -5973,11 +7469,13 @@ ALTER SEQUENCE diagnosticreport_search_reference__id_seq OWNED BY diagnosticrepo
 --
 
 CREATE TABLE diagnosticreport_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'DiagnosticReport'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -6004,13 +7502,15 @@ ALTER SEQUENCE diagnosticreport_search_string__id_seq OWNED BY diagnosticreport_
 --
 
 CREATE TABLE diagnosticreport_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'DiagnosticReport'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -6133,12 +7633,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE documentmanifest_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'DocumentManifest'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -6165,12 +7667,14 @@ ALTER SEQUENCE documentmanifest_references__id_seq OWNED BY documentmanifest_ref
 --
 
 CREATE TABLE documentmanifest_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'DocumentManifest'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -6193,19 +7697,54 @@ ALTER SEQUENCE documentmanifest_search_date__id_seq OWNED BY documentmanifest_se
 
 
 --
+-- Name: documentmanifest_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE documentmanifest_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'DocumentManifest'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: documentmanifest_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE documentmanifest_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: documentmanifest_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE documentmanifest_search_number__id_seq OWNED BY documentmanifest_search_number._id;
+
+
+--
 -- Name: documentmanifest_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE documentmanifest_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'DocumentManifest'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -6232,13 +7771,15 @@ ALTER SEQUENCE documentmanifest_search_quantity__id_seq OWNED BY documentmanifes
 --
 
 CREATE TABLE documentmanifest_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'DocumentManifest'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -6265,11 +7806,13 @@ ALTER SEQUENCE documentmanifest_search_reference__id_seq OWNED BY documentmanife
 --
 
 CREATE TABLE documentmanifest_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'DocumentManifest'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -6296,13 +7839,15 @@ ALTER SEQUENCE documentmanifest_search_string__id_seq OWNED BY documentmanifest_
 --
 
 CREATE TABLE documentmanifest_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'DocumentManifest'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -6425,12 +7970,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE documentreference_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'DocumentReference'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -6457,12 +8004,14 @@ ALTER SEQUENCE documentreference_references__id_seq OWNED BY documentreference_r
 --
 
 CREATE TABLE documentreference_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'DocumentReference'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -6485,19 +8034,54 @@ ALTER SEQUENCE documentreference_search_date__id_seq OWNED BY documentreference_
 
 
 --
+-- Name: documentreference_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE documentreference_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'DocumentReference'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: documentreference_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE documentreference_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: documentreference_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE documentreference_search_number__id_seq OWNED BY documentreference_search_number._id;
+
+
+--
 -- Name: documentreference_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE documentreference_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'DocumentReference'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -6524,13 +8108,15 @@ ALTER SEQUENCE documentreference_search_quantity__id_seq OWNED BY documentrefere
 --
 
 CREATE TABLE documentreference_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'DocumentReference'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -6557,11 +8143,13 @@ ALTER SEQUENCE documentreference_search_reference__id_seq OWNED BY documentrefer
 --
 
 CREATE TABLE documentreference_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'DocumentReference'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -6588,13 +8176,15 @@ ALTER SEQUENCE documentreference_search_string__id_seq OWNED BY documentreferenc
 --
 
 CREATE TABLE documentreference_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'DocumentReference'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -6717,12 +8307,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE encounter_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Encounter'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -6749,12 +8341,14 @@ ALTER SEQUENCE encounter_references__id_seq OWNED BY encounter_references._id;
 --
 
 CREATE TABLE encounter_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Encounter'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -6777,19 +8371,54 @@ ALTER SEQUENCE encounter_search_date__id_seq OWNED BY encounter_search_date._id;
 
 
 --
+-- Name: encounter_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE encounter_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Encounter'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: encounter_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE encounter_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: encounter_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE encounter_search_number__id_seq OWNED BY encounter_search_number._id;
+
+
+--
 -- Name: encounter_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE encounter_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Encounter'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -6816,13 +8445,15 @@ ALTER SEQUENCE encounter_search_quantity__id_seq OWNED BY encounter_search_quant
 --
 
 CREATE TABLE encounter_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Encounter'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -6849,11 +8480,13 @@ ALTER SEQUENCE encounter_search_reference__id_seq OWNED BY encounter_search_refe
 --
 
 CREATE TABLE encounter_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Encounter'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -6880,13 +8513,15 @@ ALTER SEQUENCE encounter_search_string__id_seq OWNED BY encounter_search_string.
 --
 
 CREATE TABLE encounter_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Encounter'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -7009,12 +8644,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE familyhistory_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'FamilyHistory'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -7041,12 +8678,14 @@ ALTER SEQUENCE familyhistory_references__id_seq OWNED BY familyhistory_reference
 --
 
 CREATE TABLE familyhistory_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'FamilyHistory'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -7069,19 +8708,54 @@ ALTER SEQUENCE familyhistory_search_date__id_seq OWNED BY familyhistory_search_d
 
 
 --
+-- Name: familyhistory_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE familyhistory_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'FamilyHistory'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: familyhistory_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE familyhistory_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: familyhistory_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE familyhistory_search_number__id_seq OWNED BY familyhistory_search_number._id;
+
+
+--
 -- Name: familyhistory_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE familyhistory_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'FamilyHistory'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -7108,13 +8782,15 @@ ALTER SEQUENCE familyhistory_search_quantity__id_seq OWNED BY familyhistory_sear
 --
 
 CREATE TABLE familyhistory_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'FamilyHistory'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -7141,11 +8817,13 @@ ALTER SEQUENCE familyhistory_search_reference__id_seq OWNED BY familyhistory_sea
 --
 
 CREATE TABLE familyhistory_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'FamilyHistory'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -7172,13 +8850,15 @@ ALTER SEQUENCE familyhistory_search_string__id_seq OWNED BY familyhistory_search
 --
 
 CREATE TABLE familyhistory_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'FamilyHistory'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -7301,12 +8981,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE group_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Group'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -7333,12 +9015,14 @@ ALTER SEQUENCE group_references__id_seq OWNED BY group_references._id;
 --
 
 CREATE TABLE group_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Group'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -7361,19 +9045,54 @@ ALTER SEQUENCE group_search_date__id_seq OWNED BY group_search_date._id;
 
 
 --
+-- Name: group_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE group_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Group'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: group_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE group_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: group_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE group_search_number__id_seq OWNED BY group_search_number._id;
+
+
+--
 -- Name: group_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE group_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Group'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -7400,13 +9119,15 @@ ALTER SEQUENCE group_search_quantity__id_seq OWNED BY group_search_quantity._id;
 --
 
 CREATE TABLE group_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Group'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -7433,11 +9154,13 @@ ALTER SEQUENCE group_search_reference__id_seq OWNED BY group_search_reference._i
 --
 
 CREATE TABLE group_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Group'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -7464,13 +9187,15 @@ ALTER SEQUENCE group_search_string__id_seq OWNED BY group_search_string._id;
 --
 
 CREATE TABLE group_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Group'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -7593,12 +9318,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE imagingstudy_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'ImagingStudy'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -7625,12 +9352,14 @@ ALTER SEQUENCE imagingstudy_references__id_seq OWNED BY imagingstudy_references.
 --
 
 CREATE TABLE imagingstudy_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'ImagingStudy'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -7653,19 +9382,54 @@ ALTER SEQUENCE imagingstudy_search_date__id_seq OWNED BY imagingstudy_search_dat
 
 
 --
+-- Name: imagingstudy_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE imagingstudy_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'ImagingStudy'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: imagingstudy_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE imagingstudy_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: imagingstudy_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE imagingstudy_search_number__id_seq OWNED BY imagingstudy_search_number._id;
+
+
+--
 -- Name: imagingstudy_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE imagingstudy_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'ImagingStudy'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -7692,13 +9456,15 @@ ALTER SEQUENCE imagingstudy_search_quantity__id_seq OWNED BY imagingstudy_search
 --
 
 CREATE TABLE imagingstudy_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'ImagingStudy'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -7725,11 +9491,13 @@ ALTER SEQUENCE imagingstudy_search_reference__id_seq OWNED BY imagingstudy_searc
 --
 
 CREATE TABLE imagingstudy_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'ImagingStudy'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -7756,13 +9524,15 @@ ALTER SEQUENCE imagingstudy_search_string__id_seq OWNED BY imagingstudy_search_s
 --
 
 CREATE TABLE imagingstudy_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'ImagingStudy'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -7885,12 +9655,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE immunization_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Immunization'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -7917,12 +9689,14 @@ ALTER SEQUENCE immunization_references__id_seq OWNED BY immunization_references.
 --
 
 CREATE TABLE immunization_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Immunization'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -7945,19 +9719,54 @@ ALTER SEQUENCE immunization_search_date__id_seq OWNED BY immunization_search_dat
 
 
 --
+-- Name: immunization_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE immunization_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Immunization'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: immunization_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE immunization_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: immunization_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE immunization_search_number__id_seq OWNED BY immunization_search_number._id;
+
+
+--
 -- Name: immunization_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE immunization_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Immunization'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -7984,13 +9793,15 @@ ALTER SEQUENCE immunization_search_quantity__id_seq OWNED BY immunization_search
 --
 
 CREATE TABLE immunization_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Immunization'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -8017,11 +9828,13 @@ ALTER SEQUENCE immunization_search_reference__id_seq OWNED BY immunization_searc
 --
 
 CREATE TABLE immunization_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Immunization'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -8048,13 +9861,15 @@ ALTER SEQUENCE immunization_search_string__id_seq OWNED BY immunization_search_s
 --
 
 CREATE TABLE immunization_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Immunization'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -8177,12 +9992,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE immunizationrecommendation_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'ImmunizationRecommendation'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -8209,12 +10026,14 @@ ALTER SEQUENCE immunizationrecommendation_references__id_seq OWNED BY immunizati
 --
 
 CREATE TABLE immunizationrecommendation_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'ImmunizationRecommendation'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -8237,19 +10056,54 @@ ALTER SEQUENCE immunizationrecommendation_search_date__id_seq OWNED BY immunizat
 
 
 --
+-- Name: immunizationrecommendation_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE immunizationrecommendation_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'ImmunizationRecommendation'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: immunizationrecommendation_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE immunizationrecommendation_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: immunizationrecommendation_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE immunizationrecommendation_search_number__id_seq OWNED BY immunizationrecommendation_search_number._id;
+
+
+--
 -- Name: immunizationrecommendation_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE immunizationrecommendation_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'ImmunizationRecommendation'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -8276,13 +10130,15 @@ ALTER SEQUENCE immunizationrecommendation_search_quantity__id_seq OWNED BY immun
 --
 
 CREATE TABLE immunizationrecommendation_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'ImmunizationRecommendation'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -8309,11 +10165,13 @@ ALTER SEQUENCE immunizationrecommendation_search_reference__id_seq OWNED BY immu
 --
 
 CREATE TABLE immunizationrecommendation_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'ImmunizationRecommendation'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -8340,13 +10198,15 @@ ALTER SEQUENCE immunizationrecommendation_search_string__id_seq OWNED BY immuniz
 --
 
 CREATE TABLE immunizationrecommendation_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'ImmunizationRecommendation'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -8469,12 +10329,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE list_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'List'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -8501,12 +10363,14 @@ ALTER SEQUENCE list_references__id_seq OWNED BY list_references._id;
 --
 
 CREATE TABLE list_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'List'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -8529,19 +10393,54 @@ ALTER SEQUENCE list_search_date__id_seq OWNED BY list_search_date._id;
 
 
 --
+-- Name: list_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE list_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'List'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: list_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE list_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: list_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE list_search_number__id_seq OWNED BY list_search_number._id;
+
+
+--
 -- Name: list_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE list_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'List'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -8568,13 +10467,15 @@ ALTER SEQUENCE list_search_quantity__id_seq OWNED BY list_search_quantity._id;
 --
 
 CREATE TABLE list_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'List'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -8601,11 +10502,13 @@ ALTER SEQUENCE list_search_reference__id_seq OWNED BY list_search_reference._id;
 --
 
 CREATE TABLE list_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'List'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -8632,13 +10535,15 @@ ALTER SEQUENCE list_search_string__id_seq OWNED BY list_search_string._id;
 --
 
 CREATE TABLE list_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'List'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -8761,12 +10666,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE location_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Location'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -8793,12 +10700,14 @@ ALTER SEQUENCE location_references__id_seq OWNED BY location_references._id;
 --
 
 CREATE TABLE location_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Location'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -8821,19 +10730,54 @@ ALTER SEQUENCE location_search_date__id_seq OWNED BY location_search_date._id;
 
 
 --
+-- Name: location_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE location_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Location'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: location_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE location_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: location_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE location_search_number__id_seq OWNED BY location_search_number._id;
+
+
+--
 -- Name: location_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE location_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Location'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -8860,13 +10804,15 @@ ALTER SEQUENCE location_search_quantity__id_seq OWNED BY location_search_quantit
 --
 
 CREATE TABLE location_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Location'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -8893,11 +10839,13 @@ ALTER SEQUENCE location_search_reference__id_seq OWNED BY location_search_refere
 --
 
 CREATE TABLE location_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Location'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -8924,13 +10872,15 @@ ALTER SEQUENCE location_search_string__id_seq OWNED BY location_search_string._i
 --
 
 CREATE TABLE location_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Location'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -9053,12 +11003,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE media_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Media'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -9085,12 +11037,14 @@ ALTER SEQUENCE media_references__id_seq OWNED BY media_references._id;
 --
 
 CREATE TABLE media_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Media'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -9113,19 +11067,54 @@ ALTER SEQUENCE media_search_date__id_seq OWNED BY media_search_date._id;
 
 
 --
+-- Name: media_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE media_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Media'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: media_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE media_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: media_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE media_search_number__id_seq OWNED BY media_search_number._id;
+
+
+--
 -- Name: media_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE media_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Media'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -9152,13 +11141,15 @@ ALTER SEQUENCE media_search_quantity__id_seq OWNED BY media_search_quantity._id;
 --
 
 CREATE TABLE media_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Media'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -9185,11 +11176,13 @@ ALTER SEQUENCE media_search_reference__id_seq OWNED BY media_search_reference._i
 --
 
 CREATE TABLE media_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Media'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -9216,13 +11209,15 @@ ALTER SEQUENCE media_search_string__id_seq OWNED BY media_search_string._id;
 --
 
 CREATE TABLE media_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Media'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -9345,12 +11340,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE medication_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Medication'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -9377,12 +11374,14 @@ ALTER SEQUENCE medication_references__id_seq OWNED BY medication_references._id;
 --
 
 CREATE TABLE medication_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Medication'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -9405,19 +11404,54 @@ ALTER SEQUENCE medication_search_date__id_seq OWNED BY medication_search_date._i
 
 
 --
+-- Name: medication_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE medication_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Medication'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: medication_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE medication_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: medication_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE medication_search_number__id_seq OWNED BY medication_search_number._id;
+
+
+--
 -- Name: medication_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE medication_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Medication'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -9444,13 +11478,15 @@ ALTER SEQUENCE medication_search_quantity__id_seq OWNED BY medication_search_qua
 --
 
 CREATE TABLE medication_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Medication'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -9477,11 +11513,13 @@ ALTER SEQUENCE medication_search_reference__id_seq OWNED BY medication_search_re
 --
 
 CREATE TABLE medication_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Medication'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -9508,13 +11546,15 @@ ALTER SEQUENCE medication_search_string__id_seq OWNED BY medication_search_strin
 --
 
 CREATE TABLE medication_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Medication'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -9637,12 +11677,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE medicationadministration_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'MedicationAdministration'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -9669,12 +11711,14 @@ ALTER SEQUENCE medicationadministration_references__id_seq OWNED BY medicationad
 --
 
 CREATE TABLE medicationadministration_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'MedicationAdministration'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -9697,19 +11741,54 @@ ALTER SEQUENCE medicationadministration_search_date__id_seq OWNED BY medicationa
 
 
 --
+-- Name: medicationadministration_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE medicationadministration_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'MedicationAdministration'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: medicationadministration_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE medicationadministration_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: medicationadministration_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE medicationadministration_search_number__id_seq OWNED BY medicationadministration_search_number._id;
+
+
+--
 -- Name: medicationadministration_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE medicationadministration_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'MedicationAdministration'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -9736,13 +11815,15 @@ ALTER SEQUENCE medicationadministration_search_quantity__id_seq OWNED BY medicat
 --
 
 CREATE TABLE medicationadministration_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'MedicationAdministration'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -9769,11 +11850,13 @@ ALTER SEQUENCE medicationadministration_search_reference__id_seq OWNED BY medica
 --
 
 CREATE TABLE medicationadministration_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'MedicationAdministration'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -9800,13 +11883,15 @@ ALTER SEQUENCE medicationadministration_search_string__id_seq OWNED BY medicatio
 --
 
 CREATE TABLE medicationadministration_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'MedicationAdministration'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -9929,12 +12014,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE medicationdispense_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'MedicationDispense'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -9961,12 +12048,14 @@ ALTER SEQUENCE medicationdispense_references__id_seq OWNED BY medicationdispense
 --
 
 CREATE TABLE medicationdispense_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'MedicationDispense'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -9989,19 +12078,54 @@ ALTER SEQUENCE medicationdispense_search_date__id_seq OWNED BY medicationdispens
 
 
 --
+-- Name: medicationdispense_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE medicationdispense_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'MedicationDispense'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: medicationdispense_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE medicationdispense_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: medicationdispense_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE medicationdispense_search_number__id_seq OWNED BY medicationdispense_search_number._id;
+
+
+--
 -- Name: medicationdispense_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE medicationdispense_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'MedicationDispense'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -10028,13 +12152,15 @@ ALTER SEQUENCE medicationdispense_search_quantity__id_seq OWNED BY medicationdis
 --
 
 CREATE TABLE medicationdispense_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'MedicationDispense'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -10061,11 +12187,13 @@ ALTER SEQUENCE medicationdispense_search_reference__id_seq OWNED BY medicationdi
 --
 
 CREATE TABLE medicationdispense_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'MedicationDispense'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -10092,13 +12220,15 @@ ALTER SEQUENCE medicationdispense_search_string__id_seq OWNED BY medicationdispe
 --
 
 CREATE TABLE medicationdispense_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'MedicationDispense'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -10221,12 +12351,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE medicationprescription_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'MedicationPrescription'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -10253,12 +12385,14 @@ ALTER SEQUENCE medicationprescription_references__id_seq OWNED BY medicationpres
 --
 
 CREATE TABLE medicationprescription_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'MedicationPrescription'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -10281,19 +12415,54 @@ ALTER SEQUENCE medicationprescription_search_date__id_seq OWNED BY medicationpre
 
 
 --
+-- Name: medicationprescription_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE medicationprescription_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'MedicationPrescription'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: medicationprescription_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE medicationprescription_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: medicationprescription_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE medicationprescription_search_number__id_seq OWNED BY medicationprescription_search_number._id;
+
+
+--
 -- Name: medicationprescription_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE medicationprescription_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'MedicationPrescription'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -10320,13 +12489,15 @@ ALTER SEQUENCE medicationprescription_search_quantity__id_seq OWNED BY medicatio
 --
 
 CREATE TABLE medicationprescription_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'MedicationPrescription'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -10353,11 +12524,13 @@ ALTER SEQUENCE medicationprescription_search_reference__id_seq OWNED BY medicati
 --
 
 CREATE TABLE medicationprescription_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'MedicationPrescription'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -10384,13 +12557,15 @@ ALTER SEQUENCE medicationprescription_search_string__id_seq OWNED BY medicationp
 --
 
 CREATE TABLE medicationprescription_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'MedicationPrescription'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -10513,12 +12688,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE medicationstatement_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'MedicationStatement'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -10545,12 +12722,14 @@ ALTER SEQUENCE medicationstatement_references__id_seq OWNED BY medicationstateme
 --
 
 CREATE TABLE medicationstatement_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'MedicationStatement'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -10573,19 +12752,54 @@ ALTER SEQUENCE medicationstatement_search_date__id_seq OWNED BY medicationstatem
 
 
 --
+-- Name: medicationstatement_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE medicationstatement_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'MedicationStatement'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: medicationstatement_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE medicationstatement_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: medicationstatement_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE medicationstatement_search_number__id_seq OWNED BY medicationstatement_search_number._id;
+
+
+--
 -- Name: medicationstatement_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE medicationstatement_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'MedicationStatement'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -10612,13 +12826,15 @@ ALTER SEQUENCE medicationstatement_search_quantity__id_seq OWNED BY medicationst
 --
 
 CREATE TABLE medicationstatement_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'MedicationStatement'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -10645,11 +12861,13 @@ ALTER SEQUENCE medicationstatement_search_reference__id_seq OWNED BY medications
 --
 
 CREATE TABLE medicationstatement_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'MedicationStatement'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -10676,13 +12894,15 @@ ALTER SEQUENCE medicationstatement_search_string__id_seq OWNED BY medicationstat
 --
 
 CREATE TABLE medicationstatement_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'MedicationStatement'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -10805,12 +13025,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE messageheader_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'MessageHeader'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -10837,12 +13059,14 @@ ALTER SEQUENCE messageheader_references__id_seq OWNED BY messageheader_reference
 --
 
 CREATE TABLE messageheader_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'MessageHeader'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -10865,19 +13089,54 @@ ALTER SEQUENCE messageheader_search_date__id_seq OWNED BY messageheader_search_d
 
 
 --
+-- Name: messageheader_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE messageheader_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'MessageHeader'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: messageheader_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE messageheader_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: messageheader_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE messageheader_search_number__id_seq OWNED BY messageheader_search_number._id;
+
+
+--
 -- Name: messageheader_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE messageheader_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'MessageHeader'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -10904,13 +13163,15 @@ ALTER SEQUENCE messageheader_search_quantity__id_seq OWNED BY messageheader_sear
 --
 
 CREATE TABLE messageheader_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'MessageHeader'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -10937,11 +13198,13 @@ ALTER SEQUENCE messageheader_search_reference__id_seq OWNED BY messageheader_sea
 --
 
 CREATE TABLE messageheader_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'MessageHeader'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -10968,13 +13231,15 @@ ALTER SEQUENCE messageheader_search_string__id_seq OWNED BY messageheader_search
 --
 
 CREATE TABLE messageheader_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'MessageHeader'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -11097,12 +13362,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE observation_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Observation'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -11129,12 +13396,14 @@ ALTER SEQUENCE observation_references__id_seq OWNED BY observation_references._i
 --
 
 CREATE TABLE observation_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Observation'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -11157,19 +13426,54 @@ ALTER SEQUENCE observation_search_date__id_seq OWNED BY observation_search_date.
 
 
 --
+-- Name: observation_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE observation_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Observation'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: observation_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE observation_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: observation_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE observation_search_number__id_seq OWNED BY observation_search_number._id;
+
+
+--
 -- Name: observation_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE observation_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Observation'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -11196,13 +13500,15 @@ ALTER SEQUENCE observation_search_quantity__id_seq OWNED BY observation_search_q
 --
 
 CREATE TABLE observation_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Observation'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -11229,11 +13535,13 @@ ALTER SEQUENCE observation_search_reference__id_seq OWNED BY observation_search_
 --
 
 CREATE TABLE observation_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Observation'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -11260,13 +13568,15 @@ ALTER SEQUENCE observation_search_string__id_seq OWNED BY observation_search_str
 --
 
 CREATE TABLE observation_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Observation'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -11389,12 +13699,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE operationoutcome_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'OperationOutcome'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -11421,12 +13733,14 @@ ALTER SEQUENCE operationoutcome_references__id_seq OWNED BY operationoutcome_ref
 --
 
 CREATE TABLE operationoutcome_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'OperationOutcome'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -11449,19 +13763,54 @@ ALTER SEQUENCE operationoutcome_search_date__id_seq OWNED BY operationoutcome_se
 
 
 --
+-- Name: operationoutcome_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE operationoutcome_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'OperationOutcome'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: operationoutcome_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE operationoutcome_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: operationoutcome_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE operationoutcome_search_number__id_seq OWNED BY operationoutcome_search_number._id;
+
+
+--
 -- Name: operationoutcome_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE operationoutcome_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'OperationOutcome'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -11488,13 +13837,15 @@ ALTER SEQUENCE operationoutcome_search_quantity__id_seq OWNED BY operationoutcom
 --
 
 CREATE TABLE operationoutcome_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'OperationOutcome'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -11521,11 +13872,13 @@ ALTER SEQUENCE operationoutcome_search_reference__id_seq OWNED BY operationoutco
 --
 
 CREATE TABLE operationoutcome_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'OperationOutcome'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -11552,13 +13905,15 @@ ALTER SEQUENCE operationoutcome_search_string__id_seq OWNED BY operationoutcome_
 --
 
 CREATE TABLE operationoutcome_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'OperationOutcome'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -11681,12 +14036,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE order_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Order'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -11713,12 +14070,14 @@ ALTER SEQUENCE order_references__id_seq OWNED BY order_references._id;
 --
 
 CREATE TABLE order_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Order'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -11741,19 +14100,54 @@ ALTER SEQUENCE order_search_date__id_seq OWNED BY order_search_date._id;
 
 
 --
+-- Name: order_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE order_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Order'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: order_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE order_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: order_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE order_search_number__id_seq OWNED BY order_search_number._id;
+
+
+--
 -- Name: order_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE order_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Order'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -11780,13 +14174,15 @@ ALTER SEQUENCE order_search_quantity__id_seq OWNED BY order_search_quantity._id;
 --
 
 CREATE TABLE order_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Order'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -11813,11 +14209,13 @@ ALTER SEQUENCE order_search_reference__id_seq OWNED BY order_search_reference._i
 --
 
 CREATE TABLE order_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Order'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -11844,13 +14242,15 @@ ALTER SEQUENCE order_search_string__id_seq OWNED BY order_search_string._id;
 --
 
 CREATE TABLE order_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Order'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -11973,12 +14373,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE orderresponse_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'OrderResponse'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -12005,12 +14407,14 @@ ALTER SEQUENCE orderresponse_references__id_seq OWNED BY orderresponse_reference
 --
 
 CREATE TABLE orderresponse_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'OrderResponse'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -12033,19 +14437,54 @@ ALTER SEQUENCE orderresponse_search_date__id_seq OWNED BY orderresponse_search_d
 
 
 --
+-- Name: orderresponse_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE orderresponse_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'OrderResponse'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: orderresponse_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE orderresponse_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: orderresponse_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE orderresponse_search_number__id_seq OWNED BY orderresponse_search_number._id;
+
+
+--
 -- Name: orderresponse_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE orderresponse_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'OrderResponse'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -12072,13 +14511,15 @@ ALTER SEQUENCE orderresponse_search_quantity__id_seq OWNED BY orderresponse_sear
 --
 
 CREATE TABLE orderresponse_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'OrderResponse'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -12105,11 +14546,13 @@ ALTER SEQUENCE orderresponse_search_reference__id_seq OWNED BY orderresponse_sea
 --
 
 CREATE TABLE orderresponse_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'OrderResponse'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -12136,13 +14579,15 @@ ALTER SEQUENCE orderresponse_search_string__id_seq OWNED BY orderresponse_search
 --
 
 CREATE TABLE orderresponse_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'OrderResponse'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -12265,12 +14710,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE organization_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Organization'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -12297,12 +14744,14 @@ ALTER SEQUENCE organization_references__id_seq OWNED BY organization_references.
 --
 
 CREATE TABLE organization_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Organization'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -12325,19 +14774,54 @@ ALTER SEQUENCE organization_search_date__id_seq OWNED BY organization_search_dat
 
 
 --
+-- Name: organization_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE organization_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Organization'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: organization_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE organization_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: organization_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE organization_search_number__id_seq OWNED BY organization_search_number._id;
+
+
+--
 -- Name: organization_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE organization_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Organization'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -12364,13 +14848,15 @@ ALTER SEQUENCE organization_search_quantity__id_seq OWNED BY organization_search
 --
 
 CREATE TABLE organization_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Organization'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -12397,11 +14883,13 @@ ALTER SEQUENCE organization_search_reference__id_seq OWNED BY organization_searc
 --
 
 CREATE TABLE organization_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Organization'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -12428,13 +14916,15 @@ ALTER SEQUENCE organization_search_string__id_seq OWNED BY organization_search_s
 --
 
 CREATE TABLE organization_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Organization'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -12557,12 +15047,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE other_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Other'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -12589,12 +15081,14 @@ ALTER SEQUENCE other_references__id_seq OWNED BY other_references._id;
 --
 
 CREATE TABLE other_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Other'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -12617,19 +15111,54 @@ ALTER SEQUENCE other_search_date__id_seq OWNED BY other_search_date._id;
 
 
 --
+-- Name: other_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE other_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Other'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: other_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE other_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: other_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE other_search_number__id_seq OWNED BY other_search_number._id;
+
+
+--
 -- Name: other_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE other_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Other'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -12656,13 +15185,15 @@ ALTER SEQUENCE other_search_quantity__id_seq OWNED BY other_search_quantity._id;
 --
 
 CREATE TABLE other_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Other'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -12689,11 +15220,13 @@ ALTER SEQUENCE other_search_reference__id_seq OWNED BY other_search_reference._i
 --
 
 CREATE TABLE other_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Other'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -12720,13 +15253,15 @@ ALTER SEQUENCE other_search_string__id_seq OWNED BY other_search_string._id;
 --
 
 CREATE TABLE other_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Other'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -12849,12 +15384,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE patient_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Patient'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -12881,12 +15418,14 @@ ALTER SEQUENCE patient_references__id_seq OWNED BY patient_references._id;
 --
 
 CREATE TABLE patient_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Patient'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -12909,19 +15448,54 @@ ALTER SEQUENCE patient_search_date__id_seq OWNED BY patient_search_date._id;
 
 
 --
+-- Name: patient_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE patient_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Patient'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: patient_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE patient_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: patient_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE patient_search_number__id_seq OWNED BY patient_search_number._id;
+
+
+--
 -- Name: patient_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE patient_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Patient'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -12948,13 +15522,15 @@ ALTER SEQUENCE patient_search_quantity__id_seq OWNED BY patient_search_quantity.
 --
 
 CREATE TABLE patient_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Patient'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -12981,11 +15557,13 @@ ALTER SEQUENCE patient_search_reference__id_seq OWNED BY patient_search_referenc
 --
 
 CREATE TABLE patient_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Patient'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -13012,13 +15590,15 @@ ALTER SEQUENCE patient_search_string__id_seq OWNED BY patient_search_string._id;
 --
 
 CREATE TABLE patient_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Patient'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -13141,12 +15721,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE practitioner_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Practitioner'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -13173,12 +15755,14 @@ ALTER SEQUENCE practitioner_references__id_seq OWNED BY practitioner_references.
 --
 
 CREATE TABLE practitioner_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Practitioner'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -13201,19 +15785,54 @@ ALTER SEQUENCE practitioner_search_date__id_seq OWNED BY practitioner_search_dat
 
 
 --
+-- Name: practitioner_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE practitioner_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Practitioner'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: practitioner_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE practitioner_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: practitioner_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE practitioner_search_number__id_seq OWNED BY practitioner_search_number._id;
+
+
+--
 -- Name: practitioner_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE practitioner_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Practitioner'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -13240,13 +15859,15 @@ ALTER SEQUENCE practitioner_search_quantity__id_seq OWNED BY practitioner_search
 --
 
 CREATE TABLE practitioner_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Practitioner'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -13273,11 +15894,13 @@ ALTER SEQUENCE practitioner_search_reference__id_seq OWNED BY practitioner_searc
 --
 
 CREATE TABLE practitioner_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Practitioner'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -13304,13 +15927,15 @@ ALTER SEQUENCE practitioner_search_string__id_seq OWNED BY practitioner_search_s
 --
 
 CREATE TABLE practitioner_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Practitioner'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -13433,12 +16058,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE procedure_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Procedure'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -13465,12 +16092,14 @@ ALTER SEQUENCE procedure_references__id_seq OWNED BY procedure_references._id;
 --
 
 CREATE TABLE procedure_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Procedure'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -13493,19 +16122,54 @@ ALTER SEQUENCE procedure_search_date__id_seq OWNED BY procedure_search_date._id;
 
 
 --
+-- Name: procedure_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE procedure_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Procedure'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: procedure_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE procedure_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: procedure_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE procedure_search_number__id_seq OWNED BY procedure_search_number._id;
+
+
+--
 -- Name: procedure_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE procedure_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Procedure'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -13532,13 +16196,15 @@ ALTER SEQUENCE procedure_search_quantity__id_seq OWNED BY procedure_search_quant
 --
 
 CREATE TABLE procedure_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Procedure'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -13565,11 +16231,13 @@ ALTER SEQUENCE procedure_search_reference__id_seq OWNED BY procedure_search_refe
 --
 
 CREATE TABLE procedure_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Procedure'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -13596,13 +16264,15 @@ ALTER SEQUENCE procedure_search_string__id_seq OWNED BY procedure_search_string.
 --
 
 CREATE TABLE procedure_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Procedure'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -13725,12 +16395,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE profile_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Profile'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -13757,12 +16429,14 @@ ALTER SEQUENCE profile_references__id_seq OWNED BY profile_references._id;
 --
 
 CREATE TABLE profile_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Profile'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -13785,19 +16459,54 @@ ALTER SEQUENCE profile_search_date__id_seq OWNED BY profile_search_date._id;
 
 
 --
+-- Name: profile_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE profile_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Profile'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: profile_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE profile_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: profile_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE profile_search_number__id_seq OWNED BY profile_search_number._id;
+
+
+--
 -- Name: profile_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE profile_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Profile'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -13824,13 +16533,15 @@ ALTER SEQUENCE profile_search_quantity__id_seq OWNED BY profile_search_quantity.
 --
 
 CREATE TABLE profile_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Profile'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -13857,11 +16568,13 @@ ALTER SEQUENCE profile_search_reference__id_seq OWNED BY profile_search_referenc
 --
 
 CREATE TABLE profile_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Profile'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -13888,13 +16601,15 @@ ALTER SEQUENCE profile_search_string__id_seq OWNED BY profile_search_string._id;
 --
 
 CREATE TABLE profile_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Profile'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -14017,12 +16732,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE provenance_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Provenance'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -14049,12 +16766,14 @@ ALTER SEQUENCE provenance_references__id_seq OWNED BY provenance_references._id;
 --
 
 CREATE TABLE provenance_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Provenance'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -14077,19 +16796,54 @@ ALTER SEQUENCE provenance_search_date__id_seq OWNED BY provenance_search_date._i
 
 
 --
+-- Name: provenance_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE provenance_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Provenance'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: provenance_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE provenance_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: provenance_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE provenance_search_number__id_seq OWNED BY provenance_search_number._id;
+
+
+--
 -- Name: provenance_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE provenance_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Provenance'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -14116,13 +16870,15 @@ ALTER SEQUENCE provenance_search_quantity__id_seq OWNED BY provenance_search_qua
 --
 
 CREATE TABLE provenance_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Provenance'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -14149,11 +16905,13 @@ ALTER SEQUENCE provenance_search_reference__id_seq OWNED BY provenance_search_re
 --
 
 CREATE TABLE provenance_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Provenance'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -14180,13 +16938,15 @@ ALTER SEQUENCE provenance_search_string__id_seq OWNED BY provenance_search_strin
 --
 
 CREATE TABLE provenance_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Provenance'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -14309,12 +17069,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE query_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Query'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -14341,12 +17103,14 @@ ALTER SEQUENCE query_references__id_seq OWNED BY query_references._id;
 --
 
 CREATE TABLE query_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Query'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -14369,19 +17133,54 @@ ALTER SEQUENCE query_search_date__id_seq OWNED BY query_search_date._id;
 
 
 --
+-- Name: query_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE query_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Query'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: query_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE query_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: query_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE query_search_number__id_seq OWNED BY query_search_number._id;
+
+
+--
 -- Name: query_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE query_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Query'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -14408,13 +17207,15 @@ ALTER SEQUENCE query_search_quantity__id_seq OWNED BY query_search_quantity._id;
 --
 
 CREATE TABLE query_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Query'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -14441,11 +17242,13 @@ ALTER SEQUENCE query_search_reference__id_seq OWNED BY query_search_reference._i
 --
 
 CREATE TABLE query_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Query'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -14472,13 +17275,15 @@ ALTER SEQUENCE query_search_string__id_seq OWNED BY query_search_string._id;
 --
 
 CREATE TABLE query_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Query'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -14601,12 +17406,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE questionnaire_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Questionnaire'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -14633,12 +17440,14 @@ ALTER SEQUENCE questionnaire_references__id_seq OWNED BY questionnaire_reference
 --
 
 CREATE TABLE questionnaire_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Questionnaire'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -14661,19 +17470,54 @@ ALTER SEQUENCE questionnaire_search_date__id_seq OWNED BY questionnaire_search_d
 
 
 --
+-- Name: questionnaire_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE questionnaire_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Questionnaire'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: questionnaire_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE questionnaire_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: questionnaire_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE questionnaire_search_number__id_seq OWNED BY questionnaire_search_number._id;
+
+
+--
 -- Name: questionnaire_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE questionnaire_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Questionnaire'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -14700,13 +17544,15 @@ ALTER SEQUENCE questionnaire_search_quantity__id_seq OWNED BY questionnaire_sear
 --
 
 CREATE TABLE questionnaire_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Questionnaire'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -14733,11 +17579,13 @@ ALTER SEQUENCE questionnaire_search_reference__id_seq OWNED BY questionnaire_sea
 --
 
 CREATE TABLE questionnaire_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Questionnaire'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -14764,13 +17612,15 @@ ALTER SEQUENCE questionnaire_search_string__id_seq OWNED BY questionnaire_search
 --
 
 CREATE TABLE questionnaire_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Questionnaire'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -14857,6 +17707,25 @@ INHERITS (tag_history);
 
 
 --
+-- Name: references__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE references__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: references__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE references__id_seq OWNED BY "references"._id;
+
+
+--
 -- Name: relatedperson; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -14893,12 +17762,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE relatedperson_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'RelatedPerson'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -14925,12 +17796,14 @@ ALTER SEQUENCE relatedperson_references__id_seq OWNED BY relatedperson_reference
 --
 
 CREATE TABLE relatedperson_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'RelatedPerson'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -14953,19 +17826,54 @@ ALTER SEQUENCE relatedperson_search_date__id_seq OWNED BY relatedperson_search_d
 
 
 --
+-- Name: relatedperson_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE relatedperson_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'RelatedPerson'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: relatedperson_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE relatedperson_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: relatedperson_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE relatedperson_search_number__id_seq OWNED BY relatedperson_search_number._id;
+
+
+--
 -- Name: relatedperson_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE relatedperson_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'RelatedPerson'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -14992,13 +17900,15 @@ ALTER SEQUENCE relatedperson_search_quantity__id_seq OWNED BY relatedperson_sear
 --
 
 CREATE TABLE relatedperson_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'RelatedPerson'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -15025,11 +17935,13 @@ ALTER SEQUENCE relatedperson_search_reference__id_seq OWNED BY relatedperson_sea
 --
 
 CREATE TABLE relatedperson_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'RelatedPerson'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -15056,13 +17968,15 @@ ALTER SEQUENCE relatedperson_search_string__id_seq OWNED BY relatedperson_search
 --
 
 CREATE TABLE relatedperson_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'RelatedPerson'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -15149,6 +18063,120 @@ INHERITS (tag_history);
 
 
 --
+-- Name: search_date__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE search_date__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: search_date__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE search_date__id_seq OWNED BY search_date._id;
+
+
+--
+-- Name: search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE search_number__id_seq OWNED BY search_number._id;
+
+
+--
+-- Name: search_quantity__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE search_quantity__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: search_quantity__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE search_quantity__id_seq OWNED BY search_quantity._id;
+
+
+--
+-- Name: search_reference__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE search_reference__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: search_reference__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE search_reference__id_seq OWNED BY search_reference._id;
+
+
+--
+-- Name: search_string__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE search_string__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: search_string__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE search_string__id_seq OWNED BY search_string._id;
+
+
+--
+-- Name: search_token__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE search_token__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: search_token__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE search_token__id_seq OWNED BY search_token._id;
+
+
+--
 -- Name: securityevent; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -15185,12 +18213,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE securityevent_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'SecurityEvent'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -15217,12 +18247,14 @@ ALTER SEQUENCE securityevent_references__id_seq OWNED BY securityevent_reference
 --
 
 CREATE TABLE securityevent_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'SecurityEvent'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -15245,19 +18277,54 @@ ALTER SEQUENCE securityevent_search_date__id_seq OWNED BY securityevent_search_d
 
 
 --
+-- Name: securityevent_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE securityevent_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'SecurityEvent'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: securityevent_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE securityevent_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: securityevent_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE securityevent_search_number__id_seq OWNED BY securityevent_search_number._id;
+
+
+--
 -- Name: securityevent_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE securityevent_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'SecurityEvent'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -15284,13 +18351,15 @@ ALTER SEQUENCE securityevent_search_quantity__id_seq OWNED BY securityevent_sear
 --
 
 CREATE TABLE securityevent_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'SecurityEvent'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -15317,11 +18386,13 @@ ALTER SEQUENCE securityevent_search_reference__id_seq OWNED BY securityevent_sea
 --
 
 CREATE TABLE securityevent_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'SecurityEvent'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -15348,13 +18419,15 @@ ALTER SEQUENCE securityevent_search_string__id_seq OWNED BY securityevent_search
 --
 
 CREATE TABLE securityevent_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'SecurityEvent'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -15477,12 +18550,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE specimen_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Specimen'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -15509,12 +18584,14 @@ ALTER SEQUENCE specimen_references__id_seq OWNED BY specimen_references._id;
 --
 
 CREATE TABLE specimen_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Specimen'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -15537,19 +18614,54 @@ ALTER SEQUENCE specimen_search_date__id_seq OWNED BY specimen_search_date._id;
 
 
 --
+-- Name: specimen_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE specimen_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Specimen'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: specimen_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE specimen_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: specimen_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE specimen_search_number__id_seq OWNED BY specimen_search_number._id;
+
+
+--
 -- Name: specimen_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE specimen_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Specimen'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -15576,13 +18688,15 @@ ALTER SEQUENCE specimen_search_quantity__id_seq OWNED BY specimen_search_quantit
 --
 
 CREATE TABLE specimen_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Specimen'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -15609,11 +18723,13 @@ ALTER SEQUENCE specimen_search_reference__id_seq OWNED BY specimen_search_refere
 --
 
 CREATE TABLE specimen_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Specimen'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -15640,13 +18756,15 @@ ALTER SEQUENCE specimen_search_string__id_seq OWNED BY specimen_search_string._i
 --
 
 CREATE TABLE specimen_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Specimen'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -15769,12 +18887,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE substance_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Substance'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -15801,12 +18921,14 @@ ALTER SEQUENCE substance_references__id_seq OWNED BY substance_references._id;
 --
 
 CREATE TABLE substance_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Substance'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -15829,19 +18951,54 @@ ALTER SEQUENCE substance_search_date__id_seq OWNED BY substance_search_date._id;
 
 
 --
+-- Name: substance_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE substance_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Substance'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: substance_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE substance_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: substance_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE substance_search_number__id_seq OWNED BY substance_search_number._id;
+
+
+--
 -- Name: substance_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE substance_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Substance'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -15868,13 +19025,15 @@ ALTER SEQUENCE substance_search_quantity__id_seq OWNED BY substance_search_quant
 --
 
 CREATE TABLE substance_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Substance'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -15901,11 +19060,13 @@ ALTER SEQUENCE substance_search_reference__id_seq OWNED BY substance_search_refe
 --
 
 CREATE TABLE substance_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Substance'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -15932,13 +19093,15 @@ ALTER SEQUENCE substance_search_string__id_seq OWNED BY substance_search_string.
 --
 
 CREATE TABLE substance_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Substance'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -16061,12 +19224,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE supply_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'Supply'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -16093,12 +19258,14 @@ ALTER SEQUENCE supply_references__id_seq OWNED BY supply_references._id;
 --
 
 CREATE TABLE supply_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Supply'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -16121,19 +19288,54 @@ ALTER SEQUENCE supply_search_date__id_seq OWNED BY supply_search_date._id;
 
 
 --
+-- Name: supply_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE supply_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'Supply'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: supply_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE supply_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: supply_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE supply_search_number__id_seq OWNED BY supply_search_number._id;
+
+
+--
 -- Name: supply_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE supply_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'Supply'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -16160,13 +19362,15 @@ ALTER SEQUENCE supply_search_quantity__id_seq OWNED BY supply_search_quantity._i
 --
 
 CREATE TABLE supply_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'Supply'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -16193,11 +19397,13 @@ ALTER SEQUENCE supply_search_reference__id_seq OWNED BY supply_search_reference.
 --
 
 CREATE TABLE supply_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'Supply'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -16224,13 +19430,15 @@ ALTER SEQUENCE supply_search_string__id_seq OWNED BY supply_search_string._id;
 --
 
 CREATE TABLE supply_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'Supply'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -16387,12 +19595,14 @@ INHERITS (resource_history);
 --
 
 CREATE TABLE valueset_references (
-    _id integer NOT NULL,
-    resource_id uuid NOT NULL,
-    path character varying NOT NULL,
-    reference_type character varying NOT NULL,
-    logical_id character varying NOT NULL
-);
+    _id integer,
+    resource_id uuid,
+    _resource_type character varying DEFAULT 'ValueSet'::character varying,
+    path character varying,
+    reference_type character varying,
+    logical_id character varying
+)
+INHERITS ("references");
 
 
 --
@@ -16419,12 +19629,14 @@ ALTER SEQUENCE valueset_references__id_seq OWNED BY valueset_references._id;
 --
 
 CREATE TABLE valueset_search_date (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'ValueSet'::character varying,
+    param character varying,
     start timestamp with time zone,
     "end" timestamp with time zone
-);
+)
+INHERITS (search_date);
 
 
 --
@@ -16447,19 +19659,54 @@ ALTER SEQUENCE valueset_search_date__id_seq OWNED BY valueset_search_date._id;
 
 
 --
+-- Name: valueset_search_number; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE valueset_search_number (
+    _id integer,
+    resource_id uuid,
+    resource_type character varying DEFAULT 'ValueSet'::character varying,
+    param character varying,
+    value numeric
+)
+INHERITS (search_number);
+
+
+--
+-- Name: valueset_search_number__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE valueset_search_number__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: valueset_search_number__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE valueset_search_number__id_seq OWNED BY valueset_search_number._id;
+
+
+--
 -- Name: valueset_search_quantity; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
 CREATE TABLE valueset_search_quantity (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
+    resource_type character varying DEFAULT 'ValueSet'::character varying,
     param character varying,
     value numeric,
     comparator character varying,
     units character varying,
     system character varying,
     code character varying
-);
+)
+INHERITS (search_quantity);
 
 
 --
@@ -16486,13 +19733,15 @@ ALTER SEQUENCE valueset_search_quantity__id_seq OWNED BY valueset_search_quantit
 --
 
 CREATE TABLE valueset_search_reference (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
-    resource_type character varying NOT NULL,
-    logical_id character varying NOT NULL,
+    param character varying,
+    resource_type character varying,
+    _resource_type character varying DEFAULT 'ValueSet'::character varying,
+    logical_id character varying,
     url character varying
-);
+)
+INHERITS (search_reference);
 
 
 --
@@ -16519,11 +19768,13 @@ ALTER SEQUENCE valueset_search_reference__id_seq OWNED BY valueset_search_refere
 --
 
 CREATE TABLE valueset_search_string (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    resource_type character varying DEFAULT 'ValueSet'::character varying,
+    param character varying,
     value character varying
-);
+)
+INHERITS (search_string);
 
 
 --
@@ -16550,13 +19801,15 @@ ALTER SEQUENCE valueset_search_string__id_seq OWNED BY valueset_search_string._i
 --
 
 CREATE TABLE valueset_search_token (
-    _id integer NOT NULL,
+    _id integer,
     resource_id uuid,
-    param character varying NOT NULL,
+    param character varying,
+    resource_type character varying DEFAULT 'ValueSet'::character varying,
     namespace character varying,
     code character varying,
     text character varying
-);
+)
+INHERITS (search_token);
 
 
 --
@@ -16671,6 +19924,13 @@ ALTER TABLE ONLY adversereaction_search_date ALTER COLUMN _id SET DEFAULT nextva
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY adversereaction_search_number ALTER COLUMN _id SET DEFAULT nextval('adversereaction_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY adversereaction_search_quantity ALTER COLUMN _id SET DEFAULT nextval('adversereaction_search_quantity__id_seq'::regclass);
 
 
@@ -16714,6 +19974,13 @@ ALTER TABLE ONLY alert_references ALTER COLUMN _id SET DEFAULT nextval('alert_re
 --
 
 ALTER TABLE ONLY alert_search_date ALTER COLUMN _id SET DEFAULT nextval('alert_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY alert_search_number ALTER COLUMN _id SET DEFAULT nextval('alert_search_number__id_seq'::regclass);
 
 
 --
@@ -16769,6 +20036,13 @@ ALTER TABLE ONLY allergyintolerance_search_date ALTER COLUMN _id SET DEFAULT nex
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY allergyintolerance_search_number ALTER COLUMN _id SET DEFAULT nextval('allergyintolerance_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY allergyintolerance_search_quantity ALTER COLUMN _id SET DEFAULT nextval('allergyintolerance_search_quantity__id_seq'::regclass);
 
 
@@ -16812,6 +20086,13 @@ ALTER TABLE ONLY careplan_references ALTER COLUMN _id SET DEFAULT nextval('carep
 --
 
 ALTER TABLE ONLY careplan_search_date ALTER COLUMN _id SET DEFAULT nextval('careplan_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY careplan_search_number ALTER COLUMN _id SET DEFAULT nextval('careplan_search_number__id_seq'::regclass);
 
 
 --
@@ -16867,6 +20148,13 @@ ALTER TABLE ONLY composition_search_date ALTER COLUMN _id SET DEFAULT nextval('c
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY composition_search_number ALTER COLUMN _id SET DEFAULT nextval('composition_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY composition_search_quantity ALTER COLUMN _id SET DEFAULT nextval('composition_search_quantity__id_seq'::regclass);
 
 
@@ -16910,6 +20198,13 @@ ALTER TABLE ONLY conceptmap_references ALTER COLUMN _id SET DEFAULT nextval('con
 --
 
 ALTER TABLE ONLY conceptmap_search_date ALTER COLUMN _id SET DEFAULT nextval('conceptmap_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY conceptmap_search_number ALTER COLUMN _id SET DEFAULT nextval('conceptmap_search_number__id_seq'::regclass);
 
 
 --
@@ -16965,6 +20260,13 @@ ALTER TABLE ONLY condition_search_date ALTER COLUMN _id SET DEFAULT nextval('con
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY condition_search_number ALTER COLUMN _id SET DEFAULT nextval('condition_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY condition_search_quantity ALTER COLUMN _id SET DEFAULT nextval('condition_search_quantity__id_seq'::regclass);
 
 
@@ -17008,6 +20310,13 @@ ALTER TABLE ONLY conformance_references ALTER COLUMN _id SET DEFAULT nextval('co
 --
 
 ALTER TABLE ONLY conformance_search_date ALTER COLUMN _id SET DEFAULT nextval('conformance_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY conformance_search_number ALTER COLUMN _id SET DEFAULT nextval('conformance_search_number__id_seq'::regclass);
 
 
 --
@@ -17063,6 +20372,13 @@ ALTER TABLE ONLY device_search_date ALTER COLUMN _id SET DEFAULT nextval('device
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY device_search_number ALTER COLUMN _id SET DEFAULT nextval('device_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY device_search_quantity ALTER COLUMN _id SET DEFAULT nextval('device_search_quantity__id_seq'::regclass);
 
 
@@ -17106,6 +20422,13 @@ ALTER TABLE ONLY deviceobservationreport_references ALTER COLUMN _id SET DEFAULT
 --
 
 ALTER TABLE ONLY deviceobservationreport_search_date ALTER COLUMN _id SET DEFAULT nextval('deviceobservationreport_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY deviceobservationreport_search_number ALTER COLUMN _id SET DEFAULT nextval('deviceobservationreport_search_number__id_seq'::regclass);
 
 
 --
@@ -17161,6 +20484,13 @@ ALTER TABLE ONLY diagnosticorder_search_date ALTER COLUMN _id SET DEFAULT nextva
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY diagnosticorder_search_number ALTER COLUMN _id SET DEFAULT nextval('diagnosticorder_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY diagnosticorder_search_quantity ALTER COLUMN _id SET DEFAULT nextval('diagnosticorder_search_quantity__id_seq'::regclass);
 
 
@@ -17204,6 +20534,13 @@ ALTER TABLE ONLY diagnosticreport_references ALTER COLUMN _id SET DEFAULT nextva
 --
 
 ALTER TABLE ONLY diagnosticreport_search_date ALTER COLUMN _id SET DEFAULT nextval('diagnosticreport_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY diagnosticreport_search_number ALTER COLUMN _id SET DEFAULT nextval('diagnosticreport_search_number__id_seq'::regclass);
 
 
 --
@@ -17259,6 +20596,13 @@ ALTER TABLE ONLY documentmanifest_search_date ALTER COLUMN _id SET DEFAULT nextv
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY documentmanifest_search_number ALTER COLUMN _id SET DEFAULT nextval('documentmanifest_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY documentmanifest_search_quantity ALTER COLUMN _id SET DEFAULT nextval('documentmanifest_search_quantity__id_seq'::regclass);
 
 
@@ -17302,6 +20646,13 @@ ALTER TABLE ONLY documentreference_references ALTER COLUMN _id SET DEFAULT nextv
 --
 
 ALTER TABLE ONLY documentreference_search_date ALTER COLUMN _id SET DEFAULT nextval('documentreference_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY documentreference_search_number ALTER COLUMN _id SET DEFAULT nextval('documentreference_search_number__id_seq'::regclass);
 
 
 --
@@ -17357,6 +20708,13 @@ ALTER TABLE ONLY encounter_search_date ALTER COLUMN _id SET DEFAULT nextval('enc
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY encounter_search_number ALTER COLUMN _id SET DEFAULT nextval('encounter_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY encounter_search_quantity ALTER COLUMN _id SET DEFAULT nextval('encounter_search_quantity__id_seq'::regclass);
 
 
@@ -17400,6 +20758,13 @@ ALTER TABLE ONLY familyhistory_references ALTER COLUMN _id SET DEFAULT nextval('
 --
 
 ALTER TABLE ONLY familyhistory_search_date ALTER COLUMN _id SET DEFAULT nextval('familyhistory_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY familyhistory_search_number ALTER COLUMN _id SET DEFAULT nextval('familyhistory_search_number__id_seq'::regclass);
 
 
 --
@@ -17455,6 +20820,13 @@ ALTER TABLE ONLY group_search_date ALTER COLUMN _id SET DEFAULT nextval('group_s
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY group_search_number ALTER COLUMN _id SET DEFAULT nextval('group_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY group_search_quantity ALTER COLUMN _id SET DEFAULT nextval('group_search_quantity__id_seq'::regclass);
 
 
@@ -17498,6 +20870,13 @@ ALTER TABLE ONLY imagingstudy_references ALTER COLUMN _id SET DEFAULT nextval('i
 --
 
 ALTER TABLE ONLY imagingstudy_search_date ALTER COLUMN _id SET DEFAULT nextval('imagingstudy_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY imagingstudy_search_number ALTER COLUMN _id SET DEFAULT nextval('imagingstudy_search_number__id_seq'::regclass);
 
 
 --
@@ -17553,6 +20932,13 @@ ALTER TABLE ONLY immunization_search_date ALTER COLUMN _id SET DEFAULT nextval('
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY immunization_search_number ALTER COLUMN _id SET DEFAULT nextval('immunization_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY immunization_search_quantity ALTER COLUMN _id SET DEFAULT nextval('immunization_search_quantity__id_seq'::regclass);
 
 
@@ -17596,6 +20982,13 @@ ALTER TABLE ONLY immunizationrecommendation_references ALTER COLUMN _id SET DEFA
 --
 
 ALTER TABLE ONLY immunizationrecommendation_search_date ALTER COLUMN _id SET DEFAULT nextval('immunizationrecommendation_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY immunizationrecommendation_search_number ALTER COLUMN _id SET DEFAULT nextval('immunizationrecommendation_search_number__id_seq'::regclass);
 
 
 --
@@ -17651,6 +21044,13 @@ ALTER TABLE ONLY list_search_date ALTER COLUMN _id SET DEFAULT nextval('list_sea
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY list_search_number ALTER COLUMN _id SET DEFAULT nextval('list_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY list_search_quantity ALTER COLUMN _id SET DEFAULT nextval('list_search_quantity__id_seq'::regclass);
 
 
@@ -17694,6 +21094,13 @@ ALTER TABLE ONLY location_references ALTER COLUMN _id SET DEFAULT nextval('locat
 --
 
 ALTER TABLE ONLY location_search_date ALTER COLUMN _id SET DEFAULT nextval('location_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY location_search_number ALTER COLUMN _id SET DEFAULT nextval('location_search_number__id_seq'::regclass);
 
 
 --
@@ -17749,6 +21156,13 @@ ALTER TABLE ONLY media_search_date ALTER COLUMN _id SET DEFAULT nextval('media_s
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY media_search_number ALTER COLUMN _id SET DEFAULT nextval('media_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY media_search_quantity ALTER COLUMN _id SET DEFAULT nextval('media_search_quantity__id_seq'::regclass);
 
 
@@ -17792,6 +21206,13 @@ ALTER TABLE ONLY medication_references ALTER COLUMN _id SET DEFAULT nextval('med
 --
 
 ALTER TABLE ONLY medication_search_date ALTER COLUMN _id SET DEFAULT nextval('medication_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY medication_search_number ALTER COLUMN _id SET DEFAULT nextval('medication_search_number__id_seq'::regclass);
 
 
 --
@@ -17847,6 +21268,13 @@ ALTER TABLE ONLY medicationadministration_search_date ALTER COLUMN _id SET DEFAU
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY medicationadministration_search_number ALTER COLUMN _id SET DEFAULT nextval('medicationadministration_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY medicationadministration_search_quantity ALTER COLUMN _id SET DEFAULT nextval('medicationadministration_search_quantity__id_seq'::regclass);
 
 
@@ -17890,6 +21318,13 @@ ALTER TABLE ONLY medicationdispense_references ALTER COLUMN _id SET DEFAULT next
 --
 
 ALTER TABLE ONLY medicationdispense_search_date ALTER COLUMN _id SET DEFAULT nextval('medicationdispense_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY medicationdispense_search_number ALTER COLUMN _id SET DEFAULT nextval('medicationdispense_search_number__id_seq'::regclass);
 
 
 --
@@ -17945,6 +21380,13 @@ ALTER TABLE ONLY medicationprescription_search_date ALTER COLUMN _id SET DEFAULT
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY medicationprescription_search_number ALTER COLUMN _id SET DEFAULT nextval('medicationprescription_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY medicationprescription_search_quantity ALTER COLUMN _id SET DEFAULT nextval('medicationprescription_search_quantity__id_seq'::regclass);
 
 
@@ -17988,6 +21430,13 @@ ALTER TABLE ONLY medicationstatement_references ALTER COLUMN _id SET DEFAULT nex
 --
 
 ALTER TABLE ONLY medicationstatement_search_date ALTER COLUMN _id SET DEFAULT nextval('medicationstatement_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY medicationstatement_search_number ALTER COLUMN _id SET DEFAULT nextval('medicationstatement_search_number__id_seq'::regclass);
 
 
 --
@@ -18043,6 +21492,13 @@ ALTER TABLE ONLY messageheader_search_date ALTER COLUMN _id SET DEFAULT nextval(
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY messageheader_search_number ALTER COLUMN _id SET DEFAULT nextval('messageheader_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY messageheader_search_quantity ALTER COLUMN _id SET DEFAULT nextval('messageheader_search_quantity__id_seq'::regclass);
 
 
@@ -18086,6 +21542,13 @@ ALTER TABLE ONLY observation_references ALTER COLUMN _id SET DEFAULT nextval('ob
 --
 
 ALTER TABLE ONLY observation_search_date ALTER COLUMN _id SET DEFAULT nextval('observation_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY observation_search_number ALTER COLUMN _id SET DEFAULT nextval('observation_search_number__id_seq'::regclass);
 
 
 --
@@ -18141,6 +21604,13 @@ ALTER TABLE ONLY operationoutcome_search_date ALTER COLUMN _id SET DEFAULT nextv
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY operationoutcome_search_number ALTER COLUMN _id SET DEFAULT nextval('operationoutcome_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY operationoutcome_search_quantity ALTER COLUMN _id SET DEFAULT nextval('operationoutcome_search_quantity__id_seq'::regclass);
 
 
@@ -18184,6 +21654,13 @@ ALTER TABLE ONLY order_references ALTER COLUMN _id SET DEFAULT nextval('order_re
 --
 
 ALTER TABLE ONLY order_search_date ALTER COLUMN _id SET DEFAULT nextval('order_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY order_search_number ALTER COLUMN _id SET DEFAULT nextval('order_search_number__id_seq'::regclass);
 
 
 --
@@ -18239,6 +21716,13 @@ ALTER TABLE ONLY orderresponse_search_date ALTER COLUMN _id SET DEFAULT nextval(
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY orderresponse_search_number ALTER COLUMN _id SET DEFAULT nextval('orderresponse_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY orderresponse_search_quantity ALTER COLUMN _id SET DEFAULT nextval('orderresponse_search_quantity__id_seq'::regclass);
 
 
@@ -18282,6 +21766,13 @@ ALTER TABLE ONLY organization_references ALTER COLUMN _id SET DEFAULT nextval('o
 --
 
 ALTER TABLE ONLY organization_search_date ALTER COLUMN _id SET DEFAULT nextval('organization_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY organization_search_number ALTER COLUMN _id SET DEFAULT nextval('organization_search_number__id_seq'::regclass);
 
 
 --
@@ -18337,6 +21828,13 @@ ALTER TABLE ONLY other_search_date ALTER COLUMN _id SET DEFAULT nextval('other_s
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY other_search_number ALTER COLUMN _id SET DEFAULT nextval('other_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY other_search_quantity ALTER COLUMN _id SET DEFAULT nextval('other_search_quantity__id_seq'::regclass);
 
 
@@ -18380,6 +21878,13 @@ ALTER TABLE ONLY patient_references ALTER COLUMN _id SET DEFAULT nextval('patien
 --
 
 ALTER TABLE ONLY patient_search_date ALTER COLUMN _id SET DEFAULT nextval('patient_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY patient_search_number ALTER COLUMN _id SET DEFAULT nextval('patient_search_number__id_seq'::regclass);
 
 
 --
@@ -18435,6 +21940,13 @@ ALTER TABLE ONLY practitioner_search_date ALTER COLUMN _id SET DEFAULT nextval('
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY practitioner_search_number ALTER COLUMN _id SET DEFAULT nextval('practitioner_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY practitioner_search_quantity ALTER COLUMN _id SET DEFAULT nextval('practitioner_search_quantity__id_seq'::regclass);
 
 
@@ -18478,6 +21990,13 @@ ALTER TABLE ONLY procedure_references ALTER COLUMN _id SET DEFAULT nextval('proc
 --
 
 ALTER TABLE ONLY procedure_search_date ALTER COLUMN _id SET DEFAULT nextval('procedure_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY procedure_search_number ALTER COLUMN _id SET DEFAULT nextval('procedure_search_number__id_seq'::regclass);
 
 
 --
@@ -18533,6 +22052,13 @@ ALTER TABLE ONLY profile_search_date ALTER COLUMN _id SET DEFAULT nextval('profi
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY profile_search_number ALTER COLUMN _id SET DEFAULT nextval('profile_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY profile_search_quantity ALTER COLUMN _id SET DEFAULT nextval('profile_search_quantity__id_seq'::regclass);
 
 
@@ -18576,6 +22102,13 @@ ALTER TABLE ONLY provenance_references ALTER COLUMN _id SET DEFAULT nextval('pro
 --
 
 ALTER TABLE ONLY provenance_search_date ALTER COLUMN _id SET DEFAULT nextval('provenance_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY provenance_search_number ALTER COLUMN _id SET DEFAULT nextval('provenance_search_number__id_seq'::regclass);
 
 
 --
@@ -18631,6 +22164,13 @@ ALTER TABLE ONLY query_search_date ALTER COLUMN _id SET DEFAULT nextval('query_s
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY query_search_number ALTER COLUMN _id SET DEFAULT nextval('query_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY query_search_quantity ALTER COLUMN _id SET DEFAULT nextval('query_search_quantity__id_seq'::regclass);
 
 
@@ -18680,6 +22220,13 @@ ALTER TABLE ONLY questionnaire_search_date ALTER COLUMN _id SET DEFAULT nextval(
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY questionnaire_search_number ALTER COLUMN _id SET DEFAULT nextval('questionnaire_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY questionnaire_search_quantity ALTER COLUMN _id SET DEFAULT nextval('questionnaire_search_quantity__id_seq'::regclass);
 
 
@@ -18715,6 +22262,13 @@ ALTER TABLE ONLY questionnaire_sort ALTER COLUMN _id SET DEFAULT nextval('questi
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY "references" ALTER COLUMN _id SET DEFAULT nextval('references__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY relatedperson_references ALTER COLUMN _id SET DEFAULT nextval('relatedperson_references__id_seq'::regclass);
 
 
@@ -18723,6 +22277,13 @@ ALTER TABLE ONLY relatedperson_references ALTER COLUMN _id SET DEFAULT nextval('
 --
 
 ALTER TABLE ONLY relatedperson_search_date ALTER COLUMN _id SET DEFAULT nextval('relatedperson_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY relatedperson_search_number ALTER COLUMN _id SET DEFAULT nextval('relatedperson_search_number__id_seq'::regclass);
 
 
 --
@@ -18764,6 +22325,48 @@ ALTER TABLE ONLY relatedperson_sort ALTER COLUMN _id SET DEFAULT nextval('relate
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY search_date ALTER COLUMN _id SET DEFAULT nextval('search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY search_number ALTER COLUMN _id SET DEFAULT nextval('search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY search_quantity ALTER COLUMN _id SET DEFAULT nextval('search_quantity__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY search_reference ALTER COLUMN _id SET DEFAULT nextval('search_reference__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY search_string ALTER COLUMN _id SET DEFAULT nextval('search_string__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY search_token ALTER COLUMN _id SET DEFAULT nextval('search_token__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY securityevent_references ALTER COLUMN _id SET DEFAULT nextval('securityevent_references__id_seq'::regclass);
 
 
@@ -18772,6 +22375,13 @@ ALTER TABLE ONLY securityevent_references ALTER COLUMN _id SET DEFAULT nextval('
 --
 
 ALTER TABLE ONLY securityevent_search_date ALTER COLUMN _id SET DEFAULT nextval('securityevent_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY securityevent_search_number ALTER COLUMN _id SET DEFAULT nextval('securityevent_search_number__id_seq'::regclass);
 
 
 --
@@ -18827,6 +22437,13 @@ ALTER TABLE ONLY specimen_search_date ALTER COLUMN _id SET DEFAULT nextval('spec
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY specimen_search_number ALTER COLUMN _id SET DEFAULT nextval('specimen_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY specimen_search_quantity ALTER COLUMN _id SET DEFAULT nextval('specimen_search_quantity__id_seq'::regclass);
 
 
@@ -18870,6 +22487,13 @@ ALTER TABLE ONLY substance_references ALTER COLUMN _id SET DEFAULT nextval('subs
 --
 
 ALTER TABLE ONLY substance_search_date ALTER COLUMN _id SET DEFAULT nextval('substance_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY substance_search_number ALTER COLUMN _id SET DEFAULT nextval('substance_search_number__id_seq'::regclass);
 
 
 --
@@ -18925,6 +22549,13 @@ ALTER TABLE ONLY supply_search_date ALTER COLUMN _id SET DEFAULT nextval('supply
 -- Name: _id; Type: DEFAULT; Schema: public; Owner: -
 --
 
+ALTER TABLE ONLY supply_search_number ALTER COLUMN _id SET DEFAULT nextval('supply_search_number__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
 ALTER TABLE ONLY supply_search_quantity ALTER COLUMN _id SET DEFAULT nextval('supply_search_quantity__id_seq'::regclass);
 
 
@@ -18968,6 +22599,13 @@ ALTER TABLE ONLY valueset_references ALTER COLUMN _id SET DEFAULT nextval('value
 --
 
 ALTER TABLE ONLY valueset_search_date ALTER COLUMN _id SET DEFAULT nextval('valueset_search_date__id_seq'::regclass);
+
+
+--
+-- Name: _id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY valueset_search_number ALTER COLUMN _id SET DEFAULT nextval('valueset_search_number__id_seq'::regclass);
 
 
 --
@@ -19292,6 +22930,21 @@ COPY datatypes (version, type, kind, extension, restriction_base, documentation)
 0.12	string-primitive	\N	\N	\N	\N
 0.12	Attachment	\N	\N	\N	\N
 0.12	CodeableConcept	\N	\N	\N	\N
+\.
+
+
+--
+-- Data for Name: hardcoded_complex_params; Type: TABLE DATA; Schema: fhir; Owner: -
+--
+
+COPY hardcoded_complex_params (path, type) FROM stdin;
+{ConceptMap,concept,map,product,concept}	uri
+{DiagnosticOrder,item,event,dateTime}	dataTime
+{DiagnosticOrder,item,event,status}	code
+{Patient,name,family}	string
+{Patient,name,given}	string
+{Provenance,period,end}	dateTime
+{Provenance,period,start}	dataTime
 \.
 
 
@@ -21259,25 +24912,16 @@ SELECT pg_catalog.setval('resource_search_params__id_seq', 439, true);
 
 
 --
--- Data for Name: type_to_pg_type; Type: TABLE DATA; Schema: fhir; Owner: -
+-- Data for Name: search_type_to_type; Type: TABLE DATA; Schema: fhir; Owner: -
 --
 
-COPY type_to_pg_type (type, pg_type) FROM stdin;
-code	varchar
-date_time	timestamp
-string	varchar
-text	text
-uri	varchar
-datetime	timestamp
-instant	timestamp
-boolean	boolean
-base64_binary	bytea
-integer	integer
-decimal	decimal
-sampled_data_data_type	text
-date	date
-id	varchar
-oid	varchar
+COPY search_type_to_type (stp, tp) FROM stdin;
+date	{date,dateTime,instant,Period,Schedule}
+token	{boolean,code,CodeableConcept,Coding,Identifier,oid,Resource,string,uri}
+number	{integer,decimal,Duration,Quantity}
+quantity	{Quantity}
+reference	{ResourceReference}
+string	{Address,Attachment,CodeableConcept,Contact,HumanName,Period,Quantity,Ratio,Resource,SampledData,string,uri}
 \.
 
 
@@ -21303,7 +24947,7 @@ COPY adversereaction_history (version_id, logical_id, resource_type, updated, pu
 -- Data for Name: adversereaction_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY adversereaction_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY adversereaction_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -21318,7 +24962,7 @@ SELECT pg_catalog.setval('adversereaction_references__id_seq', 1, false);
 -- Data for Name: adversereaction_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY adversereaction_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY adversereaction_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -21330,10 +24974,25 @@ SELECT pg_catalog.setval('adversereaction_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: adversereaction_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY adversereaction_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: adversereaction_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('adversereaction_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: adversereaction_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY adversereaction_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY adversereaction_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -21348,7 +25007,7 @@ SELECT pg_catalog.setval('adversereaction_search_quantity__id_seq', 1, false);
 -- Data for Name: adversereaction_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY adversereaction_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY adversereaction_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -21363,7 +25022,7 @@ SELECT pg_catalog.setval('adversereaction_search_reference__id_seq', 1, false);
 -- Data for Name: adversereaction_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY adversereaction_search_string (_id, resource_id, param, value) FROM stdin;
+COPY adversereaction_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -21378,7 +25037,7 @@ SELECT pg_catalog.setval('adversereaction_search_string__id_seq', 1, false);
 -- Data for Name: adversereaction_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY adversereaction_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY adversereaction_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -21440,7 +25099,7 @@ COPY alert_history (version_id, logical_id, resource_type, updated, published, c
 -- Data for Name: alert_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY alert_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY alert_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -21455,7 +25114,7 @@ SELECT pg_catalog.setval('alert_references__id_seq', 1, false);
 -- Data for Name: alert_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY alert_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY alert_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -21467,10 +25126,25 @@ SELECT pg_catalog.setval('alert_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: alert_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY alert_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: alert_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('alert_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: alert_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY alert_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY alert_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -21485,7 +25159,7 @@ SELECT pg_catalog.setval('alert_search_quantity__id_seq', 1, false);
 -- Data for Name: alert_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY alert_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY alert_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -21500,7 +25174,7 @@ SELECT pg_catalog.setval('alert_search_reference__id_seq', 1, false);
 -- Data for Name: alert_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY alert_search_string (_id, resource_id, param, value) FROM stdin;
+COPY alert_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -21515,7 +25189,7 @@ SELECT pg_catalog.setval('alert_search_string__id_seq', 1, false);
 -- Data for Name: alert_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY alert_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY alert_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -21577,7 +25251,7 @@ COPY allergyintolerance_history (version_id, logical_id, resource_type, updated,
 -- Data for Name: allergyintolerance_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY allergyintolerance_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY allergyintolerance_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -21592,7 +25266,7 @@ SELECT pg_catalog.setval('allergyintolerance_references__id_seq', 1, false);
 -- Data for Name: allergyintolerance_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY allergyintolerance_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY allergyintolerance_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -21604,10 +25278,25 @@ SELECT pg_catalog.setval('allergyintolerance_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: allergyintolerance_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY allergyintolerance_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: allergyintolerance_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('allergyintolerance_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: allergyintolerance_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY allergyintolerance_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY allergyintolerance_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -21622,7 +25311,7 @@ SELECT pg_catalog.setval('allergyintolerance_search_quantity__id_seq', 1, false)
 -- Data for Name: allergyintolerance_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY allergyintolerance_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY allergyintolerance_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -21637,7 +25326,7 @@ SELECT pg_catalog.setval('allergyintolerance_search_reference__id_seq', 1, false
 -- Data for Name: allergyintolerance_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY allergyintolerance_search_string (_id, resource_id, param, value) FROM stdin;
+COPY allergyintolerance_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -21652,7 +25341,7 @@ SELECT pg_catalog.setval('allergyintolerance_search_string__id_seq', 1, false);
 -- Data for Name: allergyintolerance_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY allergyintolerance_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY allergyintolerance_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -21714,7 +25403,7 @@ COPY careplan_history (version_id, logical_id, resource_type, updated, published
 -- Data for Name: careplan_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY careplan_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY careplan_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -21729,7 +25418,7 @@ SELECT pg_catalog.setval('careplan_references__id_seq', 1, false);
 -- Data for Name: careplan_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY careplan_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY careplan_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -21741,10 +25430,25 @@ SELECT pg_catalog.setval('careplan_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: careplan_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY careplan_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: careplan_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('careplan_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: careplan_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY careplan_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY careplan_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -21759,7 +25463,7 @@ SELECT pg_catalog.setval('careplan_search_quantity__id_seq', 1, false);
 -- Data for Name: careplan_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY careplan_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY careplan_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -21774,7 +25478,7 @@ SELECT pg_catalog.setval('careplan_search_reference__id_seq', 1, false);
 -- Data for Name: careplan_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY careplan_search_string (_id, resource_id, param, value) FROM stdin;
+COPY careplan_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -21789,7 +25493,7 @@ SELECT pg_catalog.setval('careplan_search_string__id_seq', 1, false);
 -- Data for Name: careplan_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY careplan_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY careplan_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -21851,7 +25555,7 @@ COPY composition_history (version_id, logical_id, resource_type, updated, publis
 -- Data for Name: composition_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY composition_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY composition_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -21866,7 +25570,7 @@ SELECT pg_catalog.setval('composition_references__id_seq', 1, false);
 -- Data for Name: composition_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY composition_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY composition_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -21878,10 +25582,25 @@ SELECT pg_catalog.setval('composition_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: composition_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY composition_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: composition_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('composition_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: composition_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY composition_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY composition_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -21896,7 +25615,7 @@ SELECT pg_catalog.setval('composition_search_quantity__id_seq', 1, false);
 -- Data for Name: composition_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY composition_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY composition_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -21911,7 +25630,7 @@ SELECT pg_catalog.setval('composition_search_reference__id_seq', 1, false);
 -- Data for Name: composition_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY composition_search_string (_id, resource_id, param, value) FROM stdin;
+COPY composition_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -21926,7 +25645,7 @@ SELECT pg_catalog.setval('composition_search_string__id_seq', 1, false);
 -- Data for Name: composition_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY composition_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY composition_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -21988,7 +25707,7 @@ COPY conceptmap_history (version_id, logical_id, resource_type, updated, publish
 -- Data for Name: conceptmap_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY conceptmap_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY conceptmap_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -22003,7 +25722,7 @@ SELECT pg_catalog.setval('conceptmap_references__id_seq', 1, false);
 -- Data for Name: conceptmap_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY conceptmap_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY conceptmap_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -22015,10 +25734,25 @@ SELECT pg_catalog.setval('conceptmap_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: conceptmap_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY conceptmap_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: conceptmap_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('conceptmap_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: conceptmap_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY conceptmap_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY conceptmap_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -22033,7 +25767,7 @@ SELECT pg_catalog.setval('conceptmap_search_quantity__id_seq', 1, false);
 -- Data for Name: conceptmap_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY conceptmap_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY conceptmap_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -22048,7 +25782,7 @@ SELECT pg_catalog.setval('conceptmap_search_reference__id_seq', 1, false);
 -- Data for Name: conceptmap_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY conceptmap_search_string (_id, resource_id, param, value) FROM stdin;
+COPY conceptmap_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -22063,7 +25797,7 @@ SELECT pg_catalog.setval('conceptmap_search_string__id_seq', 1, false);
 -- Data for Name: conceptmap_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY conceptmap_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY conceptmap_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -22125,7 +25859,7 @@ COPY condition_history (version_id, logical_id, resource_type, updated, publishe
 -- Data for Name: condition_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY condition_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY condition_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -22140,7 +25874,7 @@ SELECT pg_catalog.setval('condition_references__id_seq', 1, false);
 -- Data for Name: condition_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY condition_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY condition_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -22152,10 +25886,25 @@ SELECT pg_catalog.setval('condition_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: condition_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY condition_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: condition_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('condition_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: condition_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY condition_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY condition_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -22170,7 +25919,7 @@ SELECT pg_catalog.setval('condition_search_quantity__id_seq', 1, false);
 -- Data for Name: condition_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY condition_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY condition_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -22185,7 +25934,7 @@ SELECT pg_catalog.setval('condition_search_reference__id_seq', 1, false);
 -- Data for Name: condition_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY condition_search_string (_id, resource_id, param, value) FROM stdin;
+COPY condition_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -22200,7 +25949,7 @@ SELECT pg_catalog.setval('condition_search_string__id_seq', 1, false);
 -- Data for Name: condition_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY condition_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY condition_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -22262,7 +26011,7 @@ COPY conformance_history (version_id, logical_id, resource_type, updated, publis
 -- Data for Name: conformance_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY conformance_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY conformance_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -22277,7 +26026,7 @@ SELECT pg_catalog.setval('conformance_references__id_seq', 1, false);
 -- Data for Name: conformance_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY conformance_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY conformance_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -22289,10 +26038,25 @@ SELECT pg_catalog.setval('conformance_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: conformance_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY conformance_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: conformance_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('conformance_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: conformance_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY conformance_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY conformance_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -22307,7 +26071,7 @@ SELECT pg_catalog.setval('conformance_search_quantity__id_seq', 1, false);
 -- Data for Name: conformance_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY conformance_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY conformance_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -22322,7 +26086,7 @@ SELECT pg_catalog.setval('conformance_search_reference__id_seq', 1, false);
 -- Data for Name: conformance_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY conformance_search_string (_id, resource_id, param, value) FROM stdin;
+COPY conformance_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -22337,7 +26101,7 @@ SELECT pg_catalog.setval('conformance_search_string__id_seq', 1, false);
 -- Data for Name: conformance_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY conformance_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY conformance_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -22399,7 +26163,7 @@ COPY device_history (version_id, logical_id, resource_type, updated, published, 
 -- Data for Name: device_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY device_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY device_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -22414,7 +26178,7 @@ SELECT pg_catalog.setval('device_references__id_seq', 1, false);
 -- Data for Name: device_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY device_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY device_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -22426,10 +26190,25 @@ SELECT pg_catalog.setval('device_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: device_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY device_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: device_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('device_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: device_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY device_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY device_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -22444,7 +26223,7 @@ SELECT pg_catalog.setval('device_search_quantity__id_seq', 1, false);
 -- Data for Name: device_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY device_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY device_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -22459,7 +26238,7 @@ SELECT pg_catalog.setval('device_search_reference__id_seq', 1, false);
 -- Data for Name: device_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY device_search_string (_id, resource_id, param, value) FROM stdin;
+COPY device_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -22474,7 +26253,7 @@ SELECT pg_catalog.setval('device_search_string__id_seq', 1, false);
 -- Data for Name: device_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY device_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY device_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -22536,7 +26315,7 @@ COPY deviceobservationreport_history (version_id, logical_id, resource_type, upd
 -- Data for Name: deviceobservationreport_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY deviceobservationreport_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY deviceobservationreport_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -22551,7 +26330,7 @@ SELECT pg_catalog.setval('deviceobservationreport_references__id_seq', 1, false)
 -- Data for Name: deviceobservationreport_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY deviceobservationreport_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY deviceobservationreport_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -22563,10 +26342,25 @@ SELECT pg_catalog.setval('deviceobservationreport_search_date__id_seq', 1, false
 
 
 --
+-- Data for Name: deviceobservationreport_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY deviceobservationreport_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: deviceobservationreport_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('deviceobservationreport_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: deviceobservationreport_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY deviceobservationreport_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY deviceobservationreport_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -22581,7 +26375,7 @@ SELECT pg_catalog.setval('deviceobservationreport_search_quantity__id_seq', 1, f
 -- Data for Name: deviceobservationreport_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY deviceobservationreport_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY deviceobservationreport_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -22596,7 +26390,7 @@ SELECT pg_catalog.setval('deviceobservationreport_search_reference__id_seq', 1, 
 -- Data for Name: deviceobservationreport_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY deviceobservationreport_search_string (_id, resource_id, param, value) FROM stdin;
+COPY deviceobservationreport_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -22611,7 +26405,7 @@ SELECT pg_catalog.setval('deviceobservationreport_search_string__id_seq', 1, fal
 -- Data for Name: deviceobservationreport_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY deviceobservationreport_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY deviceobservationreport_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -22673,7 +26467,7 @@ COPY diagnosticorder_history (version_id, logical_id, resource_type, updated, pu
 -- Data for Name: diagnosticorder_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY diagnosticorder_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY diagnosticorder_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -22688,7 +26482,7 @@ SELECT pg_catalog.setval('diagnosticorder_references__id_seq', 1, false);
 -- Data for Name: diagnosticorder_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY diagnosticorder_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY diagnosticorder_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -22700,10 +26494,25 @@ SELECT pg_catalog.setval('diagnosticorder_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: diagnosticorder_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY diagnosticorder_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: diagnosticorder_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('diagnosticorder_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: diagnosticorder_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY diagnosticorder_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY diagnosticorder_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -22718,7 +26527,7 @@ SELECT pg_catalog.setval('diagnosticorder_search_quantity__id_seq', 1, false);
 -- Data for Name: diagnosticorder_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY diagnosticorder_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY diagnosticorder_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -22733,7 +26542,7 @@ SELECT pg_catalog.setval('diagnosticorder_search_reference__id_seq', 1, false);
 -- Data for Name: diagnosticorder_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY diagnosticorder_search_string (_id, resource_id, param, value) FROM stdin;
+COPY diagnosticorder_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -22748,7 +26557,7 @@ SELECT pg_catalog.setval('diagnosticorder_search_string__id_seq', 1, false);
 -- Data for Name: diagnosticorder_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY diagnosticorder_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY diagnosticorder_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -22810,7 +26619,7 @@ COPY diagnosticreport_history (version_id, logical_id, resource_type, updated, p
 -- Data for Name: diagnosticreport_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY diagnosticreport_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY diagnosticreport_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -22825,7 +26634,7 @@ SELECT pg_catalog.setval('diagnosticreport_references__id_seq', 1, false);
 -- Data for Name: diagnosticreport_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY diagnosticreport_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY diagnosticreport_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -22837,10 +26646,25 @@ SELECT pg_catalog.setval('diagnosticreport_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: diagnosticreport_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY diagnosticreport_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: diagnosticreport_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('diagnosticreport_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: diagnosticreport_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY diagnosticreport_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY diagnosticreport_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -22855,7 +26679,7 @@ SELECT pg_catalog.setval('diagnosticreport_search_quantity__id_seq', 1, false);
 -- Data for Name: diagnosticreport_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY diagnosticreport_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY diagnosticreport_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -22870,7 +26694,7 @@ SELECT pg_catalog.setval('diagnosticreport_search_reference__id_seq', 1, false);
 -- Data for Name: diagnosticreport_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY diagnosticreport_search_string (_id, resource_id, param, value) FROM stdin;
+COPY diagnosticreport_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -22885,7 +26709,7 @@ SELECT pg_catalog.setval('diagnosticreport_search_string__id_seq', 1, false);
 -- Data for Name: diagnosticreport_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY diagnosticreport_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY diagnosticreport_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -22947,7 +26771,7 @@ COPY documentmanifest_history (version_id, logical_id, resource_type, updated, p
 -- Data for Name: documentmanifest_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY documentmanifest_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY documentmanifest_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -22962,7 +26786,7 @@ SELECT pg_catalog.setval('documentmanifest_references__id_seq', 1, false);
 -- Data for Name: documentmanifest_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY documentmanifest_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY documentmanifest_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -22974,10 +26798,25 @@ SELECT pg_catalog.setval('documentmanifest_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: documentmanifest_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY documentmanifest_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: documentmanifest_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('documentmanifest_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: documentmanifest_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY documentmanifest_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY documentmanifest_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -22992,7 +26831,7 @@ SELECT pg_catalog.setval('documentmanifest_search_quantity__id_seq', 1, false);
 -- Data for Name: documentmanifest_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY documentmanifest_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY documentmanifest_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -23007,7 +26846,7 @@ SELECT pg_catalog.setval('documentmanifest_search_reference__id_seq', 1, false);
 -- Data for Name: documentmanifest_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY documentmanifest_search_string (_id, resource_id, param, value) FROM stdin;
+COPY documentmanifest_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -23022,7 +26861,7 @@ SELECT pg_catalog.setval('documentmanifest_search_string__id_seq', 1, false);
 -- Data for Name: documentmanifest_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY documentmanifest_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY documentmanifest_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -23084,7 +26923,7 @@ COPY documentreference_history (version_id, logical_id, resource_type, updated, 
 -- Data for Name: documentreference_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY documentreference_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY documentreference_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -23099,7 +26938,7 @@ SELECT pg_catalog.setval('documentreference_references__id_seq', 1, false);
 -- Data for Name: documentreference_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY documentreference_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY documentreference_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -23111,10 +26950,25 @@ SELECT pg_catalog.setval('documentreference_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: documentreference_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY documentreference_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: documentreference_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('documentreference_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: documentreference_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY documentreference_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY documentreference_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -23129,7 +26983,7 @@ SELECT pg_catalog.setval('documentreference_search_quantity__id_seq', 1, false);
 -- Data for Name: documentreference_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY documentreference_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY documentreference_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -23144,7 +26998,7 @@ SELECT pg_catalog.setval('documentreference_search_reference__id_seq', 1, false)
 -- Data for Name: documentreference_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY documentreference_search_string (_id, resource_id, param, value) FROM stdin;
+COPY documentreference_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -23159,7 +27013,7 @@ SELECT pg_catalog.setval('documentreference_search_string__id_seq', 1, false);
 -- Data for Name: documentreference_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY documentreference_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY documentreference_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -23221,7 +27075,7 @@ COPY encounter_history (version_id, logical_id, resource_type, updated, publishe
 -- Data for Name: encounter_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY encounter_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY encounter_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -23236,7 +27090,7 @@ SELECT pg_catalog.setval('encounter_references__id_seq', 1, false);
 -- Data for Name: encounter_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY encounter_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY encounter_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -23248,10 +27102,25 @@ SELECT pg_catalog.setval('encounter_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: encounter_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY encounter_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: encounter_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('encounter_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: encounter_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY encounter_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY encounter_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -23266,7 +27135,7 @@ SELECT pg_catalog.setval('encounter_search_quantity__id_seq', 1, false);
 -- Data for Name: encounter_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY encounter_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY encounter_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -23281,7 +27150,7 @@ SELECT pg_catalog.setval('encounter_search_reference__id_seq', 1, false);
 -- Data for Name: encounter_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY encounter_search_string (_id, resource_id, param, value) FROM stdin;
+COPY encounter_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -23296,7 +27165,7 @@ SELECT pg_catalog.setval('encounter_search_string__id_seq', 1, false);
 -- Data for Name: encounter_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY encounter_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY encounter_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -23358,7 +27227,7 @@ COPY familyhistory_history (version_id, logical_id, resource_type, updated, publ
 -- Data for Name: familyhistory_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY familyhistory_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY familyhistory_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -23373,7 +27242,7 @@ SELECT pg_catalog.setval('familyhistory_references__id_seq', 1, false);
 -- Data for Name: familyhistory_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY familyhistory_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY familyhistory_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -23385,10 +27254,25 @@ SELECT pg_catalog.setval('familyhistory_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: familyhistory_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY familyhistory_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: familyhistory_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('familyhistory_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: familyhistory_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY familyhistory_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY familyhistory_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -23403,7 +27287,7 @@ SELECT pg_catalog.setval('familyhistory_search_quantity__id_seq', 1, false);
 -- Data for Name: familyhistory_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY familyhistory_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY familyhistory_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -23418,7 +27302,7 @@ SELECT pg_catalog.setval('familyhistory_search_reference__id_seq', 1, false);
 -- Data for Name: familyhistory_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY familyhistory_search_string (_id, resource_id, param, value) FROM stdin;
+COPY familyhistory_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -23433,7 +27317,7 @@ SELECT pg_catalog.setval('familyhistory_search_string__id_seq', 1, false);
 -- Data for Name: familyhistory_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY familyhistory_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY familyhistory_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -23495,7 +27379,7 @@ COPY group_history (version_id, logical_id, resource_type, updated, published, c
 -- Data for Name: group_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY group_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY group_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -23510,7 +27394,7 @@ SELECT pg_catalog.setval('group_references__id_seq', 1, false);
 -- Data for Name: group_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY group_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY group_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -23522,10 +27406,25 @@ SELECT pg_catalog.setval('group_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: group_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY group_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: group_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('group_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: group_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY group_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY group_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -23540,7 +27439,7 @@ SELECT pg_catalog.setval('group_search_quantity__id_seq', 1, false);
 -- Data for Name: group_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY group_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY group_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -23555,7 +27454,7 @@ SELECT pg_catalog.setval('group_search_reference__id_seq', 1, false);
 -- Data for Name: group_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY group_search_string (_id, resource_id, param, value) FROM stdin;
+COPY group_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -23570,7 +27469,7 @@ SELECT pg_catalog.setval('group_search_string__id_seq', 1, false);
 -- Data for Name: group_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY group_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY group_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -23632,7 +27531,7 @@ COPY imagingstudy_history (version_id, logical_id, resource_type, updated, publi
 -- Data for Name: imagingstudy_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY imagingstudy_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY imagingstudy_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -23647,7 +27546,7 @@ SELECT pg_catalog.setval('imagingstudy_references__id_seq', 1, false);
 -- Data for Name: imagingstudy_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY imagingstudy_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY imagingstudy_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -23659,10 +27558,25 @@ SELECT pg_catalog.setval('imagingstudy_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: imagingstudy_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY imagingstudy_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: imagingstudy_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('imagingstudy_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: imagingstudy_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY imagingstudy_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY imagingstudy_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -23677,7 +27591,7 @@ SELECT pg_catalog.setval('imagingstudy_search_quantity__id_seq', 1, false);
 -- Data for Name: imagingstudy_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY imagingstudy_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY imagingstudy_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -23692,7 +27606,7 @@ SELECT pg_catalog.setval('imagingstudy_search_reference__id_seq', 1, false);
 -- Data for Name: imagingstudy_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY imagingstudy_search_string (_id, resource_id, param, value) FROM stdin;
+COPY imagingstudy_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -23707,7 +27621,7 @@ SELECT pg_catalog.setval('imagingstudy_search_string__id_seq', 1, false);
 -- Data for Name: imagingstudy_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY imagingstudy_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY imagingstudy_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -23769,7 +27683,7 @@ COPY immunization_history (version_id, logical_id, resource_type, updated, publi
 -- Data for Name: immunization_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY immunization_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY immunization_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -23784,7 +27698,7 @@ SELECT pg_catalog.setval('immunization_references__id_seq', 1, false);
 -- Data for Name: immunization_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY immunization_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY immunization_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -23796,10 +27710,25 @@ SELECT pg_catalog.setval('immunization_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: immunization_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY immunization_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: immunization_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('immunization_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: immunization_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY immunization_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY immunization_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -23814,7 +27743,7 @@ SELECT pg_catalog.setval('immunization_search_quantity__id_seq', 1, false);
 -- Data for Name: immunization_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY immunization_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY immunization_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -23829,7 +27758,7 @@ SELECT pg_catalog.setval('immunization_search_reference__id_seq', 1, false);
 -- Data for Name: immunization_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY immunization_search_string (_id, resource_id, param, value) FROM stdin;
+COPY immunization_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -23844,7 +27773,7 @@ SELECT pg_catalog.setval('immunization_search_string__id_seq', 1, false);
 -- Data for Name: immunization_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY immunization_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY immunization_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -23906,7 +27835,7 @@ COPY immunizationrecommendation_history (version_id, logical_id, resource_type, 
 -- Data for Name: immunizationrecommendation_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY immunizationrecommendation_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY immunizationrecommendation_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -23921,7 +27850,7 @@ SELECT pg_catalog.setval('immunizationrecommendation_references__id_seq', 1, fal
 -- Data for Name: immunizationrecommendation_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY immunizationrecommendation_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY immunizationrecommendation_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -23933,10 +27862,25 @@ SELECT pg_catalog.setval('immunizationrecommendation_search_date__id_seq', 1, fa
 
 
 --
+-- Data for Name: immunizationrecommendation_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY immunizationrecommendation_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: immunizationrecommendation_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('immunizationrecommendation_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: immunizationrecommendation_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY immunizationrecommendation_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY immunizationrecommendation_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -23951,7 +27895,7 @@ SELECT pg_catalog.setval('immunizationrecommendation_search_quantity__id_seq', 1
 -- Data for Name: immunizationrecommendation_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY immunizationrecommendation_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY immunizationrecommendation_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -23966,7 +27910,7 @@ SELECT pg_catalog.setval('immunizationrecommendation_search_reference__id_seq', 
 -- Data for Name: immunizationrecommendation_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY immunizationrecommendation_search_string (_id, resource_id, param, value) FROM stdin;
+COPY immunizationrecommendation_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -23981,7 +27925,7 @@ SELECT pg_catalog.setval('immunizationrecommendation_search_string__id_seq', 1, 
 -- Data for Name: immunizationrecommendation_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY immunizationrecommendation_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY immunizationrecommendation_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -24043,7 +27987,7 @@ COPY list_history (version_id, logical_id, resource_type, updated, published, ca
 -- Data for Name: list_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY list_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY list_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -24058,7 +28002,7 @@ SELECT pg_catalog.setval('list_references__id_seq', 1, false);
 -- Data for Name: list_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY list_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY list_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -24070,10 +28014,25 @@ SELECT pg_catalog.setval('list_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: list_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY list_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: list_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('list_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: list_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY list_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY list_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -24088,7 +28047,7 @@ SELECT pg_catalog.setval('list_search_quantity__id_seq', 1, false);
 -- Data for Name: list_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY list_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY list_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -24103,7 +28062,7 @@ SELECT pg_catalog.setval('list_search_reference__id_seq', 1, false);
 -- Data for Name: list_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY list_search_string (_id, resource_id, param, value) FROM stdin;
+COPY list_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -24118,7 +28077,7 @@ SELECT pg_catalog.setval('list_search_string__id_seq', 1, false);
 -- Data for Name: list_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY list_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY list_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -24180,7 +28139,7 @@ COPY location_history (version_id, logical_id, resource_type, updated, published
 -- Data for Name: location_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY location_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY location_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -24195,7 +28154,7 @@ SELECT pg_catalog.setval('location_references__id_seq', 1, false);
 -- Data for Name: location_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY location_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY location_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -24207,10 +28166,25 @@ SELECT pg_catalog.setval('location_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: location_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY location_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: location_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('location_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: location_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY location_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY location_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -24225,7 +28199,7 @@ SELECT pg_catalog.setval('location_search_quantity__id_seq', 1, false);
 -- Data for Name: location_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY location_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY location_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -24240,7 +28214,7 @@ SELECT pg_catalog.setval('location_search_reference__id_seq', 1, false);
 -- Data for Name: location_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY location_search_string (_id, resource_id, param, value) FROM stdin;
+COPY location_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -24255,7 +28229,7 @@ SELECT pg_catalog.setval('location_search_string__id_seq', 1, false);
 -- Data for Name: location_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY location_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY location_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -24317,7 +28291,7 @@ COPY media_history (version_id, logical_id, resource_type, updated, published, c
 -- Data for Name: media_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY media_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY media_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -24332,7 +28306,7 @@ SELECT pg_catalog.setval('media_references__id_seq', 1, false);
 -- Data for Name: media_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY media_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY media_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -24344,10 +28318,25 @@ SELECT pg_catalog.setval('media_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: media_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY media_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: media_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('media_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: media_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY media_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY media_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -24362,7 +28351,7 @@ SELECT pg_catalog.setval('media_search_quantity__id_seq', 1, false);
 -- Data for Name: media_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY media_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY media_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -24377,7 +28366,7 @@ SELECT pg_catalog.setval('media_search_reference__id_seq', 1, false);
 -- Data for Name: media_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY media_search_string (_id, resource_id, param, value) FROM stdin;
+COPY media_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -24392,7 +28381,7 @@ SELECT pg_catalog.setval('media_search_string__id_seq', 1, false);
 -- Data for Name: media_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY media_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY media_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -24454,7 +28443,7 @@ COPY medication_history (version_id, logical_id, resource_type, updated, publish
 -- Data for Name: medication_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medication_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY medication_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -24469,7 +28458,7 @@ SELECT pg_catalog.setval('medication_references__id_seq', 1, false);
 -- Data for Name: medication_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medication_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY medication_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -24481,10 +28470,25 @@ SELECT pg_catalog.setval('medication_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: medication_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY medication_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: medication_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('medication_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: medication_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medication_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY medication_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -24499,7 +28503,7 @@ SELECT pg_catalog.setval('medication_search_quantity__id_seq', 1, false);
 -- Data for Name: medication_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medication_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY medication_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -24514,7 +28518,7 @@ SELECT pg_catalog.setval('medication_search_reference__id_seq', 1, false);
 -- Data for Name: medication_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medication_search_string (_id, resource_id, param, value) FROM stdin;
+COPY medication_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -24529,7 +28533,7 @@ SELECT pg_catalog.setval('medication_search_string__id_seq', 1, false);
 -- Data for Name: medication_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medication_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY medication_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -24591,7 +28595,7 @@ COPY medicationadministration_history (version_id, logical_id, resource_type, up
 -- Data for Name: medicationadministration_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationadministration_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY medicationadministration_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -24606,7 +28610,7 @@ SELECT pg_catalog.setval('medicationadministration_references__id_seq', 1, false
 -- Data for Name: medicationadministration_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationadministration_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY medicationadministration_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -24618,10 +28622,25 @@ SELECT pg_catalog.setval('medicationadministration_search_date__id_seq', 1, fals
 
 
 --
+-- Data for Name: medicationadministration_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY medicationadministration_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: medicationadministration_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('medicationadministration_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: medicationadministration_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationadministration_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY medicationadministration_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -24636,7 +28655,7 @@ SELECT pg_catalog.setval('medicationadministration_search_quantity__id_seq', 1, 
 -- Data for Name: medicationadministration_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationadministration_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY medicationadministration_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -24651,7 +28670,7 @@ SELECT pg_catalog.setval('medicationadministration_search_reference__id_seq', 1,
 -- Data for Name: medicationadministration_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationadministration_search_string (_id, resource_id, param, value) FROM stdin;
+COPY medicationadministration_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -24666,7 +28685,7 @@ SELECT pg_catalog.setval('medicationadministration_search_string__id_seq', 1, fa
 -- Data for Name: medicationadministration_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationadministration_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY medicationadministration_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -24728,7 +28747,7 @@ COPY medicationdispense_history (version_id, logical_id, resource_type, updated,
 -- Data for Name: medicationdispense_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationdispense_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY medicationdispense_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -24743,7 +28762,7 @@ SELECT pg_catalog.setval('medicationdispense_references__id_seq', 1, false);
 -- Data for Name: medicationdispense_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationdispense_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY medicationdispense_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -24755,10 +28774,25 @@ SELECT pg_catalog.setval('medicationdispense_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: medicationdispense_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY medicationdispense_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: medicationdispense_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('medicationdispense_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: medicationdispense_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationdispense_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY medicationdispense_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -24773,7 +28807,7 @@ SELECT pg_catalog.setval('medicationdispense_search_quantity__id_seq', 1, false)
 -- Data for Name: medicationdispense_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationdispense_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY medicationdispense_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -24788,7 +28822,7 @@ SELECT pg_catalog.setval('medicationdispense_search_reference__id_seq', 1, false
 -- Data for Name: medicationdispense_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationdispense_search_string (_id, resource_id, param, value) FROM stdin;
+COPY medicationdispense_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -24803,7 +28837,7 @@ SELECT pg_catalog.setval('medicationdispense_search_string__id_seq', 1, false);
 -- Data for Name: medicationdispense_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationdispense_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY medicationdispense_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -24865,7 +28899,7 @@ COPY medicationprescription_history (version_id, logical_id, resource_type, upda
 -- Data for Name: medicationprescription_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationprescription_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY medicationprescription_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -24880,7 +28914,7 @@ SELECT pg_catalog.setval('medicationprescription_references__id_seq', 1, false);
 -- Data for Name: medicationprescription_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationprescription_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY medicationprescription_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -24892,10 +28926,25 @@ SELECT pg_catalog.setval('medicationprescription_search_date__id_seq', 1, false)
 
 
 --
+-- Data for Name: medicationprescription_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY medicationprescription_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: medicationprescription_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('medicationprescription_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: medicationprescription_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationprescription_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY medicationprescription_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -24910,7 +28959,7 @@ SELECT pg_catalog.setval('medicationprescription_search_quantity__id_seq', 1, fa
 -- Data for Name: medicationprescription_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationprescription_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY medicationprescription_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -24925,7 +28974,7 @@ SELECT pg_catalog.setval('medicationprescription_search_reference__id_seq', 1, f
 -- Data for Name: medicationprescription_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationprescription_search_string (_id, resource_id, param, value) FROM stdin;
+COPY medicationprescription_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -24940,7 +28989,7 @@ SELECT pg_catalog.setval('medicationprescription_search_string__id_seq', 1, fals
 -- Data for Name: medicationprescription_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationprescription_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY medicationprescription_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -25002,7 +29051,7 @@ COPY medicationstatement_history (version_id, logical_id, resource_type, updated
 -- Data for Name: medicationstatement_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationstatement_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY medicationstatement_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -25017,7 +29066,7 @@ SELECT pg_catalog.setval('medicationstatement_references__id_seq', 1, false);
 -- Data for Name: medicationstatement_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationstatement_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY medicationstatement_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -25029,10 +29078,25 @@ SELECT pg_catalog.setval('medicationstatement_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: medicationstatement_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY medicationstatement_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: medicationstatement_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('medicationstatement_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: medicationstatement_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationstatement_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY medicationstatement_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -25047,7 +29111,7 @@ SELECT pg_catalog.setval('medicationstatement_search_quantity__id_seq', 1, false
 -- Data for Name: medicationstatement_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationstatement_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY medicationstatement_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -25062,7 +29126,7 @@ SELECT pg_catalog.setval('medicationstatement_search_reference__id_seq', 1, fals
 -- Data for Name: medicationstatement_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationstatement_search_string (_id, resource_id, param, value) FROM stdin;
+COPY medicationstatement_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -25077,7 +29141,7 @@ SELECT pg_catalog.setval('medicationstatement_search_string__id_seq', 1, false);
 -- Data for Name: medicationstatement_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY medicationstatement_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY medicationstatement_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -25139,7 +29203,7 @@ COPY messageheader_history (version_id, logical_id, resource_type, updated, publ
 -- Data for Name: messageheader_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY messageheader_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY messageheader_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -25154,7 +29218,7 @@ SELECT pg_catalog.setval('messageheader_references__id_seq', 1, false);
 -- Data for Name: messageheader_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY messageheader_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY messageheader_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -25166,10 +29230,25 @@ SELECT pg_catalog.setval('messageheader_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: messageheader_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY messageheader_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: messageheader_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('messageheader_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: messageheader_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY messageheader_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY messageheader_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -25184,7 +29263,7 @@ SELECT pg_catalog.setval('messageheader_search_quantity__id_seq', 1, false);
 -- Data for Name: messageheader_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY messageheader_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY messageheader_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -25199,7 +29278,7 @@ SELECT pg_catalog.setval('messageheader_search_reference__id_seq', 1, false);
 -- Data for Name: messageheader_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY messageheader_search_string (_id, resource_id, param, value) FROM stdin;
+COPY messageheader_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -25214,7 +29293,7 @@ SELECT pg_catalog.setval('messageheader_search_string__id_seq', 1, false);
 -- Data for Name: messageheader_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY messageheader_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY messageheader_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -25276,7 +29355,7 @@ COPY observation_history (version_id, logical_id, resource_type, updated, publis
 -- Data for Name: observation_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY observation_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY observation_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -25291,7 +29370,7 @@ SELECT pg_catalog.setval('observation_references__id_seq', 1, false);
 -- Data for Name: observation_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY observation_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY observation_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -25303,10 +29382,25 @@ SELECT pg_catalog.setval('observation_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: observation_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY observation_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: observation_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('observation_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: observation_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY observation_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY observation_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -25321,7 +29415,7 @@ SELECT pg_catalog.setval('observation_search_quantity__id_seq', 1, false);
 -- Data for Name: observation_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY observation_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY observation_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -25336,7 +29430,7 @@ SELECT pg_catalog.setval('observation_search_reference__id_seq', 1, false);
 -- Data for Name: observation_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY observation_search_string (_id, resource_id, param, value) FROM stdin;
+COPY observation_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -25351,7 +29445,7 @@ SELECT pg_catalog.setval('observation_search_string__id_seq', 1, false);
 -- Data for Name: observation_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY observation_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY observation_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -25413,7 +29507,7 @@ COPY operationoutcome_history (version_id, logical_id, resource_type, updated, p
 -- Data for Name: operationoutcome_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY operationoutcome_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY operationoutcome_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -25428,7 +29522,7 @@ SELECT pg_catalog.setval('operationoutcome_references__id_seq', 1, false);
 -- Data for Name: operationoutcome_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY operationoutcome_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY operationoutcome_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -25440,10 +29534,25 @@ SELECT pg_catalog.setval('operationoutcome_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: operationoutcome_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY operationoutcome_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: operationoutcome_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('operationoutcome_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: operationoutcome_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY operationoutcome_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY operationoutcome_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -25458,7 +29567,7 @@ SELECT pg_catalog.setval('operationoutcome_search_quantity__id_seq', 1, false);
 -- Data for Name: operationoutcome_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY operationoutcome_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY operationoutcome_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -25473,7 +29582,7 @@ SELECT pg_catalog.setval('operationoutcome_search_reference__id_seq', 1, false);
 -- Data for Name: operationoutcome_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY operationoutcome_search_string (_id, resource_id, param, value) FROM stdin;
+COPY operationoutcome_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -25488,7 +29597,7 @@ SELECT pg_catalog.setval('operationoutcome_search_string__id_seq', 1, false);
 -- Data for Name: operationoutcome_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY operationoutcome_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY operationoutcome_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -25550,7 +29659,7 @@ COPY order_history (version_id, logical_id, resource_type, updated, published, c
 -- Data for Name: order_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY order_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY order_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -25565,7 +29674,7 @@ SELECT pg_catalog.setval('order_references__id_seq', 1, false);
 -- Data for Name: order_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY order_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY order_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -25577,10 +29686,25 @@ SELECT pg_catalog.setval('order_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: order_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY order_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: order_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('order_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: order_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY order_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY order_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -25595,7 +29719,7 @@ SELECT pg_catalog.setval('order_search_quantity__id_seq', 1, false);
 -- Data for Name: order_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY order_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY order_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -25610,7 +29734,7 @@ SELECT pg_catalog.setval('order_search_reference__id_seq', 1, false);
 -- Data for Name: order_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY order_search_string (_id, resource_id, param, value) FROM stdin;
+COPY order_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -25625,7 +29749,7 @@ SELECT pg_catalog.setval('order_search_string__id_seq', 1, false);
 -- Data for Name: order_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY order_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY order_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -25687,7 +29811,7 @@ COPY orderresponse_history (version_id, logical_id, resource_type, updated, publ
 -- Data for Name: orderresponse_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY orderresponse_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY orderresponse_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -25702,7 +29826,7 @@ SELECT pg_catalog.setval('orderresponse_references__id_seq', 1, false);
 -- Data for Name: orderresponse_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY orderresponse_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY orderresponse_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -25714,10 +29838,25 @@ SELECT pg_catalog.setval('orderresponse_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: orderresponse_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY orderresponse_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: orderresponse_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('orderresponse_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: orderresponse_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY orderresponse_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY orderresponse_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -25732,7 +29871,7 @@ SELECT pg_catalog.setval('orderresponse_search_quantity__id_seq', 1, false);
 -- Data for Name: orderresponse_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY orderresponse_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY orderresponse_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -25747,7 +29886,7 @@ SELECT pg_catalog.setval('orderresponse_search_reference__id_seq', 1, false);
 -- Data for Name: orderresponse_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY orderresponse_search_string (_id, resource_id, param, value) FROM stdin;
+COPY orderresponse_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -25762,7 +29901,7 @@ SELECT pg_catalog.setval('orderresponse_search_string__id_seq', 1, false);
 -- Data for Name: orderresponse_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY orderresponse_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY orderresponse_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -25824,7 +29963,7 @@ COPY organization_history (version_id, logical_id, resource_type, updated, publi
 -- Data for Name: organization_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY organization_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY organization_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -25839,7 +29978,7 @@ SELECT pg_catalog.setval('organization_references__id_seq', 1, false);
 -- Data for Name: organization_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY organization_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY organization_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -25851,10 +29990,25 @@ SELECT pg_catalog.setval('organization_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: organization_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY organization_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: organization_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('organization_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: organization_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY organization_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY organization_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -25869,7 +30023,7 @@ SELECT pg_catalog.setval('organization_search_quantity__id_seq', 1, false);
 -- Data for Name: organization_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY organization_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY organization_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -25884,7 +30038,7 @@ SELECT pg_catalog.setval('organization_search_reference__id_seq', 1, false);
 -- Data for Name: organization_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY organization_search_string (_id, resource_id, param, value) FROM stdin;
+COPY organization_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -25899,7 +30053,7 @@ SELECT pg_catalog.setval('organization_search_string__id_seq', 1, false);
 -- Data for Name: organization_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY organization_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY organization_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -25961,7 +30115,7 @@ COPY other_history (version_id, logical_id, resource_type, updated, published, c
 -- Data for Name: other_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY other_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY other_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -25976,7 +30130,7 @@ SELECT pg_catalog.setval('other_references__id_seq', 1, false);
 -- Data for Name: other_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY other_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY other_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -25988,10 +30142,25 @@ SELECT pg_catalog.setval('other_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: other_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY other_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: other_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('other_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: other_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY other_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY other_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -26006,7 +30175,7 @@ SELECT pg_catalog.setval('other_search_quantity__id_seq', 1, false);
 -- Data for Name: other_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY other_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY other_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -26021,7 +30190,7 @@ SELECT pg_catalog.setval('other_search_reference__id_seq', 1, false);
 -- Data for Name: other_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY other_search_string (_id, resource_id, param, value) FROM stdin;
+COPY other_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -26036,7 +30205,7 @@ SELECT pg_catalog.setval('other_search_string__id_seq', 1, false);
 -- Data for Name: other_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY other_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY other_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -26098,7 +30267,7 @@ COPY patient_history (version_id, logical_id, resource_type, updated, published,
 -- Data for Name: patient_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY patient_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY patient_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -26113,7 +30282,7 @@ SELECT pg_catalog.setval('patient_references__id_seq', 1, false);
 -- Data for Name: patient_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY patient_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY patient_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -26125,10 +30294,25 @@ SELECT pg_catalog.setval('patient_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: patient_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY patient_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: patient_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('patient_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: patient_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY patient_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY patient_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -26143,7 +30327,7 @@ SELECT pg_catalog.setval('patient_search_quantity__id_seq', 1, false);
 -- Data for Name: patient_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY patient_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY patient_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -26158,7 +30342,7 @@ SELECT pg_catalog.setval('patient_search_reference__id_seq', 1, false);
 -- Data for Name: patient_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY patient_search_string (_id, resource_id, param, value) FROM stdin;
+COPY patient_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -26173,7 +30357,7 @@ SELECT pg_catalog.setval('patient_search_string__id_seq', 1, false);
 -- Data for Name: patient_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY patient_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY patient_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -26235,7 +30419,7 @@ COPY practitioner_history (version_id, logical_id, resource_type, updated, publi
 -- Data for Name: practitioner_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY practitioner_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY practitioner_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -26250,7 +30434,7 @@ SELECT pg_catalog.setval('practitioner_references__id_seq', 1, false);
 -- Data for Name: practitioner_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY practitioner_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY practitioner_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -26262,10 +30446,25 @@ SELECT pg_catalog.setval('practitioner_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: practitioner_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY practitioner_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: practitioner_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('practitioner_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: practitioner_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY practitioner_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY practitioner_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -26280,7 +30479,7 @@ SELECT pg_catalog.setval('practitioner_search_quantity__id_seq', 1, false);
 -- Data for Name: practitioner_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY practitioner_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY practitioner_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -26295,7 +30494,7 @@ SELECT pg_catalog.setval('practitioner_search_reference__id_seq', 1, false);
 -- Data for Name: practitioner_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY practitioner_search_string (_id, resource_id, param, value) FROM stdin;
+COPY practitioner_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -26310,7 +30509,7 @@ SELECT pg_catalog.setval('practitioner_search_string__id_seq', 1, false);
 -- Data for Name: practitioner_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY practitioner_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY practitioner_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -26372,7 +30571,7 @@ COPY procedure_history (version_id, logical_id, resource_type, updated, publishe
 -- Data for Name: procedure_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY procedure_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY procedure_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -26387,7 +30586,7 @@ SELECT pg_catalog.setval('procedure_references__id_seq', 1, false);
 -- Data for Name: procedure_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY procedure_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY procedure_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -26399,10 +30598,25 @@ SELECT pg_catalog.setval('procedure_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: procedure_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY procedure_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: procedure_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('procedure_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: procedure_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY procedure_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY procedure_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -26417,7 +30631,7 @@ SELECT pg_catalog.setval('procedure_search_quantity__id_seq', 1, false);
 -- Data for Name: procedure_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY procedure_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY procedure_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -26432,7 +30646,7 @@ SELECT pg_catalog.setval('procedure_search_reference__id_seq', 1, false);
 -- Data for Name: procedure_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY procedure_search_string (_id, resource_id, param, value) FROM stdin;
+COPY procedure_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -26447,7 +30661,7 @@ SELECT pg_catalog.setval('procedure_search_string__id_seq', 1, false);
 -- Data for Name: procedure_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY procedure_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY procedure_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -26509,7 +30723,7 @@ COPY profile_history (version_id, logical_id, resource_type, updated, published,
 -- Data for Name: profile_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY profile_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY profile_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -26524,7 +30738,7 @@ SELECT pg_catalog.setval('profile_references__id_seq', 1, false);
 -- Data for Name: profile_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY profile_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY profile_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -26536,10 +30750,25 @@ SELECT pg_catalog.setval('profile_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: profile_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY profile_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: profile_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('profile_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: profile_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY profile_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY profile_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -26554,7 +30783,7 @@ SELECT pg_catalog.setval('profile_search_quantity__id_seq', 1, false);
 -- Data for Name: profile_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY profile_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY profile_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -26569,7 +30798,7 @@ SELECT pg_catalog.setval('profile_search_reference__id_seq', 1, false);
 -- Data for Name: profile_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY profile_search_string (_id, resource_id, param, value) FROM stdin;
+COPY profile_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -26584,7 +30813,7 @@ SELECT pg_catalog.setval('profile_search_string__id_seq', 1, false);
 -- Data for Name: profile_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY profile_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY profile_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -26646,7 +30875,7 @@ COPY provenance_history (version_id, logical_id, resource_type, updated, publish
 -- Data for Name: provenance_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY provenance_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY provenance_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -26661,7 +30890,7 @@ SELECT pg_catalog.setval('provenance_references__id_seq', 1, false);
 -- Data for Name: provenance_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY provenance_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY provenance_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -26673,10 +30902,25 @@ SELECT pg_catalog.setval('provenance_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: provenance_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY provenance_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: provenance_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('provenance_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: provenance_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY provenance_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY provenance_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -26691,7 +30935,7 @@ SELECT pg_catalog.setval('provenance_search_quantity__id_seq', 1, false);
 -- Data for Name: provenance_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY provenance_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY provenance_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -26706,7 +30950,7 @@ SELECT pg_catalog.setval('provenance_search_reference__id_seq', 1, false);
 -- Data for Name: provenance_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY provenance_search_string (_id, resource_id, param, value) FROM stdin;
+COPY provenance_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -26721,7 +30965,7 @@ SELECT pg_catalog.setval('provenance_search_string__id_seq', 1, false);
 -- Data for Name: provenance_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY provenance_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY provenance_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -26783,7 +31027,7 @@ COPY query_history (version_id, logical_id, resource_type, updated, published, c
 -- Data for Name: query_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY query_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY query_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -26798,7 +31042,7 @@ SELECT pg_catalog.setval('query_references__id_seq', 1, false);
 -- Data for Name: query_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY query_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY query_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -26810,10 +31054,25 @@ SELECT pg_catalog.setval('query_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: query_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY query_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: query_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('query_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: query_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY query_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY query_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -26828,7 +31087,7 @@ SELECT pg_catalog.setval('query_search_quantity__id_seq', 1, false);
 -- Data for Name: query_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY query_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY query_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -26843,7 +31102,7 @@ SELECT pg_catalog.setval('query_search_reference__id_seq', 1, false);
 -- Data for Name: query_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY query_search_string (_id, resource_id, param, value) FROM stdin;
+COPY query_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -26858,7 +31117,7 @@ SELECT pg_catalog.setval('query_search_string__id_seq', 1, false);
 -- Data for Name: query_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY query_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY query_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -26920,7 +31179,7 @@ COPY questionnaire_history (version_id, logical_id, resource_type, updated, publ
 -- Data for Name: questionnaire_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY questionnaire_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY questionnaire_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -26935,7 +31194,7 @@ SELECT pg_catalog.setval('questionnaire_references__id_seq', 1, false);
 -- Data for Name: questionnaire_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY questionnaire_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY questionnaire_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -26947,10 +31206,25 @@ SELECT pg_catalog.setval('questionnaire_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: questionnaire_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY questionnaire_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: questionnaire_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('questionnaire_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: questionnaire_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY questionnaire_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY questionnaire_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -26965,7 +31239,7 @@ SELECT pg_catalog.setval('questionnaire_search_quantity__id_seq', 1, false);
 -- Data for Name: questionnaire_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY questionnaire_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY questionnaire_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -26980,7 +31254,7 @@ SELECT pg_catalog.setval('questionnaire_search_reference__id_seq', 1, false);
 -- Data for Name: questionnaire_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY questionnaire_search_string (_id, resource_id, param, value) FROM stdin;
+COPY questionnaire_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -26995,7 +31269,7 @@ SELECT pg_catalog.setval('questionnaire_search_string__id_seq', 1, false);
 -- Data for Name: questionnaire_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY questionnaire_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY questionnaire_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -27038,6 +31312,21 @@ COPY questionnaire_tag_history (_id, resource_id, resource_version_id, resource_
 
 
 --
+-- Data for Name: references; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY "references" (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
+\.
+
+
+--
+-- Name: references__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('references__id_seq', 1, false);
+
+
+--
 -- Data for Name: relatedperson; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -27057,7 +31346,7 @@ COPY relatedperson_history (version_id, logical_id, resource_type, updated, publ
 -- Data for Name: relatedperson_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY relatedperson_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY relatedperson_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -27072,7 +31361,7 @@ SELECT pg_catalog.setval('relatedperson_references__id_seq', 1, false);
 -- Data for Name: relatedperson_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY relatedperson_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY relatedperson_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -27084,10 +31373,25 @@ SELECT pg_catalog.setval('relatedperson_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: relatedperson_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY relatedperson_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: relatedperson_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('relatedperson_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: relatedperson_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY relatedperson_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY relatedperson_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -27102,7 +31406,7 @@ SELECT pg_catalog.setval('relatedperson_search_quantity__id_seq', 1, false);
 -- Data for Name: relatedperson_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY relatedperson_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY relatedperson_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -27117,7 +31421,7 @@ SELECT pg_catalog.setval('relatedperson_search_reference__id_seq', 1, false);
 -- Data for Name: relatedperson_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY relatedperson_search_string (_id, resource_id, param, value) FROM stdin;
+COPY relatedperson_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -27132,7 +31436,7 @@ SELECT pg_catalog.setval('relatedperson_search_string__id_seq', 1, false);
 -- Data for Name: relatedperson_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY relatedperson_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY relatedperson_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -27191,6 +31495,96 @@ COPY resource_history (version_id, logical_id, resource_type, updated, published
 
 
 --
+-- Data for Name: search_date; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
+\.
+
+
+--
+-- Name: search_date__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('search_date__id_seq', 1, false);
+
+
+--
+-- Data for Name: search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('search_number__id_seq', 1, false);
+
+
+--
+-- Data for Name: search_quantity; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
+\.
+
+
+--
+-- Name: search_quantity__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('search_quantity__id_seq', 1, false);
+
+
+--
+-- Data for Name: search_reference; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
+\.
+
+
+--
+-- Name: search_reference__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('search_reference__id_seq', 1, false);
+
+
+--
+-- Data for Name: search_string; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY search_string (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: search_string__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('search_string__id_seq', 1, false);
+
+
+--
+-- Data for Name: search_token; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
+\.
+
+
+--
+-- Name: search_token__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('search_token__id_seq', 1, false);
+
+
+--
 -- Data for Name: securityevent; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -27210,7 +31604,7 @@ COPY securityevent_history (version_id, logical_id, resource_type, updated, publ
 -- Data for Name: securityevent_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY securityevent_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY securityevent_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -27225,7 +31619,7 @@ SELECT pg_catalog.setval('securityevent_references__id_seq', 1, false);
 -- Data for Name: securityevent_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY securityevent_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY securityevent_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -27237,10 +31631,25 @@ SELECT pg_catalog.setval('securityevent_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: securityevent_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY securityevent_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: securityevent_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('securityevent_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: securityevent_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY securityevent_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY securityevent_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -27255,7 +31664,7 @@ SELECT pg_catalog.setval('securityevent_search_quantity__id_seq', 1, false);
 -- Data for Name: securityevent_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY securityevent_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY securityevent_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -27270,7 +31679,7 @@ SELECT pg_catalog.setval('securityevent_search_reference__id_seq', 1, false);
 -- Data for Name: securityevent_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY securityevent_search_string (_id, resource_id, param, value) FROM stdin;
+COPY securityevent_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -27285,7 +31694,7 @@ SELECT pg_catalog.setval('securityevent_search_string__id_seq', 1, false);
 -- Data for Name: securityevent_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY securityevent_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY securityevent_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -27347,7 +31756,7 @@ COPY specimen_history (version_id, logical_id, resource_type, updated, published
 -- Data for Name: specimen_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY specimen_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY specimen_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -27362,7 +31771,7 @@ SELECT pg_catalog.setval('specimen_references__id_seq', 1, false);
 -- Data for Name: specimen_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY specimen_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY specimen_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -27374,10 +31783,25 @@ SELECT pg_catalog.setval('specimen_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: specimen_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY specimen_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: specimen_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('specimen_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: specimen_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY specimen_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY specimen_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -27392,7 +31816,7 @@ SELECT pg_catalog.setval('specimen_search_quantity__id_seq', 1, false);
 -- Data for Name: specimen_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY specimen_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY specimen_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -27407,7 +31831,7 @@ SELECT pg_catalog.setval('specimen_search_reference__id_seq', 1, false);
 -- Data for Name: specimen_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY specimen_search_string (_id, resource_id, param, value) FROM stdin;
+COPY specimen_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -27422,7 +31846,7 @@ SELECT pg_catalog.setval('specimen_search_string__id_seq', 1, false);
 -- Data for Name: specimen_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY specimen_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY specimen_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -27484,7 +31908,7 @@ COPY substance_history (version_id, logical_id, resource_type, updated, publishe
 -- Data for Name: substance_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY substance_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY substance_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -27499,7 +31923,7 @@ SELECT pg_catalog.setval('substance_references__id_seq', 1, false);
 -- Data for Name: substance_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY substance_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY substance_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -27511,10 +31935,25 @@ SELECT pg_catalog.setval('substance_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: substance_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY substance_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: substance_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('substance_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: substance_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY substance_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY substance_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -27529,7 +31968,7 @@ SELECT pg_catalog.setval('substance_search_quantity__id_seq', 1, false);
 -- Data for Name: substance_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY substance_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY substance_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -27544,7 +31983,7 @@ SELECT pg_catalog.setval('substance_search_reference__id_seq', 1, false);
 -- Data for Name: substance_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY substance_search_string (_id, resource_id, param, value) FROM stdin;
+COPY substance_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -27559,7 +31998,7 @@ SELECT pg_catalog.setval('substance_search_string__id_seq', 1, false);
 -- Data for Name: substance_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY substance_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY substance_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -27621,7 +32060,7 @@ COPY supply_history (version_id, logical_id, resource_type, updated, published, 
 -- Data for Name: supply_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY supply_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY supply_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -27636,7 +32075,7 @@ SELECT pg_catalog.setval('supply_references__id_seq', 1, false);
 -- Data for Name: supply_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY supply_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY supply_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -27648,10 +32087,25 @@ SELECT pg_catalog.setval('supply_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: supply_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY supply_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: supply_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('supply_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: supply_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY supply_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY supply_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -27666,7 +32120,7 @@ SELECT pg_catalog.setval('supply_search_quantity__id_seq', 1, false);
 -- Data for Name: supply_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY supply_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY supply_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -27681,7 +32135,7 @@ SELECT pg_catalog.setval('supply_search_reference__id_seq', 1, false);
 -- Data for Name: supply_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY supply_search_string (_id, resource_id, param, value) FROM stdin;
+COPY supply_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -27696,7 +32150,7 @@ SELECT pg_catalog.setval('supply_search_string__id_seq', 1, false);
 -- Data for Name: supply_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY supply_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY supply_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -28114,7 +32568,7 @@ COPY valueset_history (version_id, logical_id, resource_type, updated, published
 -- Data for Name: valueset_references; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY valueset_references (_id, resource_id, path, reference_type, logical_id) FROM stdin;
+COPY valueset_references (_id, resource_id, _resource_type, path, reference_type, logical_id) FROM stdin;
 \.
 
 
@@ -28129,7 +32583,7 @@ SELECT pg_catalog.setval('valueset_references__id_seq', 1, false);
 -- Data for Name: valueset_search_date; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY valueset_search_date (_id, resource_id, param, start, "end") FROM stdin;
+COPY valueset_search_date (_id, resource_id, resource_type, param, start, "end") FROM stdin;
 \.
 
 
@@ -28141,10 +32595,25 @@ SELECT pg_catalog.setval('valueset_search_date__id_seq', 1, false);
 
 
 --
+-- Data for Name: valueset_search_number; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY valueset_search_number (_id, resource_id, resource_type, param, value) FROM stdin;
+\.
+
+
+--
+-- Name: valueset_search_number__id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('valueset_search_number__id_seq', 1, false);
+
+
+--
 -- Data for Name: valueset_search_quantity; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY valueset_search_quantity (_id, resource_id, param, value, comparator, units, system, code) FROM stdin;
+COPY valueset_search_quantity (_id, resource_id, resource_type, param, value, comparator, units, system, code) FROM stdin;
 \.
 
 
@@ -28159,7 +32628,7 @@ SELECT pg_catalog.setval('valueset_search_quantity__id_seq', 1, false);
 -- Data for Name: valueset_search_reference; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY valueset_search_reference (_id, resource_id, param, resource_type, logical_id, url) FROM stdin;
+COPY valueset_search_reference (_id, resource_id, param, resource_type, _resource_type, logical_id, url) FROM stdin;
 \.
 
 
@@ -28174,7 +32643,7 @@ SELECT pg_catalog.setval('valueset_search_reference__id_seq', 1, false);
 -- Data for Name: valueset_search_string; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY valueset_search_string (_id, resource_id, param, value) FROM stdin;
+COPY valueset_search_string (_id, resource_id, resource_type, param, value) FROM stdin;
 \.
 
 
@@ -28189,7 +32658,7 @@ SELECT pg_catalog.setval('valueset_search_string__id_seq', 1, false);
 -- Data for Name: valueset_search_token; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY valueset_search_token (_id, resource_id, param, namespace, code, text) FROM stdin;
+COPY valueset_search_token (_id, resource_id, param, resource_type, namespace, code, text) FROM stdin;
 \.
 
 
@@ -28308,6 +32777,14 @@ ALTER TABLE ONLY adversereaction_search_date
 
 
 --
+-- Name: adversereaction_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY adversereaction_search_number
+    ADD CONSTRAINT adversereaction_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: adversereaction_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -28401,6 +32878,14 @@ ALTER TABLE ONLY alert_references
 
 ALTER TABLE ONLY alert_search_date
     ADD CONSTRAINT alert_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: alert_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY alert_search_number
+    ADD CONSTRAINT alert_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -28500,6 +32985,14 @@ ALTER TABLE ONLY allergyintolerance_search_date
 
 
 --
+-- Name: allergyintolerance_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY allergyintolerance_search_number
+    ADD CONSTRAINT allergyintolerance_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: allergyintolerance_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -28593,6 +33086,14 @@ ALTER TABLE ONLY careplan_references
 
 ALTER TABLE ONLY careplan_search_date
     ADD CONSTRAINT careplan_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: careplan_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY careplan_search_number
+    ADD CONSTRAINT careplan_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -28692,6 +33193,14 @@ ALTER TABLE ONLY composition_search_date
 
 
 --
+-- Name: composition_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY composition_search_number
+    ADD CONSTRAINT composition_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: composition_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -28785,6 +33294,14 @@ ALTER TABLE ONLY conceptmap_references
 
 ALTER TABLE ONLY conceptmap_search_date
     ADD CONSTRAINT conceptmap_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: conceptmap_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY conceptmap_search_number
+    ADD CONSTRAINT conceptmap_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -28884,6 +33401,14 @@ ALTER TABLE ONLY condition_search_date
 
 
 --
+-- Name: condition_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY condition_search_number
+    ADD CONSTRAINT condition_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: condition_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -28977,6 +33502,14 @@ ALTER TABLE ONLY conformance_references
 
 ALTER TABLE ONLY conformance_search_date
     ADD CONSTRAINT conformance_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: conformance_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY conformance_search_number
+    ADD CONSTRAINT conformance_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -29076,6 +33609,14 @@ ALTER TABLE ONLY device_search_date
 
 
 --
+-- Name: device_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY device_search_number
+    ADD CONSTRAINT device_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: device_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -29169,6 +33710,14 @@ ALTER TABLE ONLY deviceobservationreport_references
 
 ALTER TABLE ONLY deviceobservationreport_search_date
     ADD CONSTRAINT deviceobservationreport_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: deviceobservationreport_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY deviceobservationreport_search_number
+    ADD CONSTRAINT deviceobservationreport_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -29268,6 +33817,14 @@ ALTER TABLE ONLY diagnosticorder_search_date
 
 
 --
+-- Name: diagnosticorder_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY diagnosticorder_search_number
+    ADD CONSTRAINT diagnosticorder_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: diagnosticorder_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -29361,6 +33918,14 @@ ALTER TABLE ONLY diagnosticreport_references
 
 ALTER TABLE ONLY diagnosticreport_search_date
     ADD CONSTRAINT diagnosticreport_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: diagnosticreport_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY diagnosticreport_search_number
+    ADD CONSTRAINT diagnosticreport_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -29460,6 +34025,14 @@ ALTER TABLE ONLY documentmanifest_search_date
 
 
 --
+-- Name: documentmanifest_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY documentmanifest_search_number
+    ADD CONSTRAINT documentmanifest_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: documentmanifest_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -29553,6 +34126,14 @@ ALTER TABLE ONLY documentreference_references
 
 ALTER TABLE ONLY documentreference_search_date
     ADD CONSTRAINT documentreference_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: documentreference_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY documentreference_search_number
+    ADD CONSTRAINT documentreference_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -29652,6 +34233,14 @@ ALTER TABLE ONLY encounter_search_date
 
 
 --
+-- Name: encounter_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY encounter_search_number
+    ADD CONSTRAINT encounter_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: encounter_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -29745,6 +34334,14 @@ ALTER TABLE ONLY familyhistory_references
 
 ALTER TABLE ONLY familyhistory_search_date
     ADD CONSTRAINT familyhistory_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: familyhistory_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY familyhistory_search_number
+    ADD CONSTRAINT familyhistory_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -29844,6 +34441,14 @@ ALTER TABLE ONLY group_search_date
 
 
 --
+-- Name: group_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY group_search_number
+    ADD CONSTRAINT group_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: group_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -29937,6 +34542,14 @@ ALTER TABLE ONLY imagingstudy_references
 
 ALTER TABLE ONLY imagingstudy_search_date
     ADD CONSTRAINT imagingstudy_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: imagingstudy_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY imagingstudy_search_number
+    ADD CONSTRAINT imagingstudy_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -30036,6 +34649,14 @@ ALTER TABLE ONLY immunization_search_date
 
 
 --
+-- Name: immunization_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY immunization_search_number
+    ADD CONSTRAINT immunization_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: immunization_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -30129,6 +34750,14 @@ ALTER TABLE ONLY immunizationrecommendation_references
 
 ALTER TABLE ONLY immunizationrecommendation_search_date
     ADD CONSTRAINT immunizationrecommendation_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: immunizationrecommendation_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY immunizationrecommendation_search_number
+    ADD CONSTRAINT immunizationrecommendation_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -30228,6 +34857,14 @@ ALTER TABLE ONLY list_search_date
 
 
 --
+-- Name: list_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY list_search_number
+    ADD CONSTRAINT list_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: list_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -30321,6 +34958,14 @@ ALTER TABLE ONLY location_references
 
 ALTER TABLE ONLY location_search_date
     ADD CONSTRAINT location_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: location_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY location_search_number
+    ADD CONSTRAINT location_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -30420,6 +35065,14 @@ ALTER TABLE ONLY media_search_date
 
 
 --
+-- Name: media_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY media_search_number
+    ADD CONSTRAINT media_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: media_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -30513,6 +35166,14 @@ ALTER TABLE ONLY medication_references
 
 ALTER TABLE ONLY medication_search_date
     ADD CONSTRAINT medication_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: medication_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY medication_search_number
+    ADD CONSTRAINT medication_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -30612,6 +35273,14 @@ ALTER TABLE ONLY medicationadministration_search_date
 
 
 --
+-- Name: medicationadministration_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY medicationadministration_search_number
+    ADD CONSTRAINT medicationadministration_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: medicationadministration_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -30705,6 +35374,14 @@ ALTER TABLE ONLY medicationdispense_references
 
 ALTER TABLE ONLY medicationdispense_search_date
     ADD CONSTRAINT medicationdispense_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: medicationdispense_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY medicationdispense_search_number
+    ADD CONSTRAINT medicationdispense_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -30804,6 +35481,14 @@ ALTER TABLE ONLY medicationprescription_search_date
 
 
 --
+-- Name: medicationprescription_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY medicationprescription_search_number
+    ADD CONSTRAINT medicationprescription_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: medicationprescription_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -30897,6 +35582,14 @@ ALTER TABLE ONLY medicationstatement_references
 
 ALTER TABLE ONLY medicationstatement_search_date
     ADD CONSTRAINT medicationstatement_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: medicationstatement_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY medicationstatement_search_number
+    ADD CONSTRAINT medicationstatement_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -30996,6 +35689,14 @@ ALTER TABLE ONLY messageheader_search_date
 
 
 --
+-- Name: messageheader_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY messageheader_search_number
+    ADD CONSTRAINT messageheader_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: messageheader_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -31089,6 +35790,14 @@ ALTER TABLE ONLY observation_references
 
 ALTER TABLE ONLY observation_search_date
     ADD CONSTRAINT observation_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: observation_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY observation_search_number
+    ADD CONSTRAINT observation_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -31188,6 +35897,14 @@ ALTER TABLE ONLY operationoutcome_search_date
 
 
 --
+-- Name: operationoutcome_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY operationoutcome_search_number
+    ADD CONSTRAINT operationoutcome_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: operationoutcome_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -31281,6 +35998,14 @@ ALTER TABLE ONLY order_references
 
 ALTER TABLE ONLY order_search_date
     ADD CONSTRAINT order_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: order_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY order_search_number
+    ADD CONSTRAINT order_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -31380,6 +36105,14 @@ ALTER TABLE ONLY orderresponse_search_date
 
 
 --
+-- Name: orderresponse_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY orderresponse_search_number
+    ADD CONSTRAINT orderresponse_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: orderresponse_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -31473,6 +36206,14 @@ ALTER TABLE ONLY organization_references
 
 ALTER TABLE ONLY organization_search_date
     ADD CONSTRAINT organization_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: organization_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY organization_search_number
+    ADD CONSTRAINT organization_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -31572,6 +36313,14 @@ ALTER TABLE ONLY other_search_date
 
 
 --
+-- Name: other_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY other_search_number
+    ADD CONSTRAINT other_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: other_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -31665,6 +36414,14 @@ ALTER TABLE ONLY patient_references
 
 ALTER TABLE ONLY patient_search_date
     ADD CONSTRAINT patient_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: patient_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY patient_search_number
+    ADD CONSTRAINT patient_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -31764,6 +36521,14 @@ ALTER TABLE ONLY practitioner_search_date
 
 
 --
+-- Name: practitioner_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY practitioner_search_number
+    ADD CONSTRAINT practitioner_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: practitioner_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -31857,6 +36622,14 @@ ALTER TABLE ONLY procedure_references
 
 ALTER TABLE ONLY procedure_search_date
     ADD CONSTRAINT procedure_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: procedure_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY procedure_search_number
+    ADD CONSTRAINT procedure_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -31956,6 +36729,14 @@ ALTER TABLE ONLY profile_search_date
 
 
 --
+-- Name: profile_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY profile_search_number
+    ADD CONSTRAINT profile_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: profile_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -32049,6 +36830,14 @@ ALTER TABLE ONLY provenance_references
 
 ALTER TABLE ONLY provenance_search_date
     ADD CONSTRAINT provenance_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: provenance_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY provenance_search_number
+    ADD CONSTRAINT provenance_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -32148,6 +36937,14 @@ ALTER TABLE ONLY query_search_date
 
 
 --
+-- Name: query_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY query_search_number
+    ADD CONSTRAINT query_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: query_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -32244,6 +37041,14 @@ ALTER TABLE ONLY questionnaire_search_date
 
 
 --
+-- Name: questionnaire_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY questionnaire_search_number
+    ADD CONSTRAINT questionnaire_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: questionnaire_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -32308,6 +37113,14 @@ ALTER TABLE ONLY questionnaire
 
 
 --
+-- Name: references_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY "references"
+    ADD CONSTRAINT references_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: relatedperson_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -32337,6 +37150,14 @@ ALTER TABLE ONLY relatedperson_references
 
 ALTER TABLE ONLY relatedperson_search_date
     ADD CONSTRAINT relatedperson_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: relatedperson_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY relatedperson_search_number
+    ADD CONSTRAINT relatedperson_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -32404,6 +37225,54 @@ ALTER TABLE ONLY relatedperson
 
 
 --
+-- Name: search_date_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY search_date
+    ADD CONSTRAINT search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY search_number
+    ADD CONSTRAINT search_number_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY search_quantity
+    ADD CONSTRAINT search_quantity_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: search_reference_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY search_reference
+    ADD CONSTRAINT search_reference_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: search_string_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY search_string
+    ADD CONSTRAINT search_string_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: search_token_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY search_token
+    ADD CONSTRAINT search_token_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: securityevent_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -32433,6 +37302,14 @@ ALTER TABLE ONLY securityevent_references
 
 ALTER TABLE ONLY securityevent_search_date
     ADD CONSTRAINT securityevent_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: securityevent_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY securityevent_search_number
+    ADD CONSTRAINT securityevent_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -32532,6 +37409,14 @@ ALTER TABLE ONLY specimen_search_date
 
 
 --
+-- Name: specimen_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY specimen_search_number
+    ADD CONSTRAINT specimen_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: specimen_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -32625,6 +37510,14 @@ ALTER TABLE ONLY substance_references
 
 ALTER TABLE ONLY substance_search_date
     ADD CONSTRAINT substance_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: substance_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY substance_search_number
+    ADD CONSTRAINT substance_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -32724,6 +37617,14 @@ ALTER TABLE ONLY supply_search_date
 
 
 --
+-- Name: supply_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY supply_search_number
+    ADD CONSTRAINT supply_search_number_pkey PRIMARY KEY (_id);
+
+
+--
 -- Name: supply_search_quantity_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -32817,6 +37718,14 @@ ALTER TABLE ONLY valueset_references
 
 ALTER TABLE ONLY valueset_search_date
     ADD CONSTRAINT valueset_search_date_pkey PRIMARY KEY (_id);
+
+
+--
+-- Name: valueset_search_number_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY valueset_search_number
+    ADD CONSTRAINT valueset_search_number_pkey PRIMARY KEY (_id);
 
 
 --
@@ -32916,6 +37825,20 @@ CREATE INDEX adversereaction_search_date_on_resource_id_and_param_idx ON adverse
 --
 
 CREATE INDEX adversereaction_search_date_on_start_end_range_gist_idx ON adversereaction_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: adversereaction_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX adversereaction_search_number_on_resource_id_and_param_idx ON adversereaction_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: adversereaction_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX adversereaction_search_number_on_value_idx ON adversereaction_search_number USING btree (value);
 
 
 --
@@ -33066,6 +37989,20 @@ CREATE INDEX alert_search_date_on_start_end_range_gist_idx ON alert_search_date 
 
 
 --
+-- Name: alert_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX alert_search_number_on_resource_id_and_param_idx ON alert_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: alert_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX alert_search_number_on_value_idx ON alert_search_number USING btree (value);
+
+
+--
 -- Name: alert_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -33210,6 +38147,20 @@ CREATE INDEX allergyintolerance_search_date_on_resource_id_and_param_idx ON alle
 --
 
 CREATE INDEX allergyintolerance_search_date_on_start_end_range_gist_idx ON allergyintolerance_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: allergyintolerance_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX allergyintolerance_search_number_on_resource_id_and_param_idx ON allergyintolerance_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: allergyintolerance_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX allergyintolerance_search_number_on_value_idx ON allergyintolerance_search_number USING btree (value);
 
 
 --
@@ -33360,6 +38311,20 @@ CREATE INDEX careplan_search_date_on_start_end_range_gist_idx ON careplan_search
 
 
 --
+-- Name: careplan_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX careplan_search_number_on_resource_id_and_param_idx ON careplan_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: careplan_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX careplan_search_number_on_value_idx ON careplan_search_number USING btree (value);
+
+
+--
 -- Name: careplan_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -33504,6 +38469,20 @@ CREATE INDEX composition_search_date_on_resource_id_and_param_idx ON composition
 --
 
 CREATE INDEX composition_search_date_on_start_end_range_gist_idx ON composition_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: composition_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX composition_search_number_on_resource_id_and_param_idx ON composition_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: composition_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX composition_search_number_on_value_idx ON composition_search_number USING btree (value);
 
 
 --
@@ -33654,6 +38633,20 @@ CREATE INDEX conceptmap_search_date_on_start_end_range_gist_idx ON conceptmap_se
 
 
 --
+-- Name: conceptmap_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX conceptmap_search_number_on_resource_id_and_param_idx ON conceptmap_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: conceptmap_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX conceptmap_search_number_on_value_idx ON conceptmap_search_number USING btree (value);
+
+
+--
 -- Name: conceptmap_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -33798,6 +38791,20 @@ CREATE INDEX condition_search_date_on_resource_id_and_param_idx ON condition_sea
 --
 
 CREATE INDEX condition_search_date_on_start_end_range_gist_idx ON condition_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: condition_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX condition_search_number_on_resource_id_and_param_idx ON condition_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: condition_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX condition_search_number_on_value_idx ON condition_search_number USING btree (value);
 
 
 --
@@ -33948,6 +38955,20 @@ CREATE INDEX conformance_search_date_on_start_end_range_gist_idx ON conformance_
 
 
 --
+-- Name: conformance_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX conformance_search_number_on_resource_id_and_param_idx ON conformance_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: conformance_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX conformance_search_number_on_value_idx ON conformance_search_number USING btree (value);
+
+
+--
 -- Name: conformance_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -34092,6 +39113,20 @@ CREATE INDEX device_search_date_on_resource_id_and_param_idx ON device_search_da
 --
 
 CREATE INDEX device_search_date_on_start_end_range_gist_idx ON device_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: device_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX device_search_number_on_resource_id_and_param_idx ON device_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: device_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX device_search_number_on_value_idx ON device_search_number USING btree (value);
 
 
 --
@@ -34242,6 +39277,20 @@ CREATE INDEX deviceobservationreport_search_date_on_start_end_range_gist_idx ON 
 
 
 --
+-- Name: deviceobservationreport_search_number_on_resource_id_and_param_; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX deviceobservationreport_search_number_on_resource_id_and_param_ ON deviceobservationreport_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: deviceobservationreport_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX deviceobservationreport_search_number_on_value_idx ON deviceobservationreport_search_number USING btree (value);
+
+
+--
 -- Name: deviceobservationreport_search_quantity_on_resource_id_and_para; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -34386,6 +39435,20 @@ CREATE INDEX diagnosticorder_search_date_on_resource_id_and_param_idx ON diagnos
 --
 
 CREATE INDEX diagnosticorder_search_date_on_start_end_range_gist_idx ON diagnosticorder_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: diagnosticorder_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX diagnosticorder_search_number_on_resource_id_and_param_idx ON diagnosticorder_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: diagnosticorder_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX diagnosticorder_search_number_on_value_idx ON diagnosticorder_search_number USING btree (value);
 
 
 --
@@ -34536,6 +39599,20 @@ CREATE INDEX diagnosticreport_search_date_on_start_end_range_gist_idx ON diagnos
 
 
 --
+-- Name: diagnosticreport_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX diagnosticreport_search_number_on_resource_id_and_param_idx ON diagnosticreport_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: diagnosticreport_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX diagnosticreport_search_number_on_value_idx ON diagnosticreport_search_number USING btree (value);
+
+
+--
 -- Name: diagnosticreport_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -34680,6 +39757,20 @@ CREATE INDEX documentmanifest_search_date_on_resource_id_and_param_idx ON docume
 --
 
 CREATE INDEX documentmanifest_search_date_on_start_end_range_gist_idx ON documentmanifest_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: documentmanifest_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX documentmanifest_search_number_on_resource_id_and_param_idx ON documentmanifest_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: documentmanifest_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX documentmanifest_search_number_on_value_idx ON documentmanifest_search_number USING btree (value);
 
 
 --
@@ -34830,6 +39921,20 @@ CREATE INDEX documentreference_search_date_on_start_end_range_gist_idx ON docume
 
 
 --
+-- Name: documentreference_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX documentreference_search_number_on_resource_id_and_param_idx ON documentreference_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: documentreference_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX documentreference_search_number_on_value_idx ON documentreference_search_number USING btree (value);
+
+
+--
 -- Name: documentreference_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -34974,6 +40079,20 @@ CREATE INDEX encounter_search_date_on_resource_id_and_param_idx ON encounter_sea
 --
 
 CREATE INDEX encounter_search_date_on_start_end_range_gist_idx ON encounter_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: encounter_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX encounter_search_number_on_resource_id_and_param_idx ON encounter_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: encounter_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX encounter_search_number_on_value_idx ON encounter_search_number USING btree (value);
 
 
 --
@@ -35124,6 +40243,20 @@ CREATE INDEX familyhistory_search_date_on_start_end_range_gist_idx ON familyhist
 
 
 --
+-- Name: familyhistory_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX familyhistory_search_number_on_resource_id_and_param_idx ON familyhistory_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: familyhistory_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX familyhistory_search_number_on_value_idx ON familyhistory_search_number USING btree (value);
+
+
+--
 -- Name: familyhistory_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -35268,6 +40401,20 @@ CREATE INDEX group_search_date_on_resource_id_and_param_idx ON group_search_date
 --
 
 CREATE INDEX group_search_date_on_start_end_range_gist_idx ON group_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: group_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX group_search_number_on_resource_id_and_param_idx ON group_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: group_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX group_search_number_on_value_idx ON group_search_number USING btree (value);
 
 
 --
@@ -35418,6 +40565,20 @@ CREATE INDEX imagingstudy_search_date_on_start_end_range_gist_idx ON imagingstud
 
 
 --
+-- Name: imagingstudy_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX imagingstudy_search_number_on_resource_id_and_param_idx ON imagingstudy_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: imagingstudy_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX imagingstudy_search_number_on_value_idx ON imagingstudy_search_number USING btree (value);
+
+
+--
 -- Name: imagingstudy_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -35562,6 +40723,20 @@ CREATE INDEX immunization_search_date_on_resource_id_and_param_idx ON immunizati
 --
 
 CREATE INDEX immunization_search_date_on_start_end_range_gist_idx ON immunization_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: immunization_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX immunization_search_number_on_resource_id_and_param_idx ON immunization_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: immunization_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX immunization_search_number_on_value_idx ON immunization_search_number USING btree (value);
 
 
 --
@@ -35712,6 +40887,20 @@ CREATE INDEX immunizationrecommendation_search_date_on_start_end_range_gist_ ON 
 
 
 --
+-- Name: immunizationrecommendation_search_number_on_resource_id_and_par; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX immunizationrecommendation_search_number_on_resource_id_and_par ON immunizationrecommendation_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: immunizationrecommendation_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX immunizationrecommendation_search_number_on_value_idx ON immunizationrecommendation_search_number USING btree (value);
+
+
+--
 -- Name: immunizationrecommendation_search_quantity_on_resource_id_and_p; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -35856,6 +41045,20 @@ CREATE INDEX list_search_date_on_resource_id_and_param_idx ON list_search_date U
 --
 
 CREATE INDEX list_search_date_on_start_end_range_gist_idx ON list_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: list_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX list_search_number_on_resource_id_and_param_idx ON list_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: list_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX list_search_number_on_value_idx ON list_search_number USING btree (value);
 
 
 --
@@ -36006,6 +41209,20 @@ CREATE INDEX location_search_date_on_start_end_range_gist_idx ON location_search
 
 
 --
+-- Name: location_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX location_search_number_on_resource_id_and_param_idx ON location_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: location_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX location_search_number_on_value_idx ON location_search_number USING btree (value);
+
+
+--
 -- Name: location_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -36150,6 +41367,20 @@ CREATE INDEX media_search_date_on_resource_id_and_param_idx ON media_search_date
 --
 
 CREATE INDEX media_search_date_on_start_end_range_gist_idx ON media_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: media_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX media_search_number_on_resource_id_and_param_idx ON media_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: media_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX media_search_number_on_value_idx ON media_search_number USING btree (value);
 
 
 --
@@ -36300,6 +41531,20 @@ CREATE INDEX medication_search_date_on_start_end_range_gist_idx ON medication_se
 
 
 --
+-- Name: medication_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medication_search_number_on_resource_id_and_param_idx ON medication_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: medication_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medication_search_number_on_value_idx ON medication_search_number USING btree (value);
+
+
+--
 -- Name: medication_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -36444,6 +41689,20 @@ CREATE INDEX medicationadministration_search_date_on_resource_id_and_param_i ON 
 --
 
 CREATE INDEX medicationadministration_search_date_on_start_end_range_gist_id ON medicationadministration_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: medicationadministration_search_number_on_resource_id_and_param; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationadministration_search_number_on_resource_id_and_param ON medicationadministration_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: medicationadministration_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationadministration_search_number_on_value_idx ON medicationadministration_search_number USING btree (value);
 
 
 --
@@ -36594,6 +41853,20 @@ CREATE INDEX medicationdispense_search_date_on_start_end_range_gist_idx ON medic
 
 
 --
+-- Name: medicationdispense_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationdispense_search_number_on_resource_id_and_param_idx ON medicationdispense_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: medicationdispense_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationdispense_search_number_on_value_idx ON medicationdispense_search_number USING btree (value);
+
+
+--
 -- Name: medicationdispense_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -36738,6 +42011,20 @@ CREATE INDEX medicationprescription_search_date_on_resource_id_and_param_idx ON 
 --
 
 CREATE INDEX medicationprescription_search_date_on_start_end_range_gist_idx ON medicationprescription_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: medicationprescription_search_number_on_resource_id_and_param_i; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationprescription_search_number_on_resource_id_and_param_i ON medicationprescription_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: medicationprescription_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationprescription_search_number_on_value_idx ON medicationprescription_search_number USING btree (value);
 
 
 --
@@ -36888,6 +42175,20 @@ CREATE INDEX medicationstatement_search_date_on_start_end_range_gist_idx ON medi
 
 
 --
+-- Name: medicationstatement_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationstatement_search_number_on_resource_id_and_param_idx ON medicationstatement_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: medicationstatement_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationstatement_search_number_on_value_idx ON medicationstatement_search_number USING btree (value);
+
+
+--
 -- Name: medicationstatement_search_quantity_on_resource_id_and_param_id; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -37032,6 +42333,20 @@ CREATE INDEX messageheader_search_date_on_resource_id_and_param_idx ON messagehe
 --
 
 CREATE INDEX messageheader_search_date_on_start_end_range_gist_idx ON messageheader_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: messageheader_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX messageheader_search_number_on_resource_id_and_param_idx ON messageheader_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: messageheader_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX messageheader_search_number_on_value_idx ON messageheader_search_number USING btree (value);
 
 
 --
@@ -37182,6 +42497,20 @@ CREATE INDEX observation_search_date_on_start_end_range_gist_idx ON observation_
 
 
 --
+-- Name: observation_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX observation_search_number_on_resource_id_and_param_idx ON observation_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: observation_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX observation_search_number_on_value_idx ON observation_search_number USING btree (value);
+
+
+--
 -- Name: observation_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -37326,6 +42655,20 @@ CREATE INDEX operationoutcome_search_date_on_resource_id_and_param_idx ON operat
 --
 
 CREATE INDEX operationoutcome_search_date_on_start_end_range_gist_idx ON operationoutcome_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: operationoutcome_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX operationoutcome_search_number_on_resource_id_and_param_idx ON operationoutcome_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: operationoutcome_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX operationoutcome_search_number_on_value_idx ON operationoutcome_search_number USING btree (value);
 
 
 --
@@ -37476,6 +42819,20 @@ CREATE INDEX order_search_date_on_start_end_range_gist_idx ON order_search_date 
 
 
 --
+-- Name: order_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX order_search_number_on_resource_id_and_param_idx ON order_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: order_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX order_search_number_on_value_idx ON order_search_number USING btree (value);
+
+
+--
 -- Name: order_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -37620,6 +42977,20 @@ CREATE INDEX orderresponse_search_date_on_resource_id_and_param_idx ON orderresp
 --
 
 CREATE INDEX orderresponse_search_date_on_start_end_range_gist_idx ON orderresponse_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: orderresponse_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX orderresponse_search_number_on_resource_id_and_param_idx ON orderresponse_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: orderresponse_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX orderresponse_search_number_on_value_idx ON orderresponse_search_number USING btree (value);
 
 
 --
@@ -37770,6 +43141,20 @@ CREATE INDEX organization_search_date_on_start_end_range_gist_idx ON organizatio
 
 
 --
+-- Name: organization_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX organization_search_number_on_resource_id_and_param_idx ON organization_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: organization_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX organization_search_number_on_value_idx ON organization_search_number USING btree (value);
+
+
+--
 -- Name: organization_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -37914,6 +43299,20 @@ CREATE INDEX other_search_date_on_resource_id_and_param_idx ON other_search_date
 --
 
 CREATE INDEX other_search_date_on_start_end_range_gist_idx ON other_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: other_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX other_search_number_on_resource_id_and_param_idx ON other_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: other_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX other_search_number_on_value_idx ON other_search_number USING btree (value);
 
 
 --
@@ -38064,6 +43463,20 @@ CREATE INDEX patient_search_date_on_start_end_range_gist_idx ON patient_search_d
 
 
 --
+-- Name: patient_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX patient_search_number_on_resource_id_and_param_idx ON patient_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: patient_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX patient_search_number_on_value_idx ON patient_search_number USING btree (value);
+
+
+--
 -- Name: patient_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -38208,6 +43621,20 @@ CREATE INDEX practitioner_search_date_on_resource_id_and_param_idx ON practition
 --
 
 CREATE INDEX practitioner_search_date_on_start_end_range_gist_idx ON practitioner_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: practitioner_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX practitioner_search_number_on_resource_id_and_param_idx ON practitioner_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: practitioner_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX practitioner_search_number_on_value_idx ON practitioner_search_number USING btree (value);
 
 
 --
@@ -38358,6 +43785,20 @@ CREATE INDEX procedure_search_date_on_start_end_range_gist_idx ON procedure_sear
 
 
 --
+-- Name: procedure_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX procedure_search_number_on_resource_id_and_param_idx ON procedure_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: procedure_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX procedure_search_number_on_value_idx ON procedure_search_number USING btree (value);
+
+
+--
 -- Name: procedure_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -38502,6 +43943,20 @@ CREATE INDEX profile_search_date_on_resource_id_and_param_idx ON profile_search_
 --
 
 CREATE INDEX profile_search_date_on_start_end_range_gist_idx ON profile_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: profile_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX profile_search_number_on_resource_id_and_param_idx ON profile_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: profile_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX profile_search_number_on_value_idx ON profile_search_number USING btree (value);
 
 
 --
@@ -38652,6 +44107,20 @@ CREATE INDEX provenance_search_date_on_start_end_range_gist_idx ON provenance_se
 
 
 --
+-- Name: provenance_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX provenance_search_number_on_resource_id_and_param_idx ON provenance_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: provenance_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX provenance_search_number_on_value_idx ON provenance_search_number USING btree (value);
+
+
+--
 -- Name: provenance_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -38796,6 +44265,20 @@ CREATE INDEX query_search_date_on_resource_id_and_param_idx ON query_search_date
 --
 
 CREATE INDEX query_search_date_on_start_end_range_gist_idx ON query_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: query_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX query_search_number_on_resource_id_and_param_idx ON query_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: query_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX query_search_number_on_value_idx ON query_search_number USING btree (value);
 
 
 --
@@ -38946,6 +44429,20 @@ CREATE INDEX questionnaire_search_date_on_start_end_range_gist_idx ON questionna
 
 
 --
+-- Name: questionnaire_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX questionnaire_search_number_on_resource_id_and_param_idx ON questionnaire_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: questionnaire_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX questionnaire_search_number_on_value_idx ON questionnaire_search_number USING btree (value);
+
+
+--
 -- Name: questionnaire_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -39090,6 +44587,20 @@ CREATE INDEX relatedperson_search_date_on_resource_id_and_param_idx ON relatedpe
 --
 
 CREATE INDEX relatedperson_search_date_on_start_end_range_gist_idx ON relatedperson_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: relatedperson_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX relatedperson_search_number_on_resource_id_and_param_idx ON relatedperson_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: relatedperson_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX relatedperson_search_number_on_value_idx ON relatedperson_search_number USING btree (value);
 
 
 --
@@ -39240,6 +44751,20 @@ CREATE INDEX securityevent_search_date_on_start_end_range_gist_idx ON securityev
 
 
 --
+-- Name: securityevent_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX securityevent_search_number_on_resource_id_and_param_idx ON securityevent_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: securityevent_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX securityevent_search_number_on_value_idx ON securityevent_search_number USING btree (value);
+
+
+--
 -- Name: securityevent_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -39384,6 +44909,20 @@ CREATE INDEX specimen_search_date_on_resource_id_and_param_idx ON specimen_searc
 --
 
 CREATE INDEX specimen_search_date_on_start_end_range_gist_idx ON specimen_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: specimen_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX specimen_search_number_on_resource_id_and_param_idx ON specimen_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: specimen_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX specimen_search_number_on_value_idx ON specimen_search_number USING btree (value);
 
 
 --
@@ -39534,6 +45073,20 @@ CREATE INDEX substance_search_date_on_start_end_range_gist_idx ON substance_sear
 
 
 --
+-- Name: substance_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX substance_search_number_on_resource_id_and_param_idx ON substance_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: substance_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX substance_search_number_on_value_idx ON substance_search_number USING btree (value);
+
+
+--
 -- Name: substance_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -39678,6 +45231,20 @@ CREATE INDEX supply_search_date_on_resource_id_and_param_idx ON supply_search_da
 --
 
 CREATE INDEX supply_search_date_on_start_end_range_gist_idx ON supply_search_date USING gist (tstzrange(start, "end"));
+
+
+--
+-- Name: supply_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX supply_search_number_on_resource_id_and_param_idx ON supply_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: supply_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX supply_search_number_on_value_idx ON supply_search_number USING btree (value);
 
 
 --
@@ -39828,6 +45395,20 @@ CREATE INDEX valueset_search_date_on_start_end_range_gist_idx ON valueset_search
 
 
 --
+-- Name: valueset_search_number_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX valueset_search_number_on_resource_id_and_param_idx ON valueset_search_number USING btree (resource_id, param);
+
+
+--
+-- Name: valueset_search_number_on_value_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX valueset_search_number_on_value_idx ON valueset_search_number USING btree (value);
+
+
+--
 -- Name: valueset_search_quantity_on_resource_id_and_param_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -39968,6 +45549,14 @@ ALTER TABLE ONLY adversereaction_search_date
 
 
 --
+-- Name: adversereaction_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY adversereaction_search_number
+    ADD CONSTRAINT adversereaction_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES adversereaction(logical_id);
+
+
+--
 -- Name: adversereaction_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -40029,6 +45618,14 @@ ALTER TABLE ONLY adversereaction_tag
 
 ALTER TABLE ONLY alert_search_date
     ADD CONSTRAINT alert_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES alert(logical_id);
+
+
+--
+-- Name: alert_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY alert_search_number
+    ADD CONSTRAINT alert_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES alert(logical_id);
 
 
 --
@@ -40096,6 +45693,14 @@ ALTER TABLE ONLY allergyintolerance_search_date
 
 
 --
+-- Name: allergyintolerance_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY allergyintolerance_search_number
+    ADD CONSTRAINT allergyintolerance_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES allergyintolerance(logical_id);
+
+
+--
 -- Name: allergyintolerance_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -40157,6 +45762,14 @@ ALTER TABLE ONLY allergyintolerance_tag
 
 ALTER TABLE ONLY careplan_search_date
     ADD CONSTRAINT careplan_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES careplan(logical_id);
+
+
+--
+-- Name: careplan_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY careplan_search_number
+    ADD CONSTRAINT careplan_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES careplan(logical_id);
 
 
 --
@@ -40224,6 +45837,14 @@ ALTER TABLE ONLY composition_search_date
 
 
 --
+-- Name: composition_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY composition_search_number
+    ADD CONSTRAINT composition_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES composition(logical_id);
+
+
+--
 -- Name: composition_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -40285,6 +45906,14 @@ ALTER TABLE ONLY composition_tag
 
 ALTER TABLE ONLY conceptmap_search_date
     ADD CONSTRAINT conceptmap_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES conceptmap(logical_id);
+
+
+--
+-- Name: conceptmap_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY conceptmap_search_number
+    ADD CONSTRAINT conceptmap_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES conceptmap(logical_id);
 
 
 --
@@ -40352,6 +45981,14 @@ ALTER TABLE ONLY condition_search_date
 
 
 --
+-- Name: condition_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY condition_search_number
+    ADD CONSTRAINT condition_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES condition(logical_id);
+
+
+--
 -- Name: condition_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -40413,6 +46050,14 @@ ALTER TABLE ONLY condition_tag
 
 ALTER TABLE ONLY conformance_search_date
     ADD CONSTRAINT conformance_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES conformance(logical_id);
+
+
+--
+-- Name: conformance_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY conformance_search_number
+    ADD CONSTRAINT conformance_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES conformance(logical_id);
 
 
 --
@@ -40480,6 +46125,14 @@ ALTER TABLE ONLY device_search_date
 
 
 --
+-- Name: device_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY device_search_number
+    ADD CONSTRAINT device_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES device(logical_id);
+
+
+--
 -- Name: device_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -40541,6 +46194,14 @@ ALTER TABLE ONLY device_tag
 
 ALTER TABLE ONLY deviceobservationreport_search_date
     ADD CONSTRAINT deviceobservationreport_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES deviceobservationreport(logical_id);
+
+
+--
+-- Name: deviceobservationreport_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY deviceobservationreport_search_number
+    ADD CONSTRAINT deviceobservationreport_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES deviceobservationreport(logical_id);
 
 
 --
@@ -40608,6 +46269,14 @@ ALTER TABLE ONLY diagnosticorder_search_date
 
 
 --
+-- Name: diagnosticorder_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY diagnosticorder_search_number
+    ADD CONSTRAINT diagnosticorder_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES diagnosticorder(logical_id);
+
+
+--
 -- Name: diagnosticorder_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -40669,6 +46338,14 @@ ALTER TABLE ONLY diagnosticorder_tag
 
 ALTER TABLE ONLY diagnosticreport_search_date
     ADD CONSTRAINT diagnosticreport_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES diagnosticreport(logical_id);
+
+
+--
+-- Name: diagnosticreport_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY diagnosticreport_search_number
+    ADD CONSTRAINT diagnosticreport_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES diagnosticreport(logical_id);
 
 
 --
@@ -40736,6 +46413,14 @@ ALTER TABLE ONLY documentmanifest_search_date
 
 
 --
+-- Name: documentmanifest_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY documentmanifest_search_number
+    ADD CONSTRAINT documentmanifest_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES documentmanifest(logical_id);
+
+
+--
 -- Name: documentmanifest_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -40797,6 +46482,14 @@ ALTER TABLE ONLY documentmanifest_tag
 
 ALTER TABLE ONLY documentreference_search_date
     ADD CONSTRAINT documentreference_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES documentreference(logical_id);
+
+
+--
+-- Name: documentreference_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY documentreference_search_number
+    ADD CONSTRAINT documentreference_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES documentreference(logical_id);
 
 
 --
@@ -40864,6 +46557,14 @@ ALTER TABLE ONLY encounter_search_date
 
 
 --
+-- Name: encounter_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY encounter_search_number
+    ADD CONSTRAINT encounter_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES encounter(logical_id);
+
+
+--
 -- Name: encounter_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -40925,6 +46626,14 @@ ALTER TABLE ONLY encounter_tag
 
 ALTER TABLE ONLY familyhistory_search_date
     ADD CONSTRAINT familyhistory_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES familyhistory(logical_id);
+
+
+--
+-- Name: familyhistory_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY familyhistory_search_number
+    ADD CONSTRAINT familyhistory_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES familyhistory(logical_id);
 
 
 --
@@ -40992,6 +46701,14 @@ ALTER TABLE ONLY group_search_date
 
 
 --
+-- Name: group_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY group_search_number
+    ADD CONSTRAINT group_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES "group"(logical_id);
+
+
+--
 -- Name: group_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -41053,6 +46770,14 @@ ALTER TABLE ONLY group_tag
 
 ALTER TABLE ONLY imagingstudy_search_date
     ADD CONSTRAINT imagingstudy_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES imagingstudy(logical_id);
+
+
+--
+-- Name: imagingstudy_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY imagingstudy_search_number
+    ADD CONSTRAINT imagingstudy_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES imagingstudy(logical_id);
 
 
 --
@@ -41120,6 +46845,14 @@ ALTER TABLE ONLY immunization_search_date
 
 
 --
+-- Name: immunization_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY immunization_search_number
+    ADD CONSTRAINT immunization_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES immunization(logical_id);
+
+
+--
 -- Name: immunization_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -41181,6 +46914,14 @@ ALTER TABLE ONLY immunization_tag
 
 ALTER TABLE ONLY immunizationrecommendation_search_date
     ADD CONSTRAINT immunizationrecommendation_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES immunizationrecommendation(logical_id);
+
+
+--
+-- Name: immunizationrecommendation_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY immunizationrecommendation_search_number
+    ADD CONSTRAINT immunizationrecommendation_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES immunizationrecommendation(logical_id);
 
 
 --
@@ -41248,6 +46989,14 @@ ALTER TABLE ONLY list_search_date
 
 
 --
+-- Name: list_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY list_search_number
+    ADD CONSTRAINT list_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES list(logical_id);
+
+
+--
 -- Name: list_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -41309,6 +47058,14 @@ ALTER TABLE ONLY list_tag
 
 ALTER TABLE ONLY location_search_date
     ADD CONSTRAINT location_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES location(logical_id);
+
+
+--
+-- Name: location_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY location_search_number
+    ADD CONSTRAINT location_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES location(logical_id);
 
 
 --
@@ -41376,6 +47133,14 @@ ALTER TABLE ONLY media_search_date
 
 
 --
+-- Name: media_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY media_search_number
+    ADD CONSTRAINT media_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES media(logical_id);
+
+
+--
 -- Name: media_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -41437,6 +47202,14 @@ ALTER TABLE ONLY media_tag
 
 ALTER TABLE ONLY medication_search_date
     ADD CONSTRAINT medication_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES medication(logical_id);
+
+
+--
+-- Name: medication_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY medication_search_number
+    ADD CONSTRAINT medication_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES medication(logical_id);
 
 
 --
@@ -41504,6 +47277,14 @@ ALTER TABLE ONLY medicationadministration_search_date
 
 
 --
+-- Name: medicationadministration_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY medicationadministration_search_number
+    ADD CONSTRAINT medicationadministration_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES medicationadministration(logical_id);
+
+
+--
 -- Name: medicationadministration_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -41565,6 +47346,14 @@ ALTER TABLE ONLY medicationadministration_tag
 
 ALTER TABLE ONLY medicationdispense_search_date
     ADD CONSTRAINT medicationdispense_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES medicationdispense(logical_id);
+
+
+--
+-- Name: medicationdispense_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY medicationdispense_search_number
+    ADD CONSTRAINT medicationdispense_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES medicationdispense(logical_id);
 
 
 --
@@ -41632,6 +47421,14 @@ ALTER TABLE ONLY medicationprescription_search_date
 
 
 --
+-- Name: medicationprescription_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY medicationprescription_search_number
+    ADD CONSTRAINT medicationprescription_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES medicationprescription(logical_id);
+
+
+--
 -- Name: medicationprescription_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -41693,6 +47490,14 @@ ALTER TABLE ONLY medicationprescription_tag
 
 ALTER TABLE ONLY medicationstatement_search_date
     ADD CONSTRAINT medicationstatement_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES medicationstatement(logical_id);
+
+
+--
+-- Name: medicationstatement_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY medicationstatement_search_number
+    ADD CONSTRAINT medicationstatement_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES medicationstatement(logical_id);
 
 
 --
@@ -41760,6 +47565,14 @@ ALTER TABLE ONLY messageheader_search_date
 
 
 --
+-- Name: messageheader_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY messageheader_search_number
+    ADD CONSTRAINT messageheader_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES messageheader(logical_id);
+
+
+--
 -- Name: messageheader_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -41821,6 +47634,14 @@ ALTER TABLE ONLY messageheader_tag
 
 ALTER TABLE ONLY observation_search_date
     ADD CONSTRAINT observation_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES observation(logical_id);
+
+
+--
+-- Name: observation_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY observation_search_number
+    ADD CONSTRAINT observation_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES observation(logical_id);
 
 
 --
@@ -41888,6 +47709,14 @@ ALTER TABLE ONLY operationoutcome_search_date
 
 
 --
+-- Name: operationoutcome_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY operationoutcome_search_number
+    ADD CONSTRAINT operationoutcome_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES operationoutcome(logical_id);
+
+
+--
 -- Name: operationoutcome_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -41949,6 +47778,14 @@ ALTER TABLE ONLY operationoutcome_tag
 
 ALTER TABLE ONLY order_search_date
     ADD CONSTRAINT order_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES "order"(logical_id);
+
+
+--
+-- Name: order_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY order_search_number
+    ADD CONSTRAINT order_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES "order"(logical_id);
 
 
 --
@@ -42016,6 +47853,14 @@ ALTER TABLE ONLY orderresponse_search_date
 
 
 --
+-- Name: orderresponse_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY orderresponse_search_number
+    ADD CONSTRAINT orderresponse_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES orderresponse(logical_id);
+
+
+--
 -- Name: orderresponse_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -42077,6 +47922,14 @@ ALTER TABLE ONLY orderresponse_tag
 
 ALTER TABLE ONLY organization_search_date
     ADD CONSTRAINT organization_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES organization(logical_id);
+
+
+--
+-- Name: organization_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY organization_search_number
+    ADD CONSTRAINT organization_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES organization(logical_id);
 
 
 --
@@ -42144,6 +47997,14 @@ ALTER TABLE ONLY other_search_date
 
 
 --
+-- Name: other_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY other_search_number
+    ADD CONSTRAINT other_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES other(logical_id);
+
+
+--
 -- Name: other_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -42205,6 +48066,14 @@ ALTER TABLE ONLY other_tag
 
 ALTER TABLE ONLY patient_search_date
     ADD CONSTRAINT patient_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES patient(logical_id);
+
+
+--
+-- Name: patient_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY patient_search_number
+    ADD CONSTRAINT patient_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES patient(logical_id);
 
 
 --
@@ -42272,6 +48141,14 @@ ALTER TABLE ONLY practitioner_search_date
 
 
 --
+-- Name: practitioner_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY practitioner_search_number
+    ADD CONSTRAINT practitioner_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES practitioner(logical_id);
+
+
+--
 -- Name: practitioner_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -42333,6 +48210,14 @@ ALTER TABLE ONLY practitioner_tag
 
 ALTER TABLE ONLY procedure_search_date
     ADD CONSTRAINT procedure_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES procedure(logical_id);
+
+
+--
+-- Name: procedure_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY procedure_search_number
+    ADD CONSTRAINT procedure_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES procedure(logical_id);
 
 
 --
@@ -42400,6 +48285,14 @@ ALTER TABLE ONLY profile_search_date
 
 
 --
+-- Name: profile_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY profile_search_number
+    ADD CONSTRAINT profile_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES profile(logical_id);
+
+
+--
 -- Name: profile_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -42461,6 +48354,14 @@ ALTER TABLE ONLY profile_tag
 
 ALTER TABLE ONLY provenance_search_date
     ADD CONSTRAINT provenance_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES provenance(logical_id);
+
+
+--
+-- Name: provenance_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY provenance_search_number
+    ADD CONSTRAINT provenance_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES provenance(logical_id);
 
 
 --
@@ -42528,6 +48429,14 @@ ALTER TABLE ONLY query_search_date
 
 
 --
+-- Name: query_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY query_search_number
+    ADD CONSTRAINT query_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES query(logical_id);
+
+
+--
 -- Name: query_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -42589,6 +48498,14 @@ ALTER TABLE ONLY query_tag
 
 ALTER TABLE ONLY questionnaire_search_date
     ADD CONSTRAINT questionnaire_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES questionnaire(logical_id);
+
+
+--
+-- Name: questionnaire_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY questionnaire_search_number
+    ADD CONSTRAINT questionnaire_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES questionnaire(logical_id);
 
 
 --
@@ -42656,6 +48573,14 @@ ALTER TABLE ONLY relatedperson_search_date
 
 
 --
+-- Name: relatedperson_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY relatedperson_search_number
+    ADD CONSTRAINT relatedperson_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES relatedperson(logical_id);
+
+
+--
 -- Name: relatedperson_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -42717,6 +48642,14 @@ ALTER TABLE ONLY relatedperson_tag
 
 ALTER TABLE ONLY securityevent_search_date
     ADD CONSTRAINT securityevent_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES securityevent(logical_id);
+
+
+--
+-- Name: securityevent_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY securityevent_search_number
+    ADD CONSTRAINT securityevent_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES securityevent(logical_id);
 
 
 --
@@ -42784,6 +48717,14 @@ ALTER TABLE ONLY specimen_search_date
 
 
 --
+-- Name: specimen_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY specimen_search_number
+    ADD CONSTRAINT specimen_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES specimen(logical_id);
+
+
+--
 -- Name: specimen_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -42845,6 +48786,14 @@ ALTER TABLE ONLY specimen_tag
 
 ALTER TABLE ONLY substance_search_date
     ADD CONSTRAINT substance_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES substance(logical_id);
+
+
+--
+-- Name: substance_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY substance_search_number
+    ADD CONSTRAINT substance_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES substance(logical_id);
 
 
 --
@@ -42912,6 +48861,14 @@ ALTER TABLE ONLY supply_search_date
 
 
 --
+-- Name: supply_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY supply_search_number
+    ADD CONSTRAINT supply_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES supply(logical_id);
+
+
+--
 -- Name: supply_search_quantity_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -42973,6 +48930,14 @@ ALTER TABLE ONLY supply_tag
 
 ALTER TABLE ONLY valueset_search_date
     ADD CONSTRAINT valueset_search_date_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES valueset(logical_id);
+
+
+--
+-- Name: valueset_search_number_resource_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY valueset_search_number
+    ADD CONSTRAINT valueset_search_number_resource_id_fkey FOREIGN KEY (resource_id) REFERENCES valueset(logical_id);
 
 
 --

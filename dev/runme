@@ -1,8 +1,12 @@
 #!/bin/bash
 
-DB='fhirb' #ase_test'
+if [ -z "$DB" ]; then
+  echo "Need to set DB='fhirb'"
+  DB='fhirb'
+fi
+
 if [ -z "$PSQL_ARGS" ]; then
-  echo "Need to set STATE"
+  echo "Need to set PSQL_ARGS='-h localhost'"
   PSQL_ARGS='-h localhost'
 fi
 
@@ -16,6 +20,8 @@ function help_cmd {
 
     -h || help                this help text
     install dbname            generate and install fhirbase schema into specified DB
+    integrate                 generate  test db and run tests
+    test                      run tests
     build                     build fhirbase.sql file
 EOF
 }
@@ -91,6 +97,7 @@ case "$CMD" in
         test_cmd
         ;;
     "build" )
+        install_cmd 'build_fhir'
         build_cmd
         ;;
     *)
