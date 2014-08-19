@@ -1,0 +1,14 @@
+SET escape_string_warning=off;
+SET
+SET escape_string_warning=off;
+SET
+BEGIN;
+BEGIN
+SELECT assert_eq('version', (SELECT fhir_conformance('{"version":"version"}'))->>'version', 'version');
+ assert_eq  
+------------
+ OK version
+(1 row)
+
+ROLLBACK;
+ROLLBACK
