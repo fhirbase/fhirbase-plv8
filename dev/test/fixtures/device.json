@@ -9,5 +9,7 @@
       }
     ],
     "text": "ECG"
-  }
+  },
+  "model": "Jóe",
+  "manufacturer": "Acme"
 }

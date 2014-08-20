@@ -2,6 +2,14 @@
 --{{{
 
 CREATE OR REPLACE FUNCTION
+_unaccent_string(_text text) RETURNS text
+LANGUAGE sql AS $$
+  SELECT translate(_text,
+    'âãäåāăąÁÂÃÄÅĀĂĄèééêëēĕėęěĒĔĖĘĚìíîïìĩīĭÌÍÎÏÌĨĪĬóôõöōŏőÒÓÔÕÖŌŎŐùúûüũūŭůÙÚÛÜŨŪŬŮ',
+    'aaaaaaaAAAAAAAAeeeeeeeeeeEEEEEiiiiiiiiIIIIIIIIoooooooOOOOOOOOuuuuuuuuUUUUUUUU');
+$$;
+
+CREATE OR REPLACE FUNCTION
 index_string_complex_type(_path varchar[], _item jsonb)
 RETURNS varchar LANGUAGE plpgsql AS $$
 DECLARE
@@ -49,6 +57,7 @@ DECLARE
   attrs jsonb[];
   item jsonb;
   index_vals varchar[];
+  unaccent_index_vals varchar[];
   new_val varchar;
   result jsonb[] := array[]::jsonb[];
 BEGIN
@@ -83,7 +92,12 @@ BEGIN
     END IF;
 
     IF array_length(index_vals, 1) > 0 THEN
-      result := array_append(result, json_build_object('param', prm.param_name, 'value', index_vals)::jsonb);
+      unaccent_index_vals := (
+        SELECT array_agg(_unaccent_string(x.part))
+        FROM (
+          SELECT unnest(index_vals) as part
+        ) x);
+      result := array_append(result, json_build_object('param', prm.param_name, 'value', unaccent_index_vals)::jsonb);
     END IF;
   END LOOP;
 
@@ -96,7 +110,7 @@ _search_string_expression(_table varchar, _param varchar, _type varchar, _modifi
 RETURNS text LANGUAGE sql AS $$
   SELECT CASE
     WHEN _modifier = '=' THEN
-      quote_ident(_table) || '.value ilike ' || quote_literal('%' || _value || '%')
+      quote_ident(_table) || '.value ilike ' || quote_literal('%' || _unaccent_string(_value) || '%')
     WHEN _modifier = 'exact' THEN
       quote_ident(_table) || '.value = ' || quote_literal(_value)
     END;
