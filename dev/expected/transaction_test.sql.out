@@ -29,7 +29,9 @@ WITH previous AS (
       }
     ],
     "text": "ECG"
-  }
+  },
+  "model": "Jóe",
+  "manufacturer": "Acme"
 }'::jsonb, '[]'::jsonb) as device
     ) c
   ), bundle AS (

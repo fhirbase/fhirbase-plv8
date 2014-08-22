@@ -6,6 +6,11 @@ SELECT assert_eq (
     'Joe Acme',
     _unaccent_string('Jóe Ácme'),
     '_unaccent_string');
+      assert_eq      
+---------------------
+ OK _unaccent_string
+(1 row)
+
 WITH device AS (
     SELECT *
     FROM fhir_create('{"base":"https://test.me"}', 'Device', '{
@@ -44,5 +49,10 @@ WITH device AS (
       d.res_param#>>'{entry,0,id}',
       'accent in resource and search parameter')
   FROM searching d;
+       assert_eq       |           assert_eq           |                 assert_eq                  
+-----------------------+-------------------------------+--------------------------------------------
+ OK accent in resource | OK accent in search parameter | OK accent in resource and search parameter
+(1 row)
+
 ROLLBACK;
 ROLLBACK

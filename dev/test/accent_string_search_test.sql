@@ -1,5 +1,7 @@
+--db:fhirb -e
 SET escape_string_warning=off;
 
+--{{{
 \set cfg '{"base":"https://test.me"}'
 \set device `cat test/fixtures/device.json`
 
@@ -36,3 +38,4 @@ BEGIN;
   FROM searching d;
 
 ROLLBACK;
+--}}}
