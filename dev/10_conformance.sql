@@ -22,7 +22,7 @@ SELECT json_build_object(
   'format', _cfg->'format',
   'rest', ARRAY[json_build_object(
     'mode', 'server',
-    'operation', '[ { "code": "transaction" }, { "code": "history-system" } ]',
+    'operation', ARRAY['{ "code": "transaction" }'::json, '{ "code": "history-system" }'::json],
     'cors', _cfg->'cors',
     'resource',
       (SELECT json_agg(
@@ -33,7 +33,7 @@ SELECT json_build_object(
             ),
             'readHistory', true,
             'updateCreate', true,
-            'operation', '[{ "code": "read" }, { "code": "vread" }, { "code": "update" }, { "code": "history-instance" }, { "code": "create" }, { "code": "history-type" } ]'::json,
+            'operation', ARRAY['{ "code": "read" }'::json, '{ "code": "vread" }'::json, '{ "code": "update" }'::json, '{ "code": "history-instance" }'::json, '{ "code": "create" }'::json, '{ "code": "history-type" }'::json],
             'searchParam',  (
               SELECT  json_agg(t.*)  FROM (
                 SELECT sp.name, sp.type, sp.documentation
