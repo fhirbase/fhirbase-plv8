@@ -56,7 +56,7 @@ We decided to implement most of FHIR specification inside database for
 scalability reason (all data operations is done efficiently in databse).
 
 This approach also gives you possibility use FHIRBase from your prefered lang/platform (.NET, java, ruby, nodejs etc).
-We implemented FHIR complaint server in clojure, with small amount of code - [FHIRPlace](https://github.com/fhirbase/fhirplace/).
+We implemented FHIR compliant server in clojure, with small amount of code - [FHIRPlace](https://github.com/fhirbase/fhirplace/).
 
 And there is option to break FHIR specification abstraction (if required) and
 go into database by generic SQL interface and complete your business task.
