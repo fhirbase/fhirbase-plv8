@@ -8,12 +8,23 @@ RUN locale-gen
 RUN useradd -m -s /bin/bash fhirbase
 RUN echo "fhirbase:fhirbase"|chpasswd
 
+RUN adduser fhirbase sudo
+# Enable passwordless sudo for users under the "sudo" group
+RUN sed -i.bkp -e \
+      's/%sudo\s\+ALL=(ALL\(:ALL\)\?)\s\+ALL/%sudo ALL=NOPASSWD:ALL/g' \
+
+      /etc/sudoers
+
+RUN echo $USER
 USER fhirbase
 RUN echo $LC_ALL
 RUN locale
-RUN cd && git clone https://github.com/fhirbase/fhirbase.git
-RUN cd fhirbase && source ./local_cfg.sh && ./install-postgres
-RUN cd ~/fhirbase/dev && ./runme integrate
+RUN cd /home/fhirbase && git clone https://github.com/fhirbase/fhirbase.git
+RUN sudo su fhirbase -c 'cd /home/fhirbase/fhirbase && source ./local_cfg.sh && ./install-postgres && echo $PG_BIN && ls $PG_BIN'
+RUN sudo su root -c 'find /home -type f -name psql'
+RUN cd /home/fhirbase/fhirbase && . ./local_cfg.sh && echo $PG_BIN
+RUN sudo su fhirbase -c 'export PATH=$PATH:/home/fhirbase/fhirbase/tmp/bin && psql --version'
+RUN sudo su fhirbase -c 'export PSQL_ARGS='-h localhost' && export PATH=$PATH:/home/fhirbase/fhirbase/tmp/bin && cd /home/fhirbase/fhirbase && source ./local_cfg.sh && cd /home/fhirbase/fhirbase/dev && ./runme integrate'
 
 # Expose the PostgreSQL port
 EXPOSE 5777
