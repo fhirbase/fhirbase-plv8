@@ -10,6 +10,11 @@ Sponsored by:
 
 ![choice-hs.com](http://choice-hs.com/Images/Shared/Choice-HSLogo.png)
 
+
+Docker image:
+
+[image](https://registry.hub.docker.com/u/fhirbase/fhirbase/)
+
 ## Live Demo
 
 Here is an [interactive demo](http://try-fhirplace.hospital-systems.com/fhirface/index.html),
