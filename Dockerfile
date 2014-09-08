@@ -1,31 +1,38 @@
 FROM ubuntu:14.04
 MAINTAINER Nikolay Ryzhikov <niquola@gmail.com>, Mike Lapshin <mikhail.a.lapshin@gmail.com>
 RUN apt-get -qq update
-RUN apt-get -qqy install git
-RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
-RUN locale-gen
+RUN apt-get -qqy install git build-essential gettext libreadline6 libreadline6-dev zlib1g-dev flex bison libxml2-dev libxslt-dev
 
-RUN useradd -m -s /bin/bash fhirbase
-RUN echo "fhirbase:fhirbase"|chpasswd
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && locale-gen
 
-RUN adduser fhirbase sudo
-# Enable passwordless sudo for users under the "sudo" group
-RUN sed -i.bkp -e \
-      's/%sudo\s\+ALL=(ALL\(:ALL\)\?)\s\+ALL/%sudo ALL=NOPASSWD:ALL/g' \
+RUN useradd -m -s /bin/bash fhirbase && echo "fhirbase:fhirbase"|chpasswd && adduser fhirbase sudo
+RUN echo 'dev ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
-      /etc/sudoers
-
-RUN echo $USER
 USER fhirbase
-RUN echo $LC_ALL
-RUN locale
-RUN cd /home/fhirbase && git clone https://github.com/fhirbase/fhirbase.git
-RUN sudo su fhirbase -c 'cd /home/fhirbase/fhirbase && source ./local_cfg.sh && ./install-postgres && echo $PG_BIN && ls $PG_BIN'
-RUN sudo su root -c 'find /home -type f -name psql'
-RUN cd /home/fhirbase/fhirbase && . ./local_cfg.sh && echo $PG_BIN
-RUN sudo su fhirbase -c 'export PATH=$PATH:/home/fhirbase/fhirbase/tmp/bin && psql --version'
-RUN sudo su fhirbase -c 'export PSQL_ARGS='-h localhost' && export PATH=$PATH:/home/fhirbase/fhirbase/tmp/bin && cd /home/fhirbase/fhirbase && source ./local_cfg.sh && cd /home/fhirbase/fhirbase/dev && ./runme integrate'
+ENV HOME /home/fhirbase
+ENV PG_BRANCH REL9_4_STABLE
+ENV PG_REPO git://git.postgresql.org/git/postgresql.git
 
-# Expose the PostgreSQL port
-EXPOSE 5777
-# CMD ["/usr/local/bin/postgres", "-D", "/home/fhirbase/pgdata/", "-c", "config_file=/home/fhirbase/pgdata/postgresql.conf"]
+RUN git clone -b $PG_BRANCH --depth=1 $PG_REPO $HOME/src
+RUN XML2_CONFIG=`which xml2-config` cd $HOME/src && ./configure --prefix=$HOME/bin  --with-libxml && make && make install
+
+ENV SOURCE_DIR $HOME/src
+RUN cd $SOURCE_DIR/contrib/pgcrypto && make && make install
+RUN cd $SOURCE_DIR/contrib/pg_trgm && make && make install
+
+ENV PATH $HOME/bin/bin:$PATH
+ENV PGDATA $HOME/data
+ENV PGPORT 5432
+ENV PGHOST localhost
+RUN mkdir -p $PGDATA
+RUN initdb -D $PGDATA -E utf8
+
+RUN echo "host all  all    0.0.0.0/0  md5" >> $PGDATA/pg_hba.conf
+RUN echo "listen_addresses='*'" >> $PGDATA/postgresql.conf
+RUN echo "port=$PGPORT" >> $PGDATA/postgresql.conf
+
+RUN cd ~/ && git clone https://github.com/fhirbase/fhirbase.git
+RUN cd ~/ && pg_ctl -D data -w start && cd ~/fhirbase/dev && ./runme install fhirbase && pg_ctl -w -D ~/data stop
+RUN cd ~/ && pg_ctl -D data -w start && psql -c "alter user fhirbase with password 'fhirbase';" && pg_ctl -w -D ~/data stop
+EXPOSE 5432
+CMD ["/home/fhirbase/bin/bin/postgres", "-D", "/home/fhirbase/data"]
