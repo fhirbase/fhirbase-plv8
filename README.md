@@ -127,7 +127,7 @@ Prefered way is docker - https://docker.com.
 
 Install docker.
 
-Here is autobuided public [image of fhirbase](https://registry.hub.docker.com/u/fhirbase/fhirbase/):
+Here is auto builded public [image of fhirbase](https://registry.hub.docker.com/u/fhirbase/fhirbase/):
 
 To install fhirbase:
 
