@@ -11,9 +11,7 @@ Sponsored by:
 ![choice-hs.com](http://choice-hs.com/Images/Shared/Choice-HSLogo.png)
 
 
-Docker image:
 
-[image](https://registry.hub.docker.com/u/fhirbase/fhirbase/)
 
 ## Live Demo
 
@@ -124,6 +122,27 @@ For more information [see source code](https://github.com/fhirbase/fhirbase/blob
 
 
 ## Installation
+
+Prefered way is docker - https://docker.com.
+
+Install docker.
+
+Here is autobuided public [image of fhirbase](https://registry.hub.docker.com/u/fhirbase/fhirbase/):
+
+To install fhirbase:
+
+```
+sudo docker.io run -d --name=fhirbase -t -p <mylocalport>:5432 fhirbase/fhirbase:latest
+
+# check by connecting to database
+psql -U fhirbase -h localhost -p <mylocalport> fhirbase
+password> fhirbase
+
+# or you can connect with your postgresql client: 
+# user:fhirbase, password: fhirbase, host: localhost, port:<mylocalport>
+```
+
+## Build
 
 Requirements:
 * PostgreSQL 9.4 (http://www.postgresql.org/about/news/1522/)
