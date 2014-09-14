@@ -161,7 +161,7 @@ LANGUAGE sql AS $$
         SELECT * FROM resource_history
          WHERE resource_type = _type_
            AND logical_id = _id_) r)
-  SELECT _build_bundle('History of resource with id=' || _id_, count(e.*), COALESCE(json_agg(e.*), '[]'::json))
+  SELECT _build_bundle('History of resource with id=' || _id_, count(e.*)::integer, COALESCE(json_agg(e.*), '[]'::json))
   FROM entry e;
 $$;
 COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _id_ uuid, _params_ jsonb)
@@ -185,7 +185,7 @@ LANGUAGE sql AS $$
         UNION
         SELECT * FROM resource_history
          WHERE resource_type = _type_) r)
-  SELECT _build_bundle('History of resource with type=' || _type_, count(e.*), COALESCE(json_agg(e.*), '[]'::json))
+  SELECT _build_bundle('History of resource with type=' || _type_, count(e.*)::integer, COALESCE(json_agg(e.*), '[]'::json))
   FROM entry e;
 $$;
 COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _params_ jsonb)
@@ -207,7 +207,7 @@ LANGUAGE sql AS $$
         SELECT * FROM resource
         UNION
         SELECT * FROM resource_history) r)
-  SELECT _build_bundle('History of all resources', count(e.*), COALESCE(json_agg(e.*), '[]'::json))
+  SELECT _build_bundle('History of all resources', count(e.*)::integer, COALESCE(json_agg(e.*), '[]'::json))
   FROM entry e;
 $$;
 COMMENT ON FUNCTION fhir_history(_cfg jsonb, _params_ jsonb)
@@ -217,7 +217,7 @@ CREATE OR REPLACE
 FUNCTION fhir_search(_cfg jsonb, _type_ varchar, _params_ text) RETURNS jsonb
 LANGUAGE sql AS $$
 -- TODO build query twice
-  SELECT _build_bundle('Search results for ' || _params_::varchar, (SELECT search_results_count(_type_, _params_)), COALESCE(json_agg(z.*), '[]'::json)) as json
+  SELECT _build_bundle('Search results for ' || _params_::varchar, (SELECT search_results_count(_type_, _params_))::integer, COALESCE(json_agg(z.*), '[]'::json)) as json
   FROM
     (SELECT y.content AS content,
             y.updated AS updated,
@@ -314,7 +314,7 @@ LANGUAGE sql AS $$
       FROM deleted_resources
     ) r
   )
-  SELECT _build_bundle('Transaction results', count(r.*), COALESCE(json_agg(r.*), '[]'::json)) as json
+  SELECT _build_bundle('Transaction results', count(r.*)::integer, COALESCE(json_agg(r.*), '[]'::json)) as json
   FROM created r;
 $$;
 COMMENT ON FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb)
