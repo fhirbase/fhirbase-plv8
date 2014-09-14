@@ -42,9 +42,9 @@ BEGIN;
   ), testing AS (
     SELECT
       e.*,
-      fhir_read(:'cfg', 'Device', e.created_id::uuid) as created,
-      fhir_read(:'cfg', 'Alert', e.updated_id::uuid) as updated,
-      fhir_read(:'cfg', 'Device', e.deleted_id::uuid) as deleted
+      fhir_read(:'cfg', 'Device', e.created_id) as created,
+      fhir_read(:'cfg', 'Alert', e.updated_id) as updated,
+      fhir_read(:'cfg', 'Device', e.deleted_id) as deleted
     FROM expanded e
   )
 

@@ -86,7 +86,7 @@ FUNCTION fhir_create(_cfg jsonb, _type_ varchar, _resource_ jsonb, _tags_ jsonb)
 LANGUAGE sql AS $$
 --- Create a new resource with a server assigned id
 --- return bundle with one entry
-  SELECT fhir_read(_cfg, _type_, insert_resource(_resource_, _tags_))
+  SELECT fhir_read(_cfg, _type_, _build_id(_cfg, _type_, insert_resource(_resource_, _tags_)))
 $$;
 COMMENT ON FUNCTION fhir_create(_cfg jsonb, _type_ varchar, _resource_ jsonb, _tags_ jsonb)
 IS 'Create a new resource with a server assigned id\n Return bundle with newly entry';
@@ -284,7 +284,7 @@ LANGUAGE sql AS $$
   ), updated_resources AS (
     SELECT
       r.id as alternative,
-      fhir_update(_cfg, r.resource_type, (cr.entry->>'id')::uuid,
+      fhir_update(_cfg, r.resource_type, cr.entry->>'id',
         _get_vid_from_url(cr.entry#>>'{link,0,href}')::uuid,
         _replace_references(r.content::text, rf.refs)::jsonb, '[]'::jsonb)#>'{entry,0}' as entry
     FROM create_resources r
@@ -293,7 +293,7 @@ LANGUAGE sql AS $$
     UNION ALL
     SELECT
       r.id as alternative,
-      fhir_update(_cfg, r.resource_type, r.id::uuid, r.vid::uuid, _replace_references(r.content::text, rf.refs)::jsonb, r.category::jsonb)#>'{entry,0}' as entry
+      fhir_update(_cfg, r.resource_type, r.id, r.vid::uuid, _replace_references(r.content::text, rf.refs)::jsonb, r.category::jsonb)#>'{entry,0}' as entry
     FROM update_resources r, reference rf
   ), delete_resources AS (
     SELECT i.*
@@ -305,7 +305,7 @@ LANGUAGE sql AS $$
       SELECT
         r.id as alternative,
         ('{"id": "' || r.id || '"}')::jsonb as entry,
-        fhir_delete(_cfg, rs.resource_type, r.id::uuid) as deleted
+        fhir_delete(_cfg, rs.resource_type, r.id) as deleted
       FROM delete_resources r
       JOIN resource rs on rs.logical_id::text = r.id
     ) d
