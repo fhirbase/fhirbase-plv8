@@ -1,12 +1,12 @@
 FROM ubuntu:14.04
-MAINTAINER Nikolay Ryzhikov <niquola@gmail.com>, Mike Lapshin <mikhail.a.lapshin@gmail.com>
+MAINTAINER Nikolay Ryzhikov <niquola@gmail.com>, Mike Lapshin <mikhail.a.lapshin@gmail.com>, Maksym Bodnarchuk <bodnarchuk@gmail.com>
 RUN apt-get -qq update
 RUN apt-get -qqy install git build-essential gettext libreadline6 libreadline6-dev zlib1g-dev flex bison libxml2-dev libxslt-dev
 
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && locale-gen
 
 RUN useradd -m -s /bin/bash fhirbase && echo "fhirbase:fhirbase"|chpasswd && adduser fhirbase sudo
-RUN echo 'dev ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+RUN echo 'fhirbase ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
 USER fhirbase
 ENV HOME /home/fhirbase
