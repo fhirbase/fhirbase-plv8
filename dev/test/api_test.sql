@@ -9,16 +9,31 @@ SET escape_string_warning=off;
 
 BEGIN;
 
- select assert_eq(
-  fhir_read(:'cfg', 'Patient',
-    (fhir_create(:'cfg', 'Patient', :'pt'::jsonb, :'pt_tags'::jsonb)#>>'{entry,0,id}')::uuid)#>>'{entry,0,content,name,0,text}',
-    'Roel',
-    'fhir_create & fhir_read');
+ WITH reading AS (
+   SELECT
+     created.created#>>'{entry,0,id}' as id,
+     fhir_read(:'cfg', 'Patient', created.created#>>'{entry,0,id}') as bundle
+   FROM fhir_create(:'cfg', 'Patient', :'pt'::jsonb, :'pt_tags'::jsonb) created
+ )
 
+ SELECT
+   assert_eq(
+     r.bundle#>>'{entry,0,content,name,0,text}',
+     'Roel',
+     'fhir_create & fhir_read'),
+   assert_eq(
+     r.bundle#>>'{entry,0,id}',
+     r.id,
+     'fhir_read entry id'),
+   assert_eq(
+     _build_id(:'cfg', 'Patient', _extract_id(r.id)),
+     r.id::varchar,
+     'id format')
+ FROM reading r;
 
- select assert_eq(
+ SELECT assert_eq(
   fhir_vread(:'cfg', 'Patient',
-             (x#>>'{entry,0,id}')::uuid,
+             (x#>>'{entry,0,id}'),
              _get_vid_from_url(x#>>'{entry,0,link,0,href}')::uuid
      )#>>'{entry,0,content,name,0,text}',
     'Roel',
@@ -30,14 +45,14 @@ BEGIN;
     SELECT fhir_create(:'cfg', 'Patient', :'pt'::jsonb, :'pt_tags'::jsonb) AS entry
  ), updated AS (
     SELECT fhir_update(:'cfg', 'Patient',
-            (x.entry#>>'{entry,0,id}')::uuid,
+            (x.entry#>>'{entry,0,id}'),
             _get_vid_from_url(x.entry#>>'{entry,0,link,0,href}')::uuid,
             :'pt'::jsonb,
             :'pt_tags'::jsonb) AS entry
     FROM created x
  ), vread AS (
   SELECT fhir_vread(:'cfg', 'Patient',
-             (x.entry#>>'{entry,0,id}')::uuid,
+             (x.entry#>>'{entry,0,id}'),
              _get_vid_from_url(x.entry#>>'{entry,0,link,0,href}')::uuid
      ) as v
   FROM updated x
@@ -51,10 +66,10 @@ BEGIN;
 WITH created AS (
   SELECT fhir_create(:'cfg', 'Patient', :'pt'::jsonb, :'pt_tags'::jsonb) AS entry
 ), deleted AS (
-SELECT fhir_delete(:'cfg', 'Patient', (x.entry#>>'{entry,0,id}')::uuid) as entry
+SELECT fhir_delete(:'cfg', 'Patient', x.entry#>>'{entry,0,id}') as entry
  FROM created x
 )
-SELECT assert_eq(fhir_read(:'cfg', 'Patient', (c.entry#>>'{entry,0,id}')::uuid)#>>'{entry,0}',
+SELECT assert_eq(fhir_read(:'cfg', 'Patient', c.entry#>>'{entry,0,id}')#>>'{entry,0}',
   NULL, 'deleted')
 from created c, deleted x
 ;
@@ -65,13 +80,13 @@ WITH created AS (
   SELECT fhir_create(:'cfg', 'Patient', :'pt'::jsonb, :'pt_tags'::jsonb) AS entry
 ), updated AS (
   SELECT fhir_update(:'cfg', 'Patient',
-           (x.entry#>>'{entry,0,id}')::uuid,
+           x.entry#>>'{entry,0,id}',
            _get_vid_from_url(x.entry#>>'{entry,0,link,0,href}')::uuid,
            :'pt'::jsonb,
            :'pt_tags'::jsonb) AS entry
    FROM created x
 ), history AS (
-  SELECT fhir_history(:'cfg', 'Patient', (x.entry#>>'{entry,0,id}')::uuid, '{}'::jsonb) as hx
+  SELECT fhir_history(:'cfg', 'Patient', x.entry#>>'{entry,0,id}', '{}'::jsonb) as hx
   FROM updated x
 )
 SELECT assert_eq(
@@ -102,7 +117,7 @@ WITH previous AS (
     p.id,
     p.vid,
     _get_vid_from_url(
-      fhir_update(:'cfg', 'Alert', p.id::uuid, p.vid::uuid, :'alert'::jsonb, '[]'::jsonb)
+      fhir_update(:'cfg', 'Alert', p.id, p.vid::uuid, :'alert'::jsonb, '[]'::jsonb)
     #>>'{entry,0,link,0,href}') AS new_vid
   FROM previous p
 )
