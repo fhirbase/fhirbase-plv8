@@ -1,6 +1,19 @@
 --db:fhirb
 --{{{
 CREATE OR REPLACE FUNCTION
+_build_bundle(_title_ varchar, _total_ integer, _entry_ json) RETURNS jsonb
+LANGUAGE sql AS $$
+  SELECT  json_build_object(
+    'title', _title_,
+    'id', gen_random_uuid(),
+    'resourceType', 'Bundle',
+    'totalResults', _total_,
+    'updated', now(),
+    'entry', _entry_
+  )::jsonb;
+$$;
+
+CREATE OR REPLACE FUNCTION
 _build_url(_cfg jsonb, rel_path text) RETURNS text
 LANGUAGE sql AS $$
   SELECT _cfg->>'base' || '/' || rel_path
@@ -51,15 +64,7 @@ LANGUAGE sql AS $$
       FROM resource r
      WHERE r.resource_type = _type_
        AND r.logical_id = _id_)
-  SELECT
-    json_build_object(
-      'title', 'Concrete resource by id ' || _id_,
-      'id', gen_random_uuid(),
-      'resourceType', 'Bundle',
-      'totalResults', 1,
-      'updated', now(),
-      'entry', (SELECT json_agg(e.*) FROM entry e)
-    )::jsonb
+  SELECT _build_bundle('Concrete resource by id ' || _id_, 1, (SELECT json_agg(e.*) FROM entry e));
 $$;
 COMMENT ON FUNCTION fhir_read(_cfg jsonb, _type_ varchar, _id_ uuid)
 IS 'Read the current state of the resource\nReturn bundle with only one entry for uniformity';
@@ -98,15 +103,7 @@ LANGUAGE sql AS $$
          WHERE resource_type = _type_
            AND logical_id = _id_
            AND version_id = _vid_) r)
-  SELECT
-    json_build_object(
-      'title', 'Version of resource by id=' || _id_ || ' vid=' || _vid_,
-      'id', gen_random_uuid(),
-      'resourceType', 'Bundle',
-      'totalResults', 1,
-      'updated', now(),
-      'entry', (SELECT json_agg(e.*) FROM entry e)
-    )::jsonb
+  SELECT _build_bundle('Version of resource by id=' || _id_ || ' vid=' || _vid_, 1, (SELECT json_agg(e.*) FROM entry e));
 $$;
 COMMENT ON FUNCTION fhir_vread(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid)
 IS 'Read specific version of resource with _type_\nReturns bundle with one entry';
@@ -164,16 +161,8 @@ LANGUAGE sql AS $$
         SELECT * FROM resource_history
          WHERE resource_type = _type_
            AND logical_id = _id_) r)
-  SELECT
-    json_build_object(
-      'title', 'History of resource with id=' || _id_ ,
-      'id', gen_random_uuid(),
-      'resourceType', 'Bundle',
-      'totalResults', count(e.*),
-      'updated', now(),
-      'entry', COALESCE(json_agg(e.*), '[]'::json)
-    )::jsonb
-    FROM entry e;
+  SELECT _build_bundle('History of resource with id=' || _id_, count(e.*), COALESCE(json_agg(e.*), '[]'::json))
+  FROM entry e;
 $$;
 COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _id_ uuid, _params_ jsonb)
 IS 'Retrieve the changes history for a particular resource with logical id (_id_)\nReturn bundle with entries representing versions';
@@ -196,16 +185,8 @@ LANGUAGE sql AS $$
         UNION
         SELECT * FROM resource_history
          WHERE resource_type = _type_) r)
-  SELECT
-    json_build_object(
-      'title', 'History of resource with type=' || _type_,
-      'id', gen_random_uuid(),
-      'resourceType', 'Bundle',
-      'totalResults', count(e.*),
-      'updated', now(),
-      'entry', COALESCE(json_agg(e.*), '[]'::json)
-    )::jsonb
-    FROM entry e;
+  SELECT _build_bundle('History of resource with type=' || _type_, count(e.*), COALESCE(json_agg(e.*), '[]'::json))
+  FROM entry e;
 $$;
 COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _params_ jsonb)
 IS 'Retrieve the update history for a particular resource type\nReturn bundle with entries representing versions';
@@ -226,16 +207,8 @@ LANGUAGE sql AS $$
         SELECT * FROM resource
         UNION
         SELECT * FROM resource_history) r)
-  SELECT
-    json_build_object(
-      'title', 'History of all resources',
-      'id', gen_random_uuid(),
-      'resourceType', 'Bundle',
-      'totalResults', count(e.*),
-      'updated', now(),
-      'entry', COALESCE(json_agg(e.*), '[]'::json)
-    )::jsonb
-    FROM entry e;
+  SELECT _build_bundle('History of all resources', count(e.*), COALESCE(json_agg(e.*), '[]'::json))
+  FROM entry e;
 $$;
 COMMENT ON FUNCTION fhir_history(_cfg jsonb, _params_ jsonb)
 IS 'Retrieve the update history for all resources\nReturn bundle with entries representing versions';
@@ -244,15 +217,7 @@ CREATE OR REPLACE
 FUNCTION fhir_search(_cfg jsonb, _type_ varchar, _params_ text) RETURNS jsonb
 LANGUAGE sql AS $$
 -- TODO build query twice
-  SELECT
-    json_build_object(
-      'title', 'Search results for ' || _params_::varchar,
-      'resourceType', 'Bundle',
-      'totalResults', (SELECT search_results_count(_type_, _params_)),
-      'updated', now(),
-      'id', gen_random_uuid(),
-      'entry', COALESCE(json_agg(z.*), '[]'::json)
-    )::jsonb as json
+  SELECT _build_bundle('Search results for ' || _params_::varchar, (SELECT search_results_count(_type_, _params_)), COALESCE(json_agg(z.*), '[]'::json)) as json
   FROM
     (SELECT y.content AS content,
             y.updated AS updated,
@@ -349,15 +314,7 @@ LANGUAGE sql AS $$
       FROM deleted_resources
     ) r
   )
-  SELECT
-    json_build_object(
-      'title', 'Transaction results',
-      'resourceType', 'Bundle',
-      'totalResults', count(r.*),
-      'updated', now(),
-      'id', gen_random_uuid(),
-       'entry', COALESCE(json_agg(r.*), '[]'::json)
-    )::jsonb as json
+  SELECT _build_bundle('Transaction results', count(r.*), COALESCE(json_agg(r.*), '[]'::json)) as json
   FROM created r;
 $$;
 COMMENT ON FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb)
