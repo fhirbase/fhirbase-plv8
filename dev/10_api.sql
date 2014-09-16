@@ -78,7 +78,7 @@ LANGUAGE sql AS $$
        AND r.logical_id = _extract_id(_id_))
   SELECT _build_bundle('Concrete resource by id ' || _id_, 1, (SELECT json_agg(e.*) FROM entry e));
 $$;
-COMMENT ON FUNCTION fhir_read(_cfg jsonb, _type_ varchar, _id_ uuid)
+COMMENT ON FUNCTION fhir_read(_cfg jsonb, _type_ varchar, _id_ varchar)
 IS 'Read the current state of the resource\nReturn bundle with only one entry for uniformity';
 
 CREATE OR REPLACE
@@ -117,7 +117,7 @@ LANGUAGE sql AS $$
            AND version_id = _vid_) r)
   SELECT _build_bundle('Version of resource by id=' || _id_ || ' vid=' || _vid_, 1, (SELECT json_agg(e.*) FROM entry e));
 $$;
-COMMENT ON FUNCTION fhir_vread(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid)
+COMMENT ON FUNCTION fhir_vread(_cfg jsonb, _type_ varchar, _id_ varchar, _vid_ uuid)
 IS 'Read specific version of resource with _type_\nReturns bundle with one entry';
 
 CREATE OR REPLACE
@@ -140,7 +140,7 @@ BEGIN
   END IF;
 END
 $$;
-COMMENT ON FUNCTION fhir_update(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb)
+COMMENT ON FUNCTION fhir_update(_cfg jsonb, _type_ varchar, _id_ varchar, _vid_ uuid, _resource_ jsonb, _tags_ jsonb)
 IS 'Update resource, creating new version\nReturns bundle with one entry';
 
 CREATE OR REPLACE
@@ -150,7 +150,7 @@ LANGUAGE sql AS $$
   SELECT bundle.bundle
   FROM bundle, delete_resource(_extract_id(_id_), _type_);
 $$;
-COMMENT ON FUNCTION fhir_delete(_cfg jsonb, _type_ varchar, _id_ uuid)
+COMMENT ON FUNCTION fhir_delete(_cfg jsonb, _type_ varchar, _id_ varchar)
 IS 'DELETE resource by its id AND return deleted version\nReturn bundle with one deleted version entry' ;
 
 CREATE OR REPLACE
@@ -176,7 +176,7 @@ LANGUAGE sql AS $$
   SELECT _build_bundle('History of resource with id=' || _id_, count(e.*)::integer, COALESCE(json_agg(e.*), '[]'::json))
   FROM entry e;
 $$;
-COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _id_ uuid, _params_ jsonb)
+COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _id_ varchar, _params_ jsonb)
 IS 'Retrieve the changes history for a particular resource with logical id (_id_)\nReturn bundle with entries representing versions';
 
 CREATE OR REPLACE
@@ -255,7 +255,7 @@ LANGUAGE sql AS $$
     SELECT jsonb_array_elements(_bundle_->'entry') AS entry
   ), items AS (
     SELECT
-      e.entry->>'id' AS id,
+      _extract_id(e.entry->>'id') AS id,
       _get_vid_from_url(e.entry#>>'{link,0,href}') AS vid,
       e.entry#>>'{content,resourceType}' AS resource_type,
       e.entry->'content' AS content,
@@ -269,7 +269,7 @@ LANGUAGE sql AS $$
     WHERE i.deleted is null and r.logical_id is null
   ), created_resources AS (
     SELECT
-      r.id as alternative,
+      _build_id(_cfg, r.resource_type, r.id) as alternative,
       fhir_create(_cfg, r.resource_type, r.content::jsonb, r.category::jsonb)#>'{entry,0}' as entry
     FROM create_resources r
   ), reference AS (
