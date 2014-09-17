@@ -26,7 +26,7 @@ BEGIN;
      r.id,
      'fhir_read entry id'),
    assert_eq(
-     _build_id(:'cfg', 'Patient', _extract_id(r.id)),
+     _build_id(:'cfg', 'Patient', _extract_id(r.id)::uuid),
      r.id::varchar,
      'id format')
  FROM reading r;

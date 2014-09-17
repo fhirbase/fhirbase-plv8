@@ -111,9 +111,9 @@ WITH previous AS (
   ), testing AS (
     SELECT
       e.*,
-      fhir_read('{"base":"https://test.me"}', 'Device', e.created_id::uuid) as created,
-      fhir_read('{"base":"https://test.me"}', 'Alert', e.updated_id::uuid) as updated,
-      fhir_read('{"base":"https://test.me"}', 'Device', e.deleted_id::uuid) as deleted
+      fhir_read('{"base":"https://test.me"}', 'Device', e.created_id) as created,
+      fhir_read('{"base":"https://test.me"}', 'Alert', e.updated_id) as updated,
+      fhir_read('{"base":"https://test.me"}', 'Device', e.deleted_id) as deleted
     FROM expanded e
   )
   SELECT

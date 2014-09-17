@@ -40,9 +40,9 @@ LANGUAGE sql AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION
-_extract_id(_id_ varchar) RETURNS uuid
+_extract_id(_id_ varchar) RETURNS varchar
 LANGUAGE sql AS $$
-  SELECT _last(regexp_split_to_array(_id_, '/'))::uuid;
+  SELECT _last(regexp_split_to_array(_id_, '/'));
 $$;
 
 DROP FUNCTION IF EXISTS _replace_references(_resource_ text, _references_ json[]);
@@ -75,7 +75,7 @@ LANGUAGE sql AS $$
            )::jsonb   AS link
       FROM resource r
      WHERE r.resource_type = _type_
-       AND r.logical_id = _extract_id(_id_))
+       AND r.logical_id = _extract_id(_id_)::uuid)
   SELECT _build_bundle('Concrete resource by id ' || _id_, 1, (SELECT json_agg(e.*) FROM entry e));
 $$;
 COMMENT ON FUNCTION fhir_read(_cfg jsonb, _type_ varchar, _id_ varchar)
@@ -108,12 +108,12 @@ LANGUAGE sql AS $$
       FROM (
         SELECT * FROM resource
          WHERE resource_type = _type_
-           AND logical_id = _extract_id(_id_)
+           AND logical_id = _extract_id(_id_)::uuid
            AND version_id = _vid_
         UNION
         SELECT * FROM resource_history
          WHERE resource_type = _type_
-           AND logical_id = _extract_id(_id_)
+           AND logical_id = _extract_id(_id_)::uuid
            AND version_id = _vid_) r)
   SELECT _build_bundle('Version of resource by id=' || _id_ || ' vid=' || _vid_, 1, (SELECT json_agg(e.*) FROM entry e));
 $$;
@@ -131,9 +131,9 @@ BEGIN
   vid := (
     SELECT version_id
     FROM resource
-    WHERE logical_id = _extract_id(_id_));
+    WHERE logical_id = _extract_id(_id_)::uuid);
   IF _vid_ = vid THEN
-    PERFORM update_resource(_extract_id(_id_), _resource_, _tags_);
+    PERFORM update_resource(_extract_id(_id_)::uuid, _resource_, _tags_);
     RETURN fhir_read(_cfg, _type_, _id_);
   ELSE
     RAISE EXCEPTION E'Wrong version_id %.Current is %', _vid_, vid;
@@ -148,7 +148,7 @@ FUNCTION fhir_delete(_cfg jsonb, _type_ varchar, _id_ varchar) RETURNS jsonb
 LANGUAGE sql AS $$
   WITH bundle AS (SELECT fhir_read(_cfg, _type_, _id_) as bundle)
   SELECT bundle.bundle
-  FROM bundle, delete_resource(_extract_id(_id_), _type_);
+  FROM bundle, delete_resource(_extract_id(_id_)::uuid, _type_);
 $$;
 COMMENT ON FUNCTION fhir_delete(_cfg jsonb, _type_ varchar, _id_ varchar)
 IS 'DELETE resource by its id AND return deleted version\nReturn bundle with one deleted version entry' ;
@@ -168,11 +168,11 @@ LANGUAGE sql AS $$
       FROM (
         SELECT * FROM resource
          WHERE resource_type = _type_
-           AND logical_id = _extract_id(_id_)
+           AND logical_id = _extract_id(_id_)::uuid
         UNION
         SELECT * FROM resource_history
          WHERE resource_type = _type_
-           AND logical_id = _extract_id(_id_)) r)
+           AND logical_id = _extract_id(_id_)::uuid) r)
   SELECT _build_bundle('History of resource with id=' || _id_, count(e.*)::integer, COALESCE(json_agg(e.*), '[]'::json))
   FROM entry e;
 $$;
@@ -255,7 +255,7 @@ LANGUAGE sql AS $$
     SELECT jsonb_array_elements(_bundle_->'entry') AS entry
   ), items AS (
     SELECT
-      _extract_id(e.entry->>'id') AS id,
+      e.entry->>'id' AS id,
       _get_vid_from_url(e.entry#>>'{link,0,href}') AS vid,
       e.entry#>>'{content,resourceType}' AS resource_type,
       e.entry->'content' AS content,
@@ -265,11 +265,11 @@ LANGUAGE sql AS $$
   ), create_resources AS (
     SELECT i.*
     FROM items i
-    LEFT JOIN resource r on r.logical_id::text = i.id
+    LEFT JOIN resource r on r.logical_id::text = _extract_id(i.id)
     WHERE i.deleted is null and r.logical_id is null
   ), created_resources AS (
     SELECT
-      _build_id(_cfg, r.resource_type, r.id) as alternative,
+      r.id as alternative,
       fhir_create(_cfg, r.resource_type, r.content::jsonb, r.category::jsonb)#>'{entry,0}' as entry
     FROM create_resources r
   ), reference AS (
@@ -279,7 +279,7 @@ LANGUAGE sql AS $$
   ), update_resources AS (
     SELECT i.*
     FROM items i
-    LEFT JOIN resource r on r.logical_id::text = i.id
+    LEFT JOIN resource r on r.logical_id::text = _extract_id(i.id)
     WHERE i.deleted is null and r.logical_id is not null
   ), updated_resources AS (
     SELECT
@@ -307,7 +307,7 @@ LANGUAGE sql AS $$
         ('{"id": "' || r.id || '"}')::jsonb as entry,
         fhir_delete(_cfg, rs.resource_type, r.id) as deleted
       FROM delete_resources r
-      JOIN resource rs on rs.logical_id::text = r.id
+      JOIN resource rs on rs.logical_id::text = _extract_id(r.id)
     ) d
   ), created AS (
     SELECT
