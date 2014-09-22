@@ -4,7 +4,7 @@ SET escape_string_warning=off;
 \set cfg '{"base":"https://test.me"}'
 \set pt `cat test/fixtures/pt.json`
 \set pt2 `cat test/fixtures/pt2.json`
-\set pt_tags  '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'
+\set pt_tags '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'
 \set alert `cat test/fixtures/alert.json`
 
 BEGIN;
@@ -32,31 +32,24 @@ BEGIN;
  FROM reading r;
 
  SELECT assert_eq(
-  fhir_vread(:'cfg', 'Patient',
-             (x#>>'{entry,0,id}'),
-             _get_vid_from_url(x#>>'{entry,0,link,0,href}')::uuid
-     )#>>'{entry,0,content,name,0,text}',
+  fhir_vread(:'cfg', 'Patient', x#>>'{entry,0,link,0,href}')#>>'{entry,0,content,name,0,text}',
     'Roel',
     'fhir_create & fhir_vread')
   FROM fhir_create(:'cfg', 'Patient', :'pt'::jsonb, :'pt_tags'::jsonb) x;
-
 
  WITH created AS (
     SELECT fhir_create(:'cfg', 'Patient', :'pt'::jsonb, :'pt_tags'::jsonb) AS entry
  ), updated AS (
     SELECT fhir_update(:'cfg', 'Patient',
             (x.entry#>>'{entry,0,id}'),
-            _get_vid_from_url(x.entry#>>'{entry,0,link,0,href}')::uuid,
+            x.entry#>>'{entry,0,link,0,href}',
             :'pt'::jsonb,
             :'pt_tags'::jsonb) AS entry
     FROM created x
  ), vread AS (
-  SELECT fhir_vread(:'cfg', 'Patient',
-             (x.entry#>>'{entry,0,id}'),
-             _get_vid_from_url(x.entry#>>'{entry,0,link,0,href}')::uuid
-     ) as v
+  SELECT fhir_vread(:'cfg', 'Patient', x.entry#>>'{entry,0,link,0,href}') as v
   FROM updated x
-)
+ )
  select assert_eq((x.v)#>>'{entry,0,content,name,0,text}',
     'Roel',
     'fhir_update & fhir_vread')
@@ -81,7 +74,7 @@ WITH created AS (
 ), updated AS (
   SELECT fhir_update(:'cfg', 'Patient',
            x.entry#>>'{entry,0,id}',
-           _get_vid_from_url(x.entry#>>'{entry,0,link,0,href}')::uuid,
+           x.entry#>>'{entry,0,link,0,href}',
            :'pt'::jsonb,
            :'pt_tags'::jsonb) AS entry
    FROM created x
@@ -110,20 +103,20 @@ FROM roel, not_roel, searched s;
 WITH previous AS (
   SELECT
     alert.alert#>>'{entry,0,id}' AS id,
-    _get_vid_from_url(alert.alert#>>'{entry,0,link,0,href}') AS vid
+    alert.alert#>>'{entry,0,link,0,href}' AS vid
   FROM fhir_create(:'cfg', 'Alert', :'alert'::jsonb, '[]'::jsonb) alert
 ), updated AS (
   SELECT
     p.id,
     p.vid,
     _get_vid_from_url(
-      fhir_update(:'cfg', 'Alert', p.id, p.vid::uuid, :'alert'::jsonb, '[]'::jsonb)
+      fhir_update(:'cfg', 'Alert', p.id, p.vid, :'alert'::jsonb, '[]'::jsonb)
     #>>'{entry,0,link,0,href}') AS new_vid
   FROM previous p
 )
 
 SELECT assert_raise(
-  'Wrong version_id ' || u.vid || '.Current is ' || u.new_vid,
+  'Wrong version_id ' || _get_vid_from_url(u.vid) || '.Current is ' || _get_vid_from_url(u.new_vid),
   'SELECT fhir_update(''' || :'cfg' || ''', ''Alert'', ''' || u.id || ''', ''' || u.vid || ''', ''' || :'alert' || ''', ''[]''::jsonb)',
   'update with no current version_id')
 FROM updated u;
