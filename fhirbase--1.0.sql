@@ -343,7 +343,18 @@ $$;
 CREATE FUNCTION _extract_id(_id_ character varying) RETURNS character varying
     LANGUAGE sql
     AS $$
-  SELECT _last(regexp_split_to_array(_id_, '/'));
+  SELECT _last(regexp_split_to_array((regexp_split_to_array(_id_, '/_history/')::varchar[])[1], '/'));
+$$;
+
+
+--
+-- Name: _extract_vid(character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _extract_vid(_id_ character varying) RETURNS character varying
+    LANGUAGE sql
+    AS $$
+  SELECT _last(regexp_split_to_array(_id_, '/_history/'));
 $$;
 
 
@@ -1592,20 +1603,20 @@ COMMENT ON FUNCTION fhir_create(_cfg jsonb, _type_ character varying, _resource_
 -- Name: fhir_delete(jsonb, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_delete(_cfg jsonb, _type_ character varying, _id_ character varying) RETURNS jsonb
+CREATE FUNCTION fhir_delete(_cfg jsonb, _type_ character varying, _url_ character varying) RETURNS jsonb
     LANGUAGE sql
     AS $$
-  WITH bundle AS (SELECT fhir_read(_cfg, _type_, _id_) as bundle)
+  WITH bundle AS (SELECT fhir_read(_cfg, _type_, _url_) as bundle)
   SELECT bundle.bundle
-  FROM bundle, delete_resource(_extract_id(_id_)::uuid, _type_);
+  FROM bundle, delete_resource(_extract_id(_url_)::uuid, _type_);
 $$;
 
 
 --
--- Name: FUNCTION fhir_delete(_cfg jsonb, _type_ character varying, _id_ character varying); Type: COMMENT; Schema: public; Owner: -
+-- Name: FUNCTION fhir_delete(_cfg jsonb, _type_ character varying, _url_ character varying); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION fhir_delete(_cfg jsonb, _type_ character varying, _id_ character varying) IS 'DELETE resource by its id AND return deleted version\nReturn bundle with one deleted version entry';
+COMMENT ON FUNCTION fhir_delete(_cfg jsonb, _type_ character varying, _url_ character varying) IS 'DELETE resource by its id AND return deleted version\nReturn bundle with one deleted version entry';
 
 
 --
@@ -1678,7 +1689,7 @@ COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _params_ 
 -- Name: fhir_history(jsonb, character varying, character varying, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _id_ character varying, _params_ jsonb) RETURNS jsonb
+CREATE FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _url_ character varying, _params_ jsonb) RETURNS jsonb
     LANGUAGE sql
     AS $$
   WITH entry AS (
@@ -1693,21 +1704,21 @@ CREATE FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _id_ characte
       FROM (
         SELECT * FROM resource
          WHERE resource_type = _type_
-           AND logical_id = _extract_id(_id_)::uuid
+           AND logical_id = _extract_id(_url_)::uuid
         UNION
         SELECT * FROM resource_history
          WHERE resource_type = _type_
-           AND logical_id = _extract_id(_id_)::uuid) r)
-  SELECT _build_bundle('History of resource with id=' || _id_, count(e.*)::integer, COALESCE(json_agg(e.*), '[]'::json))
+           AND logical_id = _extract_id(_url_)::uuid) r)
+  SELECT _build_bundle('History of resource with id=' || _extract_id(_url_), count(e.*)::integer, COALESCE(json_agg(e.*), '[]'::json))
   FROM entry e;
 $$;
 
 
 --
--- Name: FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _id_ character varying, _params_ jsonb); Type: COMMENT; Schema: public; Owner: -
+-- Name: FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _url_ character varying, _params_ jsonb); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _id_ character varying, _params_ jsonb) IS 'Retrieve the changes history for a particular resource with logical id (_id_)\nReturn bundle with entries representing versions';
+COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _url_ character varying, _params_ jsonb) IS 'Retrieve the changes history for a particular resource with logical id (_id_)\nReturn bundle with entries representing versions';
 
 
 --
@@ -1750,7 +1761,7 @@ $$;
 -- Name: fhir_read(jsonb, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_read(_cfg jsonb, _type_ character varying, _id_ character varying) RETURNS jsonb
+CREATE FUNCTION fhir_read(_cfg jsonb, _type_ character varying, _url_ character varying) RETURNS jsonb
     LANGUAGE sql
     AS $$
   WITH entry AS (
@@ -1764,16 +1775,16 @@ CREATE FUNCTION fhir_read(_cfg jsonb, _type_ character varying, _id_ character v
            )::jsonb   AS link
       FROM resource r
      WHERE r.resource_type = _type_
-       AND r.logical_id = _extract_id(_id_)::uuid)
-  SELECT _build_bundle('Concrete resource by id ' || _id_, 1, (SELECT json_agg(e.*) FROM entry e));
+       AND r.logical_id = _extract_id(_url_)::uuid)
+  SELECT _build_bundle('Concrete resource by id ' || _extract_id(_url_), 1, (SELECT json_agg(e.*) FROM entry e));
 $$;
 
 
 --
--- Name: FUNCTION fhir_read(_cfg jsonb, _type_ character varying, _id_ character varying); Type: COMMENT; Schema: public; Owner: -
+-- Name: FUNCTION fhir_read(_cfg jsonb, _type_ character varying, _url_ character varying); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION fhir_read(_cfg jsonb, _type_ character varying, _id_ character varying) IS 'Read the current state of the resource\nReturn bundle with only one entry for uniformity';
+COMMENT ON FUNCTION fhir_read(_cfg jsonb, _type_ character varying, _url_ character varying) IS 'Read the current state of the resource\nReturn bundle with only one entry for uniformity';
 
 
 --
@@ -1949,7 +1960,7 @@ CREATE FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb
   ), items AS (
     SELECT
       e.entry->>'id' AS id,
-      _get_vid_from_url(e.entry#>>'{link,0,href}') AS vid,
+      e.entry#>>'{link,0,href}' AS vid,
       e.entry#>>'{content,resourceType}' AS resource_type,
       e.entry->'content' AS content,
       e.entry->'category' as category,
@@ -1978,7 +1989,7 @@ CREATE FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb
     SELECT
       r.id as alternative,
       fhir_update(_cfg, r.resource_type, cr.entry->>'id',
-        _get_vid_from_url(cr.entry#>>'{link,0,href}')::uuid,
+        cr.entry#>>'{link,0,href}',
         _replace_references(r.content::text, rf.refs)::jsonb, '[]'::jsonb)#>'{entry,0}' as entry
     FROM create_resources r
     JOIN created_resources cr on cr.alternative = r.id
@@ -1986,7 +1997,7 @@ CREATE FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb
     UNION ALL
     SELECT
       r.id as alternative,
-      fhir_update(_cfg, r.resource_type, r.id, r.vid::uuid, _replace_references(r.content::text, rf.refs)::jsonb, r.category::jsonb)#>'{entry,0}' as entry
+      fhir_update(_cfg, r.resource_type, r.id, r.vid, _replace_references(r.content::text, rf.refs)::jsonb, r.category::jsonb)#>'{entry,0}' as entry
     FROM update_resources r, reference rf
   ), delete_resources AS (
     SELECT i.*
@@ -2032,10 +2043,10 @@ COMMENT ON FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb) IS 'Update, cre
 
 
 --
--- Name: fhir_update(jsonb, character varying, character varying, uuid, jsonb, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fhir_update(jsonb, character varying, character varying, character varying, jsonb, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_update(_cfg jsonb, _type_ character varying, _id_ character varying, _vid_ uuid, _resource_ jsonb, _tags_ jsonb) RETURNS jsonb
+CREATE FUNCTION fhir_update(_cfg jsonb, _type_ character varying, _url_ character varying, _location_ character varying, _resource_ jsonb, _tags_ jsonb) RETURNS jsonb
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -2046,29 +2057,29 @@ BEGIN
   vid := (
     SELECT version_id
     FROM resource
-    WHERE logical_id = _extract_id(_id_)::uuid);
-  IF _vid_ = vid THEN
-    PERFORM update_resource(_extract_id(_id_)::uuid, _resource_, _tags_);
-    RETURN fhir_read(_cfg, _type_, _id_);
+    WHERE logical_id = _extract_id(_url_)::uuid);
+  IF _extract_vid(_location_)::uuid = vid THEN
+    PERFORM update_resource(_extract_id(_url_)::uuid, _resource_, _tags_);
+    RETURN fhir_read(_cfg, _type_, _url_);
   ELSE
-    RAISE EXCEPTION E'Wrong version_id %.Current is %', _vid_, vid;
+    RAISE EXCEPTION E'Wrong version_id %. Current is %', _extract_vid(_location_), vid;
   END IF;
 END
 $$;
 
 
 --
--- Name: FUNCTION fhir_update(_cfg jsonb, _type_ character varying, _id_ character varying, _vid_ uuid, _resource_ jsonb, _tags_ jsonb); Type: COMMENT; Schema: public; Owner: -
+-- Name: FUNCTION fhir_update(_cfg jsonb, _type_ character varying, _url_ character varying, _location_ character varying, _resource_ jsonb, _tags_ jsonb); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION fhir_update(_cfg jsonb, _type_ character varying, _id_ character varying, _vid_ uuid, _resource_ jsonb, _tags_ jsonb) IS 'Update resource, creating new version\nReturns bundle with one entry';
+COMMENT ON FUNCTION fhir_update(_cfg jsonb, _type_ character varying, _url_ character varying, _location_ character varying, _resource_ jsonb, _tags_ jsonb) IS 'Update resource, creating new version\nReturns bundle with one entry';
 
 
 --
--- Name: fhir_vread(jsonb, character varying, character varying, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fhir_vread(jsonb, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_vread(_cfg jsonb, _type_ character varying, _id_ character varying, _vid_ uuid) RETURNS jsonb
+CREATE FUNCTION fhir_vread(_cfg jsonb, _type_ character varying, _url_ character varying) RETURNS jsonb
     LANGUAGE sql
     AS $$
 --- Read the state of a specific version of the resource
@@ -2085,22 +2096,22 @@ CREATE FUNCTION fhir_vread(_cfg jsonb, _type_ character varying, _id_ character 
       FROM (
         SELECT * FROM resource
          WHERE resource_type = _type_
-           AND logical_id = _extract_id(_id_)::uuid
-           AND version_id = _vid_
+           AND logical_id = _extract_id(_url_)::uuid
+           AND version_id = _extract_vid(_url_)::uuid
         UNION
         SELECT * FROM resource_history
          WHERE resource_type = _type_
-           AND logical_id = _extract_id(_id_)::uuid
-           AND version_id = _vid_) r)
-  SELECT _build_bundle('Version of resource by id=' || _id_ || ' vid=' || _vid_, 1, (SELECT json_agg(e.*) FROM entry e));
+           AND logical_id = _extract_id(_url_)::uuid
+           AND version_id = _extract_vid(_url_)::uuid) r)
+  SELECT _build_bundle('Version of resource by id=' || _extract_id(_url_) || ' vid=' || _extract_vid(_url_), 1, (SELECT json_agg(e.*) FROM entry e));
 $$;
 
 
 --
--- Name: FUNCTION fhir_vread(_cfg jsonb, _type_ character varying, _id_ character varying, _vid_ uuid); Type: COMMENT; Schema: public; Owner: -
+-- Name: FUNCTION fhir_vread(_cfg jsonb, _type_ character varying, _url_ character varying); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION fhir_vread(_cfg jsonb, _type_ character varying, _id_ character varying, _vid_ uuid) IS 'Read specific version of resource with _type_\nReturns bundle with one entry';
+COMMENT ON FUNCTION fhir_vread(_cfg jsonb, _type_ character varying, _url_ character varying) IS 'Read specific version of resource with _type_\nReturns bundle with one entry';
 
 
 --
