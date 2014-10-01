@@ -49388,16 +49388,6 @@ REFRESH MATERIALIZED VIEW resource_indexables;
 
 
 --
--- Name: public; Type: ACL; Schema: -; Owner: -
---
-
-REVOKE ALL ON SCHEMA public FROM PUBLIC;
-REVOKE ALL ON SCHEMA public FROM max;
-GRANT ALL ON SCHEMA public TO max;
-GRANT ALL ON SCHEMA public TO PUBLIC;
-
-
---
 -- PostgreSQL database dump complete
 --
 

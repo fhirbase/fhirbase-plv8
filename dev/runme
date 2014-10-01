@@ -76,6 +76,7 @@ function build_cmd {
   # install_cmd 'build_fhir'
   pg_dump $PSQL_ARGS \
     --format=plain \
+    --no-acl \
     --no-owner \
     --file=../fhirbase--1.0.sql \
     'build_fhir' \
