@@ -38,13 +38,14 @@ function install_cmd {
 function test_cmd {
   echo "Run tests"
   failed=()
+  outdir="/tmp/fhirbase-tests"
 
-  rm -rf out
-  mkdir out
+  rm -rf $outdir
+  mkdir $outdir
   for script in `ls test/*_test.sql`; do
     nm=`basename $script`
     example="expected/$nm.out"
-    out="out/$nm.out"
+    out="$outdir/$nm.out"
     echo "run $nm"
     cat $script | psql $PSQL_ARGS -e -d $DB > $out
     if diff -Bb $out $example

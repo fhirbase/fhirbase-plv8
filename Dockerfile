@@ -31,8 +31,8 @@ RUN echo "host all  all    0.0.0.0/0  md5" >> $PGDATA/pg_hba.conf
 RUN echo "listen_addresses='*'" >> $PGDATA/postgresql.conf
 RUN echo "port=$PGPORT" >> $PGDATA/postgresql.conf
 
-RUN cd ~/ && git clone https://github.com/fhirbase/fhirbase.git
-RUN cd ~/ && pg_ctl -D data -w start && cd ~/fhirbase/dev && ./runme install fhirbase && pg_ctl -w -D ~/data stop
+ADD ./dev /home/fhirbase/fhirbase
+RUN cd ~/ && pg_ctl -D data -w start && cd ~/fhirbase && ./runme install fhirbase && pg_ctl -w -D ~/data stop
 RUN cd ~/ && pg_ctl -D data -w start && psql -c "alter user fhirbase with password 'fhirbase';" && pg_ctl -w -D ~/data stop
 EXPOSE 5432
-CMD ["/home/fhirbase/bin/bin/postgres", "-D", "/home/fhirbase/data"]
+CMD cd ~/ && postgres -D data
