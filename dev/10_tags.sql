@@ -5,7 +5,7 @@
 
 -- Return all tags
 CREATE OR REPLACE
-FUNCTION fhir_tags() RETURNS jsonb
+FUNCTION fhir_tags(_cfg jsonb) RETURNS jsonb
 LANGUAGE sql AS $$
 SELECT
   json_build_object(
@@ -17,12 +17,12 @@ SELECT
     GROUP BY scheme, term, label) tgs
 $$ IMMUTABLE;
 
-COMMENT ON FUNCTION fhir_tags()
+COMMENT ON FUNCTION fhir_tags(jsonb)
 IS 'Return all tags in system';
 
 -- Return all tags for resourceType
 CREATE OR REPLACE
-FUNCTION fhir_tags(_res_type varchar) RETURNS jsonb
+FUNCTION fhir_tags(_cfg jsonb, _res_type varchar) RETURNS jsonb
 LANGUAGE sql AS $$
   SELECT
   json_build_object(
@@ -34,12 +34,12 @@ LANGUAGE sql AS $$
     WHERE resource_type = _res_type
     GROUP BY scheme, term, label) tgs
 $$ IMMUTABLE;
-COMMENT ON FUNCTION fhir_tags(_res_type varchar)
+COMMENT ON FUNCTION fhir_tags(jsonb, varchar)
 IS 'Return tags for resources with type = _type_';
 
 -- Return all tags for resource
 CREATE OR REPLACE
-FUNCTION fhir_tags(_res_type varchar, _id_ uuid) RETURNS jsonb
+FUNCTION fhir_tags(_cfg jsonb, _res_type varchar, _id_ uuid) RETURNS jsonb
 LANGUAGE sql AS $$
   SELECT
   json_build_object(
@@ -55,7 +55,7 @@ $$ IMMUTABLE;
 
 -- Return all tags for resource version
 CREATE OR REPLACE
-FUNCTION fhir_tags(_res_type varchar, _id_ uuid, _vid uuid) RETURNS jsonb
+FUNCTION fhir_tags(_cfg jsonb, _res_type varchar, _id_ uuid, _vid uuid) RETURNS jsonb
 LANGUAGE sql AS $$
   SELECT
   json_build_object(
@@ -71,9 +71,9 @@ LANGUAGE sql AS $$
 $$ IMMUTABLE;
 
 -- Affix tag to resource with _id
-DROP FUNCTION IF EXISTS fhir_affix_tags(_res_type varchar, _id_ uuid, _tags jsonb);
+DROP FUNCTION IF EXISTS fhir_affix_tags(_cfg jsonb, _res_type varchar, _id_ uuid, _tags jsonb);
 CREATE OR REPLACE
-FUNCTION fhir_affix_tags(_res_type varchar, _id_ uuid, _tags jsonb) RETURNS jsonb
+FUNCTION fhir_affix_tags(_cfg jsonb, _res_type varchar, _id_ uuid, _tags jsonb) RETURNS jsonb
 LANGUAGE plpgsql AS $$
 DECLARE
   res jsonb;
@@ -120,9 +120,9 @@ END;
 $$;
 
 -- Affix tag to resource with _id and _vid
-DROP FUNCTION IF EXISTS fhir_affix_tags(_res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb);
+DROP FUNCTION IF EXISTS fhir_affix_tags(_cfg jsonb, _res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb);
 CREATE OR REPLACE
-FUNCTION fhir_affix_tags(_res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb) RETURNS jsonb
+FUNCTION fhir_affix_tags(_cfg jsonb, _res_type varchar, _id_ uuid, _vid_ uuid, _tags jsonb) RETURNS jsonb
 LANGUAGE plpgsql AS $$
 DECLARE
   res jsonb;
@@ -170,9 +170,9 @@ END;
 $$;
 
 -- Remove all tag from current version of resource with _id
-DROP FUNCTION IF EXISTS fhir_remove_tags(_res_type varchar, _id_ uuid);
+DROP FUNCTION IF EXISTS fhir_remove_tags(_cfg jsonb, _res_type varchar, _id_ uuid);
 CREATE OR REPLACE
-FUNCTION fhir_remove_tags(_res_type varchar, _id_ uuid) RETURNS bigint
+FUNCTION fhir_remove_tags(_cfg jsonb, _res_type varchar, _id_ uuid) RETURNS bigint
 LANGUAGE sql AS $$
   UPDATE resource SET category = NULL
   WHERE resource_type = _res_type
@@ -186,9 +186,9 @@ LANGUAGE sql AS $$
 $$;
 
 -- Remove all tag from resource with _id and _vid
-DROP FUNCTION IF EXISTS fhir_remove_tags(_res_type varchar, _id_ uuid, _vid uuid);
+DROP FUNCTION IF EXISTS fhir_remove_tags(_cfg jsonb, _res_type varchar, _id_ uuid, _vid uuid);
 CREATE OR REPLACE
-FUNCTION fhir_remove_tags(_res_type varchar, _id_ uuid, _vid uuid) RETURNS bigint
+FUNCTION fhir_remove_tags(_cfg jsonb, _res_type varchar, _id_ uuid, _vid uuid) RETURNS bigint
 LANGUAGE sql AS $$
   UPDATE resource_history SET category = NULL
   WHERE resource_type = _res_type

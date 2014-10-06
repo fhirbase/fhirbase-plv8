@@ -163,37 +163,37 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440077'::uuid,  E'{
  550e8400-e29b-41d4-a716-446655440077
 (1 row)
 
-SELECT fhir_tags();
+SELECT fhir_tags('{"base":"https://test.me"}');
                                                                      fhir_tags                                                                      
 ----------------------------------------------------------------------------------------------------------------------------------------------------
  {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}, {"term": "obs", "label": "obs", "scheme": "obs.com"}], "resourceType": "TagList"}
 (1 row)
 
-SELECT fhir_tags('Observation');
+SELECT fhir_tags('{"base":"https://test.me"}','Observation');
                                             fhir_tags                                            
 -------------------------------------------------------------------------------------------------
  {"category": [{"term": "obs", "label": "obs", "scheme": "obs.com"}], "resourceType": "TagList"}
 (1 row)
 
-SELECT fhir_tags('Observation', '550e8400-e29b-41d4-a716-446655440078');
+SELECT fhir_tags('{"base":"https://test.me"}','Observation', '550e8400-e29b-41d4-a716-446655440078');
                                             fhir_tags                                            
 -------------------------------------------------------------------------------------------------
  {"category": [{"term": "obs", "label": "obs", "scheme": "obs.com"}], "resourceType": "TagList"}
 (1 row)
 
-SELECT fhir_tags('Patient');
+SELECT fhir_tags('{"base":"https://test.me"}','Patient');
                                           fhir_tags                                           
 ----------------------------------------------------------------------------------------------
  {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
 (1 row)
 
-SELECT fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077');
+SELECT fhir_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077');
                                           fhir_tags                                           
 ----------------------------------------------------------------------------------------------
  {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
 (1 row)
 
-SELECT fhir_remove_tags('Patient', '550e8400-e29b-41d4-a716-446655440077');
+SELECT fhir_remove_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077');
  fhir_remove_tags 
 ------------------
                 1
@@ -201,14 +201,14 @@ SELECT fhir_remove_tags('Patient', '550e8400-e29b-41d4-a716-446655440077');
 
 SELECT assert_eq(
   '{"category": null, "resourceType": "TagList"}',
-  fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077'),
+  fhir_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077'),
 'should be empty');
      assert_eq      
 --------------------
  OK should be empty
 (1 row)
 
-SELECT fhir_affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]');
+SELECT fhir_affix_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]');
                    fhir_affix_tags                   
 -----------------------------------------------------
  [{"term": "pt", "label": "pt", "scheme": "pt.com"}]
@@ -222,7 +222,7 @@ FROM patient WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077';
 (1 row)
 
 SELECT assert_eq(
-  (SELECT fhir_affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]')),
+  (SELECT fhir_affix_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]')),
   '[]'::jsonb,
 'should not insert twice');
          assert_eq          
@@ -231,7 +231,7 @@ SELECT assert_eq(
 (1 row)
 
 SELECT assert_eq(
-  (SELECT fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077')),
+  (SELECT fhir_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077')),
   '{"category": [{"scheme":"pt.com", "term":"pt", "label":"pt"}], "resourceType": "TagList"}',
 'should populate again');
         assert_eq         
@@ -395,7 +395,7 @@ version AS (
     FROM patient_tag_history
     WHERE resource_id = '550e8400-e29b-41d4-a716-446655440077'
 ), tgs AS (
-  SELECT fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077', (SELECT vid FROM version LIMIT 1)) t
+  SELECT fhir_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077', (SELECT vid FROM version LIMIT 1)) t
 )
 SELECT assert_eq(
   '{"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}',
@@ -416,14 +416,14 @@ SELECT assert_eq(
    "resourceType": "TagList"
   }
   $JSON$,
-  (SELECT fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077')),
+  (SELECT fhir_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077')),
 'should attach old tags to new version with new tags');
                        assert_eq                        
 --------------------------------------------------------
  OK should attach old tags to new version with new tags
 (1 row)
 
-SELECT fhir_remove_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
+SELECT fhir_remove_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077',
             (SELECT resource_version_id
               FROM patient_tag_history
               WHERE resource_id = '550e8400-e29b-41d4-a716-446655440077' limit 1));
@@ -442,7 +442,7 @@ SELECT assert_eq(
 (1 row)
 
 WITH tgs AS (
-  SELECT fhir_tags('Patient',
+  SELECT fhir_tags('{"base":"https://test.me"}','Patient',
             '550e8400-e29b-41d4-a716-446655440077',
             (SELECT resource_version_id
               FROM patient_tag_history
@@ -457,7 +457,7 @@ SELECT assert_eq(
  OK should show history tags
 (1 row)
 
-SELECT fhir_affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
+SELECT fhir_affix_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077',
                    (SELECT version_id FROM patient_history WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077' limit 1),
                    '[{"term": "pt1", "label": "pt", "scheme": "pt.com"}]'::jsonb);
                    fhir_affix_tags                    
@@ -465,7 +465,7 @@ SELECT fhir_affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
  [{"term": "pt1", "label": "pt", "scheme": "pt.com"}]
 (1 row)
 
-SELECT fhir_affix_tags('Patient', '550e8400-e29b-41d4-a716-446655440077',
+SELECT fhir_affix_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077',
                    (SELECT version_id FROM patient_history WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077' limit 1),
                    '[{"term": "pt2", "label": "pt", "scheme": "pt.com"}]'::jsonb);
                    fhir_affix_tags                    
@@ -485,13 +485,13 @@ SELECT assert_eq(
  OK populate version category column with affixed tags
 (1 row)
 
-SELECT fhir_tags('Patient');
+SELECT fhir_tags('{"base":"https://test.me"}','Patient');
                                                                            fhir_tags                                                                            
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
  {"category": [{"term": "second", "label": "second", "scheme": "pt.second.com"}, {"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
 (1 row)
 
-SELECT fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077');
+SELECT fhir_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077');
                                                                            fhir_tags                                                                            
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------
  {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}, {"term": "second", "label": "second", "scheme": "pt.second.com"}], "resourceType": "TagList"}
@@ -499,7 +499,7 @@ SELECT fhir_tags('Patient', '550e8400-e29b-41d4-a716-446655440077');
 
 SELECT assert_eq(
   '{"category": [{"term": "pt1", "label": "pt", "scheme": "pt.com"}, {"term": "pt2", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}',
-  (SELECT fhir_tags('Patient',
+  (SELECT fhir_tags('{"base":"https://test.me"}','Patient',
             '550e8400-e29b-41d4-a716-446655440077',
             (SELECT resource_version_id
               FROM patient_tag_history
