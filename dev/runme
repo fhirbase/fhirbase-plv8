@@ -73,7 +73,7 @@ function test_cmd {
 }
 
 function build_cmd {
-  # install_cmd 'build_fhir'
+  install_cmd 'build_fhir'
   pg_dump $PSQL_ARGS \
     --format=plain \
     --no-acl \
