@@ -1422,10 +1422,10 @@ $_$;
 
 
 --
--- Name: fhir_affix_tags(character varying, uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fhir_affix_tags(jsonb, character varying, uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_affix_tags(_res_type character varying, _id_ uuid, _tags jsonb) RETURNS jsonb
+CREATE FUNCTION fhir_affix_tags(_cfg jsonb, _res_type character varying, _id_ uuid, _tags jsonb) RETURNS jsonb
     LANGUAGE plpgsql
     AS $_$
 DECLARE
@@ -1474,10 +1474,10 @@ $_$;
 
 
 --
--- Name: fhir_affix_tags(character varying, uuid, uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fhir_affix_tags(jsonb, character varying, uuid, uuid, jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_affix_tags(_res_type character varying, _id_ uuid, _vid_ uuid, _tags jsonb) RETURNS jsonb
+CREATE FUNCTION fhir_affix_tags(_cfg jsonb, _res_type character varying, _id_ uuid, _vid_ uuid, _tags jsonb) RETURNS jsonb
     LANGUAGE plpgsql
     AS $_$
 DECLARE
@@ -1788,10 +1788,10 @@ COMMENT ON FUNCTION fhir_read(_cfg jsonb, _type_ character varying, _url_ charac
 
 
 --
--- Name: fhir_remove_tags(character varying, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fhir_remove_tags(jsonb, character varying, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_remove_tags(_res_type character varying, _id_ uuid) RETURNS bigint
+CREATE FUNCTION fhir_remove_tags(_cfg jsonb, _res_type character varying, _id_ uuid) RETURNS bigint
     LANGUAGE sql
     AS $$
   UPDATE resource SET category = NULL
@@ -1807,10 +1807,10 @@ $$;
 
 
 --
--- Name: fhir_remove_tags(character varying, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fhir_remove_tags(jsonb, character varying, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_remove_tags(_res_type character varying, _id_ uuid, _vid uuid) RETURNS bigint
+CREATE FUNCTION fhir_remove_tags(_cfg jsonb, _res_type character varying, _id_ uuid, _vid uuid) RETURNS bigint
     LANGUAGE sql
     AS $$
   UPDATE resource_history SET category = NULL
@@ -1857,10 +1857,10 @@ COMMENT ON FUNCTION fhir_search(_cfg jsonb, _type_ character varying, _params_ t
 
 
 --
--- Name: fhir_tags(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fhir_tags(jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_tags() RETURNS jsonb
+CREATE FUNCTION fhir_tags(_cfg jsonb) RETURNS jsonb
     LANGUAGE sql IMMUTABLE
     AS $$
 SELECT
@@ -1875,17 +1875,17 @@ $$;
 
 
 --
--- Name: FUNCTION fhir_tags(); Type: COMMENT; Schema: public; Owner: -
+-- Name: FUNCTION fhir_tags(_cfg jsonb); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION fhir_tags() IS 'Return all tags in system';
+COMMENT ON FUNCTION fhir_tags(_cfg jsonb) IS 'Return all tags in system';
 
 
 --
--- Name: fhir_tags(character varying); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fhir_tags(jsonb, character varying); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_tags(_res_type character varying) RETURNS jsonb
+CREATE FUNCTION fhir_tags(_cfg jsonb, _res_type character varying) RETURNS jsonb
     LANGUAGE sql IMMUTABLE
     AS $$
   SELECT
@@ -1901,17 +1901,17 @@ $$;
 
 
 --
--- Name: FUNCTION fhir_tags(_res_type character varying); Type: COMMENT; Schema: public; Owner: -
+-- Name: FUNCTION fhir_tags(_cfg jsonb, _res_type character varying); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION fhir_tags(_res_type character varying) IS 'Return tags for resources with type = _type_';
+COMMENT ON FUNCTION fhir_tags(_cfg jsonb, _res_type character varying) IS 'Return tags for resources with type = _type_';
 
 
 --
--- Name: fhir_tags(character varying, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fhir_tags(jsonb, character varying, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_tags(_res_type character varying, _id_ uuid) RETURNS jsonb
+CREATE FUNCTION fhir_tags(_cfg jsonb, _res_type character varying, _id_ uuid) RETURNS jsonb
     LANGUAGE sql IMMUTABLE
     AS $$
   SELECT
@@ -1928,10 +1928,10 @@ $$;
 
 
 --
--- Name: fhir_tags(character varying, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fhir_tags(jsonb, character varying, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION fhir_tags(_res_type character varying, _id_ uuid, _vid uuid) RETURNS jsonb
+CREATE FUNCTION fhir_tags(_cfg jsonb, _res_type character varying, _id_ uuid, _vid uuid) RETURNS jsonb
     LANGUAGE sql IMMUTABLE
     AS $$
   SELECT
