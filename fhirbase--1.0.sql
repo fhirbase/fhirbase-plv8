@@ -1722,6 +1722,78 @@ COMMENT ON FUNCTION fhir_history(_cfg jsonb, _type_ character varying, _url_ cha
 
 
 --
+-- Name: fhir_is_deleted_resource(jsonb, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_is_deleted_resource(_cfg jsonb, _type_ character varying, _id_ character varying) RETURNS boolean
+    LANGUAGE sql
+    AS $$
+  SELECT
+  EXISTS (
+    SELECT * FROM resource_history
+     WHERE resource_type = _type_
+       AND logical_id = _id_::uuid
+  ) AND NOT EXISTS (
+    SELECT * FROM resource
+     WHERE resource_type = _type_
+       AND logical_id = _id_::uuid
+  )
+$$;
+
+
+--
+-- Name: FUNCTION fhir_is_deleted_resource(_cfg jsonb, _type_ character varying, _id_ character varying); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_is_deleted_resource(_cfg jsonb, _type_ character varying, _id_ character varying) IS 'Check resource is deleted';
+
+
+--
+-- Name: fhir_is_latest_resource(jsonb, character varying, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_is_latest_resource(_cfg jsonb, _type_ character varying, _id_ character varying, _vid_ character varying) RETURNS boolean
+    LANGUAGE sql
+    AS $$
+    SELECT EXISTS (
+      SELECT * FROM resource r
+     WHERE r.resource_type = _type_
+       AND r.logical_id = _id_::uuid
+       AND r.version_id = _vid_::uuid
+    )
+$$;
+
+
+--
+-- Name: FUNCTION fhir_is_latest_resource(_cfg jsonb, _type_ character varying, _id_ character varying, _vid_ character varying); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_is_latest_resource(_cfg jsonb, _type_ character varying, _id_ character varying, _vid_ character varying) IS 'Check if resource is latest version';
+
+
+--
+-- Name: fhir_is_resource_exists(jsonb, character varying, character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_is_resource_exists(_cfg jsonb, _type_ character varying, _id_ character varying) RETURNS boolean
+    LANGUAGE sql
+    AS $$
+    SELECT EXISTS (
+      SELECT * FROM resource r
+     WHERE r.resource_type = _type_
+       AND r.logical_id = _id_::uuid
+    )
+$$;
+
+
+--
+-- Name: FUNCTION fhir_is_resource_exists(_cfg jsonb, _type_ character varying, _id_ character varying); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION fhir_is_resource_exists(_cfg jsonb, _type_ character varying, _id_ character varying) IS 'Check if resource exists';
+
+
+--
 -- Name: fhir_profile(jsonb, text); Type: FUNCTION; Schema: public; Owner: -
 --
 

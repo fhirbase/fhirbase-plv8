@@ -338,6 +338,49 @@ $$;
 COMMENT ON FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb)
 IS 'Update, create or delete a set of resources as a single transaction\nReturns bundle with entries';
 
+CREATE OR REPLACE
+FUNCTION fhir_is_resource_exists(_cfg jsonb, _type_ varchar, _id_ varchar) RETURNS boolean
+LANGUAGE sql AS $$
+    SELECT EXISTS (
+      SELECT * FROM resource r
+     WHERE r.resource_type = _type_
+       AND r.logical_id = _id_::uuid
+    )
+$$;
+COMMENT ON FUNCTION fhir_is_resource_exists(_cfg jsonb, _type_ varchar, _id_ varchar)
+IS 'Check if resource exists';
+
+CREATE OR REPLACE
+FUNCTION fhir_is_latest_resource(_cfg jsonb, _type_ varchar, _id_ varchar, _vid_ varchar) RETURNS boolean
+LANGUAGE sql AS $$
+    SELECT EXISTS (
+      SELECT * FROM resource r
+     WHERE r.resource_type = _type_
+       AND r.logical_id = _id_::uuid
+       AND r.version_id = _vid_::uuid
+    )
+$$;
+COMMENT ON FUNCTION fhir_is_latest_resource(_cfg jsonb, _type_ varchar, _id_ varchar, _vid_ varchar)
+IS 'Check if resource is latest version';
+
+CREATE OR REPLACE
+FUNCTION fhir_is_deleted_resource(_cfg jsonb, _type_ varchar, _id_ varchar) RETURNS boolean
+LANGUAGE sql AS $$
+  SELECT
+  EXISTS (
+    SELECT * FROM resource_history
+     WHERE resource_type = _type_
+       AND logical_id = _id_::uuid
+  ) AND NOT EXISTS (
+    SELECT * FROM resource
+     WHERE resource_type = _type_
+       AND logical_id = _id_::uuid
+  )
+$$;
+COMMENT ON FUNCTION fhir_is_deleted_resource(_cfg jsonb, _type_ varchar, _id_ varchar)
+IS 'Check resource is deleted';
+
+
 /* FUNCTION fhir_conformance() */
 /* --- Get a conformance statement for the system */
 /* --- return conformance resource */
