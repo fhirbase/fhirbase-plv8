@@ -2,6 +2,7 @@
 *.swp
 .sw?
 *.sw?
+.vagrant/
 /dev/my-build.sh
 /dev/out/*
 /tmp
