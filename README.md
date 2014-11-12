@@ -180,7 +180,7 @@ Or you can connect with your postgresql client:
   <dd>localhost</dd>
 
   <dt>port</dt>
-  <dd><mylocalport></dd>
+  <dd>&lt;mylocalport&gt;</dd>
 </dl>
 
 ## Build
