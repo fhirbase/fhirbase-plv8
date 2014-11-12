@@ -148,7 +148,7 @@ Here is auto builded public
 
 To install fhirbase:
 
-```
+```bash
 sudo docker.io run -d --name=fhirbase -t -p <mylocalport>:5432 fhirbase/fhirbase:latest
 
 # check by connecting to database
@@ -171,7 +171,7 @@ You can download postgresql 9.4 pre-release or build Postgresql from
 source on debian/ubuntu and create local user cluster with:
 
 
-```
+```bash
 source local_cfg.sh && ./install-postgres
 ```
 
@@ -179,7 +179,7 @@ NOTE: you can tune configuration in local_cfg.sh.
 
 You can install FHIRBase:
 
-```
+```bash
 source local_cfg.sh
 echo 'CREATE DATABASE mydb' | psql postgres
 psql mydb < fhirbase--1.0.sql
