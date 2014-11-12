@@ -149,7 +149,7 @@ Here is auto builded public
 To install fhirbase:
 
 ```bash
-sudo docker.io run -d --name=fhirbase -t -p <mylocalport>:5432 fhirbase/fhirbase:latest
+sudo docker.io run -d --name=fhirbase -t -p 5433:5432 fhirbase/fhirbase:latest
 ```
 
 ### Mac os x
@@ -163,7 +163,7 @@ vagrant up
 Check by connecting to database
 
 ```bash
-psql -U fhirbase -h localhost -p <mylocalport> fhirbase
+psql -U fhirbase -h localhost -p 5433 fhirbase
 password> fhirbase
 ```
 
@@ -180,7 +180,7 @@ Or you can connect with your postgresql client:
   <dd>localhost</dd>
 
   <dt>port</dt>
-  <dd>&lt;mylocalport&gt;</dd>
+  <dd>5433</dd>
 </dl>
 
 ## Build
