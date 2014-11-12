@@ -1,6 +1,8 @@
 # FHIRBase
 
-Open source relational storage for [FHIR](http://hl7.org/implement/standards/fhir/) targeting real production.
+Open source relational storage for
+[FHIR](http://hl7.org/implement/standards/fhir/) targeting real
+production.
 
 [![Build Status](https://travis-ci.org/fhirbase/fhirbase.png?branch=master)](https://travis-ci.org/fhirbase/fhirbase)
 
@@ -15,15 +17,21 @@ Sponsored by:
 
 ## Live Demo
 
-Here is an [interactive demo](http://try-fhirplace.hospital-systems.com/fhirface/index.html),
-which is build with [FHIRPlace](https://github.com/fhirbase/fhirplace/) & [FHIRFace](https://github.com/fhirbase/fhirface/) by-products.
+Here is an
+[interactive demo](http://try-fhirplace.hospital-systems.com/fhirface/index.html),
+which is build with
+[FHIRPlace](https://github.com/fhirbase/fhirplace/) &
+[FHIRFace](https://github.com/fhirbase/fhirface/) by-products.
 
 
 ## Motivation
 
-While crafting Health IT systems you begin to understand a value of properly chosen domain model.
-FHIR is an open source new generation lightweight standard for health data interoperability,
-which (we hope) could be used as a foundationan for Health IT systems. FHIR is based on a concept of __resource__.
+While crafting Health IT systems you begin to understand a value of
+properly chosen domain model.
+FHIR is an open source new generation lightweight standard for health
+data interoperability,
+which (we hope) could be used as a foundationan for Health IT
+systems. FHIR is based on a concept of __resource__.
 
 > FHIR® is a next generation standards framework created by HL7.
 > FHIR combines the best features of HL7 Version 2,
@@ -47,8 +55,8 @@ Here is list of PostgreSQL features we use:
 * [materialized views](http://www.postgresql.org/docs/9.4/static/sql-altermaterializedview.html)
 * [uuid](http://www.postgresql.org/docs/9.4/static/pgcrypto.html)
 
-We actively collaborate with PostgreSQL lead developers to craft production ready
-storage for FHIR.
+We actively collaborate with PostgreSQL lead developers to craft
+production ready storage for FHIR.
 
 TODO: about fhirb, VODKA and jsquery
 
@@ -58,8 +66,10 @@ TODO: about fhirb, VODKA and jsquery
 We decided to implement most of FHIR specification inside database for
 scalability reason (all data operations is done efficiently in databse).
 
-This approach also gives you possibility use FHIRBase from your prefered lang/platform (.NET, java, ruby, nodejs etc).
-We implemented FHIR compliant server in clojure, with small amount of code - [FHIRPlace](https://github.com/fhirbase/fhirplace/).
+This approach also gives you possibility use FHIRBase from your
+prefered lang/platform (.NET, java, ruby, nodejs etc).
+We implemented FHIR compliant server in clojure, with small amount of
+code - [FHIRPlace](https://github.com/fhirbase/fhirplace/).
 
 And there is option to break FHIR specification abstraction (if required) and
 go into database by generic SQL interface and complete your business task.
@@ -73,8 +83,9 @@ TODO:
 
 ## Overview
 
-We heavily use PostgreSQL [inheritance](http://www.postgresql.org/docs/9.4/static/tutorial-inheritance.html) feature,
-for polymorphic operations.
+We heavily use PostgreSQL
+[inheritance](http://www.postgresql.org/docs/9.4/static/tutorial-inheritance.html)
+feature, for polymorphic operations.
 
 Here are base tables:
 
@@ -85,7 +96,8 @@ To store resource data:
 * tag - for tags
 * tag_history - tags history
 
-There are some "index" tables by one for each search parameter type and one for indexing all resource references,
+There are some "index" tables by one for each search parameter type
+and one for indexing all resource references,
 which are populated in sync with resource data and  provide
 fast FHIR search queries:
 
@@ -96,11 +108,14 @@ fast FHIR search queries:
 * search_quantity
 * references
 
-For each resource type FHIRbase generate set of tables (which inherit from base tables).
-This is done, to separate dataspaces for each resource, so they are not messed and
-can guarantee performance proportional to amount of data for particular type of resource.
+For each resource type FHIRbase generate set of tables (which inherit
+from base tables).
+This is done, to separate dataspaces for each resource, so they are
+not messed and can guarantee performance proportional to amount of
+data for particular type of resource.
 
-Note: Same trick is used by PostgreSQL for [partitioning](http://www.postgresql.org/docs/9.4/static/ddl-partitioning.html).
+Note: Same trick is used by PostgreSQL for
+[partitioning](http://www.postgresql.org/docs/9.4/static/ddl-partitioning.html).
 
 
 * "{{lower(ResourceType)}}" (...) INHERITS (resource)
@@ -117,7 +132,8 @@ Note: Same trick is used by PostgreSQL for [partitioning](http://www.postgresql.
 * "{{lower(ResourceType)}}_search_quantity" (...)
 * "{{lower(ResourceType)}}_references" (...)
 
-For more information [see source code](https://github.com/fhirbase/fhirbase/blob/master/dev/4_generation.sql#L51):
+For more information
+[see source code](https://github.com/fhirbase/fhirbase/blob/master/dev/4_generation.sql#L51):
 
 
 
@@ -127,7 +143,8 @@ Prefered way is docker - https://docker.com.
 
 Install docker.
 
-Here is auto builded public [image of fhirbase](https://registry.hub.docker.com/u/fhirbase/fhirbase/):
+Here is auto builded public
+[image of fhirbase](https://registry.hub.docker.com/u/fhirbase/fhirbase/):
 
 To install fhirbase:
 
@@ -150,8 +167,8 @@ Requirements:
 * pg_trgm
 
 
-You can download postgresql 9.4 pre-release or build Postgresql from source  on debian/ubuntu
-and create local user cluster with:
+You can download postgresql 9.4 pre-release or build Postgresql from
+source on debian/ubuntu and create local user cluster with:
 
 
 ```
@@ -175,7 +192,8 @@ TODO: test script to verify installation
 Most of FHIR complaint operations could be done with FHIRBase procedures,
 which guaranties data integrity and do heavy job for you.
 All procedures have first parameter _cfg jsonb with configuration params.
-Now there is only one paramenter [base] (Service Root URL): `{"base":"http:/myserver"}`
+Now there is only one paramenter [base] (Service Root URL):
+`{"base":"http:/myserver"}`
 
 #### FUNCTION fhir_read(_cfg jsonb, _type_ varchar, _id_ uuid)
 Read the current state of the resource
