@@ -150,14 +150,38 @@ To install fhirbase:
 
 ```bash
 sudo docker.io run -d --name=fhirbase -t -p <mylocalport>:5432 fhirbase/fhirbase:latest
+```
 
-# check by connecting to database
+### Mac os x
+
+```bash
+vagrant up
+```
+
+### Check
+
+Check by connecting to database
+
+```bash
 psql -U fhirbase -h localhost -p <mylocalport> fhirbase
 password> fhirbase
-
-# or you can connect with your postgresql client: 
-# user:fhirbase, password: fhirbase, host: localhost, port:<mylocalport>
 ```
+
+Or you can connect with your postgresql client:
+
+<dl>
+  <dt>user</dt>
+  <dd>fhirbase</dd>
+
+  <dt>password</dt>
+  <dd>fhirbase</dd>
+
+  <dt>host</dt>
+  <dd>localhost</dd>
+
+  <dt>port</dt>
+  <dd><mylocalport></dd>
+</dl>
 
 ## Build
 
