@@ -152,7 +152,7 @@ To install fhirbase:
 sudo docker.io run -d --name=fhirbase -t -p 5433:5432 fhirbase/fhirbase:latest
 ```
 
-### Mac os x
+### Mac os x & windows
 
 ```bash
 vagrant up
