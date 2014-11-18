@@ -183,6 +183,9 @@ Or you can connect with your postgresql client:
   <dd>5433</dd>
 </dl>
 
+You may use [pgAdmin](http://pgadmin.org)
+(recomended version 1.20 and above).
+
 ## Build
 
 Requirements:
