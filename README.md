@@ -204,16 +204,16 @@ Returns conformance resource jsonb;
 
 ## Contribution
 
-* Star us on github
-* Create an issue – for a bug report or enhancment
-* Contribute to FHIRBase − see dev/README.md
+* Star us on GitHub
+* If you encountered a bug, please [make an Issue](https://github.com/fhirbase/fhirplace/issues/new)
+* Contribute to FHIRBase − see [dev/README.md](https://github.com/fhirbase/fhirbase/blob/master/dev/README.md)
 
 ## Development
 
-Development details see in [dev/README.md]()
+See development details in [dev/README.md](https://github.com/fhirbase/fhirbase/blob/master/dev/README.md)
 
 ## License
 
-Copyright © 2014 health samurai
+Copyright © 2014 health samurai.
 
-FHIRbase are released under the terms of the MIT license
+FHIRbase is released under the terms of the MIT License.
