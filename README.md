@@ -168,7 +168,7 @@ Most of FHIR complaint operations could be done with FHIRBase procedures,
 which guaranties data integrity and do heavy job for you.
 All procedures have first parameter _cfg jsonb with configuration params.
 Now there is only one paramenter [base] (Service Root URL):
-`{"base":"http:/myserver"}`
+`{"base":"http://myserver"}`
 
 #### FUNCTION fhir_read(_cfg jsonb, _type_ varchar, _id_ uuid)
 Read the current state of the resource
