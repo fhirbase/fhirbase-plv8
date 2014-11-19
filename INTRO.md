@@ -34,9 +34,26 @@ working.
 There are some exceptions from this rule in data retrieval cases. For
 example you can `SELECT ... FROM resource` to search for specific
 resource or set of resources. But when you create, delete or modify
-something, you have to use corresponding stored procedure.
+something, you have to use corresponding stored procedure
+(hereinafter, we'll refer them as SP).
 
 ## Creating resources
 
-Just after installation FHIRBase is "empty", it doesn't have any data
+Right after installation FHIRBase is "empty", it doesn't have any data
 we can operate with. So let's create some resources first.
+
+Resources are created with **fhir_create** SP which takes four parameters:
+
+<dl>
+<dt>cfg (jsonb)</dt>
+<dd>Confguration data</dd>
+
+<dt>_resource_type_ (varchar)</dt>
+<dd>Type of resource being created, e.g. 'Organization' or 'Patient'.</dd>
+
+<dt>_resource_content_ (jsonb)</dt>
+<dd>Content of resource being created</dd>
+
+<dt>_tags_ (jsonb)</dt>
+<dd>Array of [FHIR tags](http://www.hl7.org/implement/standards/fhir/extras.html#tag) for resource</dd>
+</dl>
