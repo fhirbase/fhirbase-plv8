@@ -55,5 +55,5 @@ Resources are created with **fhir_create** SP which takes four parameters:
 <dd>Content of resource being created</dd>
 
 <dt>_tags_ (jsonb)</dt>
-<dd>Array of [FHIR tags](http://www.hl7.org/implement/standards/fhir/extras.html#tag) for resource</dd>
+<dd>Array of <a href="http://www.hl7.org/implement/standards/fhir/extras.html#tag">FHIR tags</a> for resource</dd>
 </dl>
