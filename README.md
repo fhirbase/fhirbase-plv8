@@ -12,9 +12,6 @@ Sponsored by:
 
 ![choice-hs.com](http://choice-hs.com/Images/Shared/Choice-HSLogo.png)
 
-
-
-
 ## Live Demo
 
 Here is an
@@ -27,25 +24,25 @@ which is build with
 ## Motivation
 
 While crafting Health IT systems you begin to understand a value of
-properly chosen domain model.
-FHIR is an open source new generation lightweight standard for health
-data interoperability,
-which (we hope) could be used as a foundationan for Health IT
-systems. FHIR is based on a concept of __resource__.
+properly chosen domain model.  FHIR is an open source new generation
+lightweight standard for health data interoperability, which (we hope)
+could be used as a foundationan for Health IT systems. FHIR is based
+on a concept of __resource__.
 
-> FHIR® is a next generation standards framework created by HL7.
-> FHIR combines the best features of HL7 Version 2,
-> Version 3 and CDA® product lines while leveraging the latest
-> web standards and applying a tight focus on implementability.
+> FHIR® is a next generation standards framework created by HL7.  FHIR
+> combines the best features of HL7 Version 2, Version 3 and CDA®
+> product lines while leveraging the latest web standards and applying
+> a tight focus on implementability.
 
-Also we learned that data is a heart of any information system,
-and should be reliably managed. PostgreSQL is battle proved open source
-database, which supports structured documents (jsonb), while preserving
-ACID guaranties and richness of SQL query language.
+Also we learned that data is a heart of any information system, and
+should be reliably managed. PostgreSQL is battle proved open source
+database, which supports structured documents (jsonb), while
+preserving ACID guaranties and richness of SQL query language.
 
-> PostgreSQL is a powerful, open source object-relational database system.
-> It has more than 15 years of active development and a proven architecture
-> that has earned it a strong reputation for reliability, data integrity, and correctness.
+> PostgreSQL is a powerful, open source object-relational database
+> system.  It has more than 15 years of active development and a
+> proven architecture that has earned it a strong reputation for
+> reliability, data integrity, and correctness.
 
 Here is list of PostgreSQL features we use:
 
@@ -97,9 +94,8 @@ To store resource data:
 * tag_history - tags history
 
 There are some "index" tables by one for each search parameter type
-and one for indexing all resource references,
-which are populated in sync with resource data and  provide
-fast FHIR search queries:
+and one for indexing all resource references, which are populated in
+sync with resource data and provide fast FHIR search queries:
 
 * search_string
 * search_token
@@ -109,10 +105,9 @@ fast FHIR search queries:
 * references
 
 For each resource type FHIRbase generate set of tables (which inherit
-from base tables).
-This is done, to separate dataspaces for each resource, so they are
-not messed and can guarantee performance proportional to amount of
-data for particular type of resource.
+from base tables).  This is done, to separate dataspaces for each
+resource, so they are not messed and can guarantee performance
+proportional to amount of data for particular type of resource.
 
 Note: Same trick is used by PostgreSQL for
 [partitioning](http://www.postgresql.org/docs/9.4/static/ddl-partitioning.html).
@@ -135,56 +130,10 @@ Note: Same trick is used by PostgreSQL for
 For more information
 [see source code](https://github.com/fhirbase/fhirbase/blob/master/dev/4_generation.sql#L51):
 
-
-
 ## Installation
 
-Prefered way is docker - https://docker.com.
-
-Install docker.
-
-Here is auto builded public
-[image of fhirbase](https://registry.hub.docker.com/u/fhirbase/fhirbase/):
-
-To install fhirbase:
-
-```bash
-sudo docker.io run -d --name=fhirbase -t -p 5433:5432 fhirbase/fhirbase:latest
-```
-
-### Mac os x & windows
-
-```bash
-vagrant up --provider=docker
-```
-
-### Check
-
-Check by connecting to database
-
-```bash
-psql -U fhirbase -h localhost -p 5433 fhirbase
-password> fhirbase
-```
-
-Or you can connect with your postgresql client:
-
-<dl>
-  <dt>user</dt>
-  <dd>fhirbase</dd>
-
-  <dt>password</dt>
-  <dd>fhirbase</dd>
-
-  <dt>host</dt>
-  <dd>localhost</dd>
-
-  <dt>port</dt>
-  <dd>5433</dd>
-</dl>
-
-You may use [pgAdmin](http://pgadmin.org)
-(recomended version 1.20 and above).
+Please follow
+[FHIRPlace installation instructions](https://github.com/fhirbase/fhirplace#installation).
 
 ## Build
 
@@ -192,7 +141,6 @@ Requirements:
 * PostgreSQL 9.4 (http://www.postgresql.org/about/news/1522/)
 * pgcrypto
 * pg_trgm
-
 
 You can download postgresql 9.4 pre-release or build Postgresql from
 source on debian/ubuntu and create local user cluster with:
@@ -228,7 +176,7 @@ Return bundle with only one entry for uniformity;
 
 #### FUNCTION fhir_create(_cfg jsonb, _type_ varchar, _resource_ jsonb, _tags_ jsonb)
 Create a new resource with a server assigned id
- Return bundle with newly entry;
+Return bundle with newly entry;
 
 #### FUNCTION fhir_vread(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid)
 Read specific version of resource with _type_
