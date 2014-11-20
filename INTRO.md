@@ -145,7 +145,9 @@ arguments:
 
 Following query will create a
 [Patient resource](http://www.hl7.org/implement/standards/fhir/patient.html)
-from standard FHIR example JSON:
+from standard
+[FHIR example](http://www.hl7.org/implement/standards/fhir/patient-example.json.html)
+without any tags:
 
 ```sql
 SELECT fhir_create(
@@ -159,3 +161,7 @@ SELECT fhir_create(
 {"id": "8d33a19b-af36-4e70-ae64-e705507eb074", "entry": [{"id": "http://localhost
 [ ... skipped ... ]
 ```
+
+Most important part in JSON which `fhir_create` returns is an `id`
+attribute. It contains identifier assigned to newly created
+Patient. Copy-paste it somewhere, because we will need it later.
