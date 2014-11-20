@@ -197,7 +197,7 @@ To read latest version of Resource use **fhir_read** function:
 </dl>
 
 Use following code to invoke `fhir_read`, just replace `[URL]` with
-URL from previous step:
+Patient's identifier from previous step:
 
 ```sql
 SELECT fhir_read(
