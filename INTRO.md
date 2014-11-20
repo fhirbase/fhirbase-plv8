@@ -141,7 +141,9 @@ arguments:
 <dd>Array of <a href="http://www.hl7.org/implement/standards/fhir/extras.html#tag">FHIR tags</a> for resource</dd>
 </dl>
 
-**Returns (jsonb):** Newly created Resource with generated `id` attribute.
+**Returns (jsonb):**
+[Bundle](http://www.hl7.org/implement/standards/fhir/extras.html#bundle)
+containing newly created Resource.
 
 Following query will create a
 [Patient resource](http://www.hl7.org/implement/standards/fhir/patient.html)
@@ -158,10 +160,22 @@ SELECT fhir_create(
 
           fhir_create
 ---------------------------------------------------------------------------------
-{"id": "8d33a19b-af36-4e70-ae64-e705507eb074", "entry": [{"id": "http://localhost
+{"id": "8d33a19b-af36-4e70-ae64-e705507eb074",
+"entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee",
 [ ... skipped ... ]
 ```
 
-Most important part in JSON which `fhir_create` returns is an `id`
-attribute. It contains identifier assigned to newly created
-Patient. Copy-paste it somewhere, because we will need it later.
+When resource is created, FHIRBase assigns unique identifier to it. We
+need to "remember" (copy-paste) this identifier for later use. Look at
+JSON which `fhir_create` returned. It has two `id`s: the first one (at
+root level) is an ID of generated Bundle. In most cases, we don't need
+this. The second is at path `entry.0.id`, this is ID of newly created
+Patient. Copy-paste this ID somewhere, because we'll need it in the
+next step.
+
+You may wonder, why this ID looks like an
+[URL](http://en.wikipedia.org/wiki/Uniform_resource_locator)? That's
+because FHIR describes RESTful Service, and therefore
+[resource identity is an URL](http://www.hl7.org/implement/standards/fhir/managing.html#identity).
+
+## Reading resources
