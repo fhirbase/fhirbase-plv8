@@ -179,3 +179,35 @@ because FHIR describes RESTful Service, and therefore
 [resource identity is an URL](http://www.hl7.org/implement/standards/fhir/managing.html#identity).
 
 ## Reading resources
+
+To read latest version of Resource use **fhir_read** function:
+
+<dl>
+<dt>cfg (jsonb)</dt>
+<dd>Confguration data</dd>
+
+<dt>resource_type (varchar)</dt>
+<dd>Type of resource being created, e.g. 'Organization' or 'Patient'</dd>
+
+<dt>url (jsonb)</dt>
+<dd>Uniform Locator of Resource being read.</dd>
+
+<dt>RETURNS (jsonb)</dt>
+<dd>Bundle containing found Resource or empty Bundle if no such resource was found.</dd>
+</dl>
+
+Use following code to invoke `fhir_read`, just replace `[URL]` with
+URL from previous step:
+
+```sql
+SELECT fhir_read(
+  '{"base": "http://localhost.local"}'::jsonb,
+  'Patient',
+  '[URL]');
+
+          fhir_read
+---------------------------------------------------------------------------------
+{"id": "8d33a19b-af36-4e70-ae64-e705507eb074",
+"entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee",
+[ ... skipped ... ]
+```
