@@ -37,6 +37,20 @@ resource or set of resources. But when you create, delete or modify
 something, you have to use corresponding stored procedures
 (hereinafter, we'll refer them as SP).
 
+## Types
+
+SQL has strict type checking, so SP's arguments and return values are
+typed. When describing SP, we will put type of every argument in
+parens. For example, if argument `cfg` has `jsonb` type, we'll write:
+
+<dl>
+<dt>cfg (jsonb)</dt>
+<dd>Confguration data</dd>
+</dl>
+
+You can take a look at
+[overview of standard PostgreSQL types](http://www.postgresql.org/docs/9.4/static/datatype.html#DATATYPE-TABLE).
+
 ## JSON and XML
 
 FHIR standard
@@ -58,12 +72,60 @@ many advantages of such decision:
 * If you need an XML representation of a resource, you can always get
   it from JSON in your application code.
 
+## Passing JSON to a SP
+
+When SP's argument has type `jsonb`, that means you have to pass some
+JSON as a value. To do this, you need to encode multi-line JSON into
+single-line PostgreSQL string. You can do this in many ways, for
+example, using a
+[online JSON formatter](http://jsonviewer.stack.hu/). Copy-paste your
+JSON into this tool, cick "Remove white space" button and copy-paste
+result back to editor.
+
+Another thing we need to do before using JSON in SQL query is quote
+escaping. Strings in PostgreSQL are enclosed in single quotes. Example:
+
+```sql
+SELECT 'this is a string';
+
+     ?column?
+------------------
+ this is a string
+(1 row)
+```
+
+If you have single quote in your string, you have to **double** it:
+
+```sql
+SELECT 'I''m a string with single quote!';
+
+            ?column?
+---------------------------------
+ I'm a string with single quote!
+(1 row)
+```
+
+So if your JSON contains single quotes, Find and Replace them with two
+single quotes in any text editor.
+
+Finally, get your JSON, surround it with single quotes, and append
+`::jsonb` after closing quote. That's how you pass JSON to PostgreSQL.
+
+```sql
+SELECT '{"foo": "i''m a string from JSON"}'::jsonb;
+               jsonb
+-----------------------------------
+ {"foo": "i'm a string from JSON"}
+(1 row)
+```
+
 ## Creating resources
 
 Right after installation FHIRBase is "empty", it doesn't have any data
 we can operate with. So let's create some resources first.
 
-Resources are created with **fhir_create** SP which takes four parameters:
+Resources are created with **fhir_create** SP which takes four
+arguments:
 
 <dl>
 <dt>cfg (jsonb)</dt>
@@ -78,3 +140,5 @@ Resources are created with **fhir_create** SP which takes four parameters:
 <dt>tags (jsonb)</dt>
 <dd>Array of <a href="http://www.hl7.org/implement/standards/fhir/extras.html#tag">FHIR tags</a> for resource</dd>
 </dl>
+
+**Returns:** Newly created Resource with generated `id` attribute (jsonb).
