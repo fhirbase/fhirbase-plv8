@@ -349,3 +349,66 @@ If version URL you passed to `fhir_update` isn't latest (optimistic locking has 
 ```
 ERROR:  Wrong version_id 43d7c2cf-a1b5-4602-b9a2-ec55d1a2dda8. Current is abb33ccc-bb5a-4875-af43-9b3bba62a95c
 ```
+
+## Reading previous versions of resource
+
+To receive all versions of specific resource use **fhir_history** SP:
+
+<dl>
+<dt>cfg (jsonb)</dt>
+<dd>Confguration data</dd>
+
+<dt>resource_type (varchar)</dt>
+<dd>Type of resource.</dd>
+
+<dt>url (varchar)</dt>
+<dd>URL of resource.</dd>
+
+<dt>options (jsonb)</dt>
+<dd>Additional options as described in <a href="http://www.hl7.org/implement/standards/fhir/http.html#history">FHIR Standard for <em>history</em> RESTful action</a>. Not implemented for now.</dd>
+
+<dt>RETURNS (jsonb)</dt>
+<dd>Bundle containing all versions of resource.</dd>
+</dl>
+
+Invoking **fhir_history** is quite straightforward:
+
+```sql
+SELECT fhir_history(
+  '{"base": "http://localhost.local"}'::jsonb,
+  'Patient',
+  '[URL]',
+  '{}'::jsonb);
+
+                fhir_history
+---------------------------------------------------------------------------
+[... skipped ...]
+```
+
+Also there is a **fhir_vread** SP to read single version of some resource:
+
+<dl>
+<dt>cfg (jsonb)</dt>
+<dd>Confguration data</dd>
+
+<dt>resource_type (varchar)</dt>
+<dd>Type of resource.</dd>
+
+<dt>version_url (varchar)</dt>
+<dd>URL of resource version being read.</dd>
+
+<dt>RETURNS (jsonb)</dt>
+<dd>Bundle containing single version of resource.</dd>
+</dl>
+
+```sql
+SELECT fhir_vread(
+  '{"base": "http://localhost.local"}'::jsonb,
+  'Patient',
+  '[version URL]');
+
+                fhir_vread
+----------------------------------------------------------------------------
+{"id": "34d2ec09-9211-4c95-a591-905279cc8212", "entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee", "link": [{"rel": "self", "href": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee/_history/43d7c2cf-a1b5-4602-b9a2-ec55d1a2dda8"}],
+[... skipped ...]
+```
