@@ -75,7 +75,7 @@ several advantages of such decision:
 ## Passing JSON to a SP
 
 When SP's argument has type `jsonb`, that means you have to pass some
-JSON as a value. To do this, you need to encode multi-line JSON into
+JSON as a value. To do this, you need to represent JSON as
 single-line PostgreSQL string. You can do this in many ways, for
 example, using a
 [online JSON formatter](http://jsonviewer.stack.hu/). Copy-paste your
