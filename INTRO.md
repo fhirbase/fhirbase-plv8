@@ -226,7 +226,6 @@ SELECT content FROM resource
 ---------------------------------------------------------------------------------
 {"name": [{"use": "official", "given": ["Peter", "James"], "family": ["Chalmers"]},
 {"use": "usual", "given": ["Jim"]}],
-
 [... skipped ...]
 ```
 
@@ -239,7 +238,6 @@ logical ID from URL:
 
 ```
 http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee
-^ protocol & domain    ^                  ^
-                       ┕ resource type    |
-                                          ┕ logical ID
+^                      ^                ^
+┕ protocol & domain    ┕ resource type  ┕ logical ID
 ```
