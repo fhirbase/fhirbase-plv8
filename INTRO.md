@@ -180,7 +180,7 @@ because FHIR describes RESTful Service, and therefore
 
 ## Reading resources
 
-To read latest version of Resource use **fhir_read** function:
+To read latest version of Resource use **fhir_read** SP:
 
 <dl>
 <dt>cfg (jsonb)</dt>
@@ -210,4 +210,36 @@ SELECT fhir_read(
 {"id": "8d33a19b-af36-4e70-ae64-e705507eb074",
 "entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee",
 [ ... skipped ... ]
+```
+
+## Reading resource data in relational way
+
+Instead of invoking **fhir_read** SP, you can `SELECT` resource data
+from `resource` table:
+
+```sql
+SELECT content FROM resource
+  WHERE logical_id = 'b1f2890a-0536-4742-9d39-90be5d4637ee'
+        AND resource_type = 'Patient';
+
+          content
+---------------------------------------------------------------------------------
+{"name": [{"use": "official", "given": ["Peter", "James"], "family": ["Chalmers"]},
+{"use": "usual", "given": ["Jim"]}],
+
+[... skipped ...]
+```
+
+`resource` table contains latest versions of all resources stored in
+FHIRBase. As you see, instead of using URL for identifying resource,
+now we use
+[logical ID](http://www.hl7.org/implement/standards/fhir/resources.html#metadata)
+and resource type to find resource among others. It's easy to get
+logical ID from URL:
+
+```
+http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee
+^ protocol & domain    ^                  ^
+                       ┕ resource type    |
+                                          ┕ logical ID
 ```
