@@ -412,3 +412,35 @@ SELECT fhir_vread(
 {"id": "34d2ec09-9211-4c95-a591-905279cc8212", "entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee", "link": [{"rel": "self", "href": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee/_history/43d7c2cf-a1b5-4602-b9a2-ec55d1a2dda8"}],
 [... skipped ...]
 ```
+
+## Searching Resources
+
+[Search](http://www.hl7.org/implement/standards/fhir/search.html) is
+the most tricky part of FHIR Standard. FHIRBase implements most of
+Search features:
+
+* simple search
+* full-text search
+* search by chainged parameters
+* search by tag
+* pagination and sorting
+* including other resources in search results
+
+Demonstraton of every case will take a lot of time, so we'll learn how
+to perform simple search, and leave other cases for separate article.
+
+Search is performed with **fhir_search** SP:
+
+<dl>
+<dt>cfg (jsonb)</dt>
+<dd>Confguration data</dd>
+
+<dt>resource_type (varchar)</dt>
+<dd>Type of resources you search for.</dd>
+
+<dt>search_parameters (text)</dt>
+<dd>Search parameters in querystring format, as described in <a href="http://www.hl7.org/implement/standards/fhir/search.html#standard">FHIR Standard</a>.</dd>
+
+<dt>RETURNS (jsonb)</dt>
+<dd>Bundle containing found resources.</dd>
+</dl>
