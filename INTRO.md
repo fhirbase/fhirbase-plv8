@@ -343,3 +343,9 @@ SELECT fhir_update('{"base": "http://localhost.local"}'::jsonb,
 "text": {"div": "UPDATED CONTENT", "status": "generated"}, "active": true,
 [... skipped ...]
 ```
+
+If version URL you passed to `fhir_update` isn't latest (optimistic locking has failed), you'll receive error message:
+
+```
+ERROR:  Wrong version_id 43d7c2cf-a1b5-4602-b9a2-ec55d1a2dda8. Current is abb33ccc-bb5a-4875-af43-9b3bba62a95c
+```
