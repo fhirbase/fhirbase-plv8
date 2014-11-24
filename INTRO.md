@@ -252,9 +252,9 @@ feature. So when you `SELECT ... FROM resource`, PostgreSQL executes
 your query on every inherited table and then union results. Such
 approach might be very inefficient, especially on complex queries, and
 that's why it's important to use `WHERE resource_type = '...'`
-predicate. When you specify values for `resource_type`, PostgreSQL
-knows exactly which inherited table to touch. Alternatively, you can
-select directly from resource type's table:
+predicate. When you specify `resource_type`, PostgreSQL knows exactly
+which inherited table to touch. Alternatively, you can select directly
+from resource type's table:
 
 ```sql
 SELECT content FROM patient
@@ -266,3 +266,7 @@ SELECT content FROM patient
 {"use": "usual", "given": ["Jim"]}],
 [... skipped ...]
 ```
+
+Generally, `SELECT`ing data from `resource` table by logical ID and
+resource type is as fast as `SELECT`ing from inherited table by
+logical ID.
