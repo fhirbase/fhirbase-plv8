@@ -215,11 +215,24 @@ SELECT fhir_read(
 ## Reading resource data in relational way
 
 Instead of invoking **fhir_read** SP, you can `SELECT` resource data
-from `resource` table:
+from `resource` table. In that case you should use
+[logical ID](http://www.hl7.org/implement/standards/fhir/resources.html#metadata)
+and resource type to find resource among others. It's easy to get
+logical ID from URL:
+
+```
+http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee
+^                      ^                ^
+┕ protocol & domain    ┕ resource type  ┕ logical ID
+```
+
+Replace `[logical ID]` in following query with logical ID of
+previously inserted Patient resource and execute it.
+
 
 ```sql
 SELECT content FROM resource
- WHERE logical_id = 'b1f2890a-0536-4742-9d39-90be5d4637ee'
+ WHERE logical_id = '[logical ID]'
    AND resource_type = 'Patient';
 
           content
@@ -230,14 +243,26 @@ SELECT content FROM resource
 ```
 
 `resource` table contains latest versions of all resources stored in
-FHIRBase. As you see, instead of using URL for identifying resource,
-now we use
-[logical ID](http://www.hl7.org/implement/standards/fhir/resources.html#metadata)
-and resource type to find resource among others. It's easy to get
-logical ID from URL:
+FHIRBase. It must be said that no data is stored in it. Each type of
+resource has it's own table: `patient`, `adversereaction`,
+`encounter`, etc (48 total) where all resource data is actually
+stored. Each of them inherits `resource` table using
+[PostgreSQL Table Inheritance](http://www.postgresql.org/docs/9.4/static/ddl-inherit.html)
+feature. So when you `SELECT ... FROM resource`, PostgreSQL executes
+your query on every inherited table and then union results. Such
+approach might be very inefficient, especially on complex queries, and
+that's why it's important to use `WHERE resource_type = '...'`
+predicate. When you specify values for `resource_type`, PostgreSQL
+knows exactly which inherited table to touch. Alternatively, you can
+select directly from resource type's table:
 
-```
-http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee
-^                      ^                ^
-┕ protocol & domain    ┕ resource type  ┕ logical ID
+```sql
+SELECT content FROM patient
+ WHERE logical_id = '[logical ID]';
+
+          content
+---------------------------------------------------------------------------------
+{"name": [{"use": "official", "given": ["Peter", "James"], "family": ["Chalmers"]},
+{"use": "usual", "given": ["Jim"]}],
+[... skipped ...]
 ```
