@@ -64,13 +64,13 @@ for such purpose.
 
 Considering interchangeability of XML and JSON FHIRBase team decided
 to discard XML format support and use JSON as only format. There are
-many advantages of such decision:
+several advantages of such decision:
 
 * PostgreSQL has native support for JSON data type which means fast
   queries and efficient storage;
 * JSON is native and preferred format for Web Services/APIs nowadays;
 * If you need an XML representation of a resource, you can always get
-  it from JSON in your application code.
+  it from JSON in your application's code.
 
 ## Passing JSON to a SP
 
