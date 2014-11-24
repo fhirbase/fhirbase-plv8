@@ -222,8 +222,9 @@ logical ID from URL:
 
 ```
 http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee
-^                      ^                ^
-┕ protocol & domain    ┕ resource type  ┕ logical ID
+^                      ^       ^
+┕ protocol & domain    |       ┕ logical ID
+                       ┕ resource type
 ```
 
 Replace `[logical ID]` in following query with logical ID of
@@ -270,3 +271,75 @@ SELECT content FROM patient
 Generally, `SELECT`ing data from `resource` table by logical ID and
 resource type is as fast as `SELECT`ing from inherited table by
 logical ID.
+
+## Updating resource
+
+To update resource data use **fhir_update** SP:
+
+<dl>
+<dt>cfg (jsonb)</dt>
+<dd>Confguration data</dd>
+
+<dt>resource_type (varchar)</dt>
+<dd>Type of resource being altered.</dd>
+
+<dt>url (varchar)</dt>
+<dd>URL of resource being altered.</dd>
+
+<dt>version_url (varchar)</dt>
+<dd>URL of latest resource version (for <a href="http://en.wikipedia.org/wiki/Optimistic_concurrency_control">optimistic locking</a>)</dd>
+
+<dt>new_resource (jsonb)</dt>
+<dd>New resource content.</dd>
+
+<dt>tags (jsonb)</dt>
+<dd>New set of tags to attach to resource.</dd>
+
+<dt>RETURNS (jsonb)</dt>
+<dd>Bundle containing new version of resource.</dd>
+</dl>
+
+Notice the `version_url` parameter, which is used for
+[Optimistic Locking](http://en.wikipedia.org/wiki/Optimistic_concurrency_control)
+during updates. Generally that means you have to read latest version
+of resource before performing update. If somebody performed concurrent
+update just before you, your update will fail.
+
+To read latest version of resource use already discussed **fhir_read** SP:
+
+```sql
+SELECT fhir_read(
+  '{"base": "http://localhost.local"}'::jsonb,
+  'Patient',
+  '[URL]');
+
+               fhir_read
+----------------------------------------------------------------------------
+{"id": "e81368f0-e353-4ca2-b9e3-bee767a187a8",
+"entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee",
+"link": [{"rel": "self", "href": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee/_history/287cc966-8cac-4f7d-82a1-51d55a9f919e"}]
+[... skipped ...]
+```
+
+You'll find version URL at path `entry.0.link.href` of fhir_read
+result, in our example it's
+`http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee/_history/287cc966-8cac-4f7d-82a1-51d55a9f919e`.
+
+Now let's invoke `fhir_update` with version URL we just received and
+change Patient.text value:
+
+```sql
+SELECT fhir_update('{"base": "http://localhost.local"}'::jsonb,
+  'Patient',
+  '[URL]',
+  '[version URL]',
+  '{"resourceType":"Patient","text":{"status":"generated","div":"UPDATED CONTENT"},"identifier":[{"use":"usual","label":"MRN","system":"urn:oid:1.2.36.146.595.217.0.1","value":"12345","period":{"start":"2001-05-06"},"assigner":{"display":"Acme Healthcare"}}],"name":[{"use":"official","family":["Chalmers"],"given":["Peter","James"]},{"use":"usual","given":["Jim"]}],"telecom":[{"use":"home"},{"system":"phone","value":"(03) 5555 6473","use":"work"}],"gender":{"coding":[{"system":"http://hl7.org/fhir/v3/AdministrativeGender","code":"M","display":"Male"}]},"birthDate":"1974-12-25","deceasedBoolean":false,"address":[{"use":"home","line":["534 Erewhon St"],"city":"PleasantVille","state":"Vic","zip":"3999"}],"contact":[{"relationship":[{"coding":[{"system":"http://hl7.org/fhir/patient-contact-relationship","code":"partner"}]}],"name":{"family":["du","Marché"],"_family":[{"extension":[{"url":"http://hl7.org/fhir/Profile/iso-21090#qualifier","valueCode":"VV"}]},null],"given":["Bénédicte"]},"telecom":[{"system":"phone","value":"+33 (237) 998327"}]}],"managingOrganization":{"reference":"Organization/1"},"active":true}'::jsonb,
+  '[]'::jsonb);
+
+                 fhir_update
+-------------------------------------------------------------------------
+{"id": "e4b207b8-fc2c-4317-b455-b762f26ec589", "entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee", "link": [{"rel": "self", "href": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee/_history/abb33ccc-bb5a-4875-af43-9b3bba62a95c"}],
+[... skipped ...]
+"text": {"div": "UPDATED CONTENT", "status": "generated"}, "active": true,
+[... skipped ...]
+```
