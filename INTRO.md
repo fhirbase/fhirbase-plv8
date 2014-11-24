@@ -219,8 +219,8 @@ from `resource` table:
 
 ```sql
 SELECT content FROM resource
-  WHERE logical_id = 'b1f2890a-0536-4742-9d39-90be5d4637ee'
-        AND resource_type = 'Patient';
+ WHERE logical_id = 'b1f2890a-0536-4742-9d39-90be5d4637ee'
+   AND resource_type = 'Patient';
 
           content
 ---------------------------------------------------------------------------------
