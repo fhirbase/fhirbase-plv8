@@ -504,3 +504,49 @@ SELECT fhir_search(
 [ ... skipped ... ]
 "resourceType": "Bundle", "totalResults": 1}
 ```
+
+## Deleting resource
+
+To delete resource, use **fhir_delete** SP:
+
+<dl>
+<dt>cfg (jsonb)</dt>
+<dd>Confguration data</dd>
+
+<dt>resource_type (varchar)</dt>
+<dd>Type of resources you search for.</dd>
+
+<dt>url (varchar)</dt>
+<dd>URL of resource being deleted.</dd>
+
+<dt>RETURNS (jsonb)</dt>
+<dd>Bundle containing deleted resource.</dd>
+</dl>
+
+```sql
+SELECT fhir_delete(
+  '{"base": "http://localhost.local"}'::jsonb,
+  'Patient',
+  '[URL]'
+);
+
+                fhir_delete
+----------------------------------------------------------------------------
+{"id": "3367b97e-4cc3-4afa-8d55-958ed686dd10", "entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee",
+[ ... skipped ... ]
+"resourceType": "Bundle", "totalResults": 1}
+```
+
+NB: History of resource is also deleted:
+
+```sql
+SELECT fhir_history(
+  '{"base": "http://localhost.local"}'::jsonb,
+  'http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee',
+  '{}'::jsonb
+);
+
+                fhir_history
+----------------------------------------------------------------------------
+ {"id": "6d31ea93-49b3-47d2-9249-1f47d1e72c39", "entry": [], "title": "History of resource with type=http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee", "updated": "2014-11-25T12:42:47.634399+00:00", "resourceType": "Bundle", "totalResults": 0}
+```
