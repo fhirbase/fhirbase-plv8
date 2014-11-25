@@ -164,6 +164,9 @@ TODO: test script to verify installation
 
 ## API
 
+Read
+[introductional article](https://github.com/fhirbase/fhirbase/blob/master/INTRO.md).
+
 Most of FHIR complaint operations could be done with FHIRBase procedures,
 which guaranties data integrity and do heavy job for you.
 All procedures have first parameter _cfg jsonb with configuration params.
