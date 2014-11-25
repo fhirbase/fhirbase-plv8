@@ -251,11 +251,11 @@ stored. Each of them inherits `resource` table using
 [PostgreSQL Table Inheritance](http://www.postgresql.org/docs/9.4/static/ddl-inherit.html)
 feature. So when you `SELECT ... FROM resource`, PostgreSQL executes
 your query on every inherited table and then union results. Such
-approach might be very inefficient, especially on complex queries, and
+approach might be inefficient, especially on complex queries, and
 that's why it's important to use `WHERE resource_type = '...'`
 predicate. When you specify `resource_type`, PostgreSQL knows exactly
 which inherited table to touch. Alternatively, you can select directly
-from resource type's table:
+from inherited table:
 
 ```sql
 SELECT content FROM patient
@@ -270,7 +270,7 @@ SELECT content FROM patient
 
 Generally, `SELECT`ing data from `resource` table by logical ID and
 resource type is as fast as `SELECT`ing from inherited table by
-logical ID.
+logical ID only.
 
 ## Updating resource
 
@@ -426,8 +426,8 @@ Search features:
 * pagination and sorting
 * including other resources in search results
 
-Demonstraton of every case will take a lot of time, so we'll learn how
-to perform simple search, and leave other cases for separate article.
+We'll demonstrate how to perform simple search and will leave other
+cases for separate article.
 
 Search is performed with **fhir_search** SP:
 
@@ -439,8 +439,68 @@ Search is performed with **fhir_search** SP:
 <dd>Type of resources you search for.</dd>
 
 <dt>search_parameters (text)</dt>
-<dd>Search parameters in querystring format, as described in <a href="http://www.hl7.org/implement/standards/fhir/search.html#standard">FHIR Standard</a>.</dd>
+<dd>Search parameters in query-string format, as described in <a href="http://www.hl7.org/implement/standards/fhir/search.html#standard">FHIR Standard</a>.</dd>
 
 <dt>RETURNS (jsonb)</dt>
 <dd>Bundle containing found resources.</dd>
 </dl>
+
+Let's start with searching for all patients with name containing "Jim":
+
+```sql
+SELECT fhir_search(
+  '{"base": "http://localhost.local"}'::jsonb,
+  'Patient',
+  'name=Jim');
+
+                fhir_search
+----------------------------------------------------------------------------
+{"id": "3367b97e-4cc3-4afa-8d55-958ed686dd10", "entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee",
+[ ... skipped ... ]
+"resourceType": "Bundle", "totalResults": 1}
+```
+
+Search by MRN identifier:
+
+```sql
+SELECT fhir_search(
+  '{"base": "http://localhost.local"}'::jsonb,
+  'Patient',
+  'identifier=urn:oid:1.2.36.146.595.217.0.1|12345');
+
+                fhir_search
+----------------------------------------------------------------------------
+{"id": "3367b97e-4cc3-4afa-8d55-958ed686dd10", "entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee",
+[ ... skipped ... ]
+"resourceType": "Bundle", "totalResults": 1}
+```
+
+Search by gender:
+
+```sql
+SELECT fhir_search(
+  '{"base": "http://localhost.local"}'::jsonb,
+  'Patient',
+  'gender=http://hl7.org/fhir/v3/AdministrativeGender|M');
+
+                fhir_search
+----------------------------------------------------------------------------
+{"id": "3367b97e-4cc3-4afa-8d55-958ed686dd10", "entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee",
+[ ... skipped ... ]
+"resourceType": "Bundle", "totalResults": 1}
+```
+
+Combining several conditions:
+
+```sql
+SELECT fhir_search(
+  '{"base": "http://localhost.local"}'::jsonb,
+  'Patient',
+  'gender=http://hl7.org/fhir/v3/AdministrativeGender|M&name=Jim&identifier=urn:oid:1.2.36.146.595.217.0.1|12345');
+
+                fhir_search
+----------------------------------------------------------------------------
+{"id": "3367b97e-4cc3-4afa-8d55-958ed686dd10", "entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee",
+[ ... skipped ... ]
+"resourceType": "Bundle", "totalResults": 1}
+```
