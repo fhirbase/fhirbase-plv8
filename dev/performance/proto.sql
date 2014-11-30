@@ -12,9 +12,24 @@ from generate_series(1,100000);
 --}}}
 
 --{{{
-select count(*) from observation_search_token;
+select count(*) from observation;
 --}}}
 
 --{{{
-\dt obser*
+select build_search_query(
+  'Observation',
+  _parse_param('value-quantity=>37.5&value-quantity=<38.0')
+)
+--}}}
+
+--{{{
+\timing
+select jsonb_array_elements#>'{content,valueQuantity}' from
+(
+select
+jsonb_array_elements(
+  fhir_search('{}'::jsonb,
+  'Observation',
+  'value-quantity=>37.5&value-quantity=<38.0')->'entry')
+) _
 --}}}
