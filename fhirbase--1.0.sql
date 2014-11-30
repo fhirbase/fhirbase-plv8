@@ -125,13 +125,16 @@ CREATE FUNCTION _build_index_joins(_resource_type text, _query jsonb) RETURNS TA
       WHERE position('.' in p.key) = 0
     )
     SELECT _tpl($SQL$
-            JOIN {{tbl}} {{als}}
-              ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
-             AND {{cond}}
+            JOIN (
+              SELECT DISTINCT resource_id FROM {{tbl}} {{als}}
+              WHERE {{cond}}
+              LIMIT {{limit}}
+            ) {{als}} ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
           $SQL$,
           'tbl',  p.tbl,
           'als',  p.als,
           'prnt', p.prnt,
+          'limit', COALESCE(_param_at(_query, '_count'), '100'),
           'cond', string_agg(
                      _param_expression(p.als,
                                        p.param_name,
@@ -654,20 +657,22 @@ CREATE FUNCTION _parse_param(_params_ text) RETURNS jsonb
     AS $$
 
 WITH initial AS (
+  -- split params by & and then split by = return (key, val) relation
   SELECT url_decode(split_part(x,'=',1)) as key,
          url_decode(split_part(x, '=', 2)) as val
     FROM regexp_split_to_table(_params_,'&') x
-  ), with_op_mod AS (
-  SELECT  _get_key(key) as key,
-          _get_modifier(key) as mod,
+), with_op_mod AS (
+  SELECT  _get_key(key) as key, -- normalize key (remove modifiers)
+          _get_modifier(key) as mod, -- extract modifier
           CASE WHEN val ~ E'^(>=|<=|<|>|~).*' THEN
-            regexp_replace(val, E'^(>=|<=|<|>|~).*','\1')
+            regexp_replace(val, E'^(>=|<=|<|>|~).*','\1') -- extract operator
           ELSE
             NULL
           END as op,
           regexp_replace(val, E'^(>|<|<=|>=|~)(.*)','\2') as val
     FROM  initial
 )
+-- build resulting array
 SELECT json_agg(
   json_build_object(
     'param', key,
@@ -1063,10 +1068,10 @@ $$;
 
 
 --
--- Name: build_limit_part(character varying, jsonb); Type: FUNCTION; Schema: public; Owner: -
+-- Name: build_limit_part(jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION build_limit_part(_resource_type character varying, query jsonb) RETURNS TABLE(part text, sql text)
+CREATE FUNCTION build_limit_part(query jsonb) RETURNS TABLE(part text, sql text)
     LANGUAGE sql
     AS $$
   SELECT 'LIMIT'::text,
@@ -1264,7 +1269,7 @@ CREATE FUNCTION build_search_query(_resource_type character varying, query jsonb
     UNION
     SELECT * FROM build_offset_part(_resource_type, query)
     UNION
-    SELECT * FROM build_limit_part(_resource_type,query)
+    SELECT * FROM build_limit_part(query)
   )
   SELECT
   _tpl($SQL$

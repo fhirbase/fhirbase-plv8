@@ -51,21 +51,27 @@ SELECT *
                ON _c4ef352f74e502ef5e7bc98e6f4e493d.resource_id = patient.logical_id                                                                +
               AND (_c4ef352f74e502ef5e7bc98e6f4e493d.term = 'category')                                                                             +
                                                                                                                                                     +
-             JOIN patient_search_string patient_name                                                                                                +
-               ON patient_name.resource_id::varchar = patient.logical_id::varchar                                                                   +
-              AND (patient_name.param = 'name' AND (patient_name.value ilike '%pups%'))                                                             +
+             JOIN (                                                                                                                                 +
+               SELECT DISTINCT resource_id FROM patient_search_string patient_name                                                                  +
+               WHERE (patient_name.param = 'name' AND (patient_name.value ilike '%pups%'))                                                          +
+               LIMIT 100                                                                                                                            +
+             ) patient_name ON patient_name.resource_id::varchar = patient.logical_id::varchar                                                      +
                                                                                                                                                     +
-             JOIN patient_search_token patient_identifier                                                                                           +
-               ON patient_identifier.resource_id::varchar = patient.logical_id::varchar                                                             +
-              AND (patient_identifier.param = 'identifier' AND (patient_identifier.code = '7777777' AND patient_identifier.namespace = 'MRN'))      +
+             JOIN (                                                                                                                                 +
+               SELECT DISTINCT resource_id FROM patient_search_token patient_identifier                                                             +
+               WHERE (patient_identifier.param = 'identifier' AND (patient_identifier.code = '7777777' AND patient_identifier.namespace = 'MRN'))   +
+               LIMIT 100                                                                                                                            +
+             ) patient_identifier ON patient_identifier.resource_id::varchar = patient.logical_id::varchar                                          +
                                                                                                                                                     +
          JOIN patient_references patient_provider                                                                                                   +
            ON patient_provider.resource_id::varchar = patient.logical_id::varchar                                                                   +
             AND  ( patient_provider.logical_id='1' OR patient_provider.logical_id='2')                                                              +
                                                                                                                                                     +
-             JOIN organization_search_string patient_provider_name                                                                                  +
-               ON patient_provider_name.resource_id::varchar = patient_provider.logical_id::varchar                                                 +
-              AND (patient_provider_name.param = 'name' AND (patient_provider_name.value ilike '%ups%'))                                            +
+             JOIN (                                                                                                                                 +
+               SELECT DISTINCT resource_id FROM organization_search_string patient_provider_name                                                    +
+               WHERE (patient_provider_name.param = 'name' AND (patient_provider_name.value ilike '%ups%'))                                         +
+               LIMIT 100                                                                                                                            +
+             ) patient_provider_name ON patient_provider_name.resource_id::varchar = patient_provider.logical_id::varchar                           +
                                                                                                                                                     +
                                                                                                                                                     +
               LEFT JOIN patient_search_date patient_date                                                                                            +

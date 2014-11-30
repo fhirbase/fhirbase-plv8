@@ -1,7 +1,5 @@
 --db:fhirb
 --{{{
-
-
 -- decode url-encoded string
 CREATE OR REPLACE
 FUNCTION _url_decode(input text) RETURNS text

@@ -1,5 +1,4 @@
 --db:fhirb
-
 --- Search algorithm:
 ---  * start from http query string
 ---  * split & decode to params relation (param, op, value)
@@ -95,6 +94,15 @@ language sql AS $$
 $$ IMMUTABLE;
 
 CREATE OR REPLACE
+FUNCTION _param_at(query jsonb, _param_name_ text) RETURNS text
+LANGUAGE sql AS $$
+  SELECT x->>'value'
+   FROM jsonb_array_elements(query) x
+  WHERE x->>'param' = _param_name_
+  LIMIT 1
+$$ IMMUTABLE;
+
+CREATE OR REPLACE
 FUNCTION _param_expression_tag(_table varchar, _key varchar, _val varchar, _modifier varchar) RETURNS text
 LANGUAGE sql AS $$
  SELECT
@@ -174,13 +182,16 @@ LANGUAGE sql AS $$
       WHERE position('.' in p.key) = 0
     )
     SELECT _tpl($SQL$
-            JOIN {{tbl}} {{als}}
-              ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
-             AND {{cond}}
+            JOIN (
+              SELECT DISTINCT resource_id FROM {{tbl}} {{als}}
+              WHERE {{cond}}
+              LIMIT {{limit}}
+            ) {{als}} ON {{als}}.resource_id::varchar = {{prnt}}.logical_id::varchar
           $SQL$,
           'tbl',  p.tbl,
           'als',  p.als,
           'prnt', p.prnt,
+          'limit', COALESCE(_param_at(_query, '_count'), '100'),
           'cond', string_agg(
                      _param_expression(p.als,
                                        p.param_name,
@@ -396,14 +407,6 @@ RETURNS text LANGUAGE sql AS $$
 $$ IMMUTABLE;
 
 
-CREATE OR REPLACE
-FUNCTION _param_at(query jsonb, _param_name_ text) RETURNS text
-LANGUAGE sql AS $$
-  SELECT x->>'value'
-   FROM jsonb_array_elements(query) x
-  WHERE x->>'param' = _param_name_
-  LIMIT 1
-$$ IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION build_offset_part(_resource_type varchar, query jsonb) RETURNS table(part text, sql text)
@@ -418,7 +421,7 @@ LANGUAGE sql AS $$
 $$;
 
 CREATE OR REPLACE
-FUNCTION build_limit_part(_resource_type varchar, query jsonb) RETURNS table(part text, sql text)
+FUNCTION build_limit_part(query jsonb) RETURNS table(part text, sql text)
 LANGUAGE sql AS $$
   SELECT 'LIMIT'::text,
   (
@@ -496,7 +499,7 @@ LANGUAGE sql AS $$
     UNION
     SELECT * FROM build_offset_part(_resource_type, query)
     UNION
-    SELECT * FROM build_limit_part(_resource_type,query)
+    SELECT * FROM build_limit_part(query)
   )
   SELECT
   _tpl($SQL$
