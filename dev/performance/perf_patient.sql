@@ -58,7 +58,7 @@ _quantity__value_quantity__namespace = content#>>'{valueQuantity,system}'
 \timing
 
 select * from perf_observation
-where _quantity__value_quantity__value > 39
+where _quantity__value_quantity__value > 39.8
 and _quantity__value_quantity__value < 40
 ORDER by logical_id DESC
 limit 10;
@@ -66,3 +66,40 @@ limit 10;
 /* Time: 4ms - 8ms */
 /* on 1M records */
 --}}}
+--{{{
+create type quantity AS (
+  "value" decimal,
+  "code" varchar,
+  "display" varchar
+);
+--}}}
+--{{{
+alter table perf_observation add column _value quantity;
+--}}}
+--{{{
+\timing
+UPDATE perf_observation SET
+_value.value = (content#>>'{valueQuantity,value}')::decimal,
+_value.code = content#>>'{valueQuantity,code}',
+_value.display = content#>>'{valueQuantity,system}'
+
+/* Timing is on. */
+/* UPDATE 1000000 */
+/* Time: 63463.564 ms */
+--}}}
+--{{{
+    CREATE INDEX obs_value_value_idx ON
+    perf_observation (((_value).value));
+--}}}
+--{{{
+\timing
+select * from perf_observation
+where (_value).value > 39.89 and (_value).value < 40
+ORDER by logical_id
+limit 10;
+--}}}
+
+--{{{
+select (_value).value from perf_observation
+limit 10
+---}}}
