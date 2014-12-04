@@ -7,3 +7,4 @@
 /dev/out/*
 /tmp
 dev/performance/observations.sql
+*.fixture.sql

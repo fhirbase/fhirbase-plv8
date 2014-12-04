@@ -55,3 +55,22 @@ SELECT array_agg(x)::varchar[] FROM (
 $$ IMMUTABLE;
 --}}}
 
+--TODO: this is KISS implementation
+-- the simplest way is to collect only values
+-- so we need collect values function
+--{{{
+CREATE OR REPLACE FUNCTION
+_unaccent_string(_text text) RETURNS text
+LANGUAGE sql AS $$
+  SELECT translate(_text,
+    'âãäåāăąÁÂÃÄÅĀĂĄèééêëēĕėęěĒĔĖĘĚìíîïìĩīĭÌÍÎÏÌĨĪĬóôõöōŏőÒÓÔÕÖŌŎŐùúûüũūŭůÙÚÛÜŨŪŬŮ"[]{}\\:,',
+    'aaaaaaaAAAAAAAAeeeeeeeeeeEEEEEiiiiiiiiIIIIIIIIoooooooOOOOOOOOuuuuuuuuUUUUUUUU       ');
+$$;
+
+CREATE OR REPLACE FUNCTION
+index_as_string( content jsonb, path text[])
+RETURNS text LANGUAGE sql AS $$
+  SELECT _unaccent_string(json_get_in(content, path)::text)::text
+$$ IMMUTABLE;
+--}}}
+

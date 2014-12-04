@@ -1,4 +1,4 @@
---db:fhirb -e
+--db:fhirb
 
 SET escape_string_warning=off;
 --{{{
@@ -39,5 +39,19 @@ SELECT assert_eq(
 SELECT assert_eq(
 (SELECT index_identifier_as_token(:'pt','{identifier}')),
  '{urn:oid:2.16.840.1.113883.2.4.6.3|123456789,MRN|7777777,7777777,123456789}'::varchar[],
-'index_identifier_as_token')
+'index_identifier_as_token');
+--}}}
+
+--{{{
+\set pt `cat test/fixtures/pt.json`
+
+SELECT assert_eq(
+(SELECT index_as_string(:'pt','{name}')::text ilike '%Roel%'),
+true,
+'index_as_string');
+
+SELECT assert_eq(
+(SELECT index_as_string(:'pt','{name}')::text ilike '%Bor%'),
+true,
+'index_as_string');
 --}}}
