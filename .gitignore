@@ -6,3 +6,4 @@
 /dev/my-build.sh
 /dev/out/*
 /tmp
+dev/performance/observations.sql

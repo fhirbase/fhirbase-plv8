@@ -33,7 +33,7 @@ _eval(
       version_id uuid UNIQUE,
       resource_type varchar DEFAULT '{{resource_type}}',
       updated TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      published  TIMESTAMP WITH TIME ZONE NOT NULL,
+      published TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
       content jsonb NOT NULL,
       category jsonb
     ) INHERITS (resource);
@@ -49,7 +49,7 @@ _eval(
       logical_id uuid NOT NULL,
       resource_type varchar DEFAULT '{{resource_type}}',
       updated TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      published  TIMESTAMP WITH TIME ZONE NOT NULL,
+      published TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
       content jsonb NOT NULL,
       category jsonb
     ) INHERITS (resource_history);

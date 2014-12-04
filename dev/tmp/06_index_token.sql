@@ -76,7 +76,7 @@ $$;
 
 
 CREATE OR REPLACE FUNCTION
-index_token_resource(rsrs jsonb)
+index_token_resource(rsrs jsonb, path varchar[])
 RETURNS jsonb[] LANGUAGE plpgsql AS $$
 DECLARE
   prm fhir.resource_indexables%rowtype;
