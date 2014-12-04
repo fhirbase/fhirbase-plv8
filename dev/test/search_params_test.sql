@@ -1,4 +1,4 @@
---db:fhirb -e
+--db:fhirb
 SET escape_string_warning=off;
 --{{{
 
