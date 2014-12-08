@@ -1,5 +1,9 @@
 --db:fhirb
 --{{{
+
+-- this function build condition to search string using ilike
+-- expected trigram index on expression
+-- (index_as_string(content, '{name}') ilike '%term%' OR index_as_string(content,'{name}') ilike '%term2')
 CREATE OR REPLACE
 FUNCTION build_string_cond(fr fhir.resource_indexables, param jsonb)
 RETURNS text
@@ -11,6 +15,8 @@ SELECT '(' || string_agg(
 FROM regexp_split_to_table(param->>'value', ',') x
 $$;
 
+-- build condition for token
+-- (index_codeableconcept_as_token(content, '{name}') &&  '{term,term2}'varachr[])
 CREATE OR REPLACE
 FUNCTION build_token_cond(fr fhir.resource_indexables, param jsonb)
 RETURNS text
@@ -22,6 +28,20 @@ SELECT
     regexp_split_to_array(param->>'value', ','))
 $$;
 
+-- build condition for token
+-- (index_codeableconcept_as_token(content, '{name}') &&  '{term,term2}'varachr[])
+CREATE OR REPLACE
+FUNCTION build_reference_cond(fr fhir.resource_indexables, param jsonb)
+RETURNS text
+LANGUAGE sql AS $$
+SELECT
+  format('index_as_reference(content, %L) && %L::varchar[]',
+    _rest(fr.path),
+    regexp_split_to_array(param->>'value', ','))
+$$;
+
+
+-- build where part
 CREATE OR REPLACE
 FUNCTION build_where_part(_resource_type varchar, query jsonb) RETURNS text
 LANGUAGE sql AS $$
@@ -36,6 +56,8 @@ params AS (
     build_string_cond(fr.*,q)
   WHEN fr.search_type = 'token' THEN
     build_token_cond(fr.*,q)
+  WHEN fr.search_type = 'reference' THEN
+    build_reference_cond(fr.*,q)
   END as cnd
   FROM queries
   JOIN fhir.resource_indexables fr

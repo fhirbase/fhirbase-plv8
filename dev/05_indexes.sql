@@ -42,3 +42,20 @@ from fhir.resource_indexables
 where search_type = 'string'
 ;
 --}}}
+
+--{{{
+SELECT
+count(
+_eval(
+_tpl(
+$SQL$ CREATE INDEX {{idx}} ON {{tbl}} USING GIN (index_as_reference(content,'{{path}}')) $SQL$,
+ 'tbl', quote_ident(lower(resource_type))
+,'tp', lower(search_type)
+,'idx', replace(lower(resource_type || '_' || param_name || '_' || _last(path) || '_token_idx')::varchar,'-','_')
+,'path', _rest(path)::varchar
+,'idx_fn', (SELECT _token_index_fn(type, is_primitive))
+)))
+from fhir.resource_indexables
+where search_type = 'reference'
+;
+--}}}

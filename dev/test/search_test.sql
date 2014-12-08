@@ -1,4 +1,4 @@
---db:fhirb -e
+--db:fhirb
 --{{{
 \set org1 `cat test/fixtures/org1.json`
 \set org_uuid '550e8400-e29b-41d4-a716-446655440009'
@@ -32,6 +32,20 @@ SELECT assert_eq(
   :'pt_uuid',
   (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'identifier=123456789')),
   'search by identifier');
+
+SELECT assert_eq(
+  :'pt_uuid',
+  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=' || :'org_uuid')),
+  'search by provider');
+
+SELECT assert_eq(
+  :'pt_uuid',
+  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=' || :'org_uuid')),
+  'search by provider');
+
+SELECT assert_eq( NULL ,
+  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=nonexist')),
+  'search by nonexisting provider');
 
 ROLLBACK;
 --}}}

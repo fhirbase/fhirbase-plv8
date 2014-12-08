@@ -64,6 +64,24 @@ SELECT array_agg(x)::varchar[] FROM (
 $$ IMMUTABLE;
 --}}}
 
+--{{{
+CREATE OR REPLACE FUNCTION
+index_as_reference(content jsonb, path text[])
+RETURNS varchar[] LANGUAGE sql AS $$
+WITH idents AS (
+  SELECT unnest as cd
+    FROM unnest(json_get_in(content, path))
+)
+SELECT array_agg(x)::varchar[] FROM (
+  SELECT cd->>'reference' as x
+  from idents
+  UNION
+  SELECT _last(regexp_split_to_array(cd->>'reference', '\/')) as x
+  from idents
+) _
+$$ IMMUTABLE;
+--}}}
+
 --TODO: this is KISS implementation
 -- the simplest way is to collect only values
 -- so we need collect values function
@@ -79,6 +97,9 @@ $$;
 CREATE OR REPLACE FUNCTION
 index_as_string( content jsonb, path text[])
 RETURNS text LANGUAGE sql AS $$
-  SELECT _unaccent_string(json_get_in(content, path)::text)::text
+  SELECT
+    regexp_replace(
+      _unaccent_string(json_get_in(content, path)::text)::text,
+      E'\\s+', ' ', 'g')
 $$ IMMUTABLE;
 --}}}
