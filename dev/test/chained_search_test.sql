@@ -23,35 +23,10 @@ INSERT into organization (content) values (:'org1'::jsonb);
 INSERT into patient (logical_id,content) values (:'pt_uuid',  :'pt'::jsonb);
 INSERT into patient (logical_id,content) values (:'pt2_uuid', :'pt2'::jsonb);
 
-SELECT assert_eq(
-  :'pt_uuid',
-  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'name=roel')),
-  'find pt');
-
-SELECT assert_eq(
-  :'pt_uuid',
-  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'identifier=123456789')),
-  'search by identifier');
-
-SELECT assert_eq(
-  :'pt_uuid',
-  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=' || :'org_uuid')),
-  'search by provider');
-
-SELECT assert_eq(
-  :'pt_uuid',
-  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=' || :'org_uuid')),
-  'search by provider');
-
-SELECT assert_eq( NULL ,
-  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=nonexist')),
-  'search by nonexisting provider');
-
 ROLLBACK;
 --}}}
+
 --{{{
-SELECT build_search_query('Patient', 'name=roel');
-SELECT build_search_query('Patient', 'name=roel&provider.name=x');
-SELECT * FROM _expand_search_params('Patient', 'name=roel&provider.name=x')
-where parent_resource is null;
+SELECT build_search_query('DiagnosticReport', 'subject:Patient.given=pupeter&subject:Patient.name=peter&name=ups&subject:Patient.provider.name=x&name=name2&value=>5');
+SELECT search('DiagnosticReport', 'subject:Patient.given=pupeter&subject:Patient.name=peter&name=ups&subject:Patient.provider.name=x&name=name2&value=>5');
 --}}}
