@@ -36,175 +36,119 @@ SELECT assert_eq(
  OK _get_key null
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param","op": "=", "value": "num"}]'::jsonb,
-  _parse_param('param=num'),
-  'numer equal');
-   assert_eq    
-----------------
- OK numer equal
+SELECT * FROM _parse_param('param=num');
+   key   | operator | value 
+---------+----------+-------
+ {param} | =        | {num}
 (1 row)
 
-SELECT assert_eq(
-  '[{"op": "=", "value": "num", "param":"param"}, {"op":"=", "value":"num2", "param":"param"}]'::jsonb,
-  _parse_param('param=num&param=num2'),
-  'numer equal');
-   assert_eq    
-----------------
- OK numer equal
+SELECT * FROM _parse_param('param=num&param=num2');
+   key   | operator | value  
+---------+----------+--------
+ {param} | =        | {num}
+ {param} | =        | {num2}
+(2 rows)
+
+SELECT * FROM _parse_param('param=<num');
+   key   | operator | value 
+---------+----------+-------
+ {param} | <        | {num}
 (1 row)
 
-SELECT assert_eq(
-  _parse_param('param=<num'),
-  '[{"param":"param", "op": "<" ,"value":"num"}]'::jsonb,
-  'number less');
-   assert_eq    
-----------------
- OK number less
+SELECT * FROM _parse_param('param=<%3Dnum');
+   key   | operator | value 
+---------+----------+-------
+ {param} | <=       | {num}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "<=" ,"value":"num"}]'::jsonb,
-  _parse_param('param=<%3Dnum'),
-  'number less or equal');
-        assert_eq        
--------------------------
- OK number less or equal
+SELECT * FROM _parse_param('param=>num');
+   key   | operator | value 
+---------+----------+-------
+ {param} | >        | {num}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": ">" ,"value":"num"}]'::jsonb,
-  _parse_param('param=>num'),
-  'number more');
-   assert_eq    
-----------------
- OK number more
+SELECT * FROM _parse_param('param=>%3Dnum');
+   key   | operator | value 
+---------+----------+-------
+ {param} | >=       | {num}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": ">=" ,"value":"num"}]'::jsonb,
-  _parse_param('param=>%3Dnum'),
-  'number more or equal');
-        assert_eq        
--------------------------
- OK number more or equal
+SELECT * FROM _parse_param('param:missing=true');
+   key   | operator | value  
+---------+----------+--------
+ {param} | missing  | {true}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "missing", "value": "true"}]'::jsonb,
-  _parse_param('param:missing=true'),
-  'number missing');
-     assert_eq     
--------------------
- OK number missing
+SELECT * FROM _parse_param('param:missing=false');
+   key   | operator |  value  
+---------+----------+---------
+ {param} | missing  | {false}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "missing", "value": "false"}]'::jsonb,
-  _parse_param('param:missing=false'),
-  'number present');
-     assert_eq     
--------------------
- OK number present
+SELECT * FROM _parse_param('param=date');
+   key   | operator | value  
+---------+----------+--------
+ {param} | =        | {date}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "=" ,"value": "date"}]'::jsonb,
-  _parse_param('param=date'),
-  'date equal');
-   assert_eq   
----------------
- OK date equal
+SELECT * FROM _parse_param('param=<date');
+   key   | operator | value  
+---------+----------+--------
+ {param} | <        | {date}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "<" ,"value": "date"}]'::jsonb,
-  _parse_param('param=<date'),
-  'date less');
-  assert_eq   
---------------
- OK date less
+SELECT * FROM _parse_param('param=<%3Ddate');
+   key   | operator | value  
+---------+----------+--------
+ {param} | <=       | {date}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "<=" ,"value": "date"}]'::jsonb,
-  _parse_param('param=<%3Ddate'),
-  'date less or equal');
-       assert_eq       
------------------------
- OK date less or equal
+SELECT * FROM _parse_param('param=>date');
+   key   | operator | value  
+---------+----------+--------
+ {param} | >        | {date}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": ">" ,"value": "date"}]'::jsonb,
-  _parse_param('param=>date'),
-  'date more');
-  assert_eq   
---------------
- OK date more
+SELECT * FROM _parse_param('param=>%3Ddate');
+   key   | operator | value  
+---------+----------+--------
+ {param} | >=       | {date}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param": "param", "op": ">=" ,"value": "date"}]'::jsonb,
-  _parse_param('param=>%3Ddate'),
-  'date more or equal');
-       assert_eq       
------------------------
- OK date more or equal
+SELECT * FROM _parse_param('param:missing=true');
+   key   | operator | value  
+---------+----------+--------
+ {param} | missing  | {true}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "missing", "value":"true"}]'::jsonb,
-  _parse_param('param:missing=true'),
-  'date missing');
-    assert_eq    
------------------
- OK date missing
+SELECT * FROM _parse_param('param:missing=false');
+   key   | operator |  value  
+---------+----------+---------
+ {param} | missing  | {false}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "missing", "value":"false"}]'::jsonb,
-  _parse_param('param:missing=false'),
-  'date present');
-    assert_eq    
------------------
- OK date present
+SELECT * FROM _parse_param('param=str');
+   key   | operator | value 
+---------+----------+-------
+ {param} | =        | {str}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "=" ,"value": "str"}]'::jsonb,
-  _parse_param('param=str'),
-  'str equal');
-  assert_eq   
---------------
- OK str equal
+SELECT * FROM _parse_param('param:exact=str');
+   key   | operator | value 
+---------+----------+-------
+ {param} | exact    | {str}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "exact" ,"value": "str"}]'::jsonb,
-  _parse_param('param:exact=str'),
-  'str exact');
-  assert_eq   
---------------
- OK str exact
+SELECT * FROM _parse_param('subject:Patient.name=ups');
+          key           | operator | value 
+------------------------+----------+-------
+ {subject:Patient,name} | =        | {ups}
 (1 row)
 
-SELECT assert_eq(
-  '[{"param":"subject:Patient.name", "op": "=", "value":"ups"}]'::jsonb,
-  _parse_param('subject:Patient.name=ups'),
-  'path');
- assert_eq 
------------
- OK path
-(1 row)
-
-SELECT assert_eq(
-  '[{"param":"param", "op": "~" ,"value": "quantity"}]'::jsonb,
-  _parse_param('param=~quantity'),
-  'quantity approximation');
-         assert_eq         
----------------------------
- OK quantity approximation
+SELECT * FROM _parse_param('param=~quantity');
+   key   | operator |   value    
+---------+----------+------------
+ {param} | ~        | {quantity}
 (1 row)
 
 /* ### Chained params ### */

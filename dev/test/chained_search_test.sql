@@ -25,8 +25,3 @@ INSERT into patient (logical_id,content) values (:'pt2_uuid', :'pt2'::jsonb);
 
 ROLLBACK;
 --}}}
-
---{{{
-SELECT build_search_query('DiagnosticReport', 'subject:Patient.given=pupeter&subject:Patient.name=peter&name=ups&subject:Patient.provider.name=x&name=name2&value=>5');
-SELECT search('DiagnosticReport', 'subject:Patient.given=pupeter&subject:Patient.name=peter&name=ups&subject:Patient.provider.name=x&name=name2&value=>5');
---}}}

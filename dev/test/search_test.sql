@@ -49,9 +49,3 @@ SELECT assert_eq( NULL ,
 
 ROLLBACK;
 --}}}
---{{{
-SELECT build_search_query('Patient', 'name=roel');
-SELECT build_search_query('Patient', 'name=roel&provider.name=x');
-SELECT * FROM _expand_search_params('Patient', 'name=roel&provider.name=x')
-where parent_resource is null;
---}}}

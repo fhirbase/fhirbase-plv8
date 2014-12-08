@@ -71,7 +71,7 @@ $$ IMMUTABLE;
 -- this function accept parmas in query string form
 -- and return jsonb array {param: '', op: '', value: ''}
 -- fhir modifiers and operators treated as op
-DROP FUNCTION _parse_param(_params_ text);
+DROP FUNCTION IF EXISTS _parse_param(_params_ text);
 
 CREATE
 FUNCTION _parse_param(_params_ text)

@@ -21,101 +21,41 @@ SELECT assert_eq(
   'subject:Patient.organization:Organization.identifier',
   _get_key('subject:Patient.organization:Organization.identifier'::text),
   '_get_key null');
+--}}}
 
-
+--{{{
 -- number
-SELECT assert_eq(
-  '[{"param":"param","op": "=", "value": "num"}]'::jsonb,
-  _parse_param('param=num'),
-  'numer equal');
-SELECT assert_eq(
-  '[{"op": "=", "value": "num", "param":"param"}, {"op":"=", "value":"num2", "param":"param"}]'::jsonb,
-  _parse_param('param=num&param=num2'),
-  'numer equal');
-SELECT assert_eq(
-  _parse_param('param=<num'),
-  '[{"param":"param", "op": "<" ,"value":"num"}]'::jsonb,
-  'number less');
+SELECT * FROM _parse_param('param=num');
+SELECT * FROM _parse_param('param=num&param=num2');
+SELECT * FROM _parse_param('param=<num');
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "<=" ,"value":"num"}]'::jsonb,
-  _parse_param('param=<%3Dnum'),
-  'number less or equal');
-
-SELECT assert_eq(
-  '[{"param":"param", "op": ">" ,"value":"num"}]'::jsonb,
-  _parse_param('param=>num'),
-  'number more');
-
-SELECT assert_eq(
-  '[{"param":"param", "op": ">=" ,"value":"num"}]'::jsonb,
-  _parse_param('param=>%3Dnum'),
-  'number more or equal');
-
-SELECT assert_eq(
-  '[{"param":"param", "op": "missing", "value": "true"}]'::jsonb,
-  _parse_param('param:missing=true'),
-  'number missing');
-
-SELECT assert_eq(
-  '[{"param":"param", "op": "missing", "value": "false"}]'::jsonb,
-  _parse_param('param:missing=false'),
-  'number present');
+SELECT * FROM _parse_param('param=<%3Dnum');
+SELECT * FROM _parse_param('param=>num');
+SELECT * FROM _parse_param('param=>%3Dnum');
+SELECT * FROM _parse_param('param:missing=true');
+SELECT * FROM _parse_param('param:missing=false');
 
 -- date
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "=" ,"value": "date"}]'::jsonb,
-  _parse_param('param=date'),
-  'date equal');
-SELECT assert_eq(
-  '[{"param":"param", "op": "<" ,"value": "date"}]'::jsonb,
-  _parse_param('param=<date'),
-  'date less');
-SELECT assert_eq(
-  '[{"param":"param", "op": "<=" ,"value": "date"}]'::jsonb,
-  _parse_param('param=<%3Ddate'),
-  'date less or equal');
-SELECT assert_eq(
-  '[{"param":"param", "op": ">" ,"value": "date"}]'::jsonb,
-  _parse_param('param=>date'),
-  'date more');
-SELECT assert_eq(
-  '[{"param": "param", "op": ">=" ,"value": "date"}]'::jsonb,
-  _parse_param('param=>%3Ddate'),
-  'date more or equal');
-SELECT assert_eq(
-  '[{"param":"param", "op": "missing", "value":"true"}]'::jsonb,
-  _parse_param('param:missing=true'),
-  'date missing');
-SELECT assert_eq(
-  '[{"param":"param", "op": "missing", "value":"false"}]'::jsonb,
-  _parse_param('param:missing=false'),
-  'date present');
+SELECT * FROM _parse_param('param=date');
+SELECT * FROM _parse_param('param=<date');
+SELECT * FROM _parse_param('param=<%3Ddate');
+SELECT * FROM _parse_param('param=>date');
+SELECT * FROM _parse_param('param=>%3Ddate');
+SELECT * FROM _parse_param('param:missing=true');
+SELECT * FROM _parse_param('param:missing=false');
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "=" ,"value": "str"}]'::jsonb,
-  _parse_param('param=str'),
-  'str equal');
+SELECT * FROM _parse_param('param=str');
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "exact" ,"value": "str"}]'::jsonb,
-  _parse_param('param:exact=str'),
-  'str exact');
+SELECT * FROM _parse_param('param:exact=str');
 
-SELECT assert_eq(
-  '[{"param":"subject:Patient.name", "op": "=", "value":"ups"}]'::jsonb,
-  _parse_param('subject:Patient.name=ups'),
-  'path');
+SELECT * FROM _parse_param('subject:Patient.name=ups');
 
 -- token
 
 -- quantity
 
-SELECT assert_eq(
-  '[{"param":"param", "op": "~" ,"value": "quantity"}]'::jsonb,
-  _parse_param('param=~quantity'),
-  'quantity approximation');
+SELECT * FROM _parse_param('param=~quantity');
 --}}}
 
 -- reference

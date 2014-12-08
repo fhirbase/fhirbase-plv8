@@ -1,20 +1,24 @@
 --db:fhirb
 --{{{
--- row with param and all required meta information
+-- row with query param and all required meta information
 drop type if exists query_param cascade;
 create type query_param AS (
   parent_resource text, -- if chained params parent resource
-  link_path text[], -- path of reference attribute
-  resource_type text,
-  chain text[], -- chain
+  link_path text[], -- path of reference attribute, used in join
+  resource_type text, -- name of resource
+  chain text[], -- chain array
   search_type text,
   is_primitive boolean,
   type text,
-  field_path text[],
+  field_path text[], -- search attribute path in resource
   key text,
   operator text,
-  value text[]);
+  value text[] -- values array with OR semantic
+);
 
+-- extract type from search key subject:Patient => Patient
+-- if no type take first from possible types
+-- TODO: should return all possible types!
 CREATE OR REPLACE
 FUNCTION get_reference_type(_key text,  _types text[]) RETURNS text
 language sql AS $$
@@ -36,12 +40,12 @@ CREATE OR REPLACE
 FUNCTION _expand_search_params(_resource_type text, _query text)
 RETURNS setof query_param
 LANGUAGE sql AS $$
-  WITH RECURSIVE params(parent_res, link_path, res, chain, key, operator, value) AS (
+  WITH RECURSIVE params(parent_resource, link_path, res, chain, key, operator, value) AS (
     -- this is inital select
     -- it produce some rows where key length > 1
     -- and we expand them joining meta inforamtion
-    SELECT null::text as parent_res, -- we start with empty parent resoure
-           '{}'::text[] as link_path,
+    SELECT null::text as parent_resource, -- we start with empty parent resoure
+           '{}'::text[] as link_path, -- path of reference attribute to join
            _resource_type::text as res, -- this is resource to apply condition
            ARRAY[_resource_type]::text[] || key as chain,
            key as key,
@@ -52,11 +56,11 @@ LANGUAGE sql AS $$
 
     UNION
 
-    SELECT res as parent_res, -- move res to parent_res
+    SELECT res as parent_resource, -- move res to parent_resource
            _rest(ri.path) as link_path,
            get_reference_type(x.key[1], re.ref_type) as res, -- set next res in chain
            x.chain AS chain, -- save search path
-           _rest(x.key) AS key, -- remove first item from key
+           _rest(x.key) AS key, -- remove first item from key untill only one key left
            x.operator,
            x.value
      FROM  params x
@@ -68,7 +72,7 @@ LANGUAGE sql AS $$
     WHERE array_length(key,1) > 1
   )
   SELECT
-    parent_res as parent_resource,
+    parent_resource as parent_resource,
     link_path as link_path,
     res as resource_type,
     _butlast(p.chain) as chain,
@@ -109,7 +113,7 @@ RETURNS text
 LANGUAGE sql AS $$
 SELECT
   format('%s(%I.content, %L) && %L::varchar[]',
-    _token_index_fn(_q.type, _q.is_primitive), --TODO: where is primitive
+    _token_index_fn(_q.type, _q.is_primitive),
     tbl,
     _q.field_path,
     _q.value)
@@ -123,9 +127,7 @@ FUNCTION build_reference_cond(tbl text, _q query_param)
 RETURNS text
 LANGUAGE sql AS $$
 SELECT
-  format('index_as_reference(content, %L) && %L::varchar[]',
-    _q.field_path,
-    _q.value)
+  format('index_as_reference(content, %L) && %L::varchar[]', _q.field_path, _q.value)
 $$;
 
 
@@ -157,7 +159,7 @@ SELECT
   link_path,
   parent_resource
 FROM  _expand_search_params(_resource_type, _query) x
-), joins AS (
+), joins AS ( --TODO: what if no middle join present ie we have a.b.c.attr = x and no a.b.attr condition
   SELECT
     format(E'JOIN %I ON index_as_reference(%I.content, %L) && ARRAY[%I.logical_id]::varchar[] AND \n %s',
       lower(resource_type),
@@ -173,7 +175,7 @@ FROM  _expand_search_params(_resource_type, _query) x
 
 SELECT
 format('SELECT %I.* FROM %I ', lower(resource_type), lower(resource_type))
-|| E'\n' || (SELECT string_agg(sql, E'\n')::text FROM joins)
+|| E'\n' || COALESCE((SELECT string_agg(sql, E'\n')::text FROM joins), ' ')
 || E'\nWHERE ' || string_agg(cond, ' AND ')
 FROM conds
 WHERE parent_resource IS NULL
