@@ -1,8 +1,6 @@
-SET escape_string_warning=off;
-SET
 BEGIN;
 BEGIN
-SELECT insert_resource('550e8400-e29b-41d4-a716-446655440009'::uuid,  E'{
+INSERT into organization (content) values ( E'{
   "resourceType": "Organization",
   "text": {
     "status": "generated",
@@ -34,13 +32,9 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440009'::uuid,  E'{
       "country": "USA"
     }
   ]
-}'::jsonb, '[]'::jsonb);
-           insert_resource            
---------------------------------------
- 550e8400-e29b-41d4-a716-446655440009
-(1 row)
-
-SELECT insert_resource('550e8400-e29b-41d4-a716-446655440010'::uuid,  E'{
+}'::jsonb);
+INSERT 0 1
+INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655440010',   E'{
   "resourceType": "Patient",
   "text": {
     "status": "generated",
@@ -183,13 +177,9 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440010'::uuid,  E'{
     "display": "AUMC"
   },
   "active": true
-}'::jsonb, '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'::jsonb);
-           insert_resource            
---------------------------------------
- 550e8400-e29b-41d4-a716-446655440010
-(1 row)
-
-SELECT insert_resource('550e8400-e29b-41d4-a716-446655440011'::uuid,  E'{
+}'::jsonb);
+INSERT 0 1
+INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655440011',  E'{
   "resourceType": "Patient",
   "text": {
     "status": "generated",
@@ -293,228 +283,24 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440011'::uuid,  E'{
     "reference": "Organization/1"
   },
   "active": false
-}'::jsonb, '[{"scheme": "http://pt.com", "term": "http://pt/noise", "label":"noise"}]'::jsonb);
-           insert_resource            
---------------------------------------
- 550e8400-e29b-41d4-a716-446655440011
+}'::jsonb);
+INSERT 0 1
+SELECT assert_eq(
+  '550e8400-e29b-41d4-a716-446655440010',
+  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'name=roel')),
+  'find pt');
+ assert_eq  
+------------
+ OK find pt
 (1 row)
 
-SELECT insert_resource('550e8400-e29b-41d4-a716-446655440012'::uuid,  E'{"resourceType":"DocumentReference","text":{"status":"generated","div":"<div>\\n      <p>\\n        <b>Generated Narrative</b>\\n      </p>\\n      <p>\\n        <b>masterIdentifier</b>: urn:oid:1.3.6.1.4.1.21367.2005.3.7\\n      </p>\\n      <p>\\n        <b>subject</b>: \\n        <a href=\\"patient-example-xcda.html\\">MRN = 12345 (usual); Henry Levin ; Male; birthDate: 24-Sep 1932; active</a>\\n      </p>\\n      <p>\\n        <b>type</b>: \\n        <span title=\\"Codes: {http://loinc.org 34108-1}\\">Outpatient Note</span>\\n      </p>\\n      <p>\\n        <b>author</b>: Sherry Dopplemeyer ; Primary Surgon; Orthopedic, Gerald Smitty ; Attending; Orthopedic\\n      </p>\\n      <p>\\n        <b>created</b>: 24-Dec 2005 9:35\\n      </p>\\n      <p>\\n        <b>indexed</b>: 24-Dec 2005 9:43\\n      </p>\\n      <p>\\n        <b>status</b>: current\\n      </p>\\n      <p>\\n        <b>description</b>: Physical\\n      </p>\\n      <p>\\n        <b>confidentiality</b>: \\n        <span title=\\"Codes: {http://ihe.net/xds/connectathon/confidentialityCodes 1.3.6.1.4.1.21367.2006.7.101}\\">Clinical-Staff</span>\\n      </p>\\n      <p>\\n        <b>primaryLanguage</b>: en-US\\n      </p>\\n      <p>\\n        <b>mimeType</b>: application/hl7-v3+xml\\n      </p>\\n      <p>\\n        <b>size</b>: 3654\\n      </p>\\n      <p>\\n        <b>hash</b>: da39a3ee5e6b4b0d3255bfef95601890afd80709\\n      </p>\\n      <p>\\n        <b>location</b>: \\n        <a href=\\"http://example.org/xds/mhd/Binary/@07a6483f-732b-461e-86b6-edb665c45510\\">http://example.org/xds/mhd/Binary/@07a6483f-732b-461e-86b6-edb665c45510</a>\\n      </p>\\n      <h3>Contexts</h3>\\n      <table class=\\"grid\\">\\n        <tr>\\n          <td>\\n            <b>Event</b>\\n          </td>\\n          <td>\\n            <b>Period</b>\\n          </td>\\n          <td>\\n            <b>FacilityType</b>\\n          </td>\\n        </tr>\\n        <tr>\\n          <td>\\n            <span title=\\"Codes: {http://ihe.net/xds/connectathon/eventCodes T-D8200}\\">Arm</span>\\n          </td>\\n          <td>23-Dec 2004 8:0 --&gt; 23-Dec 2004 8:1</td>\\n          <td>\\n            <span title=\\"Codes: {http://www.ihe.net/xds/connectathon/healthcareFacilityTypeCodes Outpatient}\\">Outpatient</span>\\n          </td>\\n        </tr>\\n      </table>\\n    </div>"},"contained":[{"resourceType":"Practitioner","_id":"a1","name":{"family":["Dopplemeyer"],"given":["Sherry"]},"telecom":[{"system":"email","value":"john.doe@healthcare.example.org"}],"organization":{"display":"Cleveland Clinic"},"role":[{"text":"Primary Surgon"}],"specialty":[{"text":"Orthopedic"}]},{"resourceType":"Practitioner","_id":"a2","name":{"family":["Smitty"],"given":["Gerald"]},"telecom":[{"system":"email","value":"john.doe@healthcare.example.org"}],"organization":{"display":"Cleveland Clinic"},"role":[{"text":"Attending"}],"specialty":[{"text":"Orthopedic"}]}],"masterIdentifier":{"system":"urn:ietf:rfc:3986","value":"urn:oid:1.3.6.1.4.1.21367.2005.3.7"},"subject":{"reference":"Patient/xcda"},"type":{"coding":[{"system":"http://loinc.org","code":"34108-1","display":"Outpatient Note"}]},"author":[{"reference":"#a1"},{"reference":"#a2"}],"created":"2005-12-24T09:35:00+11:00","indexed":"2005-12-24T09:43:41+11:00","status":"current","description":"Physical","confidentiality":[{"coding":[{"system":"http://ihe.net/xds/connectathon/confidentialityCodes","code":"1.3.6.1.4.1.21367.2006.7.101","display":"Clinical-Staff"}]}],"primaryLanguage":"en-US","mimeType":"application/hl7-v3+xml","size":3654,"hash":"da39a3ee5e6b4b0d3255bfef95601890afd80709","location":"http://example.org/xds/mhd/Binary/@07a6483f-732b-461e-86b6-edb665c45510","context":{"event":[{"coding":[{"system":"http://ihe.net/xds/connectathon/eventCodes","code":"T-D8200","display":"Arm"}]}],"period":{"start":"2004-12-23T08:00:00","end":"2004-12-23T08:01:00"},"facilityType":{"coding":[{"system":"http://www.ihe.net/xds/connectathon/healthcareFacilityTypeCodes","code":"Outpatient","display":"Outpatient"}]}}}'::jsonb, '[]'::jsonb);
-           insert_resource            
---------------------------------------
- 550e8400-e29b-41d4-a716-446655440012
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', logical_id, 'pt found by name')
-  FROM search('Patient', 'name=roel');
-      assert_eq      
----------------------
- OK pt found by name
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', logical_id, 'pt found by identifier')
-  FROM search('Patient', 'identifier=123456789');
-         assert_eq         
----------------------------
- OK pt found by identifier
-(1 row)
-
-SELECT build_search_query('Patient', _parse_param('identifier=MRN|7777777'));
-                                                                build_search_query                                                                
---------------------------------------------------------------------------------------------------------------------------------------------------
-                                                                                                                                                 +
-     SELECT ROW_NUMBER() OVER () as weight, x.*                                                                                                  +
-       FROM (                                                                                                                                    +
-             SELECT DISTINCT patient.category                                                                                                    +
- ,patient.content                                                                                                                                +
- ,patient.logical_id                                                                                                                             +
- ,patient.published                                                                                                                              +
- ,patient.resource_type                                                                                                                          +
- ,patient.updated                                                                                                                                +
- ,patient.version_id                                                                                                                             +
-               FROM patient patient                                                                                                              +
-                                                                                                                                                 +
-             JOIN (                                                                                                                              +
-               SELECT DISTINCT resource_id FROM patient_search_token patient_identifier                                                          +
-               WHERE (patient_identifier.param = 'identifier' AND (patient_identifier.code = '7777777' AND patient_identifier.namespace = 'MRN'))+
-               LIMIT 100                                                                                                                         +
-             ) patient_identifier ON patient_identifier.resource_id::varchar = patient.logical_id::varchar                                       +
-                                                                                                                                                 +
-               WHERE  true = true                                                                                                                +
-               ORDER BY  updated DESC                                                                                                            +
-               LIMIT 100                                                                                                                         +
-               OFFSET 0                                                                                                                          +
-             ) x                                                                                                                                 +
-   
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'identifier=MRN|7777777'))
- ,'pt found by mrn');
-     assert_eq      
---------------------
- OK pt found by mrn
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', logical_id, 'pt found by status')
-  FROM search('Patient', 'active=true');
-       assert_eq       
------------------------
- OK pt found by status
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', logical_id, 'pt found by status')
-  FROM search('Patient', 'active=true');
-       assert_eq       
------------------------
- OK pt found by status
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'telecom=+31612345678'))
- ,'pt found by phone');
-      assert_eq       
-----------------------
- OK pt found by phone
-(1 row)
-
-SELECT build_search_query('Patient', _parse_param('telecom:missing=true'));
-                                   build_search_query                                   
-----------------------------------------------------------------------------------------
-                                                                                       +
-     SELECT ROW_NUMBER() OVER () as weight, x.*                                        +
-       FROM (                                                                          +
-             SELECT DISTINCT patient.category                                          +
- ,patient.content                                                                      +
- ,patient.logical_id                                                                   +
- ,patient.published                                                                    +
- ,patient.resource_type                                                                +
- ,patient.updated                                                                      +
- ,patient.version_id                                                                   +
-               FROM patient patient                                                    +
-                                                                                       +
-              LEFT JOIN patient_search_string patient_string                           +
-                   ON patient_string.resource_id::varchar = patient.logical_id::varchar+
-                  AND patient_string.param = 'telecom'                                 +
-                                                                                       +
-               WHERE patient_string.resource_id IS NULL                                +
-               ORDER BY  updated DESC                                                  +
-               LIMIT 100                                                               +
-               OFFSET 0                                                                +
-             ) x                                                                       +
-   
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440011',
- (SELECT string_agg(logical_id::text,'|')
-    FROM search('Patient', 'telecom:missing=true'))
- ,'test missing true');
-      assert_eq       
-----------------------
- OK test missing true
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT string_agg(logical_id::text,'|')
-    FROM search('Patient', 'telecom:missing=false'))
- ,'test missing false');
-       assert_eq       
------------------------
- OK test missing false
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'gender=http://snomed.info/sct|248153007'))
- ,'pt found by snomed gender');
-          assert_eq           
-------------------------------
- OK pt found by snomed gender
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'birthdate=1960'))
- ,'pt found birthdate');
-       assert_eq       
------------------------
- OK pt found birthdate
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440009',
- (SELECT logical_id
-    FROM search('Organization', 'name=Health Level'))
- ,'org by name');
-   assert_eq    
-----------------
- OK org by name
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'provider.name=Health%20Level') LIMIT 1)
- ,'pt by org name');
-     assert_eq     
--------------------
- OK pt by org name
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'name=Roelof&provider.name=Health%20Level'))
- ,'pt by name & org name');
-        assert_eq         
---------------------------
- OK pt by name & org name
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'family=bor') LIMIT 1)
- ,'pt by family');
-    assert_eq    
------------------
- OK pt by family
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
-    FROM search('Patient', 'family=bor&name=bor') LIMIT 1)
- ,'pt by family & name');
-       assert_eq        
-------------------------
- OK pt by family & name
-(1 row)
-
-SELECT assert_eq('http://pt/vip',
- (SELECT string_agg(jsonb_array_elements#>>'{category,0,term}','')
-    FROM jsonb_array_elements(
-            fhir_search('{"base":"https://test.me"}'::jsonb,
-              'Patient'::varchar, '_tag=http%3A%2F%2Fpt%2Fvip')->'entry'))
- ,'pt by tag');
-  assert_eq   
---------------
- OK pt by tag
-(1 row)
-
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440012',
-   (SELECT string_agg(logical_id::varchar, '|')),
-  'search number')
-  FROM search('DocumentReference', 'size=>100');
-    assert_eq     
-------------------
- OK search number
-(1 row)
-
-SELECT assert_eq(NULL,
-   (SELECT string_agg(logical_id::varchar, '|')),
-  'search number')
-  FROM search('DocumentReference', 'size=<100');
-    assert_eq     
-------------------
- OK search number
+SELECT assert_eq(
+  '550e8400-e29b-41d4-a716-446655440010',
+  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'identifier=123456789')),
+  'search by identifier');
+        assert_eq        
+-------------------------
+ OK search by identifier
 (1 row)
 
 ROLLBACK;

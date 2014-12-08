@@ -67,12 +67,8 @@ _tpl($SQL$
 );
 $$;
 
-SELECT build_search_query('Patient', _parse_param('name=john,theo&identifier=MRN|777,SSN|555'));
 
---}}}
---{{{
-
-DROP FUNCTION search(_resource_type text, query text);
+DROP FUNCTION IF EXISTS search(_resource_type text, query text);
 CREATE FUNCTION
 search(_resource_type text, query text)
 RETURNS TABLE (logical_id uuid, version_id uuid, content jsonb)
@@ -82,16 +78,11 @@ BEGIN
     _tpl($SQL$
       SELECT logical_id, version_id, content FROM (
         {{search_sql}}
-      )_
-      $SQL$,
-      'tbl',           lower(_resource_type),
-      'search_sql',    build_search_query(_resource_type, _parse_param(query))));
+      ) _
+    $SQL$,
+    'tbl',           lower(_resource_type),
+    'search_sql',    build_search_query(_resource_type, _parse_param(query))));
 END
 $$ IMMUTABLE;
 
-\timing
-SELECT content#>>'{identifier}' FROM
-search('Patient', 'name=theodore,david&identifier=118622');
---}}}
---{{{
 --}}}

@@ -29,8 +29,8 @@ count(
 _eval(
   _tpl($SQL$
     CREATE TABLE "{{tbl_name}}" (
-      logical_id uuid PRIMARY KEY,
-      version_id uuid UNIQUE,
+      logical_id uuid PRIMARY KEY default gen_random_uuid(),
+      version_id uuid UNIQUE default gen_random_uuid(),
       resource_type varchar DEFAULT '{{resource_type}}',
       updated TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
       published TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,

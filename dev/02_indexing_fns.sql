@@ -2,6 +2,15 @@
 -- INDEXING FUNCTIONS
 -- TOKEN INDEX
 --{{{
+/* CREATE EXTENSION IF NOT EXISTS jsonb_extra; */
+/* CREATE OR REPLACE FUNCTION */
+/* json_get_in(x jsonb, path text[]) */
+/* RETURNS jsonb[] LANGUAGE sql AS $$ */
+/*   SELECT jsonb_extract(x, path); */
+/* $$ IMMUTABLE; */
+--}}}
+
+--{{{
 CREATE OR REPLACE FUNCTION
 jsonb_primitive_to_text(x jsonb)
 RETURNS text LANGUAGE sql AS $$
@@ -73,4 +82,3 @@ RETURNS text LANGUAGE sql AS $$
   SELECT _unaccent_string(json_get_in(content, path)::text)::text
 $$ IMMUTABLE;
 --}}}
-
