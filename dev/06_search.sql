@@ -174,12 +174,13 @@ FROM  _expand_search_params(_resource_type, _query) x
 )
 
 SELECT
-format('SELECT %I.* FROM %I ', lower(resource_type), lower(resource_type))
+format('SELECT %I.* FROM %I ', lower(_resource_type), lower(_resource_type))
 || E'\n' || COALESCE((SELECT string_agg(sql, E'\n')::text FROM joins), ' ')
-|| E'\nWHERE ' || string_agg(cond, ' AND ')
-FROM conds
-WHERE parent_resource IS NULL
-GROUP BY resource_type
+|| E'\nWHERE '
+|| COALESCE((SELECT string_agg(cond, ' AND ')
+    FROM conds
+    WHERE parent_resource IS NULL
+    GROUP BY resource_type), ' true = true')
 $$;
 
 

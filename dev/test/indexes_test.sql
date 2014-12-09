@@ -60,7 +60,7 @@ true,
 \set pt `cat test/fixtures/pt.json`
 
 SELECT assert_eq(
-(SELECT index_as_reference(:'pt'::jsonb,  '{managingOrganization}'::varchar[])),
+(SELECT index_as_reference(format(:'pt', '550e8400-e29b-41d4-a716-446655440009')::jsonb,  '{managingOrganization}'::varchar[])),
 '{550e8400-e29b-41d4-a716-446655440009,Organization/550e8400-e29b-41d4-a716-446655440009}',
 'index reference');
 

@@ -176,7 +176,7 @@ SELECT assert_eq(
     }
   ],
   "managingOrganization": {
-    "reference": "Organization/550e8400-e29b-41d4-a716-446655440009",
+    "reference": "Organization/%s",
     "display": "AUMC"
   },
   "active": true
@@ -328,7 +328,7 @@ SELECT assert_eq(
     }
   ],
   "managingOrganization": {
-    "reference": "Organization/550e8400-e29b-41d4-a716-446655440009",
+    "reference": "Organization/%s",
     "display": "AUMC"
   },
   "active": true
@@ -480,7 +480,7 @@ SELECT assert_eq(
     }
   ],
   "managingOrganization": {
-    "reference": "Organization/550e8400-e29b-41d4-a716-446655440009",
+    "reference": "Organization/%s",
     "display": "AUMC"
   },
   "active": true
@@ -493,7 +493,7 @@ true,
 (1 row)
 
 SELECT assert_eq(
-(SELECT index_as_reference( E'{
+(SELECT index_as_reference(format( E'{
   "resourceType": "Patient",
   "text": {
     "status": "generated",
@@ -632,11 +632,11 @@ SELECT assert_eq(
     }
   ],
   "managingOrganization": {
-    "reference": "Organization/550e8400-e29b-41d4-a716-446655440009",
+    "reference": "Organization/%s",
     "display": "AUMC"
   },
   "active": true
-}'::jsonb,  '{managingOrganization}'::varchar[])),
+}', '550e8400-e29b-41d4-a716-446655440009')::jsonb,  '{managingOrganization}'::varchar[])),
 '{550e8400-e29b-41d4-a716-446655440009,Organization/550e8400-e29b-41d4-a716-446655440009}',
 'index reference');
      assert_eq      
@@ -787,7 +787,7 @@ SELECT assert_eq(
     }
   ],
   "managingOrganization": {
-    "reference": "Organization/550e8400-e29b-41d4-a716-446655440009",
+    "reference": "Organization/%s",
     "display": "AUMC"
   },
   "active": true

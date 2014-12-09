@@ -1,6 +1,6 @@
 BEGIN;
 BEGIN
-INSERT into organization (content) values ( E'{
+INSERT into organization (logical_id,content) values ('550e8400-e29b-41d4-a716-446655440009',  E'{
   "resourceType": "Organization",
   "text": {
     "status": "generated",
@@ -34,7 +34,7 @@ INSERT into organization (content) values ( E'{
   ]
 }'::jsonb);
 INSERT 0 1
-INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655440010',   E'{
+INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655440010',  format( E'{
   "resourceType": "Patient",
   "text": {
     "status": "generated",
@@ -173,11 +173,11 @@ INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655
     }
   ],
   "managingOrganization": {
-    "reference": "Organization/550e8400-e29b-41d4-a716-446655440009",
+    "reference": "Organization/%s",
     "display": "AUMC"
   },
   "active": true
-}'::jsonb);
+}', '550e8400-e29b-41d4-a716-446655440009')::jsonb);
 INSERT 0 1
 INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655440011',  E'{
   "resourceType": "Patient",
@@ -285,5 +285,35 @@ INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655
   "active": false
 }'::jsonb);
 INSERT 0 1
+SELECT * FROM _parse_param('provider=Seven');
+    key     | operator |  value  
+------------+----------+---------
+ {provider} | =        | {Seven}
+(1 row)
+
+SELECT * FROM _expand_search_params('Patient','provider.name=Seven');
+ parent_resource |       link_path        | resource_type |       chain        | search_type | is_primitive |  type  | field_path | key  | operator |  value  
+-----------------+------------------------+---------------+--------------------+-------------+--------------+--------+------------+------+----------+---------
+ Patient         | {managingOrganization} | Organization  | {Patient,provider} | string      | t            | string | {name}     | name | =        | {Seven}
+(1 row)
+
+SELECT * FROM build_search_query('Patient','provider.name=Seven');
+                                                          build_search_query                                                          
+--------------------------------------------------------------------------------------------------------------------------------------
+ SELECT patient.* FROM patient                                                                                                       +
+ JOIN organization ON index_as_reference(patient.content, '{managingOrganization}') && ARRAY[organization.logical_id]::varchar[] AND +
+  (index_as_string(organization.content, '{name}') ilike '%Seven%')                                                                  +
+ WHERE  true = true
+(1 row)
+
+SELECT assert_eq(
+(SELECT logical_id FROM search('Patient','provider.name=Seven') LIMIT 1),
+'550e8400-e29b-41d4-a716-446655440010'::uuid,
+'chained search');
+     assert_eq     
+-------------------
+ OK chained search
+(1 row)
+
 ROLLBACK;
 ROLLBACK

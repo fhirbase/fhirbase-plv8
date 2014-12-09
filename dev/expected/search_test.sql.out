@@ -1,6 +1,6 @@
 BEGIN;
 BEGIN
-INSERT into organization (content) values ( E'{
+INSERT into organization (logical_id, content) values ('550e8400-e29b-41d4-a716-446655440009',  E'{
   "resourceType": "Organization",
   "text": {
     "status": "generated",
@@ -34,7 +34,7 @@ INSERT into organization (content) values ( E'{
   ]
 }'::jsonb);
 INSERT 0 1
-INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655440010',   E'{
+INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655440010',  format( E'{
   "resourceType": "Patient",
   "text": {
     "status": "generated",
@@ -173,11 +173,11 @@ INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655
     }
   ],
   "managingOrganization": {
-    "reference": "Organization/550e8400-e29b-41d4-a716-446655440009",
+    "reference": "Organization/%s",
     "display": "AUMC"
   },
   "active": true
-}'::jsonb);
+}', '550e8400-e29b-41d4-a716-446655440009')::jsonb);
 INSERT 0 1
 INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655440011',  E'{
   "resourceType": "Patient",

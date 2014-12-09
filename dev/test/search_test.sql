@@ -19,8 +19,8 @@
 
 BEGIN;
 
-INSERT into organization (content) values (:'org1'::jsonb);
-INSERT into patient (logical_id,content) values (:'pt_uuid',  :'pt'::jsonb);
+INSERT into organization (logical_id, content) values (:'org_uuid', :'org1'::jsonb);
+INSERT into patient (logical_id,content) values (:'pt_uuid',  format(:'pt', :'org_uuid')::jsonb);
 INSERT into patient (logical_id,content) values (:'pt2_uuid', :'pt2'::jsonb);
 
 SELECT assert_eq(
