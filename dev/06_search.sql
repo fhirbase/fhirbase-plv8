@@ -146,6 +146,36 @@ LANGUAGE sql AS $$
   END as cnd
 $$;
 
+CREATE OR REPLACE
+FUNCTION build_sorting(_resource_type varchar, _query text)
+RETURNS text
+LANGUAGE sql AS $$
+
+WITH params AS (
+  SELECT ROW_NUMBER() OVER () as weight,
+         value[1] as param_name,
+         case when operator='desc'
+          then 'DESC'
+          else 'ASC'
+          end as direction
+    FROM _parse_param(_query) q
+   WHERE key[1] = '_sort'
+), with_meta AS (
+  SELECT *
+    FROM params x
+    JOIN fhir.resource_indexables fr
+      ON fr.resource_type = _resource_type
+     AND fr.param_name = x.param_name
+ORDER BY weight
+)
+SELECT k.column1
+|| string_agg(
+  format(E'(json_get_in(%I.content, \'%s\'))[1]::text %s', lower(_resource_type), _rest(y.path)::text, y.direction)
+  ,E', ')
+FROM with_meta y, (VALUES(E'\n ORDER BY ')) k -- we join for manadic effect, if no sorting parmas return null
+GROUP BY k.column1
+$$;
+
 -- TODO add to documentation
 -- custom sort param _sort:asc=a, _sort:desc=b => { _sort:["a:asc", "b:desc"] }
 CREATE OR REPLACE
@@ -171,6 +201,10 @@ FROM  _expand_search_params(_resource_type, _query) x
     WHERE parent_resource IS NOT NULL
     GROUP BY resource_type, parent_resource, chain, link_path
     ORDER by chain
+), special_params AS (
+  SELECT key[1] as key, value[1] as value
+  FROM _parse_param(_query)
+  where key[1] ilike '_%'
 )
 
 SELECT
@@ -180,7 +214,9 @@ format('SELECT %I.* FROM %I ', lower(_resource_type), lower(_resource_type))
 || COALESCE((SELECT string_agg(cond, ' AND ')
     FROM conds
     WHERE parent_resource IS NULL
-    GROUP BY resource_type), ' true = true')
+    GROUP BY resource_type), ' true = true ')
+|| COALESCE(build_sorting(_resource_type, _query), '')
+|| format(E'\nLIMIT %s',COALESCE( (SELECT value::integer FROM special_params WHERE key = '_count'), '100'))
 $$;
 
 

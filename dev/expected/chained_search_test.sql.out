@@ -303,7 +303,8 @@ SELECT * FROM build_search_query('Patient','provider.name=Seven');
  SELECT patient.* FROM patient                                                                                                       +
  JOIN organization ON index_as_reference(patient.content, '{managingOrganization}') && ARRAY[organization.logical_id]::varchar[] AND +
   (index_as_string(organization.content, '{name}') ilike '%Seven%')                                                                  +
- WHERE  true = true
+ WHERE  true = true                                                                                                                  +
+ LIMIT 100
 (1 row)
 
 SELECT assert_eq(

@@ -329,5 +329,49 @@ SELECT assert_eq( NULL ,
  OK search by nonexisting provider
 (1 row)
 
+SELECT assert_eq(2::bigint ,
+  (SELECT count(*) FROM search('Patient', '')),
+  'count patients');
+     assert_eq     
+-------------------
+ OK count patients
+(1 row)
+
+SELECT assert_eq(1::bigint ,
+  (SELECT count(*) FROM search('Patient', '_count=1')),
+  'count patients with limit');
+          assert_eq           
+------------------------------
+ OK count patients with limit
+(1 row)
+
+SELECT content#>'{name,0,given}' FROM search('Patient', '_sort=given');
+      ?column?      
+--------------------
+ ["Peter", "James"]
+ ["Roelof Olaf"]
+(2 rows)
+
+SELECT content#>'{name,0,given}' FROM search('Patient', '_sort:desc=given');
+      ?column?      
+--------------------
+ ["Roelof Olaf"]
+ ["Peter", "James"]
+(2 rows)
+
+SELECT content#>'{birthDate}' FROM search('Patient', '_sort=birthdate');
+   ?column?   
+--------------
+ "1960-03-13"
+ "1974-12-25"
+(2 rows)
+
+SELECT content#>'{birthDate}' FROM search('Patient', '_sort:desc=birthdate');
+   ?column?   
+--------------
+ "1974-12-25"
+ "1960-03-13"
+(2 rows)
+
 ROLLBACK;
 ROLLBACK

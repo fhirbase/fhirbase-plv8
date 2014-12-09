@@ -47,5 +47,19 @@ SELECT assert_eq( NULL ,
   (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=nonexist')),
   'search by nonexisting provider');
 
+SELECT assert_eq(2::bigint ,
+  (SELECT count(*) FROM search('Patient', '')),
+  'count patients');
+
+SELECT assert_eq(1::bigint ,
+  (SELECT count(*) FROM search('Patient', '_count=1')),
+  'count patients with limit');
+
+SELECT content#>'{name,0,given}' FROM search('Patient', '_sort=given');
+SELECT content#>'{name,0,given}' FROM search('Patient', '_sort:desc=given');
+
+SELECT content#>'{birthDate}' FROM search('Patient', '_sort=birthdate');
+SELECT content#>'{birthDate}' FROM search('Patient', '_sort:desc=birthdate');
+
 ROLLBACK;
 --}}}
