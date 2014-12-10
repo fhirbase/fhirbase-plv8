@@ -92,6 +92,15 @@ LANGUAGE sql AS $$
   ;
 $$;
 
+-- this function build condition to search by identifier
+CREATE OR REPLACE
+FUNCTION build_identifier_cond(tbl text, _q query_param)
+RETURNS text
+LANGUAGE sql AS $$
+SELECT format('%I.logical_id IN (%s)', tbl, string_agg((x||'::uuid'),','))
+FROM unnest(_q.value) x
+$$;
+
 -- this function build condition to search string using ilike
 -- expected trigram index on expression
 -- (index_as_string(content, '{name}') ilike '%term%' OR index_as_string(content,'{name}') ilike '%term2')
@@ -137,6 +146,8 @@ RETURNS text
 LANGUAGE sql AS $$
   SELECT
   CASE
+  WHEN _q.search_type = 'identifier' THEN
+    build_identifier_cond(tbl, _q)
   WHEN _q.search_type = 'string' THEN
     build_string_cond(tbl, _q)
   WHEN _q.search_type = 'token' THEN

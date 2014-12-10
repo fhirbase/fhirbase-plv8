@@ -130,9 +130,19 @@ SELECT assert_eq(0::bigint,
 
 
 -- TODO: fix lost params
-DROP MATERIALIZED VIEW IF EXISTS fhir.resource_indexables;
-CREATE MATERIALIZED
-VIEW fhir.resource_indexables AS (
+DROP TABLE IF EXISTS fhir.resource_indexables;
+
+CREATE TABLE fhir.resource_indexables (
+  param_name text,
+  resource_type text,
+  path varchar[],
+  search_type text,
+  type text,
+  is_primitive boolean
+);
+
+INSERT INTO fhir.resource_indexables
+(param_name, resource_type, path, search_type, type, is_primitive)
 SELECT
 param_name, resource_type, path, search_type, type, is_primitive
 FROM (
@@ -162,6 +172,22 @@ FROM (
   ON tt.stp = x.search_type
   AND x.type = ANY(tt.tp)
 ) _
-GROUP BY param_name, resource_type, path, search_type, type, is_primitive
-);
+GROUP BY param_name, resource_type, path, search_type, type, is_primitive;
+
+
+-- here we insert metainformation for search by _id
+-- just for unification of search query generation
+INSERT INTO fhir.resource_indexables
+(param_name, resource_type, path, search_type, type, is_primitive)
+SELECT
+'_id' as param_name
+,resource_type as resource_type
+,ARRAY[resource_type,'_id'] as path
+,'identifier' as search_type
+,'uuid' as type
+, true as primitive
+FROM fhir.resource_indexables
+GROUP BY resource_type;
+
+CREATE INDEX ON fhir.resource_indexables (resource_type, param_name, search_type);
 --}}}

@@ -55,6 +55,14 @@ SELECT assert_eq(1::bigint ,
   (SELECT count(*) FROM search('Patient', '_count=1')),
   'count patients with limit');
 
+SELECT assert_eq(1::bigint ,
+  (SELECT count(*) FROM search('Patient', format('_id=%L', :'pt_uuid'))),
+  'search by id');
+
+SELECT assert_eq(2::bigint ,
+  (SELECT count(*) FROM search('Patient', format('_id=%L,%L', :'pt_uuid', :'pt2_uuid'))),
+  'search by ids');
+
 SELECT content#>'{name,0,given}' FROM search('Patient', '_sort=given');
 SELECT content#>'{name,0,given}' FROM search('Patient', '_sort:desc=given');
 
@@ -62,4 +70,8 @@ SELECT content#>'{birthDate}' FROM search('Patient', '_sort=birthdate');
 SELECT content#>'{birthDate}' FROM search('Patient', '_sort:desc=birthdate');
 
 ROLLBACK;
+--}}}
+--{{{
+select build_search_query('Patient', '_id=4');
+select build_search_query('Patient', 'provider._id=4');
 --}}}
