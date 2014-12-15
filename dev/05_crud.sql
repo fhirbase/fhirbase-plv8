@@ -80,8 +80,6 @@ LANGUAGE sql AS $$
        AND r.logical_id = _extract_id(_url_)::uuid)
   SELECT _build_bundle('Concrete resource by id ' || _extract_id(_url_), 1, (SELECT json_agg(entry) FROM entry));
 $$;
-COMMENT ON FUNCTION fhir_read(jsonb, text, text)
-IS 'Read the current state of the resource\nReturn bundle with only one entry for uniformity';
 
 CREATE OR REPLACE FUNCTION
 fhir_create(_cfg jsonb, _type text, _resource jsonb, _tags jsonb)
@@ -103,9 +101,6 @@ BEGIN
   RETURN fhir_read(_cfg, _type, __id::text);
 END
 $$;
-
-COMMENT ON FUNCTION fhir_create(jsonb, text, jsonb, jsonb)
-IS 'Create a new resource with a server assigned id\n Return bundle with newly entry';
 
 
 CREATE OR REPLACE
@@ -131,8 +126,6 @@ LANGUAGE sql AS $$
 $$;
 COMMENT ON FUNCTION fhir_vread(_cfg jsonb, _type_ text, _url_ text)
 IS 'Read specific version of resource with _type_\nReturns bundle with one entry';
-
-DROP FUNCTION fhir_update(_cfg jsonb, _type text, _url_ text, _location_ text, _resource_ jsonb, _tags_ jsonb);
 
 CREATE OR REPLACE
 FUNCTION fhir_update(_cfg jsonb, _type text, _url_ text, _location_ text, _resource_ jsonb, _tags_ jsonb)

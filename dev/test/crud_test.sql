@@ -53,9 +53,9 @@ SELECT assert_eq(
 BEGIN;
 
 WITH created AS (
-  SELECT fhir_create(:'cfg'::jsonb, 'Patient', :'pt'::jsonb, :'pt_tags'::jsonb) bundle
+  SELECT fhir_create(:'cfg'::jsonb, 'Patient'::text, :'pt'::jsonb, :'pt_tags'::jsonb) bundle
 ), vreaded AS (
-  SELECT fhir_vread(:'cfg'::jsonb, 'Patient', bundle#>>'{entry,0,link,0,href}') as bundle
+  SELECT fhir_vread(:'cfg'::jsonb, 'Patient'::text, bundle#>>'{entry,0,link,0,href}') as bundle
     FROM created
 )
 SELECT assert_eq(c.bundle#>'{entry,0,content}', :'pt'::jsonb, 'fhir_create')
@@ -75,7 +75,7 @@ ROLLBACK;
 BEGIN;
 
 WITH created AS (
-  SELECT fhir_create(:'cfg'::jsonb, 'Patient', :'pt'::jsonb, :'pt_tags'::jsonb) bundle
+  SELECT fhir_create(:'cfg'::jsonb, 'Patient'::text, :'pt'::jsonb, :'pt_tags'::jsonb) bundle
 ), updated AS (
   SELECT fhir_update(:'cfg'::jsonb, 'Patient'::text,bundle#>>'{entry,0,id}', bundle#>>'{entry,0,link,0,href}', :'upt'::jsonb, '[]'::jsonb) as bundle
   FROM created

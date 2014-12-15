@@ -81,7 +81,7 @@ SELECT assert_eq(
 BEGIN;
 BEGIN
 WITH created AS (
-  SELECT fhir_create('{"base":"https://test.me"}'::jsonb, 'Patient',  E'{
+  SELECT fhir_create('{"base":"https://test.me"}'::jsonb, 'Patient'::text,  E'{
   "resourceType": "Patient",
   "text": {
     "status": "generated",
@@ -226,7 +226,7 @@ WITH created AS (
   "active": true
 }'::jsonb, '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'::jsonb) bundle
 ), vreaded AS (
-  SELECT fhir_vread('{"base":"https://test.me"}'::jsonb, 'Patient', bundle#>>'{entry,0,link,0,href}') as bundle
+  SELECT fhir_vread('{"base":"https://test.me"}'::jsonb, 'Patient'::text, bundle#>>'{entry,0,link,0,href}') as bundle
     FROM created
 )
 SELECT assert_eq(c.bundle#>'{entry,0,content}',  E'{
@@ -532,7 +532,7 @@ ROLLBACK
 BEGIN;
 BEGIN
 WITH created AS (
-  SELECT fhir_create('{"base":"https://test.me"}'::jsonb, 'Patient',  E'{
+  SELECT fhir_create('{"base":"https://test.me"}'::jsonb, 'Patient'::text,  E'{
   "resourceType": "Patient",
   "text": {
     "status": "generated",
