@@ -346,7 +346,7 @@ SELECT assert_eq(1::bigint ,
 (1 row)
 
 SELECT assert_eq(1::bigint ,
-  (SELECT count(*) FROM search('Patient', format('_id=%L', '550e8400-e29b-41d4-a716-446655440010'))),
+  (SELECT count(*) FROM search('Patient', format('_id=%s', '550e8400-e29b-41d4-a716-446655440010'))),
   'search by id');
     assert_eq    
 -----------------
@@ -354,7 +354,7 @@ SELECT assert_eq(1::bigint ,
 (1 row)
 
 SELECT assert_eq(2::bigint ,
-  (SELECT count(*) FROM search('Patient', format('_id=%L,%L', '550e8400-e29b-41d4-a716-446655440010', '550e8400-e29b-41d4-a716-446655440011'))),
+  (SELECT count(*) FROM search('Patient', format('_id=%s,%s', '550e8400-e29b-41d4-a716-446655440010', '550e8400-e29b-41d4-a716-446655440011'))),
   'search by ids');
     assert_eq     
 ------------------
@@ -392,11 +392,11 @@ SELECT content#>'{birthDate}' FROM search('Patient', '_sort:desc=birthdate');
 ROLLBACK;
 ROLLBACK
 select build_search_query('Patient', '_id=4');
-          build_search_query           
----------------------------------------
- SELECT patient.* FROM patient        +
-                                      +
- WHERE patient.logical_id IN (4::uuid)+
+           build_search_query            
+-----------------------------------------
+ SELECT patient.* FROM patient          +
+                                        +
+ WHERE patient.logical_id IN ('4'::uuid)+
  LIMIT 100
 (1 row)
 
@@ -405,7 +405,7 @@ select build_search_query('Patient', 'provider._id=4');
 --------------------------------------------------------------------------------------------------------------------------------------
  SELECT patient.* FROM patient                                                                                                       +
  JOIN organization ON index_as_reference(patient.content, '{managingOrganization}') && ARRAY[organization.logical_id]::varchar[] AND +
-  organization.logical_id IN (4::uuid)                                                                                               +
+  organization.logical_id IN ('4'::uuid)                                                                                             +
  WHERE  true = true                                                                                                                  +
  LIMIT 100
 (1 row)

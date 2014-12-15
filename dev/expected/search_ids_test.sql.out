@@ -2,7 +2,7 @@ SET escape_string_warning=off;
 SET
 BEGIN;
 BEGIN
-SELECT insert_resource('550e8400-e29b-41d4-a716-446655440009'::uuid,  E'{
+SELECT 'CREATE' FROM fhir_create('{}'::jsonb, 'Organization', '550e8400-e29b-41d4-a716-446655440009'::uuid,  E'{
   "resourceType": "Organization",
   "text": {
     "status": "generated",
@@ -35,12 +35,12 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440009'::uuid,  E'{
     }
   ]
 }'::jsonb, '[]'::jsonb);
-           insert_resource            
---------------------------------------
- 550e8400-e29b-41d4-a716-446655440009
+ ?column? 
+----------
+ CREATE
 (1 row)
 
-SELECT insert_resource('550e8400-e29b-41d4-a716-446655440010'::uuid,  E'{
+SELECT 'CREATE' FROM fhir_create('{}'::jsonb, 'Patient', '550e8400-e29b-41d4-a716-446655440010'::uuid, format( E'{
   "resourceType": "Patient",
   "text": {
     "status": "generated",
@@ -179,17 +179,17 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440010'::uuid,  E'{
     }
   ],
   "managingOrganization": {
-    "reference": "Organization/550e8400-e29b-41d4-a716-446655440009",
+    "reference": "Organization/%s",
     "display": "AUMC"
   },
   "active": true
-}'::jsonb, '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'::jsonb);
-           insert_resource            
---------------------------------------
- 550e8400-e29b-41d4-a716-446655440010
+}', '550e8400-e29b-41d4-a716-446655440009')::jsonb , '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'::jsonb);
+ ?column? 
+----------
+ CREATE
 (1 row)
 
-SELECT insert_resource('550e8400-e29b-41d4-a716-446655440011'::uuid,  E'{
+SELECT 'CREATE' FROM fhir_create('{}'::jsonb, 'Patient', '550e8400-e29b-41d4-a716-446655440011'::uuid,  E'{
   "resourceType": "Patient",
   "text": {
     "status": "generated",
@@ -294,9 +294,9 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440011'::uuid,  E'{
   },
   "active": false
 }'::jsonb, '[{"scheme": "http://pt.com", "term": "http://pt/noise", "label":"noise"}]'::jsonb);
-           insert_resource            
---------------------------------------
- 550e8400-e29b-41d4-a716-446655440011
+ ?column? 
+----------
+ CREATE
 (1 row)
 
 SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',

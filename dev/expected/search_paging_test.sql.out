@@ -2,7 +2,7 @@ SET escape_string_warning=off;
 SET
 BEGIN;
 BEGIN
-SELECT insert_resource('550e8400-e29b-41d4-a716-446655440010'::uuid,  E'{
+SELECT 'created' FROM fhir_create('{}'::jsonb, 'Patient', '550e8400-e29b-41d4-a716-446655440010'::uuid,  E'{
   "resourceType": "Patient",
   "text": {
     "status": "generated",
@@ -141,17 +141,17 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440010'::uuid,  E'{
     }
   ],
   "managingOrganization": {
-    "reference": "Organization/550e8400-e29b-41d4-a716-446655440009",
+    "reference": "Organization/%s",
     "display": "AUMC"
   },
   "active": true
 }'::jsonb, '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'::jsonb);
-           insert_resource            
---------------------------------------
- 550e8400-e29b-41d4-a716-446655440010
+ ?column? 
+----------
+ created
 (1 row)
 
-SELECT insert_resource('550e8400-e29b-41d4-a716-446655440011'::uuid,  E'{
+SELECT 'created' FROM fhir_create('{}'::jsonb, 'Patient', '550e8400-e29b-41d4-a716-446655440011'::uuid,  E'{
   "resourceType": "Patient",
   "text": {
     "status": "generated",
@@ -256,88 +256,37 @@ SELECT insert_resource('550e8400-e29b-41d4-a716-446655440011'::uuid,  E'{
   },
   "active": false
 }'::jsonb, '[{"scheme": "http://pt.com", "term": "http://pt/noise", "label":"noise"}]'::jsonb);
-           insert_resource            
---------------------------------------
- 550e8400-e29b-41d4-a716-446655440011
+ ?column? 
+----------
+ created
 (1 row)
 
-SELECT build_search_query('Patient',
-  _parse_param('_count=50&_page=3'));
-               build_search_query               
-------------------------------------------------
-                                               +
-     SELECT ROW_NUMBER() OVER () as weight, x.*+
-       FROM (                                  +
-             SELECT DISTINCT patient.category  +
- ,patient.content                              +
- ,patient.logical_id                           +
- ,patient.published                            +
- ,patient.resource_type                        +
- ,patient.updated                              +
- ,patient.version_id                           +
-               FROM patient patient            +
-                                               +
-               WHERE  true = true              +
-               ORDER BY  updated DESC          +
-               LIMIT 50                        +
-               OFFSET 150                      +
-             ) x                               +
-   
+SELECT build_search_query('Patient', '_count=50&_page=3');
+       build_search_query       
+--------------------------------
+ SELECT patient.* FROM patient +
+                               +
+ WHERE  true = true            +
+ LIMIT 50
 (1 row)
 
-SELECT build_search_query('Patient',
-  _parse_param('_count=50&_page=3&_sort=birthdate'));
-                         build_search_query                          
----------------------------------------------------------------------
-                                                                    +
-     SELECT ROW_NUMBER() OVER () as weight, x.*                     +
-       FROM (                                                       +
-             SELECT DISTINCT patient_birthdate_order_idx.lower      +
- ,patient.category                                                  +
- ,patient.content                                                   +
- ,patient.logical_id                                                +
- ,patient.published                                                 +
- ,patient.resource_type                                             +
- ,patient.updated                                                   +
- ,patient.version_id                                                +
-               FROM patient patient                                 +
-                                                                    +
-       LEFT JOIN patient_sort patient_birthdate_order_idx           +
-              ON patient_birthdate_order_idx.resource_id =          +
-                 patient.logical_id                                 +
-                 AND patient_birthdate_order_idx.param = 'birthdate'+
-                                                                    +
-               WHERE  true = true                                   +
-               ORDER BY                                             +
-              patient_birthdate_order_idx.lower asc                 +
-                                                                    +
-               LIMIT 50                                             +
-               OFFSET 150                                           +
-             ) x                                                    +
-   
+SELECT build_search_query('Patient','_count=50&_page=3&_sort=birthdate');
+                          build_search_query                          
+----------------------------------------------------------------------
+ SELECT patient.* FROM patient                                       +
+                                                                     +
+ WHERE  true = true                                                  +
+  ORDER BY (json_get_in(patient.content, '{birthDate}'))[1]::text ASC+
+ LIMIT 50
 (1 row)
 
-SELECT build_search_query('Patient', _parse_param('_count=1'));
-               build_search_query               
-------------------------------------------------
-                                               +
-     SELECT ROW_NUMBER() OVER () as weight, x.*+
-       FROM (                                  +
-             SELECT DISTINCT patient.category  +
- ,patient.content                              +
- ,patient.logical_id                           +
- ,patient.published                            +
- ,patient.resource_type                        +
- ,patient.updated                              +
- ,patient.version_id                           +
-               FROM patient patient            +
-                                               +
-               WHERE  true = true              +
-               ORDER BY  updated DESC          +
-               LIMIT 1                         +
-               OFFSET 0                        +
-             ) x                               +
-   
+SELECT build_search_query('Patient', '_count=1');
+       build_search_query       
+--------------------------------
+ SELECT patient.* FROM patient +
+                               +
+ WHERE  true = true            +
+ LIMIT 1
 (1 row)
 
 SELECT assert_eq('1',
@@ -380,40 +329,14 @@ SELECT assert_eq(('550e8400-e29b-41d4-a716-446655440010' || '|' || '550e8400-e29
  OK search respects _sort option
 (1 row)
 
-SELECT build_search_query('Patient', _parse_param('gender=M&_sort:asc=given'));
-                                 build_search_query                                 
-------------------------------------------------------------------------------------
-                                                                                   +
-     SELECT ROW_NUMBER() OVER () as weight, x.*                                    +
-       FROM (                                                                      +
-             SELECT DISTINCT patient.category                                      +
- ,patient.content                                                                  +
- ,patient_given_order_idx.lower                                                    +
- ,patient.logical_id                                                               +
- ,patient.published                                                                +
- ,patient.resource_type                                                            +
- ,patient.updated                                                                  +
- ,patient.version_id                                                               +
-               FROM patient patient                                                +
-                                                                                   +
-             JOIN patient_search_token patient_gender                              +
-               ON patient_gender.resource_id::varchar = patient.logical_id::varchar+
-              AND (patient_gender.param = 'gender' AND (patient_gender.code = 'M'))+
-                                                                                   +
-                                                                                   +
-       LEFT JOIN patient_sort patient_given_order_idx                              +
-              ON patient_given_order_idx.resource_id =                             +
-                 patient.logical_id                                                +
-                 AND patient_given_order_idx.param = 'given'                       +
-                                                                                   +
-               WHERE  true = true                                                  +
-               ORDER BY                                                            +
-              patient_given_order_idx.lower asc                                    +
-                                                                                   +
-               LIMIT 100                                                           +
-               OFFSET 0                                                            +
-             ) x                                                                   +
-   
+SELECT build_search_query('Patient', 'gender=M&_sort:asc=given');
+                                  build_search_query                                   
+---------------------------------------------------------------------------------------
+ SELECT patient.* FROM patient                                                        +
+                                                                                      +
+ WHERE index_codeableconcept_as_token(patient.content, '{gender}') && '{M}'::varchar[]+
+  ORDER BY (json_get_in(patient.content, '{name,given}'))[1]::text ASC                +
+ LIMIT 100
 (1 row)
 
 SELECT assert_eq(('550e8400-e29b-41d4-a716-446655440011' || '|' || '550e8400-e29b-41d4-a716-446655440010'),
@@ -426,15 +349,11 @@ SELECT assert_eq(('550e8400-e29b-41d4-a716-446655440011' || '|' || '550e8400-e29
  OK search respects _sort inverse option
 (1 row)
 
-SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010' || '|' || '550e8400-e29b-41d4-a716-446655440011',
-(
-  SELECT string_agg(logical_id::varchar, '|')
-    FROM search('Patient', 'gender=M&_sort:desc=gender&_sort=birthdate')
-), 'search should combine several _sort columns');
-                   assert_eq                    
-------------------------------------------------
- OK search should combine several _sort columns
-(1 row)
-
+/* SELECT  build_search_query('Patient', 'gender=M&_sort:desc=gender&_sort=birthdate'); */
+/* SELECT assert_eq(:'pt_uuid', */
+/* ( */
+/*   SELECT string_agg(logical_id::varchar, '|') */
+/*     FROM search('Patient', 'gender=M&_sort:desc=gender&_sort=birthdate&_count=1') */
+/* ), 'search should combine several _sort columns'); */
 ROLLBACK;
 ROLLBACK

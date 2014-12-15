@@ -97,7 +97,7 @@ CREATE OR REPLACE
 FUNCTION build_identifier_cond(tbl text, _q query_param)
 RETURNS text
 LANGUAGE sql AS $$
-SELECT format('%I.logical_id IN (%s)', tbl, string_agg((x||'::uuid'),','))
+SELECT format('%I.logical_id IN (%s)', tbl, string_agg((E'\'' || x || E'\'::uuid'),','))
 FROM unnest(_q.value) x
 $$;
 

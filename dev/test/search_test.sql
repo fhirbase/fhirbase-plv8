@@ -56,11 +56,11 @@ SELECT assert_eq(1::bigint ,
   'count patients with limit');
 
 SELECT assert_eq(1::bigint ,
-  (SELECT count(*) FROM search('Patient', format('_id=%L', :'pt_uuid'))),
+  (SELECT count(*) FROM search('Patient', format('_id=%s', :'pt_uuid'))),
   'search by id');
 
 SELECT assert_eq(2::bigint ,
-  (SELECT count(*) FROM search('Patient', format('_id=%L,%L', :'pt_uuid', :'pt2_uuid'))),
+  (SELECT count(*) FROM search('Patient', format('_id=%s,%s', :'pt_uuid', :'pt2_uuid'))),
   'search by ids');
 
 SELECT content#>'{name,0,given}' FROM search('Patient', '_sort=given');

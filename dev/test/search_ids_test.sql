@@ -18,9 +18,9 @@ SET escape_string_warning=off;
 
 BEGIN;
 
-SELECT insert_resource(:'org_uuid'::uuid, :'org1'::jsonb, '[]'::jsonb);
-SELECT insert_resource(:'pt_uuid'::uuid, :'pt'::jsonb, :'pt_tags'::jsonb);
-SELECT insert_resource(:'pt2_uuid'::uuid, :'pt2'::jsonb, :'pt2_tags'::jsonb);
+SELECT 'CREATE' FROM fhir_create('{}'::jsonb, 'Organization', :'org_uuid'::uuid, :'org1'::jsonb, '[]'::jsonb);
+SELECT 'CREATE' FROM fhir_create('{}'::jsonb, 'Patient', :'pt_uuid'::uuid, format(:'pt', :'org_uuid')::jsonb , :'pt_tags'::jsonb);
+SELECT 'CREATE' FROM fhir_create('{}'::jsonb, 'Patient', :'pt2_uuid'::uuid, :'pt2'::jsonb, :'pt2_tags'::jsonb);
 
 SELECT assert_eq(:'pt_uuid',
 (
