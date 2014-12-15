@@ -13,7 +13,6 @@ LANGUAGE sql AS $$
    END;
 $$;
 
-
 CREATE OR REPLACE
 FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb
 LANGUAGE sql AS $$

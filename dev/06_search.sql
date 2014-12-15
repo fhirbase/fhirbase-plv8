@@ -237,14 +237,19 @@ search(_resource_type text, query text)
 RETURNS SETOF resource
 LANGUAGE plpgsql AS $$
 BEGIN
-  RETURN QUERY EXECUTE (
-    _tpl($SQL$
-      SELECT * FROM ( {{search_sql}} ) x
-    $SQL$,
-   'tbl',           lower(_resource_type),
-   'search_sql',    build_search_query(_resource_type, query)));
+  RETURN QUERY EXECUTE build_search_query(_resource_type, query);
 END
 $$ IMMUTABLE;
+
+DROP FUNCTION IF EXISTS explain_search(_resource_type text, query text);
+CREATE FUNCTION
+explain_search(_resource_type text, query text)
+RETURNS table( "plan" text)
+LANGUAGE plpgsql AS $$
+BEGIN
+  RETURN QUERY EXECUTE 'EXPLAIN ANALYZE ' || build_search_query(_resource_type, query);
+END
+$$;
 
 CREATE OR REPLACE
 FUNCTION fhir_search(_cfg jsonb, _type_ text, _params_ text) RETURNS jsonb
@@ -256,7 +261,7 @@ LANGUAGE sql AS $$
   SELECT _build_bundle(
     'Search ' || _type_  || ' by ' || _params_,
     (SELECT count(*)::int FROM entry),
-    (SELECT json_agg(entry) FROM entry e)
+    (SELECT COALESCE(json_agg(entry),'[]'::json) FROM entry e)
   );
 $$;
 

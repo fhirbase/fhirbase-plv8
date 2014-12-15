@@ -1,5 +1,10 @@
-* paging +
 * sorting +/- add indexing
-* search by _id
-* other types
-* tags
+* search by _id +
+
+
+## index
+* numeric
+* quantity
+* date
+
+# includes
