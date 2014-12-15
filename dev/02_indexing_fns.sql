@@ -90,8 +90,16 @@ CREATE OR REPLACE FUNCTION
 _unaccent_string(_text text) RETURNS text
 LANGUAGE sql AS $$
   SELECT translate(_text,
-    'âãäåāăąÁÂÃÄÅĀĂĄèééêëēĕėęěĒĔĖĘĚìíîïìĩīĭÌÍÎÏÌĨĪĬóôõöōŏőÒÓÔÕÖŌŎŐùúûüũūŭůÙÚÛÜŨŪŬŮ"[]{}\\:,',
-    'aaaaaaaAAAAAAAAeeeeeeeeeeEEEEEiiiiiiiiIIIIIIIIoooooooOOOOOOOOuuuuuuuuUUUUUUUU       ');
+    'âãäåāăąÁÂÃÄÅĀĂĄèééêëēĕėęěĒĔĖĘĚìíîïìĩīĭÌÍÎÏÌĨĪĬóôõöōŏőÒÓÔÕÖŌŎŐùúûüũūŭůÙÚÛÜŨŪŬŮ',
+    'aaaaaaaAAAAAAAAeeeeeeeeeeEEEEEiiiiiiiiIIIIIIIIoooooooOOOOOOOOuuuuuuuuUUUUUUUU');
+$$;
+
+CREATE OR REPLACE FUNCTION
+_to_string(_text text) RETURNS text
+LANGUAGE sql AS $$
+  SELECT translate(_text,
+    '"[]{}\\:,',
+    '        ');
 $$;
 
 CREATE OR REPLACE FUNCTION
@@ -99,7 +107,7 @@ index_as_string( content jsonb, path text[])
 RETURNS text LANGUAGE sql AS $$
   SELECT
     regexp_replace(
-      _unaccent_string(json_get_in(content, path)::text)::text,
+      _to_string(_unaccent_string(json_get_in(content, path)::text))::text,
       E'\\s+', ' ', 'g')
 $$ IMMUTABLE;
 --}}}

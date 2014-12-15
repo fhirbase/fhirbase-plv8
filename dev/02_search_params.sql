@@ -98,7 +98,7 @@ WITH initial AS (
 SELECT
   regexp_split_to_array(key, '\.') as key,
   COALESCE(op,mod,'=') as operator,
-  regexp_split_to_array(val, ',') as value
+  regexp_split_to_array(_unaccent_string(val), ',') as value
 FROM with_op_mod;
 
 $$ IMMUTABLE;

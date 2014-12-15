@@ -1,4 +1,4 @@
---db:fhirb -e
+--db:fhirb
 SET escape_string_warning=off;
 
 --{{{
@@ -7,10 +7,7 @@ SET escape_string_warning=off;
 
 BEGIN;
 
-  SELECT assert_eq (
-    'Joe Acme',
-    _unaccent_string('Jóe Ácme'),
-    '_unaccent_string');
+  SELECT assert_eq ( 'Joe Acme', _unaccent_string('Jóe Ácme'), '_unaccent_string');
 
   WITH device AS (
     SELECT *

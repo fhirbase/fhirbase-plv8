@@ -2,8 +2,6 @@ SET escape_string_warning=off;
 SET
 SET escape_string_warning=off;
 SET
-BEGIN;
-BEGIN
 SELECT assert_eq('version', (SELECT fhir_conformance('{"version":"version"}'))->>'version', 'version');
  assert_eq  
 ------------
@@ -11,7 +9,10 @@ SELECT assert_eq('version', (SELECT fhir_conformance('{"version":"version"}'))->
 (1 row)
 
 SELECT assert_eq('Patient',
-   (fhir_profile(null::jsonb, 'Patient')#>>'{structure,0,element,0,path}'),
+   (fhir_profile(null::jsonb, 'Patient')#>>'{structure,0,differential,element,0,path}'),
   'conformance');
-ROLLBACK;
-ROLLBACK
+   assert_eq    
+----------------
+ OK conformance
+(1 row)
+

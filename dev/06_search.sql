@@ -234,14 +234,31 @@ $$;
 DROP FUNCTION IF EXISTS search(_resource_type text, query text);
 CREATE FUNCTION
 search(_resource_type text, query text)
-RETURNS TABLE (logical_id uuid, version_id uuid, content jsonb)
+RETURNS SETOF resource
 LANGUAGE plpgsql AS $$
 BEGIN
   RETURN QUERY EXECUTE (
-    _tpl($SQL$ SELECT x.logical_id, x.version_id, x.content FROM ( {{search_sql}} ) x $SQL$,
+    _tpl($SQL$
+      SELECT * FROM ( {{search_sql}} ) x
+    $SQL$,
    'tbl',           lower(_resource_type),
    'search_sql',    build_search_query(_resource_type, query)));
 END
 $$ IMMUTABLE;
+
+CREATE OR REPLACE
+FUNCTION fhir_search(_cfg jsonb, _type_ text, _params_ text) RETURNS jsonb
+LANGUAGE sql AS $$
+  WITH entry AS (
+    SELECT _build_entry(_cfg, row(r.*)) as entry
+      FROM search(_type_, _params_) r
+  )
+  SELECT _build_bundle(
+    'Search ' || _type_  || ' by ' || _params_,
+    (SELECT count(*)::int FROM entry),
+    (SELECT json_agg(entry) FROM entry e)
+  );
+$$;
+
 
 --}}}

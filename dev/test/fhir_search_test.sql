@@ -1,5 +1,4 @@
---db:fhirb -e
-SET escape_string_warning=off;
+--db:fhirb
 --{{{
 \set cfg '{"base":"https://test.me"}'
 \set pt `cat test/fixtures/pt.json`
@@ -27,7 +26,7 @@ BEGIN;
      'fhir_read entry id'),
    assert_eq(
      _build_id(:'cfg', 'Patient', _extract_id(r.id)::uuid),
-     r.id::varchar,
+     r.id::text,
      'id format')
  FROM reading r;
 
@@ -109,14 +108,14 @@ WITH previous AS (
   SELECT
     p.id,
     p.vid,
-    _get_vid_from_url(
+    _extract_vid(
       fhir_update(:'cfg', 'Alert', p.id, p.vid, :'alert'::jsonb, '[]'::jsonb)
     #>>'{entry,0,link,0,href}') AS new_vid
   FROM previous p
 )
 
 SELECT assert_raise(
-  'Wrong version_id ' || _get_vid_from_url(u.vid) || '.Current is ' || _get_vid_from_url(u.new_vid),
+  'Wrong version_id ' || _extract_vid(u.vid) || '. Current is ' || _extract_vid(u.new_vid),
   'SELECT fhir_update(''' || :'cfg' || ''', ''Alert'', ''' || u.id || ''', ''' || u.vid || ''', ''' || :'alert' || ''', ''[]''::jsonb)',
   'update with no current version_id')
 FROM updated u;
