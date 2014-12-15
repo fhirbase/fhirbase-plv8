@@ -1,4 +1,4 @@
---db:fhirb -e
+--db:fhirb
 SET escape_string_warning=off;
 --{{{
 \set cfg '{"base":"https://test.me"}'
@@ -18,7 +18,7 @@ WITH reading AS (
 res_exists AS (
 
   SELECT assert_eq(
-    (SELECT fhir_is_resource_exists(:'cfg', 'Patient', r.id)),
+    (SELECT fhir_is_resource_exists(:'cfg'::jsonb, 'Patient', r.id)),
     true,
     'should exists')
   FROM reading r
@@ -27,7 +27,7 @@ res_exists AS (
 last_version AS (
 
   SELECT assert_eq(
-    (SELECT fhir_is_latest_resource(:'cfg', 'Patient', r.id, r.vid)),
+    (SELECT fhir_is_latest_resource(:'cfg'::jsonb, 'Patient', r.id, r.vid)),
     true,
     'should be latest')
     FROM reading r

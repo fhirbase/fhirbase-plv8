@@ -82,6 +82,4 @@ SELECT json_build_object(
    )]
 )::jsonb
 $$;
-
-SELECT fhir_profile('{}', 'Patient');
 --}}}

@@ -12,14 +12,14 @@ WITH reading AS (
 ),
 res_exists AS (
   SELECT assert_eq(
-    (SELECT fhir_is_resource_exists('{"base":"https://test.me"}', 'Patient', r.id)),
+    (SELECT fhir_is_resource_exists('{"base":"https://test.me"}'::jsonb, 'Patient', r.id)),
     true,
     'should exists')
   FROM reading r
 ),
 last_version AS (
   SELECT assert_eq(
-    (SELECT fhir_is_latest_resource('{"base":"https://test.me"}', 'Patient', r.id, r.vid)),
+    (SELECT fhir_is_latest_resource('{"base":"https://test.me"}'::jsonb, 'Patient', r.id, r.vid)),
     true,
     'should be latest')
     FROM reading r

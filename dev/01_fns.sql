@@ -228,4 +228,15 @@ LANGUAGE sql AS $$
    FROM regexp_split_to_table(regexp_replace(_str, $RE$([^\\]),$RE$, E'\\1,,,,,'), ',,,,,') x
 $$;
 
+CREATE OR REPLACE
+FUNCTION _merge_tags(_old_tags jsonb, _new_tags jsonb) RETURNS jsonb
+LANGUAGE sql AS $$
+ SELECT json_agg(x.x)::jsonb FROM (
+   SELECT jsonb_array_elements(_new_tags) x
+   UNION
+   SELECT jsonb_array_elements(_old_tags) x
+ ) x
+$$;
+
+
 --}}}

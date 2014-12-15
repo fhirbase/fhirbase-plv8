@@ -159,3 +159,21 @@ SELECT assert_eq(ARRAY['a,b','c,d'],
  OK _fhir_spilt_to_table
 (1 row)
 
+SELECT assert_eq(2,
+  jsonb_array_length(_merge_tags('[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'::jsonb, '[{"scheme": "http://pt2.com", "term": "http://pt/vip2", "label":"pt2"}]'::jsonb)),
+  '_merge_tags'
+);
+   assert_eq    
+----------------
+ OK _merge_tags
+(1 row)
+
+SELECT assert_eq(1,
+  jsonb_array_length(_merge_tags('[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'::jsonb, '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'::jsonb)),
+  '_merge_tags'
+);
+   assert_eq    
+----------------
+ OK _merge_tags
+(1 row)
+

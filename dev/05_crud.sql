@@ -82,11 +82,10 @@ LANGUAGE sql AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION
-fhir_create(_cfg jsonb, _type text, _resource jsonb, _tags jsonb)
+fhir_create(_cfg jsonb, _type text, _id uuid, _resource jsonb, _tags jsonb)
 RETURNS jsonb LANGUAGE plpgsql AS $$
 DECLARE
   __published timestamptz :=  CURRENT_TIMESTAMP;
-  __id uuid :=gen_random_uuid();
   __vid uuid := gen_random_uuid();
 BEGIN
   EXECUTE
@@ -96,11 +95,18 @@ BEGIN
       VALUES
       ($1, $2, $3, $4, $5, $6)
     $SQL$, 'tbl', lower(_type))
-  USING __id, __vid, __published, __published, _resource, _tags;
+  USING _id, __vid, __published, __published, _resource, _tags;
 
-  RETURN fhir_read(_cfg, _type, __id::text);
+  RETURN fhir_read(_cfg, _type, _id::text);
 END
 $$;
+
+CREATE OR REPLACE FUNCTION
+fhir_create(_cfg jsonb, _type text, _resource jsonb, _tags jsonb)
+RETURNS jsonb LANGUAGE sql AS $$
+  SELECT fhir_create(_cfg, _type, gen_random_uuid(), _resource, _tags);
+$$;
+
 
 
 CREATE OR REPLACE
@@ -157,7 +163,7 @@ BEGIN
       UPDATE "{{tbl}}" SET
       version_id = gen_random_uuid(),
       content = $2,
-      category = $3,
+      category = _merge_tags(category, $3),
       updated = current_timestamp
       WHERE version_id = $1
     $SQL$, 'tbl', lower(_type))
@@ -264,6 +270,17 @@ LANGUAGE sql AS $$
      WHERE r.resource_type = _type_
        AND r.logical_id = _id_::uuid
        AND r.version_id = _vid_::uuid
+    )
+$$;
+
+CREATE OR REPLACE
+FUNCTION fhir_is_resource_exists(_cfg jsonb, _type_ text, _id_ text)
+RETURNS boolean
+LANGUAGE sql AS $$
+    SELECT EXISTS (
+      SELECT * FROM resource r
+     WHERE r.resource_type = _type_
+       AND r.logical_id = _id_::uuid
     )
 $$;
 

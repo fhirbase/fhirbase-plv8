@@ -1,513 +1,113 @@
-SELECT table_name FROM information_schema.tables
- WHERE table_schema='public'
-   AND table_name = 'allergyintolerance_tag';
-       table_name       
-------------------------
- allergyintolerance_tag
-(1 row)
-
+SET escape_string_warning=off;
+SET
 BEGIN;
 BEGIN
-SELECT insert_resource('550e8400-e29b-41d4-a716-446655440078'::uuid,  E'{"resourceType":"Observation","text":{"status":"generated","div":"<div>\\n      <p>\\n        <b>Generated Narrative</b>\\n      </p>\\n      <p>\\n        <b>name</b>: \\n        <span title=\\"Codes: {http://loinc.org 2339-0}\\">Glucose [Mass/volume] in Blood</span>\\n      </p>\\n      <p>\\n        <b>value[x]</b>: 6.3 mmol/l\\n      </p>\\n      <p>\\n        <b>interpretation</b>: \\n        <span title=\\"Codes: {http://hl7.org/fhir/v2/0078 A}\\">abnormal</span>\\n      </p>\\n      <p>\\n        <b>applies[x]</b>: 2-Apr 2013 9:30 --&gt; 5-Apr 2013 9:30\\n      </p>\\n      <p>\\n        <b>issued</b>: 3-Apr 2013 15:30\\n      </p>\\n      <p>\\n        <b>status</b>: final_\\n      </p>\\n      <p>\\n        <b>reliability</b>: ok\\n      </p>\\n      <p>\\n        <b>bodySite</b>: \\n        <span title=\\"Codes: {http://snomed.info/sct 308046002}\\">Superficial forearm vein</span>\\n      </p>\\n      <p>\\n        <b>method</b>: \\n        <span title=\\"Codes: {http://snomed.info/sct 120220003}\\">Injection to forearm</span>\\n      </p>\\n      <p>\\n        <b>identifier</b>: 6323 (official)\\n      </p>\\n      <p>\\n        <b>subject</b>: P. van de Heuvel\\n      </p>\\n      <p>\\n        <b>performer</b>: A. Langeveld\\n      </p>\\n      <h3>ReferenceRanges</h3>\\n      <table class=\\"grid\\">\\n        <tr>\\n          <td>\\n            <b>Low</b>\\n          </td>\\n          <td>\\n            <b>High</b>\\n          </td>\\n          <td>\\n            <b>Meaning</b>\\n          </td>\\n          <td>\\n            <b>Age</b>\\n          </td>\\n        </tr>\\n        <tr>\\n          <td>3.1 mmol/l</td>\\n          <td>6.2 mmol/l</td>\\n          <td> </td>\\n          <td> </td>\\n        </tr>\\n      </table>\\n    </div>"},"name":{"coding":[{"system":"http://loinc.org","code":"2339-0","display":"Glucose [Mass/volume] in Blood"}]},"valueQuantity":{"value":6.3,"units":"mmol/l","system":"http://unitsofmeasure.org","code":"mmol/l"},"interpretation":{"coding":[{"system":"http://hl7.org/fhir/v2/0078","code":"A","display":"abnormal"}]},"appliesPeriod":{"start":"2013-04-02T09:30:10+01:00","end":"2013-04-05T09:30:10+01:00"},"issued":"2013-04-03T15:30:10+01:00","status":"final","reliability":"ok","bodySite":{"coding":[{"system":"http://snomed.info/sct","code":"308046002","display":"Superficial forearm vein"}]},"method":{"coding":[{"system":"http://snomed.info/sct","code":"120220003","display":"Injection to forearm"}]},"identifier":{"use":"official","system":"http://www.bmc.nl/zorgportal/identifiers/observations","value":"6323"},"subject":{"reference":"Patient/f001","display":"P. van de Heuvel"},"performer":[{"reference":"Practitioner/f005","display":"A. Langeveld"}],"referenceRange":[{"low":{"value":3.1,"units":"mmol/l","system":"http://unitsofmeasure.org","code":"mmol/l"},"high":{"value":6.2,"units":"mmol/l","system":"http://unitsofmeasure.org","code":"mmol/l"}}]}'::jsonb, '[{"scheme": "obs.com", "term": "obs", "label": "obs"}]'::jsonb);
-           insert_resource            
---------------------------------------
- 550e8400-e29b-41d4-a716-446655440078
-(1 row)
-
-SELECT insert_resource('550e8400-e29b-41d4-a716-446655440077'::uuid,  E'{
-  "resourceType": "Patient",
-  "text": {
-    "status": "generated",
-    "div": "<div>\\n      <p>\\n        <b>Generated Narrative</b>\\n      </p>\\n      <p>\\n        <b>identifier</b>: BSN = 123456789 (official), BSN = 123456789 (official)\\n      </p>\\n      <p>\\n        <b>name</b>: Roel(official)\\n      </p>\\n      <p>\\n        <b>telecom</b>: ph: +31612345678(mobile), ph: +31201234567(home)\\n      </p>\\n      <p>\\n        <b>gender</b>: \\n        <span title=\\"Codes: {http://snomed.info/sct 248153007}, {http://hl7.org/fhir/v3/AdministrativeGender M}\\">Male</span>\\n      </p>\\n      <p>\\n        <b>birthDate</b>: 13-Mar 1960\\n      </p>\\n      <p>\\n        <b>deceased[x]</b>: false\\n      </p>\\n      <p>\\n        <b>address</b>: Bos en Lommerplein 280 Amsterdam 1055RW NLD (home)\\n      </p>\\n      <p>\\n        <b>maritalStatus</b>: \\n        <span title=\\"Codes: {http://snomed.info/sct 36629006}, {http://hl7.org/fhir/v3/MaritalStatus M}\\">Legally married</span>\\n      </p>\\n      <p>\\n        <b>multipleBirth[x]</b>: false\\n      </p>\\n      <p>\\n        <b>photo</b>: \\n      </p>\\n      <h3>Contacts</h3>\\n      <table class=\\"grid\\">\\n        <tr>\\n          <td>\\n            <b>Relationship</b>\\n          </td>\\n          <td>\\n            <b>Name</b>\\n          </td>\\n          <td>\\n            <b>Telecom</b>\\n          </td>\\n          <td>\\n            <b>Address</b>\\n          </td>\\n          <td>\\n            <b>Gender</b>\\n          </td>\\n          <td>\\n            <b>Organization</b>\\n          </td>\\n        </tr>\\n        <tr>\\n          <td>\\n            <span title=\\"Codes: {http://snomed.info/sct 127850001}, {http://hl7.org/fhir/patient-contact-relationship partner}\\">Wife</span>\\n          </td>\\n          <td>Ariadne Bor-Jansma</td>\\n          <td>ph: +31201234567(home)</td>\\n          <td> </td>\\n          <td> </td>\\n          <td> </td>\\n        </tr>\\n      </table>\\n      <p>\\n        <b>communication</b>: \\n        <span title=\\"Codes: {urn:std:iso:639-1 nl-NL}\\">Dutch</span>\\n      </p>\\n      <p>\\n        <b>managingOrganization</b>: AUMC\\n      </p>\\n      <p>\\n        <b>active</b>: true\\n      </p>\\n    </div>"
-  },
-  "identifier": [
-    {
-      "use": "official",
-      "label": "MRN",
-      "system": "MRN",
-      "value": "7777777"
-    },
-    {
-      "use": "official",
-      "label": "BSN",
-      "system": "urn:oid:2.16.840.1.113883.2.4.6.3",
-      "value": "123456789"
-    }
-  ],
-  "name": [
-    {
-      "use": "official",
-      "text": "Roel",
-      "family": [
-        "Bor"
-      ],
-      "given": [
-        "Roelof Olaf"
-      ],
-      "prefix": [
-        "Drs."
-      ],
-      "suffix": [
-        "PDEng."
-      ]
-    }
-  ],
-  "telecom": [
-    {
-      "system": "phone",
-      "value": "+31612345678",
-      "use": "mobile"
-    },
-    {
-      "system": "phone",
-      "value": "+31201234567",
-      "use": "home"
-    }
-  ],
-  "gender": {
-    "coding": [
-      {
-        "system": "http://snomed.info/sct",
-        "code": "248153007",
-        "display": "Male"
-      },
-      {
-        "system": "http://hl7.org/fhir/v3/AdministrativeGender",
-        "code": "M",
-        "display": "Male"
-      }
-    ]
-  },
-  "birthDate": "1960-03-13",
-  "deceasedBoolean": false,
-  "address": [
-    {
-      "use": "home",
-      "line": [
-        "Bos en Lommerplein 280"
-      ],
-      "city": "Amsterdam",
-      "zip": "1055RW",
-      "country": "NLD"
-    }
-  ],
-  "maritalStatus": {
-    "coding": [
-      {
-        "system": "http://snomed.info/sct",
-        "code": "36629006",
-        "display": "Legally married"
-      },
-      {
-        "system": "http://hl7.org/fhir/v3/MaritalStatus",
-        "code": "M"
-      }
-    ]
-  },
-  "multipleBirthBoolean": false,
-  "photo": [
-    {
-      "contentType": "image/jpeg",
-      "url": "binary/@f006"
-    }
-  ],
-  "contact": [
-    {
-      "relationship": [
-        {
-          "coding": [
-            {
-              "system": "http://snomed.info/sct",
-              "code": "127850001",
-              "display": "Wife"
-            },
-            {
-              "system": "http://hl7.org/fhir/patient-contact-relationship",
-              "code": "partner"
-            }
-          ]
-        }
-      ],
-      "name": {
-        "use": "usual",
-        "text": "Ariadne Bor-Jansma"
-      },
-      "telecom": [
-        {
-          "system": "phone",
-          "value": "+31201234567",
-          "use": "home"
-        }
-      ]
-    }
-  ],
-  "communication": [
-    {
-      "coding": [
-        {
-          "system": "urn:std:iso:639-1",
-          "code": "nl-NL",
-          "display": "Dutch"
-        }
-      ]
-    }
-  ],
-  "managingOrganization": {
-    "reference": "Organization/550e8400-e29b-41d4-a716-446655440009",
-    "display": "AUMC"
-  },
-  "active": true
-}'::jsonb, '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]'::jsonb);
-           insert_resource            
---------------------------------------
- 550e8400-e29b-41d4-a716-446655440077
-(1 row)
-
-SELECT fhir_tags('{"base":"https://test.me"}');
-                                                                     fhir_tags                                                                      
-----------------------------------------------------------------------------------------------------------------------------------------------------
- {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}, {"term": "obs", "label": "obs", "scheme": "obs.com"}], "resourceType": "TagList"}
-(1 row)
-
-SELECT fhir_tags('{"base":"https://test.me"}','Observation');
-                                            fhir_tags                                            
--------------------------------------------------------------------------------------------------
- {"category": [{"term": "obs", "label": "obs", "scheme": "obs.com"}], "resourceType": "TagList"}
-(1 row)
-
-SELECT fhir_tags('{"base":"https://test.me"}','Observation', '550e8400-e29b-41d4-a716-446655440078');
-                                            fhir_tags                                            
--------------------------------------------------------------------------------------------------
- {"category": [{"term": "obs", "label": "obs", "scheme": "obs.com"}], "resourceType": "TagList"}
-(1 row)
-
-SELECT fhir_tags('{"base":"https://test.me"}','Patient');
-                                          fhir_tags                                           
-----------------------------------------------------------------------------------------------
- {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
-(1 row)
-
-SELECT fhir_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077');
-                                          fhir_tags                                           
-----------------------------------------------------------------------------------------------
- {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
-(1 row)
-
-SELECT fhir_remove_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077');
- fhir_remove_tags 
-------------------
-                1
-(1 row)
-
-SELECT assert_eq(
-  '{"category": null, "resourceType": "TagList"}',
-  fhir_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077'),
-'should be empty');
-     assert_eq      
---------------------
- OK should be empty
-(1 row)
-
-SELECT fhir_affix_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]');
-                   fhir_affix_tags                   
------------------------------------------------------
- [{"term": "pt", "label": "pt", "scheme": "pt.com"}]
-(1 row)
-
-SELECT assert(category IS NOT NULL, 'populate category column')
-FROM patient WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077';
-           assert            
------------------------------
- OK populate category column
-(1 row)
-
-SELECT assert_eq(
-  (SELECT fhir_affix_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077', '[{"scheme": "pt.com", "term": "pt", "label":"pt"}]')),
-  '[]'::jsonb,
-'should not insert twice');
-         assert_eq          
-----------------------------
- OK should not insert twice
-(1 row)
-
-SELECT assert_eq(
-  (SELECT fhir_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077')),
-  '{"category": [{"scheme":"pt.com", "term":"pt", "label":"pt"}], "resourceType": "TagList"}',
-'should populate again');
-        assert_eq         
---------------------------
- OK should populate again
-(1 row)
-
-SELECT 'ok'
-FROM update_resource('550e8400-e29b-41d4-a716-446655440077',  E'{
-  "resourceType": "Patient",
-  "text": {
-    "status": "generated",
-    "div": "<div>\\n      <p>\\n        <b>Generated Narrative</b>\\n      </p>\\n      <p>\\n        <b>identifier</b>: BSN = 123456789 (official), BSN = 123456789 (official)\\n      </p>\\n      <p>\\n        <b>name</b>: Roel(official)\\n      </p>\\n      <p>\\n        <b>telecom</b>: ph: +31612345678(mobile), ph: +31201234567(home)\\n      </p>\\n      <p>\\n        <b>gender</b>: \\n        <span title=\\"Codes: {http://snomed.info/sct 248153007}, {http://hl7.org/fhir/v3/AdministrativeGender M}\\">Male</span>\\n      </p>\\n      <p>\\n        <b>birthDate</b>: 13-Mar 1960\\n      </p>\\n      <p>\\n        <b>deceased[x]</b>: false\\n      </p>\\n      <p>\\n        <b>address</b>: Bos en Lommerplein 280 Amsterdam 1055RW NLD (home)\\n      </p>\\n      <p>\\n        <b>maritalStatus</b>: \\n        <span title=\\"Codes: {http://snomed.info/sct 36629006}, {http://hl7.org/fhir/v3/MaritalStatus M}\\">Legally married</span>\\n      </p>\\n      <p>\\n        <b>multipleBirth[x]</b>: false\\n      </p>\\n      <p>\\n        <b>photo</b>: \\n      </p>\\n      <h3>Contacts</h3>\\n      <table class=\\"grid\\">\\n        <tr>\\n          <td>\\n            <b>Relationship</b>\\n          </td>\\n          <td>\\n            <b>Name</b>\\n          </td>\\n          <td>\\n            <b>Telecom</b>\\n          </td>\\n          <td>\\n            <b>Address</b>\\n          </td>\\n          <td>\\n            <b>Gender</b>\\n          </td>\\n          <td>\\n            <b>Organization</b>\\n          </td>\\n        </tr>\\n        <tr>\\n          <td>\\n            <span title=\\"Codes: {http://snomed.info/sct 127850001}, {http://hl7.org/fhir/patient-contact-relationship partner}\\">Wife</span>\\n          </td>\\n          <td>Ariadne Bor-Jansma</td>\\n          <td>ph: +31201234567(home)</td>\\n          <td> </td>\\n          <td> </td>\\n          <td> </td>\\n        </tr>\\n      </table>\\n      <p>\\n        <b>communication</b>: \\n        <span title=\\"Codes: {urn:std:iso:639-1 nl-NL}\\">Dutch</span>\\n      </p>\\n      <p>\\n        <b>managingOrganization</b>: AUMC\\n      </p>\\n      <p>\\n        <b>active</b>: true\\n      </p>\\n    </div>"
-  },
-  "identifier": [
-    {
-      "use": "official",
-      "label": "MRN",
-      "system": "MRN",
-      "value": "7777777"
-    },
-    {
-      "use": "official",
-      "label": "BSN",
-      "system": "urn:oid:2.16.840.1.113883.2.4.6.3",
-      "value": "123456789"
-    }
-  ],
-  "name": [
-    {
-      "use": "official",
-      "text": "Roel",
-      "family": [
-        "Bor"
-      ],
-      "given": [
-        "Roelof Olaf"
-      ],
-      "prefix": [
-        "Drs."
-      ],
-      "suffix": [
-        "PDEng."
-      ]
-    }
-  ],
-  "telecom": [
-    {
-      "system": "phone",
-      "value": "+31612345678",
-      "use": "mobile"
-    },
-    {
-      "system": "phone",
-      "value": "+31201234567",
-      "use": "home"
-    }
-  ],
-  "gender": {
-    "coding": [
-      {
-        "system": "http://snomed.info/sct",
-        "code": "248153007",
-        "display": "Male"
-      },
-      {
-        "system": "http://hl7.org/fhir/v3/AdministrativeGender",
-        "code": "M",
-        "display": "Male"
-      }
-    ]
-  },
-  "birthDate": "1960-03-13",
-  "deceasedBoolean": false,
-  "address": [
-    {
-      "use": "home",
-      "line": [
-        "Bos en Lommerplein 280"
-      ],
-      "city": "Amsterdam",
-      "zip": "1055RW",
-      "country": "NLD"
-    }
-  ],
-  "maritalStatus": {
-    "coding": [
-      {
-        "system": "http://snomed.info/sct",
-        "code": "36629006",
-        "display": "Legally married"
-      },
-      {
-        "system": "http://hl7.org/fhir/v3/MaritalStatus",
-        "code": "M"
-      }
-    ]
-  },
-  "multipleBirthBoolean": false,
-  "photo": [
-    {
-      "contentType": "image/jpeg",
-      "url": "binary/@f006"
-    }
-  ],
-  "contact": [
-    {
-      "relationship": [
-        {
-          "coding": [
-            {
-              "system": "http://snomed.info/sct",
-              "code": "127850001",
-              "display": "Wife"
-            },
-            {
-              "system": "http://hl7.org/fhir/patient-contact-relationship",
-              "code": "partner"
-            }
-          ]
-        }
-      ],
-      "name": {
-        "use": "usual",
-        "text": "Ariadne Bor-Jansma"
-      },
-      "telecom": [
-        {
-          "system": "phone",
-          "value": "+31201234567",
-          "use": "home"
-        }
-      ]
-    }
-  ],
-  "communication": [
-    {
-      "coding": [
-        {
-          "system": "urn:std:iso:639-1",
-          "code": "nl-NL",
-          "display": "Dutch"
-        }
-      ]
-    }
-  ],
-  "managingOrganization": {
-    "reference": "Organization/550e8400-e29b-41d4-a716-446655440009",
-    "display": "AUMC"
-  },
-  "active": true
-}', '[{"term":"second", "label":"second", "scheme": "pt.second.com"}]');
+SELECT 'insert' FROM fhir_create('{}'::jsonb, 'Patient', '{"resourceType":"Patient"}'::jsonb, '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'::jsonb);
  ?column? 
 ----------
- ok
-(1 row)
-
-WITH
-version AS (
-  SELECT resource_version_id AS  vid
-    FROM patient_tag_history
-    WHERE resource_id = '550e8400-e29b-41d4-a716-446655440077'
-), tgs AS (
-  SELECT fhir_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077', (SELECT vid FROM version LIMIT 1)) t
-)
-SELECT assert_eq(
-  '{"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}',
-  (SELECT t from tgs limit 1),
-'should show history tags');
-          assert_eq          
------------------------------
- OK should show history tags
+ insert
 (1 row)
 
 SELECT assert_eq(
-  $JSON$
-  {
-   "category": [
-      {"term": "pt", "label": "pt", "scheme": "pt.com"},
-      {"term": "second", "label": "second", "scheme": "pt.second.com"}
-    ],
-   "resourceType": "TagList"
-  }
-  $JSON$,
-  (SELECT fhir_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077')),
-'should attach old tags to new version with new tags');
-                       assert_eq                        
---------------------------------------------------------
- OK should attach old tags to new version with new tags
+  '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'::jsonb,
+  (
+    SELECT x->'category'
+    FROM fhir_tags('{}'::jsonb, 'Patient', (SELECT logical_id from patient)) x
+),'fhir_tags');
+  assert_eq   
+--------------
+ OK fhir_tags
 (1 row)
 
-SELECT fhir_remove_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077',
-            (SELECT resource_version_id
-              FROM patient_tag_history
-              WHERE resource_id = '550e8400-e29b-41d4-a716-446655440077' limit 1));
+SELECT fhir_affix_tags('{}'::jsonb,
+  'Patient',
+  (SELECT logical_id from patient),
+  '[{"scheme": "http://pt2.com", "term": "http://pt/vip2", "label":"pt2"}]'::jsonb
+);
+                                                                fhir_affix_tags                                                                
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ [{"term": "http://pt/vip", "label": "pt", "scheme": "http://pt.com"}, {"term": "http://pt/vip2", "label": "pt2", "scheme": "http://pt2.com"}]
+(1 row)
+
+SELECT assert_eq(
+  _merge_tags('[{"scheme": "http://pt2.com", "term": "http://pt/vip2", "label":"pt2"}]'::jsonb, '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'),
+  (
+    SELECT x->'category'
+    FROM fhir_tags('{}'::jsonb, 'Patient', (SELECT logical_id from patient)) x
+),'fhir_tags');
+  assert_eq   
+--------------
+ OK fhir_tags
+(1 row)
+
+SELECT 'update' FROM (
+  SELECT fhir_update('{}'::jsonb,
+    'Patient'::text,
+    logical_id::text,
+    version_id::text,
+    '{"resourceType":"Patient"}'::jsonb,
+    '[{"scheme": "http://pt2.com", "term": "http://pt/vip2", "label":"pt2"}]'::jsonb)
+  FROM patient
+) _ ;
+ ?column? 
+----------
+ update
+(1 row)
+
+SELECT fhir_tags('{}'::jsonb, 'Patient'::text, logical_id, version_id)
+FROM patient_history
+LIMIT 1;
+                                                                                       fhir_tags                                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"category": [{"term": "http://pt/vip", "label": "pt", "scheme": "http://pt.com"}, {"term": "http://pt/vip2", "label": "pt2", "scheme": "http://pt2.com"}], "resourceType": "TagList"}
+(1 row)
+
+SELECT fhir_affix_tags('{}'::jsonb, 'Patient'::text, logical_id, version_id, '[{"scheme": "http://pt3.com", "term": "http://pt/vip3", "label":"pt3"}]'::jsonb)
+FROM patient_history
+LIMIT 1;
+                                                                                                    fhir_affix_tags                                                                                                    
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ [{"term": "http://pt/vip", "label": "pt", "scheme": "http://pt.com"}, {"term": "http://pt/vip2", "label": "pt2", "scheme": "http://pt2.com"}, {"term": "http://pt/vip3", "label": "pt3", "scheme": "http://pt3.com"}]
+(1 row)
+
+SELECT fhir_tags('{}'::jsonb, 'Patient'::text, logical_id, version_id)
+FROM patient_history
+LIMIT 1;
+                                                                                                                           fhir_tags                                                                                                                            
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"category": [{"term": "http://pt/vip", "label": "pt", "scheme": "http://pt.com"}, {"term": "http://pt/vip2", "label": "pt2", "scheme": "http://pt2.com"}, {"term": "http://pt/vip3", "label": "pt3", "scheme": "http://pt3.com"}], "resourceType": "TagList"}
+(1 row)
+
+SELECT fhir_remove_tags('{}'::jsonb, 'Patient'::text, logical_id)
+FROM patient
+LIMIT 1;
  fhir_remove_tags 
 ------------------
                 1
 (1 row)
 
-SELECT assert_eq(
-  NULL,
-  (SELECT category FROM patient_history WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077'),
-'clear hx category column');
-          assert_eq          
------------------------------
- OK clear hx category column
+SELECT fhir_tags('{}'::jsonb, 'Patient'::text, logical_id)
+FROM patient
+LIMIT 1;
+                  fhir_tags                  
+---------------------------------------------
+ {"category": [], "resourceType": "TagList"}
 (1 row)
 
-WITH tgs AS (
-  SELECT fhir_tags('{"base":"https://test.me"}','Patient',
-            '550e8400-e29b-41d4-a716-446655440077',
-            (SELECT resource_version_id
-              FROM patient_tag_history
-              WHERE resource_id = '550e8400-e29b-41d4-a716-446655440077' limit 1)) as t
-)
-SELECT assert_eq(
-  '{"category": null, "resourceType": "TagList"}',
-  (SELECT t from tgs limit 1),
-'should show history tags');
-          assert_eq          
------------------------------
- OK should show history tags
+SELECT fhir_remove_tags('{}'::jsonb, 'Patient'::text, logical_id, version_id)
+FROM patient_history
+LIMIT 1;
+ fhir_remove_tags 
+------------------
+                1
 (1 row)
 
-SELECT fhir_affix_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077',
-                   (SELECT version_id FROM patient_history WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077' limit 1),
-                   '[{"term": "pt1", "label": "pt", "scheme": "pt.com"}]'::jsonb);
-                   fhir_affix_tags                    
-------------------------------------------------------
- [{"term": "pt1", "label": "pt", "scheme": "pt.com"}]
-(1 row)
-
-SELECT fhir_affix_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077',
-                   (SELECT version_id FROM patient_history WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077' limit 1),
-                   '[{"term": "pt2", "label": "pt", "scheme": "pt.com"}]'::jsonb);
-                   fhir_affix_tags                    
-------------------------------------------------------
- [{"term": "pt2", "label": "pt", "scheme": "pt.com"}]
-(1 row)
-
-SELECT assert_eq(
-  $JSON$
-   [{"term": "pt1", "label": "pt", "scheme": "pt.com"},
-    {"term": "pt2", "label": "pt", "scheme": "pt.com"}]
-  $JSON$,
-  (SELECT category FROM patient_history WHERE logical_id = '550e8400-e29b-41d4-a716-446655440077'),
-'populate version category column with affixed tags');
-                       assert_eq                       
--------------------------------------------------------
- OK populate version category column with affixed tags
-(1 row)
-
-SELECT fhir_tags('{"base":"https://test.me"}','Patient');
-                                                                           fhir_tags                                                                            
-----------------------------------------------------------------------------------------------------------------------------------------------------------------
- {"category": [{"term": "second", "label": "second", "scheme": "pt.second.com"}, {"term": "pt", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}
-(1 row)
-
-SELECT fhir_tags('{"base":"https://test.me"}','Patient', '550e8400-e29b-41d4-a716-446655440077');
-                                                                           fhir_tags                                                                            
-----------------------------------------------------------------------------------------------------------------------------------------------------------------
- {"category": [{"term": "pt", "label": "pt", "scheme": "pt.com"}, {"term": "second", "label": "second", "scheme": "pt.second.com"}], "resourceType": "TagList"}
-(1 row)
-
-SELECT assert_eq(
-  '{"category": [{"term": "pt1", "label": "pt", "scheme": "pt.com"}, {"term": "pt2", "label": "pt", "scheme": "pt.com"}], "resourceType": "TagList"}',
-  (SELECT fhir_tags('{"base":"https://test.me"}','Patient',
-            '550e8400-e29b-41d4-a716-446655440077',
-            (SELECT resource_version_id
-              FROM patient_tag_history
-              WHERE resource_id = '550e8400-e29b-41d4-a716-446655440077' limit 1))),
-'test version tags');
-      assert_eq       
-----------------------
- OK test version tags
+SELECT fhir_tags('{}'::jsonb, 'Patient'::text, logical_id, version_id)
+FROM patient_history
+LIMIT 1;
+                  fhir_tags                  
+---------------------------------------------
+ {"category": [], "resourceType": "TagList"}
 (1 row)
 
 ROLLBACK;

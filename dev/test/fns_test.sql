@@ -87,4 +87,18 @@ SELECT assert_eq(ARRAY['a,b','c,d'],
      FROM _fhir_spilt_to_table('a\,b,c\,d')),
     '_fhir_spilt_to_table'
    );
+
+\set old_tags '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'
+\set new_tags '[{"scheme": "http://pt2.com", "term": "http://pt/vip2", "label":"pt2"}]'
+
+
+SELECT assert_eq(2,
+  jsonb_array_length(_merge_tags(:'old_tags'::jsonb, :'new_tags'::jsonb)),
+  '_merge_tags'
+);
+
+SELECT assert_eq(1,
+  jsonb_array_length(_merge_tags(:'old_tags'::jsonb, :'old_tags'::jsonb)),
+  '_merge_tags'
+);
 --}}}
