@@ -1,4 +1,4 @@
---db:fhirb -e
+--db:fhirb
 SET escape_string_warning=off;
 
 --{{{
@@ -12,7 +12,7 @@ BEGIN;
   WITH previous AS (
     SELECT
       c.alert#>>'{entry,0,id}' AS update_id,
-      _get_vid_from_url(c.alert#>>'{entry,0,link,0,href}') AS update_vid,
+      _extract_vid(c.alert#>>'{entry,0,link,0,href}') AS update_vid,
       c.device#>>'{entry,0,id}' AS delete_id
     FROM (
       SELECT
