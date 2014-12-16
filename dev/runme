@@ -23,6 +23,8 @@ function help_cmd {
     integrate                 generate  test db and run tests
     test                      run tests
     build                     build fhirbase.sql file
+    perf dbname num K         recreate & fill with performance data
+    fill dbname num K         fill with performance data
 EOF
 }
 
@@ -84,6 +86,24 @@ function build_cmd {
     && echo "FhirBase schema successfully builded"
 }
 
+function fill_cmd {
+  DB=$1
+  NUM=$2
+  echo "Fill with $NUM K patients"
+  cat perf/data.sql | psql $DB
+  cat perf/generate.sql | psql $DB
+
+  for ((n=0; n<$NUM ;n++));
+  do
+psql $DB <<EOF > /dev/null
+ \timing
+ SELECT _generate_pt()
+ \q
+EOF
+  printf '.'
+  done
+}
+
 CMD=$1
 ARGV=$@
 
@@ -101,6 +121,13 @@ case "$CMD" in
     "build" )
         install_cmd 'build_fhir'
         build_cmd
+        ;;
+    "perf" )
+        install_cmd $2
+        fill_cmd $2 $3
+        ;;
+    "fill" )
+        fill_cmd $2 $3
         ;;
     *)
         help_cmd
