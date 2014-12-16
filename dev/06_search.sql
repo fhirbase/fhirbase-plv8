@@ -264,6 +264,4 @@ LANGUAGE sql AS $$
     (SELECT COALESCE(json_agg(entry),'[]'::json) FROM entry e)
   );
 $$;
-
-
 --}}}

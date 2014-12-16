@@ -11,6 +11,7 @@ $$ IMMUTABLE;
 
 --}}}
 --{{{
+-- index token
 SELECT
 count(
 _eval(
@@ -27,6 +28,7 @@ where search_type = 'token'
 ;
 --}}}
 --{{{
+-- index string
 SELECT
 count(
 _eval(
@@ -44,6 +46,7 @@ where search_type = 'string'
 --}}}
 
 --{{{
+-- index reference
 SELECT
 count(
 _eval(
@@ -57,5 +60,23 @@ $SQL$ CREATE INDEX {{idx}} ON {{tbl}} USING GIN (index_as_reference(content,'{{p
 )))
 from fhir.resource_indexables
 where search_type = 'reference'
+;
+--}}}
+
+--{{{
+CREATE EXTENSION IF NOT EXISTS btree_gist ;
+SELECT
+count(_eval(
+_tpl(
+$SQL$ CREATE INDEX {{idx}} ON {{tbl}} USING GIST (index_as_date(content,'{{path}}'::text[], '{{tp}}') range_ops) $SQL$,
+ 'tbl', quote_ident(lower(resource_type))
+,'tp', type
+,'idx', replace(lower(resource_type || '_' || param_name || '_' || _last(path) || '_date')::varchar,'-','_')
+,'path', _rest(path)::varchar
+,'idx_fn', (SELECT _token_index_fn(type, is_primitive))
+)
+))
+from fhir.resource_indexables
+where search_type = 'date'
 ;
 --}}}
