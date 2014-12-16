@@ -1,5 +1,3 @@
-BEGIN;
-BEGIN
 SELECT build_sorting('Patient', '_sort=given');
                              build_sorting                             
 -----------------------------------------------------------------------
@@ -7,5 +5,3 @@ SELECT build_sorting('Patient', '_sort=given');
   ORDER BY (json_get_in(patient.content, '{name,given}'))[1]::text ASC
 (1 row)
 
-ROLLBACK;
-ROLLBACK

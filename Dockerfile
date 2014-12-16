@@ -19,6 +19,8 @@ RUN XML2_CONFIG=`which xml2-config` cd $HOME/src && ./configure --prefix=$HOME/b
 ENV SOURCE_DIR $HOME/src
 RUN cd $SOURCE_DIR/contrib/pgcrypto && make && make install
 RUN cd $SOURCE_DIR/contrib/pg_trgm && make && make install
+RUN cd $SOURCE_DIR/contrib/btree_gist && make && make install
+RUN cd $SOURCE_DIR/contrib/btree_gin && make && make install
 
 ENV PATH $HOME/bin/bin:$PATH
 ENV PGDATA $HOME/data

@@ -12,6 +12,8 @@ XML2_CONFIG=`which xml2-config` cd $SOURCE_DIR && ./configure --prefix=$BUILD_DI
 
 cd $SOURCE_DIR/contrib/pgcrypto && make && make install
 cd $SOURCE_DIR/contrib/pg_trgm && make && make install
+cd $SOURCE_DIR/contrib/btree_gist && make && make install
+cd $SOURCE_DIR/contrib/btree_gin && make && make install
 
 # git clone https://github.com/akorotkov/jsquery.git $SOURCE_DIR/contrib
 # cd $SOURCE_DIR/contrib/jsquery && make && make install

@@ -68,10 +68,6 @@ SELECT assert_eq(:'pt_uuid',
 /*     FROM search('Patient', 'gender=http://snomed.info/sct|248153007')) */
 /*  ,'pt found by snomed gender'); */
 
-/* SELECT assert_eq(:'pt_uuid', */
-/*  (SELECT string_agg(logical_id::text,',') */
-/*     FROM search('Patient', 'birthdate=1960')) */
-/*  ,'pt found birthdate'); */
 
 
 /* SELECT assert_eq(:'org_uuid', */

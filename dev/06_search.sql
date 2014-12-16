@@ -128,6 +128,32 @@ SELECT
     _q.value)
 $$;
 
+CREATE OR REPLACE
+FUNCTION build_date_cond(tbl text, _q query_param)
+RETURNS text
+LANGUAGE sql AS $$
+SELECT
+'(' ||
+string_agg(
+  format('index_as_date(content, %L, %L) && %L',
+    _q.field_path,
+    _q.type,
+    (
+      case
+      when _q.operator = '=' then
+        _datetime_to_tstzrange(v, v)
+      when _q.operator = '>' then
+        _datetime_to_tstzrange(v, NULL)
+      when _q.operator = '<' then
+        ('(,' || _date_parse_to_upper(v) || ']' )::tstzrange
+      end
+    )
+  )
+,' OR ')
+|| ')'
+FROM unnest(_q.value) v
+$$ IMMUTABLE;
+
 -- build condition for reference
 -- (index_as_reference(content, '{name}') &&  '{term,term2}'varachr[])
 -- TODO: respect modifier provider:Organization=id => 'Organization/id'
@@ -137,7 +163,7 @@ RETURNS text
 LANGUAGE sql AS $$
 SELECT
   format('index_as_reference(content, %L) && %L::varchar[]', _q.field_path, _q.value)
-$$;
+$$ IMMUTABLE;
 
 
 CREATE OR REPLACE
@@ -152,6 +178,8 @@ LANGUAGE sql AS $$
     build_string_cond(tbl, _q)
   WHEN _q.search_type = 'token' THEN
     build_token_cond(tbl, _q)
+  WHEN _q.search_type = 'date' THEN
+    build_date_cond(tbl, _q)
   WHEN _q.search_type = 'reference' THEN
     build_reference_cond(tbl, _q)
   END as cnd
@@ -193,13 +221,13 @@ CREATE OR REPLACE
 FUNCTION build_search_query(_resource_type text, _query text) RETURNS text
 LANGUAGE sql AS $$
 WITH conds AS (
-SELECT
-  build_cond(lower(resource_type),row(x.*))::text as cond,
-  resource_type,
-  chain,
-  link_path,
-  parent_resource
-FROM  _expand_search_params(_resource_type, _query) x
+  SELECT
+    build_cond(lower(resource_type),row(x.*))::text as cond,
+    resource_type,
+    chain,
+    link_path,
+    parent_resource
+  FROM  _expand_search_params(_resource_type, _query) x
 ), joins AS ( --TODO: what if no middle join present ie we have a.b.c.attr = x and no a.b.attr condition
   SELECT
     format(E'JOIN %I ON index_as_reference(%I.content, %L) && ARRAY[%I.logical_id]::varchar[] AND \n %s',

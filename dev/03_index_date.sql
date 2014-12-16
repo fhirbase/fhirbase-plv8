@@ -56,6 +56,8 @@ RETURNS tstzrange LANGUAGE sql AS $$
     NULL
   WHEN _max is NULL AND _min IS NOT NULL THEN
      ('['|| _date_parse_to_lower(_min) || ',' || ')')::tstzrange
+  WHEN _min is NULL AND _max IS NOT NULL THEN
+     ('(,' || _date_parse_to_upper(_max) || ']' )::tstzrange
   WHEN _max is NOT NULL AND _min IS NOT NULL THEN
      ('['|| _date_parse_to_lower(_min) || ',' || _date_parse_to_upper(_max) || ']')::tstzrange
   ELSE

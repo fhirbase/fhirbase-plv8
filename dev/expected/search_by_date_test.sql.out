@@ -1,0 +1,85 @@
+BEGIN;
+BEGIN
+SELECT 'created'
+FROM fhir_create('{}'::jsonb, 'Patient',
+  ('550e8400-e29b-41d4-a716-44665544001' || '1')::uuid,
+  '{"birthDate":"1973"}'::jsonb, null);
+ ?column? 
+----------
+ created
+(1 row)
+
+SELECT 'created'
+FROM fhir_create('{}'::jsonb, 'Patient',
+  ('550e8400-e29b-41d4-a716-44665544001' || '2')::uuid,
+  '{"birthDate":"1983"}'::jsonb, null);
+ ?column? 
+----------
+ created
+(1 row)
+
+SELECT 'created'
+FROM fhir_create('{}'::jsonb, 'Patient',
+  ('550e8400-e29b-41d4-a716-44665544001' || '3')::uuid,
+  '{"birthDate":"1993"}'::jsonb, null);
+ ?column? 
+----------
+ created
+(1 row)
+
+SELECT assert_eq(('550e8400-e29b-41d4-a716-44665544001' || '1'),
+ (SELECT string_agg(logical_id::text,',')
+    FROM search('Patient', 'birthdate=1973'))
+ ,'pt found birthdate');
+       assert_eq       
+-----------------------
+ OK pt found birthdate
+(1 row)
+
+SELECT assert_eq(('550e8400-e29b-41d4-a716-44665544001' || '2'),
+ (SELECT string_agg(logical_id::text,',')
+    FROM search('Patient', 'birthdate=1983'))
+ ,'pt found birthdate');
+       assert_eq       
+-----------------------
+ OK pt found birthdate
+(1 row)
+
+SELECT assert_eq(2::bigint,
+ (SELECT count(*)
+    FROM search('Patient', 'birthdate=>1980'))
+ ,'pt found birthdate');
+       assert_eq       
+-----------------------
+ OK pt found birthdate
+(1 row)
+
+SELECT assert_eq(3::bigint,
+ (SELECT count(*)
+    FROM search('Patient', 'birthdate=>1970'))
+ ,'pt found birthdate');
+       assert_eq       
+-----------------------
+ OK pt found birthdate
+(1 row)
+
+SELECT assert_eq(1::bigint,
+ (SELECT count(*)
+    FROM search('Patient', 'birthdate=<1980'))
+ ,'pt found birthdate');
+       assert_eq       
+-----------------------
+ OK pt found birthdate
+(1 row)
+
+SELECT assert_eq(2::bigint,
+ (SELECT count(*)
+    FROM search('Patient', 'birthdate=<1990'))
+ ,'pt found birthdate');
+       assert_eq       
+-----------------------
+ OK pt found birthdate
+(1 row)
+
+ROLLBACK;
+ROLLBACK
