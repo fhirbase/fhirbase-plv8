@@ -124,7 +124,7 @@ CREATE TABLE "patient_history" (
   category jsonb
 ) INHERITS (resource_history);
 
-```sql
+```
 
 For more information
 [see source code](https://github.com/fhirbase/fhirbase/blob/master/dev/4_generation.sql#L51):
