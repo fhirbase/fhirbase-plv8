@@ -1,15 +1,7 @@
 --db:fhirb
 -- INDEXING FUNCTIONS
 -- TOKEN INDEX
---{{{
-/* CREATE EXTENSION IF NOT EXISTS jsonb_extra; */
-/* CREATE OR REPLACE FUNCTION */
-/* json_get_in(x jsonb, path text[]) */
-/* RETURNS jsonb[] LANGUAGE sql AS $$ */
-/*   SELECT jsonb_extract(x, path); */
-/* $$ IMMUTABLE; */
---}}}
-
+-- TODO: create facade fn like date
 --{{{
 CREATE OR REPLACE FUNCTION
 jsonb_primitive_to_text(x jsonb)

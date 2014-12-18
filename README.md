@@ -1,8 +1,7 @@
 # FHIRBase
 
 Open source relational storage for
-[FHIR](http://hl7.org/implement/standards/fhir/) targeting real
-production.
+[FHIR](http://hl7.org/implement/standards/fhir/) targeting real production.
 
 [![Build Status](https://travis-ci.org/fhirbase/fhirbase.png?branch=master)](https://travis-ci.org/fhirbase/fhirbase)
 
@@ -23,7 +22,7 @@ which is build with
 
 ## Motivation
 
-While crafting Health IT systems you begin to understand a value of
+While crafting Health IT systems wey understand a value of
 properly chosen domain model.  FHIR is an open source new generation
 lightweight standard for health data interoperability, which (we hope)
 could be used as a foundationan for Health IT systems. FHIR is based
@@ -48,14 +47,13 @@ Here is list of PostgreSQL features we use:
 
 * [xml](http://www.postgresql.org/docs/9.4/static/functions-xml.html)
 * [jsonb](http://www.postgresql.org/docs/9.4/static/functions-json.html)
+* [gin & gist](http://www.postgresql.org/docs/9.1/static/textsearch-indexes.html)
 * [inheritance](http://www.postgresql.org/docs/9.4/static/tutorial-inheritance.html)
 * [materialized views](http://www.postgresql.org/docs/9.4/static/sql-altermaterializedview.html)
 * [uuid](http://www.postgresql.org/docs/9.4/static/pgcrypto.html)
 
 We actively collaborate with PostgreSQL lead developers to craft
 production ready storage for FHIR.
-
-TODO: about fhirb, VODKA and jsquery
 
 
 > Why we are doing this inside database?
@@ -88,24 +86,13 @@ Here are base tables:
 
 To store resource data:
 
-* resource - for current resources
+* resource - for actual resources
 * resource_history - for resource historical versions
-* tag - for tags
-* tag_history - tags history
 
-There are some "index" tables by one for each search parameter type
-and one for indexing all resource references, which are populated in
-sync with resource data and provide fast FHIR search queries:
+For each resource type FHIRbase generate two tables (which inherit
+from base tables) - one for actual resources and one for history of resource.
 
-* search_string
-* search_token
-* search_date
-* search_reference
-* search_quantity
-* references
-
-For each resource type FHIRbase generate set of tables (which inherit
-from base tables).  This is done, to separate dataspaces for each
+This is done, to separate dataspaces for each
 resource, so they are not messed and can guarantee performance
 proportional to amount of data for particular type of resource.
 
@@ -113,19 +100,31 @@ Note: Same trick is used by PostgreSQL for
 [partitioning](http://www.postgresql.org/docs/9.4/static/ddl-partitioning.html).
 
 
-* "{{lower(ResourceType)}}" (...) INHERITS (resource)
-* "{{lower(ResourceType)}}_history" (...) INHERITS (resource_history)
-* "{{lower(ResourceType)}}_tag" (...) INHERITS (tag)
-* "{{lower(ResourceType)}}_tag_history" (...) INHERITS tag_history
+For example for resource `Patient` we are generating tables:
 
-* "{{lower(ResourceType)}}_sort" (...)
+```sql
 
-* "{{lower(ResourceType)}}_search_string" (...)
-* "{{lower(ResourceType)}}_search_token" (...)
-* "{{lower(ResourceType)}}_search_date" (...)
-* "{{lower(ResourceType)}}_search_reference" (...)
-* "{{lower(ResourceType)}}_search_quantity" (...)
-* "{{lower(ResourceType)}}_references" (...)
+CREATE TABLE "patient" (
+  logical_id uuid PRIMARY KEY default gen_random_uuid(),
+  version_id uuid UNIQUE default gen_random_uuid(),
+  resource_type varchar DEFAULT '{{resource_type}}',
+  updated TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  published TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  content jsonb NOT NULL,
+  category jsonb
+) INHERITS (resource);
+
+CREATE TABLE "patient_history" (
+  version_id uuid PRIMARY KEY,
+  logical_id uuid NOT NULL,
+  resource_type varchar DEFAULT '{{resource_type}}',
+  updated TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  published TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  content jsonb NOT NULL,
+  category jsonb
+) INHERITS (resource_history);
+
+```sql
 
 For more information
 [see source code](https://github.com/fhirbase/fhirbase/blob/master/dev/4_generation.sql#L51):
@@ -141,6 +140,8 @@ Requirements:
 * PostgreSQL 9.4 (http://www.postgresql.org/about/news/1522/)
 * pgcrypto
 * pg_trgm
+* btree_gin
+* btree_gist
 
 You can download postgresql 9.4 pre-release or build Postgresql from
 source on debian/ubuntu and create local user cluster with:
@@ -169,7 +170,7 @@ Read
 
 Most of FHIR complaint operations could be done with FHIRBase procedures,
 which guaranties data integrity and do heavy job for you.
-All procedures have first parameter _cfg jsonb with configuration params.
+All procedures have first parameter `_cfg::jsonb` with configuration params, which required for url generation.
 Now there is only one paramenter [base] (Service Root URL):
 `{"base":"http://myserver"}`
 
@@ -203,6 +204,8 @@ Returns bundle with entries;
 
 #### FUNCTION fhir_conformance(_cfg jsonb)
 Returns conformance resource jsonb;
+
+## Benchmarks
 
 
 ## Contribution
