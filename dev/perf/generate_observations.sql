@@ -113,6 +113,4 @@ WITH inserted as (
 )
 SELECT count(*) FROM inserted;
 $$;
-
-SELECT _generate_observations(1);
 --}}}
