@@ -1,4 +1,3 @@
---db:fhirplace
 --db:fhirb
 --{{{
 CREATE EXTENSION IF NOT EXISTS btree_gist ;
@@ -72,13 +71,14 @@ SELECT sum(count)::bigint FROM (
         $SQL$ CREATE INDEX {{idx}} ON {{tbl}} USING GIST (index_as_date(content,'{{path}}'::text[], '{{tp}}') range_ops) $SQL$,
         'tbl', quote_ident(lower(resource_type))
         ,'tp', type
-        ,'idx', replace(lower(resource_type || '_' || param_name || '_' || _last(path) || '_date')::varchar,'-','_') || '_idx'
+        ,'idx', replace(lower(resource_type || '_' || param_name || '_' || _last(path) || '__date_idx')::varchar,'-','_')
         ,'path', _rest(path)::varchar
         ,'idx_fn', (SELECT _token_index_fn(type, is_primitive))
       )
   ))
   from fhir.resource_indexables
   where search_type = 'date'
+  and resource_type = _resource
 ) _
 
 $$;
@@ -86,7 +86,7 @@ $$;
 
 --{{{
 CREATE OR REPLACE
-FUNCTION drop_indexes_on(_relname text)
+FUNCTION drop_indexes(_resource text)
 RETURNS bigint
 LANGUAGE sql AS $$
   SELECT count(_eval(format('DROP INDEX IF EXISTS "%s"',indname)))
@@ -109,13 +109,15 @@ LANGUAGE sql AS $$
       JOIN   pg_am as am
       ON     i.relam = am.oid
       WHERE
-      idx.indrelid::regclass = _relname::regclass
+      idx.indrelid::regclass = quote_ident(lower(_resource))::regclass
       and i.relname ilike '%_idx'
   ) idx;
 $$ IMMUTABLE;
 --}}}
 
 --{{{
-SELECT index_resource('Observation');
---SELECT drop_indexes_on('observation');
+SELECT index_resource(resource_type) FROM (
+  select DISTINCT resource_type
+  from fhir.resource_indexables
+) _
 --}}}
