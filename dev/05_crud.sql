@@ -107,7 +107,17 @@ RETURNS jsonb LANGUAGE sql AS $$
   SELECT fhir_create(_cfg, _type, gen_random_uuid(), _resource, _tags);
 $$;
 
+CREATE OR REPLACE FUNCTION
+fhir_create(_cfg jsonb, _type text, _resource jsonb)
+RETURNS jsonb LANGUAGE sql AS $$
+  SELECT fhir_create(_cfg, _type, gen_random_uuid(), _resource, '[]'::jsonb);
+$$;
 
+CREATE OR REPLACE FUNCTION
+fhir_create(_cfg jsonb, _resource jsonb)
+RETURNS jsonb LANGUAGE sql AS $$
+  SELECT fhir_create(_cfg, (_resource->>'resourceType'), gen_random_uuid(), _resource, '[]'::jsonb);
+$$;
 
 CREATE OR REPLACE
 FUNCTION fhir_vread(_cfg jsonb, _type_ text, _url_ text) RETURNS jsonb
