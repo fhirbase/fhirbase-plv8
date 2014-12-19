@@ -24,7 +24,7 @@ SELECT assert(
 SELECT assert_eq(
    _subpath('{1,2,3}'::varchar[], '{1,2,3,4,5}'::varchar[])
   , '{4,5}'::varchar[]
-  , '_is_descedant');
+  , '_subpath');
 
 SELECT assert_eq(
    _rest('{1,2,3,4,5}'::varchar[])

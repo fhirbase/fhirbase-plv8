@@ -78,11 +78,35 @@ TODO:
 
 ## Overview
 
+### STRUCTURE
+
 We heavily use PostgreSQL
 [inheritance](http://www.postgresql.org/docs/9.4/static/tutorial-inheritance.html)
 feature, for polymorphic operations.
 
 Here are base tables:
+
+```sql
+CREATE TABLE resource (
+  version_id uuid,
+  logical_id uuid,
+  resource_type varchar,
+  updated TIMESTAMP WITH TIME ZONE,
+  published  TIMESTAMP WITH TIME ZONE,
+  category jsonb,
+  content jsonb
+);
+
+CREATE TABLE resource_history (
+  version_id uuid,
+  logical_id uuid,
+  resource_type varchar,
+  updated TIMESTAMP WITH TIME ZONE,
+  published  TIMESTAMP WITH TIME ZONE,
+  category jsonb,
+  content jsonb
+);
+```
 
 To store resource data:
 
@@ -128,6 +152,17 @@ CREATE TABLE "patient_history" (
 
 For more information
 [see source code](https://github.com/fhirbase/fhirbase/blob/master/dev/4_generation.sql#L51):
+
+
+### CRUD
+
+### SEARCH
+
+### INDEXING
+
+### TAGS
+
+### OTHER
 
 ## Installation
 
