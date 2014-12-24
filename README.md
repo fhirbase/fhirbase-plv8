@@ -237,15 +237,16 @@ Result:
 }
 ```
 
-fhir_create has sevral forms:
+fhir_create has several forms:
 
 *  fhir_create(_cfg jsonb, _resource jsonb)
 *  fhir_create(_cfg jsonb, _type text, _id uuid, _resource jsonb, _tags jsonb)
 *  fhir_create(_cfg jsonb, _type text, _resource jsonb)
 *  fhir_create(_cfg jsonb, _type text, _resource jsonb, _tags jsonb)
 
-You can skip _resource_type parameter (it will be taken from resourceType attribute of resource)
-Also you can pass tags as jsonb array of '[{"label":???, "system":???, "value":???}]'::jsonb
+You can skip _type parameter (it will be taken from resourceType attribute of resource).
+
+Also you can pass tags as jsonb array: ```'[{"label":???, "system":???, "value":???}]'::jsonb```
 
 #### FUNCTION fhir_read(_cfg jsonb, _type_ varchar, _id_ uuid)
 
@@ -256,16 +257,11 @@ Return bundle with only one entry for uniformity;
 
 SELECT fhir_read('{"base":"fhir/end/point"}', 'Patient', uuid);
 
--- or you can search resource by ordinary SELECT
+-- or you can search resource by id with ordinary SELECT
 
-SELECT * FROM patient
-WHERE logical_id = 'uuid'
+SELECT * FROM patient WHERE logical_id = 'uuid'
 
 ```
-
-TODO:
-
-* fhir_read(cfg, uuidOrRef)
 
 #### FUNCTION fhir_vread(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid)
 
@@ -300,6 +296,50 @@ Helpful functions:
 * analyze_search('Patient', 'name=smith') -- shows execution plan for search query
 
 ### INDEXING
+
+Indexes are optional.
+
+Index for specific search parameter could be created
+using `index_search_param()` function:
+
+```sql
+SELECT index_search_param('Patient', 'name');
+-- Time: 96168.725 ms
+
+SELECT count(*) FROM patient;
+--  count
+---------
+--  2262107
+-- (1 row)
+
+SELECT content->'name'
+FROM search('Patient', 'name=john');
+-- Time with index: 20.859 ms
+-- Time without index: 1186.767 ms
+
+SELECT content->'name'
+FROM search('Patient', 'name=nonexisting');
+-- Time with index: 20.01 ms
+-- Time without index (i.e. full scan): 74429.122 ms
+
+SELECT fhir_search('{}'::jsonb, 'Patient', 'name=john');
+-- Time: 35.785 ms
+
+-- But they are not for free
+
+SELECT admin_disk_usage_top(10);
+
+-- public.patient,                      "454 MB"
+-- public.patient_name_name_string_idx, "140 MB"
+```
+
+You can drop indexes:
+
+```sql
+SELECT drop_index_search_param('Patient','name');
+SELECT drop_resource_indexes('Patient');
+SELECT drop_all_resource_indexes();
+```
 
 ### TAGS
 

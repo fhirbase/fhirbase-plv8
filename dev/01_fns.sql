@@ -129,7 +129,7 @@ BEGIN
     RETURN array[]::jsonb[];
   END IF;
 END
-$$;
+$$ IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION jsonb_text_value(j jsonb) RETURNS varchar
@@ -151,7 +151,7 @@ BEGIN
   END LOOP;
   RETURN acc;
 END
-$$;
+$$ IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION assert(_pred boolean, mess varchar) RETURNS varchar
@@ -168,7 +168,7 @@ BEGIN
     RETURN 'not ok';
   END IF;
 END
-$$;
+$$ IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION _debug(x anyelement) RETURNS anyelement
@@ -177,7 +177,7 @@ BEGIN
   RAISE NOTICE 'DEBUG %', x;
   RETURN x;
 END
-$$;
+$$ IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION assert_eq(expec anyelement, res anyelement, mess varchar) RETURNS varchar
@@ -193,7 +193,7 @@ BEGIN
     RETURN 'NOT OK';
   END IF;
 END
-$$;
+$$ IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION assert_raise(exp varchar, str text, mess varchar) RETURNS varchar
@@ -213,20 +213,20 @@ BEGIN
   RAISE EXCEPTION E'assert_raise % FAILED:\nEXPECTED: %', mess, exp;
   RETURN 'NOT OK';
 END
-$$;
+$$ IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION _fhir_unescape_param(_str text) RETURNS text
 LANGUAGE sql AS $$
   SELECT regexp_replace(_str, $RE$\\([,$|])$RE$, E'\\1', 'g')
-$$;
+$$ IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION _fhir_spilt_to_table(_str text) RETURNS table (value text)
 LANGUAGE sql AS $$
   SELECT _fhir_unescape_param(x)
    FROM regexp_split_to_table(regexp_replace(_str, $RE$([^\\]),$RE$, E'\\1,,,,,'), ',,,,,') x
-$$;
+$$ IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION _merge_tags(_old_tags jsonb, _new_tags jsonb) RETURNS jsonb
@@ -236,7 +236,7 @@ LANGUAGE sql AS $$
    UNION
    SELECT jsonb_array_elements(_old_tags) x
  ) x
-$$;
+$$ IMMUTABLE;
 
 
 --}}}
