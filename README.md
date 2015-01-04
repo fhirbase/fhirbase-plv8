@@ -75,7 +75,7 @@ go into database by generic SQL interface and complete your business task.
 * resources versioning
 * CRUD operations on resources
 * search operations
-* optianal indexing (to speedup search)
+* optional indexing (to speedup search)
 * history
 * tags operations
 * transaction
