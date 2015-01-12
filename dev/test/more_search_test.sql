@@ -32,6 +32,7 @@ SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by name')
 SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by identifier')
   FROM search('Patient', 'identifier=123456789');
 
+
 SELECT build_search_query('Patient', 'identifier=MRN|7777777');
 
 SELECT assert_eq(:'pt_uuid',
@@ -45,10 +46,14 @@ SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by status')
 SELECT assert_eq(:'pt_uuid', logical_id, 'pt found by status')
   FROM search('Patient', 'active=true');
 
+
+
 SELECT assert_eq(:'pt_uuid',
- (SELECT logical_id
+ (SELECT string_agg(logical_id::text, ',')
     FROM search('Patient', 'telecom=+31612345678'))
  ,'pt found by phone');
+
+
 
 /* SELECT build_search_query('Patient', 'telecom:missing=true'); */
 

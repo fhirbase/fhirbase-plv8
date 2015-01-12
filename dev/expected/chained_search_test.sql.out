@@ -285,19 +285,19 @@ INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655
   "active": false
 }'::jsonb);
 INSERT 0 1
-SELECT * FROM _parse_param('provider=Seven');
-    key     | operator |  value  
-------------+----------+---------
- {provider} | =        | {Seven}
+SELECT * FROM _parse_param('organization=Seven');
+      key       | operator |  value  
+----------------+----------+---------
+ {organization} | =        | {Seven}
 (1 row)
 
-SELECT * FROM _expand_search_params('Patient','provider.name=Seven');
- parent_resource |       link_path        | resource_type |       chain        | search_type | is_primitive |  type  | field_path | key  | operator |  value  
------------------+------------------------+---------------+--------------------+-------------+--------------+--------+------------+------+----------+---------
- Patient         | {managingOrganization} | Organization  | {Patient,provider} | string      | t            | string | {name}     | name | =        | {Seven}
+SELECT * FROM _expand_search_params('Patient','organization.name=Seven');
+ parent_resource |       link_path        | resource_type |         chain          | search_type | is_primitive |  type  | field_path | key  | operator |  value  
+-----------------+------------------------+---------------+------------------------+-------------+--------------+--------+------------+------+----------+---------
+ Patient         | {managingOrganization} | Organization  | {Patient,organization} | string      | t            | string | {name}     | name | =        | {Seven}
 (1 row)
 
-SELECT * FROM build_search_query('Patient','provider.name=Seven');
+SELECT * FROM build_search_query('Patient','organization.name=Seven');
                                                           build_search_query                                                          
 --------------------------------------------------------------------------------------------------------------------------------------
  SELECT patient.* FROM patient                                                                                                       +
@@ -308,8 +308,8 @@ SELECT * FROM build_search_query('Patient','provider.name=Seven');
 (1 row)
 
 SELECT assert_eq(
-(SELECT logical_id FROM search('Patient','provider.name=Seven') LIMIT 1),
-'550e8400-e29b-41d4-a716-446655440010'::uuid,
+(SELECT string_agg(logical_id::text,',') FROM search('Patient','organization.name=Seven')),
+'550e8400-e29b-41d4-a716-446655440010',
 'chained search');
      assert_eq     
 -------------------

@@ -31,14 +31,14 @@ SELECT assert_eq(:'pt_uuid',
 SELECT assert_eq(:'pt_uuid',
 (
   SELECT string_agg(logical_id::varchar, '|')
-    FROM search('Patient', ('provider._id='|| :'org_uuid'))
-), 'chained search by provider._id');
+    FROM search('Patient', ('organization._id='|| :'org_uuid'))
+), 'chained search by organization._id');
 
 SELECT assert_eq(0::bigint,
 (
   SELECT count(*)
-    FROM search('Patient', ('provider._id='|| :'no_uuid'))
-), 'chained search by provider._id with unexisting uuid');
+    FROM search('Patient', ('organization._id='|| :'no_uuid'))
+), 'chained search by organization._id with unexisting uuid');
 
 
 ROLLBACK;

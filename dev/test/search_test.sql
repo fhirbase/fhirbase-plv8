@@ -35,17 +35,17 @@ SELECT assert_eq(
 
 SELECT assert_eq(
   :'pt_uuid',
-  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=' || :'org_uuid')),
-  'search by provider');
+  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'organization=' || :'org_uuid')),
+  'search by organization');
 
 SELECT assert_eq(
   :'pt_uuid',
-  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=' || :'org_uuid')),
-  'search by provider');
+  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'organization=' || :'org_uuid')),
+  'search by organization');
 
 SELECT assert_eq( NULL ,
-  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=nonexist')),
-  'search by nonexisting provider');
+  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'organization=nonexist')),
+  'search by nonexisting organization');
 
 SELECT assert_eq(2::bigint ,
   (SELECT count(*) FROM search('Patient', '')),
@@ -73,5 +73,5 @@ ROLLBACK;
 --}}}
 --{{{
 select build_search_query('Patient', '_id=4');
-select build_search_query('Patient', 'provider._id=4');
+select build_search_query('Patient', 'organization._id=4');
 --}}}

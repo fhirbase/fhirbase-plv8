@@ -352,7 +352,7 @@ SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010', logical_id, 'pt found b
 (1 row)
 
 SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
- (SELECT logical_id
+ (SELECT string_agg(logical_id::text, ',')
     FROM search('Patient', 'telecom=+31612345678'))
  ,'pt found by phone');
       assert_eq       

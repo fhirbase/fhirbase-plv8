@@ -305,28 +305,28 @@ SELECT assert_eq(
 
 SELECT assert_eq(
   '550e8400-e29b-41d4-a716-446655440010',
-  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=' || '550e8400-e29b-41d4-a716-446655440009')),
-  'search by provider');
-       assert_eq       
------------------------
- OK search by provider
+  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'organization=' || '550e8400-e29b-41d4-a716-446655440009')),
+  'search by organization');
+         assert_eq         
+---------------------------
+ OK search by organization
 (1 row)
 
 SELECT assert_eq(
   '550e8400-e29b-41d4-a716-446655440010',
-  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=' || '550e8400-e29b-41d4-a716-446655440009')),
-  'search by provider');
-       assert_eq       
------------------------
- OK search by provider
+  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'organization=' || '550e8400-e29b-41d4-a716-446655440009')),
+  'search by organization');
+         assert_eq         
+---------------------------
+ OK search by organization
 (1 row)
 
 SELECT assert_eq( NULL ,
-  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'provider=nonexist')),
-  'search by nonexisting provider');
-             assert_eq             
------------------------------------
- OK search by nonexisting provider
+  (SELECT string_agg(logical_id::text,' ') FROM search('Patient', 'organization=nonexist')),
+  'search by nonexisting organization');
+               assert_eq               
+---------------------------------------
+ OK search by nonexisting organization
 (1 row)
 
 SELECT assert_eq(2::bigint ,
@@ -400,7 +400,7 @@ select build_search_query('Patient', '_id=4');
  LIMIT 100
 (1 row)
 
-select build_search_query('Patient', 'provider._id=4');
+select build_search_query('Patient', 'organization._id=4');
                                                           build_search_query                                                          
 --------------------------------------------------------------------------------------------------------------------------------------
  SELECT patient.* FROM patient                                                                                                       +

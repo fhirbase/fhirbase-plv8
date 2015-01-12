@@ -312,21 +312,21 @@ SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
 SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
 (
   SELECT string_agg(logical_id::varchar, '|')
-    FROM search('Patient', ('provider._id='|| '550e8400-e29b-41d4-a716-446655440009'))
-), 'chained search by provider._id');
-             assert_eq             
------------------------------------
- OK chained search by provider._id
+    FROM search('Patient', ('organization._id='|| '550e8400-e29b-41d4-a716-446655440009'))
+), 'chained search by organization._id');
+               assert_eq               
+---------------------------------------
+ OK chained search by organization._id
 (1 row)
 
 SELECT assert_eq(0::bigint,
 (
   SELECT count(*)
-    FROM search('Patient', ('provider._id='|| '550e8400-e29b-41d4-a716-446655440119'))
-), 'chained search by provider._id with unexisting uuid');
-                       assert_eq                        
---------------------------------------------------------
- OK chained search by provider._id with unexisting uuid
+    FROM search('Patient', ('organization._id='|| '550e8400-e29b-41d4-a716-446655440119'))
+), 'chained search by organization._id with unexisting uuid');
+                         assert_eq                          
+------------------------------------------------------------
+ OK chained search by organization._id with unexisting uuid
 (1 row)
 
 ROLLBACK;

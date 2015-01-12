@@ -64,14 +64,14 @@ CREATE TABLE fhir.datatype_enums (
 
 INSERT INTO fhir.datatypes (version, type)
 (
-  SELECT '0.12' as version,
+  SELECT '0.4.0' as version,
          xsattr('/xs:simpleType/@name', st) as type
    FROM (
           SELECT unnest(xpath('/xs:schema/xs:simpleType', :'datatypes',
              ARRAY[ARRAY['xs', 'http://www.w3.org/2001/XMLSchema']])) st
         ) simple_types
   UNION
-  SELECT '0.12' as version,
+  SELECT '0.4.0' as version,
           xsattr('/xs:complexType/@name', st) as type
         FROM (
           SELECT unnest(xpath('/xs:schema/xs:complexType', :'datatypes',
@@ -81,7 +81,7 @@ INSERT INTO fhir.datatypes (version, type)
 
 
 INSERT INTO fhir.datatype_enums (version, datatype, value)
-SELECT '0.12' as version,
+SELECT '0.4.0' as version,
        datatype,
        xsattr('/xs:enumeration/@value', enum) as value
   FROM (SELECT xsattr('/xs:simpleType/@name', st) as datatype,
@@ -94,7 +94,7 @@ SELECT '0.12' as version,
 
 INSERT INTO fhir.datatype_elements
 (version, datatype, name, type, min_occurs, max_occurs)
-SELECT '0.12' as version,
+SELECT '0.4.0' as version,
         datatype,
         coalesce(
           xsattr('/xs:element/@name', el),

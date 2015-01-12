@@ -21,13 +21,13 @@ INSERT into organization (logical_id,content) values (:'org_uuid', :'org1'::json
 INSERT into patient (logical_id,content) values (:'pt_uuid',  format(:'pt', :'org_uuid')::jsonb);
 INSERT into patient (logical_id,content) values (:'pt2_uuid', :'pt2'::jsonb);
 
-SELECT * FROM _parse_param('provider=Seven');
-SELECT * FROM _expand_search_params('Patient','provider.name=Seven');
-SELECT * FROM build_search_query('Patient','provider.name=Seven');
+SELECT * FROM _parse_param('organization=Seven');
+SELECT * FROM _expand_search_params('Patient','organization.name=Seven');
+SELECT * FROM build_search_query('Patient','organization.name=Seven');
 
 SELECT assert_eq(
-(SELECT logical_id FROM search('Patient','provider.name=Seven') LIMIT 1),
-:'pt_uuid'::uuid,
+(SELECT string_agg(logical_id::text,',') FROM search('Patient','organization.name=Seven')),
+:'pt_uuid',
 'chained search');
 
 ROLLBACK;
