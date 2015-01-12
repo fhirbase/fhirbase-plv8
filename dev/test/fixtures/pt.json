@@ -48,20 +48,7 @@
       "use": "home"
     }
   ],
-  "gender": {
-    "coding": [
-      {
-        "system": "http://snomed.info/sct",
-        "code": "248153007",
-        "display": "Male"
-      },
-      {
-        "system": "http://hl7.org/fhir/v3/AdministrativeGender",
-        "code": "M",
-        "display": "Male"
-      }
-    ]
-  },
+  "gender": "male",
   "birthDate": "1960-03-13",
   "deceasedBoolean": false,
   "address": [

@@ -84,20 +84,7 @@ INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655
       "use": "home"
     }
   ],
-  "gender": {
-    "coding": [
-      {
-        "system": "http://snomed.info/sct",
-        "code": "248153007",
-        "display": "Male"
-      },
-      {
-        "system": "http://hl7.org/fhir/v3/AdministrativeGender",
-        "code": "M",
-        "display": "Male"
-      }
-    ]
-  },
+  "gender": "male",
   "birthDate": "1960-03-13",
   "deceasedBoolean": false,
   "address": [
@@ -217,15 +204,7 @@ INSERT into patient (logical_id,content) values ('550e8400-e29b-41d4-a716-446655
       ]
     }
   ],
-  "gender": {
-    "coding": [
-      {
-        "system": "http://hl7.org/fhir/v3/AdministrativeGender",
-        "code": "M",
-        "display": "Male"
-      }
-    ]
-  },
+  "gender": "male",
   "birthDate": "1974-12-25",
   "deceasedBoolean": false,
   "address": [
@@ -304,7 +283,8 @@ SELECT * FROM build_search_query('Patient','organization.name=Seven');
  JOIN organization ON index_as_reference(patient.content, '{managingOrganization}') && ARRAY[organization.logical_id]::varchar[] AND +
   (index_as_string(organization.content, '{name}') ilike '%Seven%')                                                                  +
  WHERE  true = true                                                                                                                  +
- LIMIT 100
+ LIMIT 100                                                                                                                           +
+ OFFSET 0
 (1 row)
 
 SELECT assert_eq(

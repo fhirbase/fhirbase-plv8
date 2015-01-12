@@ -256,6 +256,12 @@ format('SELECT %I.* FROM %I ', lower(_resource_type), lower(_resource_type))
     GROUP BY resource_type), ' true = true ')
 || COALESCE(build_sorting(_resource_type, _query), '')
 || format(E'\nLIMIT %s',COALESCE( (SELECT value::integer FROM special_params WHERE key = '_count'), '100'))
+|| format(E'\nOFFSET %s',
+  (
+    COALESCE((SELECT value::integer FROM special_params WHERE key = '_page'), 0)::integer
+    *
+    COALESCE((SELECT value::integer FROM special_params WHERE key = '_count'), 1000)::integer
+  ))
 $$;
 
 

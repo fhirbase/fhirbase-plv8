@@ -41,7 +41,7 @@ SELECT assert_eq(:'pt_uuid',
 SELECT assert_eq(:'pt2_uuid',
 (
   SELECT string_agg(logical_id::varchar, '')
-  FROM search('Patient', 'gender=M&_count=1&_page=0&_sort:desc=birthdate')
+  FROM search('Patient', 'gender=male&_count=1&_page=0&_sort:desc=birthdate')
 ), 'search with gender respects _count and _page option');
 
 
@@ -52,7 +52,7 @@ SELECT assert_eq((:'pt_uuid' || '|' || :'pt2_uuid'),
 ), 'search respects _sort option');
 
 
-SELECT build_search_query('Patient', 'gender=M&_sort:asc=given');
+SELECT build_search_query('Patient', 'gender=male&_sort:asc=given');
 
 SELECT assert_eq((:'pt2_uuid' || '|' || :'pt_uuid'),
 (

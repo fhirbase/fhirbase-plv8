@@ -52,20 +52,7 @@ SELECT 'created' FROM fhir_create('{}'::jsonb, 'Patient', '550e8400-e29b-41d4-a7
       "use": "home"
     }
   ],
-  "gender": {
-    "coding": [
-      {
-        "system": "http://snomed.info/sct",
-        "code": "248153007",
-        "display": "Male"
-      },
-      {
-        "system": "http://hl7.org/fhir/v3/AdministrativeGender",
-        "code": "M",
-        "display": "Male"
-      }
-    ]
-  },
+  "gender": "male",
   "birthDate": "1960-03-13",
   "deceasedBoolean": false,
   "address": [
@@ -189,15 +176,7 @@ SELECT 'created' FROM fhir_create('{}'::jsonb, 'Patient', '550e8400-e29b-41d4-a7
       ]
     }
   ],
-  "gender": {
-    "coding": [
-      {
-        "system": "http://hl7.org/fhir/v3/AdministrativeGender",
-        "code": "M",
-        "display": "Male"
-      }
-    ]
-  },
+  "gender": "male",
   "birthDate": "1974-12-25",
   "deceasedBoolean": false,
   "address": [
@@ -267,7 +246,8 @@ SELECT build_search_query('Patient', '_count=50&_page=3');
  SELECT patient.* FROM patient +
                                +
  WHERE  true = true            +
- LIMIT 50
+ LIMIT 50                      +
+ OFFSET 150
 (1 row)
 
 SELECT build_search_query('Patient','_count=50&_page=3&_sort=birthdate');
@@ -277,7 +257,8 @@ SELECT build_search_query('Patient','_count=50&_page=3&_sort=birthdate');
                                                                      +
  WHERE  true = true                                                  +
   ORDER BY (json_get_in(patient.content, '{birthDate}'))[1]::text ASC+
- LIMIT 50
+ LIMIT 50                                                            +
+ OFFSET 150
 (1 row)
 
 SELECT build_search_query('Patient', '_count=1');
@@ -286,7 +267,8 @@ SELECT build_search_query('Patient', '_count=1');
  SELECT patient.* FROM patient +
                                +
  WHERE  true = true            +
- LIMIT 1
+ LIMIT 1                       +
+ OFFSET 0
 (1 row)
 
 SELECT assert_eq('1',
@@ -312,7 +294,7 @@ SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
 SELECT assert_eq('550e8400-e29b-41d4-a716-446655440011',
 (
   SELECT string_agg(logical_id::varchar, '')
-  FROM search('Patient', 'gender=M&_count=1&_page=0&_sort:desc=birthdate')
+  FROM search('Patient', 'gender=male&_count=1&_page=0&_sort:desc=birthdate')
 ), 'search with gender respects _count and _page option');
                        assert_eq                        
 --------------------------------------------------------
@@ -329,14 +311,15 @@ SELECT assert_eq(('550e8400-e29b-41d4-a716-446655440010' || '|' || '550e8400-e29
  OK search respects _sort option
 (1 row)
 
-SELECT build_search_query('Patient', 'gender=M&_sort:asc=given');
-                                  build_search_query                                   
----------------------------------------------------------------------------------------
- SELECT patient.* FROM patient                                                        +
-                                                                                      +
- WHERE index_codeableconcept_as_token(patient.content, '{gender}') && '{M}'::varchar[]+
-  ORDER BY (json_get_in(patient.content, '{name,given}'))[1]::text ASC                +
- LIMIT 100
+SELECT build_search_query('Patient', 'gender=male&_sort:asc=given');
+                                 build_search_query                                 
+------------------------------------------------------------------------------------
+ SELECT patient.* FROM patient                                                     +
+                                                                                   +
+ WHERE index_primitive_as_token(patient.content, '{gender}') && '{male}'::varchar[]+
+  ORDER BY (json_get_in(patient.content, '{name,given}'))[1]::text ASC             +
+ LIMIT 100                                                                         +
+ OFFSET 0
 (1 row)
 
 SELECT assert_eq(('550e8400-e29b-41d4-a716-446655440011' || '|' || '550e8400-e29b-41d4-a716-446655440010'),

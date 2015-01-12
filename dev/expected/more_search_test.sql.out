@@ -90,20 +90,7 @@ SELECT 'created' FROM fhir_create('{}'::jsonb, 'Patient','550e8400-e29b-41d4-a71
       "use": "home"
     }
   ],
-  "gender": {
-    "coding": [
-      {
-        "system": "http://snomed.info/sct",
-        "code": "248153007",
-        "display": "Male"
-      },
-      {
-        "system": "http://hl7.org/fhir/v3/AdministrativeGender",
-        "code": "M",
-        "display": "Male"
-      }
-    ]
-  },
+  "gender": "male",
   "birthDate": "1960-03-13",
   "deceasedBoolean": false,
   "address": [
@@ -227,15 +214,7 @@ SELECT 'created' FROM fhir_create('{}'::jsonb, 'Patient','550e8400-e29b-41d4-a71
       ]
     }
   ],
-  "gender": {
-    "coding": [
-      {
-        "system": "http://hl7.org/fhir/v3/AdministrativeGender",
-        "code": "M",
-        "display": "Male"
-      }
-    ]
-  },
+  "gender": "male",
   "birthDate": "1974-12-25",
   "deceasedBoolean": false,
   "address": [
@@ -325,7 +304,8 @@ SELECT build_search_query('Patient', 'identifier=MRN|7777777');
  SELECT patient.* FROM patient                                                                 +
                                                                                                +
  WHERE index_identifier_as_token(patient.content, '{identifier}') && '{MRN|7777777}'::varchar[]+
- LIMIT 100
+ LIMIT 100                                                                                     +
+ OFFSET 0
 (1 row)
 
 SELECT assert_eq('550e8400-e29b-41d4-a716-446655440010',
