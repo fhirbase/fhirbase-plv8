@@ -76,7 +76,7 @@ SELECT json_build_object(
      'type', _resource_name_,
      'publish', true,
      'differential', json_build_object(
-       'element', (SELECT json_agg(t.*) FROM elems  t order by path)
+       'element', (SELECT json_agg(t.*) FROM ( SELECT *  FROM elems order by path) t)
      ),
      'searchParam',  (SELECT  json_agg(t.*)  FROM params t)
    )]
