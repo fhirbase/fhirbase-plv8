@@ -1,12 +1,11 @@
 --db:fhirb
 --{{{
 
-DROP FUNCTION IF EXISTS _tpl(_tpl_ text, variadic _bindings varchar[]);
-CREATE
-FUNCTION _tpl(_tpl_ text, variadic _bindings varchar[]) RETURNS text AS $$
 --- replace {{var}} in template string
 ---  EXAMPLE:
 ---    _tpl('{{a}}={{b}}', 'a', 'A','b','B') => 'A=B'
+CREATE OR REPLACE
+FUNCTION _tpl(_tpl_ text, variadic _bindings varchar[]) RETURNS text AS $$
 DECLARE
   result text := _tpl_;
 BEGIN
@@ -18,53 +17,47 @@ END
 $$ LANGUAGE plpgsql IMMUTABLE;
 
 
-DROP FUNCTION IF EXISTS _eval(_str_ text);
-CREATE
+CREATE OR REPLACE
 FUNCTION _eval(_str_ text) RETURNS text AS
 --- eval _str_
-$BODY$
+$$
 BEGIN
   EXECUTE _str_;
   RETURN _str_;
 END;
-$BODY$
+$$
 LANGUAGE plpgsql VOLATILE;
 
-DROP FUNCTION IF EXISTS _butlast(anyarray);
-CREATE
+CREATE OR REPLACE
 FUNCTION _butlast(_ar_ anyarray) RETURNS anyarray
 --- cut last element of array
 language sql AS $$
   SELECT _ar_[array_lower(_ar_,1) : array_upper(_ar_,1) - 1];
 $$ IMMUTABLE;
 
-DROP FUNCTION IF EXISTS _is_descedant(anyarray, anyarray);
-CREATE
+CREATE OR REPLACE
 FUNCTION _is_descedant(_parent_ anyarray, _child_ anyarray) RETURNS boolean
 --- test _parent_ is prefix of _child_
 language sql AS $$
   SELECT _child_[array_lower(_parent_,1) : array_upper(_parent_,1)] = _parent_;
 $$ IMMUTABLE;
 
-DROP FUNCTION IF EXISTS _subpath(anyarray, anyarray);
-CREATE
+CREATE OR REPLACE
 FUNCTION _subpath(_parent_ anyarray, _child_ anyarray) RETURNS varchar[]
 --- remove _parent_ elements from begining of _child_
-language sql AS $$
+LANGUAGE sql AS $$
   SELECT _child_[array_upper(_parent_,1) + 1 : array_upper(_child_,1)];
 $$ IMMUTABLE;
 
 
-DROP FUNCTION  IF EXISTS _rest(anyarray);
-CREATE
+CREATE OR REPLACE
 FUNCTION _rest(_ar_ anyarray) RETURNS anyarray
 --- return rest of array
 language sql AS $$
   SELECT _ar_[2 : array_upper(_ar_,1)];
 $$ IMMUTABLE;
 
-DROP FUNCTION IF EXISTS _last(ar anyarray);
-CREATE
+CREATE OR REPLACE
 FUNCTION _last(_ar_ anyarray) RETURNS anyelement
 --- return last element of collection
 language sql AS $$
@@ -74,13 +67,13 @@ $$ IMMUTABLE;
 CREATE OR REPLACE
 FUNCTION column_name(name varchar, type varchar) RETURNS varchar
 --- just eat [x] from name
-language sql AS $$
+LANGUAGE SQL AS $$
   SELECT replace(name, '[x]', '' || type);
 $$  IMMUTABLE;
 
 CREATE OR REPLACE
 FUNCTION _is_array(_json jsonb) RETURNS boolean
-language sql AS $$
+LANGUAGE SQL AS $$
   SELECT jsonb_typeof(_json) = 'array';
 $$  IMMUTABLE;
 
@@ -237,6 +230,4 @@ LANGUAGE sql AS $$
    SELECT jsonb_array_elements(_old_tags) x
  ) x
 $$ IMMUTABLE;
-
-
 --}}}

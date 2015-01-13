@@ -288,7 +288,10 @@ SELECT * FROM build_search_query('Patient','organization.name=Seven');
 (1 row)
 
 SELECT assert_eq(
-(SELECT string_agg(logical_id::text,',') FROM search('Patient','organization.name=Seven')),
+(
+  SELECT string_agg(logical_id::text,',')
+    FROM search('Patient','organization.name=Seven')
+),
 '550e8400-e29b-41d4-a716-446655440010',
 'chained search');
      assert_eq     

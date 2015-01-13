@@ -26,7 +26,10 @@ SELECT * FROM _expand_search_params('Patient','organization.name=Seven');
 SELECT * FROM build_search_query('Patient','organization.name=Seven');
 
 SELECT assert_eq(
-(SELECT string_agg(logical_id::text,',') FROM search('Patient','organization.name=Seven')),
+(
+  SELECT string_agg(logical_id::text,',')
+    FROM search('Patient','organization.name=Seven')
+),
 :'pt_uuid',
 'chained search');
 

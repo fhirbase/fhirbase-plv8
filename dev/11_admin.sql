@@ -1,5 +1,6 @@
 --db:fhirb
 --{{{
+
 CREATE OR REPLACE FUNCTION
 admin_disk_usage_top(_limit integer)
 RETURNS  table (relname text, size text)

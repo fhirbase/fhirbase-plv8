@@ -48,7 +48,6 @@ LANGUAGE sql AS $$
     'updated', now(),
     'entry', _entry_
   )::jsonb
-
 $$;
 
 CREATE OR REPLACE
