@@ -1,14 +1,3 @@
-\set pt `cat test/fixtures/pt.json`
-\set pt_uuid '550e8400-e29b-41d4-a716-446655440010'
-\set pt_tags  '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]'
-
-\set pt2 `cat test/fixtures/pt2.json`
-\set pt2_uuid '550e8400-e29b-41d4-a716-446655440011'
-\set pt2_tags  '[{"scheme": "http://pt.com", "term": "http://pt/noise", "label":"noise"}]'
-
-\set doc_ref `cat test/fixtures/documentreference-example.json`
-\set doc_ref_uuid '550e8400-e29b-41d4-a716-446655440012'
-
 BEGIN;
 
 truncate  __vars;
@@ -57,5 +46,27 @@ expect 'no false result'
     )->'entry'
   )
 => 1
+
+expect 'find by _id'
+   SELECT count(*)
+     FROM search(
+       'Patient',
+       '_id='|| _extract_id(getv('pt')->>'id')
+     )
+=> 1::bigint
+
+expect
+  SELECT string_agg(logical_id::varchar, '|')
+    FROM search(
+      'Patient',
+      'organization._id='|| _extract_id(getv('org')->>'id')
+    )
+=> _extract_id(getv('pt')->>'id')
+
+
+expect
+   SELECT count(*)
+     FROM search('Patient', ('organization._id='|| gen_random_uuid()))
+=> 0::bigint
 
 ROLLBACK;

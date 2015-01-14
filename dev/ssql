@@ -37,7 +37,7 @@ def open_assert(fl, ln, line):
 def inline_assert(fl, ln, line):
   if line.find('--')== 0: return
   if line.find('/*')== 0: return
-  (expr, expect) = line.split('=>')
+  (expr, expect) = line.split(' => ')
   print "SELECT expect('', '%s:%d',(%s),(%s));" % (fl, ln + 1, expr.strip(), expect.strip())
 
 def close_assert(line):
@@ -86,7 +86,7 @@ def process_file(nm):
       elif state == 'assert' and line.find("=>") == 0:
         close_stmt(state, line)
         state = 'start'
-      elif state == 'start' and line.find('=>') > 0:
+      elif state == 'start' and line.find(' => ') > 0:
         inline_assert(nm, idx, line)
       elif state == 'start' and line.find('setv') == 0:
         print 'SELECT %s' % line

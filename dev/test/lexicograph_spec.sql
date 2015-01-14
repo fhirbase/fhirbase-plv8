@@ -1,7 +1,7 @@
---db:fhirb -e
---{{{
-SELECT lexit('abc');
+BEGIN;
+lexit('abc') => 'abc'
 
+-- TODO: add assertion using temporal table
 SELECT x, lexit FROM (
   SELECT x::text, lexit(x)
     FROM unnest(
@@ -12,4 +12,5 @@ SELECT x, lexit FROM (
        ARRAY[11, 111, 88, 7, 0, 1234567890, -3, -11, -7, 9999999999, 111111111111111111, 1, 3]) x
 ) _
 ORDER BY lexit;
---}}}
+
+ROLLBACK;

@@ -81,6 +81,32 @@ expect 'searchable'
   )
 => 1
 
+expect
+  SELECT count(*)
+    FROM search('Patient', 'identifier=123456789')
+=> 1::bigint
+
+expect
+  SELECT count(*)
+   FROM search('Patient', 'identifier=123456789')
+=> 1::bigint
+
+
+expect
+  SELECT count(*)
+   FROM search('Patient', 'active=true')
+=> 1::bigint
+
+expect
+  SELECT count(*)
+    FROM search('Patient', 'identifier=MRN|7777777')
+=> 1::bigint
+
+expect
+  SELECT count(*)
+    FROM search('Patient', 'telecom=+31612345678')
+=> 1::bigint
+
 expect 'ensure before deleted'
   jsonb_typeof(
     fhir_read(
