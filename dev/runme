@@ -98,7 +98,7 @@ case "$CMD" in
         ;;
     "integrate" )
         install_cmd $DB
-        test_cmd
+        spec_cmd
         ;;
     "build" )
         install_cmd 'build_fhir'

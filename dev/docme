@@ -1,8 +1,0 @@
-echo '## API' > ../api.md
-cat 10_*.sql |\
- grep -e '^\(COMMENT ON\|IS\)' |\
- sed 's/COMMENT ON /\n/' |\
- sed 's/IS //' |\
- sed 's/FUNCTION/#### FUNCTION/' |\
- sed "s/'//g" |\
- sed 's/\\n/\n/g' >> ../api.md

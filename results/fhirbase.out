@@ -1,7 +1,0 @@
-CREATE EXTENSION fhirbase;
-ERROR:  syntax error at or near "\"
-SET escape_string_warning=off;
-SELECT * FROM patient;
-ERROR:  relation "patient" does not exist
-LINE 1: SELECT * FROM patient;
-                      ^

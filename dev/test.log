@@ -1,7 +1,22 @@
-SET
+BEGIN
+ setv 
+------
+ cfg
+(1 row)
+
+  setv  
+--------
+ device
+(1 row)
+
  expect 
 --------
  OK
+(1 row)
+
+ setv 
+------
+ dev
 (1 row)
 
  expect 
@@ -19,43 +34,4 @@ SET
  OK
 (1 row)
 
- expect 
---------
- OK
-(1 row)
-
- expect 
---------
- OK
-(1 row)
-
- expect 
---------
- OK
-(1 row)
-
- expect 
---------
- OK
-(1 row)
-
- expect 
---------
- OK
-(1 row)
-
- expect 
---------
- OK
-(1 row)
-
- expect 
---------
- OK
-(1 row)
-
- expect 
---------
- OK
-(1 row)
-
+ROLLBACK
