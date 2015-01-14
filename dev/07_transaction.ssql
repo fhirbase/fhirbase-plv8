@@ -1,8 +1,4 @@
---db:fhirb
---{{{
-CREATE OR REPLACE FUNCTION
-_replace_references(_resource_ text, _references_ json[]) RETURNS text
-LANGUAGE sql AS $$
+func _replace_references(_resource_ text, _references_ json[]) RETURNS text
   SELECT
     CASE
     WHEN array_length(_references_, 1) > 0 THEN
@@ -10,12 +6,10 @@ LANGUAGE sql AS $$
        replace(_resource_, _references_[1]->>'alternative', _references_[1]->>'id'),
        _rest(_references_))
    ELSE _resource_
-   END;
-$$;
+   END
 
-CREATE OR REPLACE
-FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb
-LANGUAGE sql AS $$
+func! fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb
+  --Update, create or delete a set of resources as a single transaction\nReturns bundle with entries
   WITH entries AS (
     SELECT jsonb_array_elements(_bundle_->'entry') AS entry
   ), items AS (
@@ -92,8 +86,4 @@ LANGUAGE sql AS $$
     ) r
   )
   SELECT _build_bundle('Transaction results', count(r.*)::integer, COALESCE(json_agg(r.*), '[]'::json)) as json
-  FROM created r;
-$$;
-COMMENT ON FUNCTION fhir_transaction(_cfg jsonb, _bundle_ jsonb)
-IS 'Update, create or delete a set of resources as a single transaction\nReturns bundle with entries';
---}}}
+  FROM created r

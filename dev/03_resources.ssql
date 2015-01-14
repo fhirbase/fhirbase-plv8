@@ -1,5 +1,3 @@
---db:fhirb
---{{{
 DROP TABLE IF EXISTS fhir.resource_elements CASCADE;
 CREATE TABLE fhir.resource_elements (
   version varchar,
@@ -22,36 +20,23 @@ CREATE TABLE fhir.resource_search_params (
   documentation text
 );
 
-CREATE OR REPLACE
-FUNCTION xattr(pth varchar, x xml) returns varchar
-AS $$
-BEGIN
-  RETURN unnest(xpath(pth, x, ARRAY[ARRAY['fh', 'http://hl7.org/fhir']])) limit 1;
-END
-$$ language plpgsql;
 
-CREATE OR REPLACE FUNCTION
-profile_to_resource_type(profiles varchar[])
-RETURNS varchar[] LANGUAGE sql AS $$
+func xattr(pth varchar, _x_ xml) returns varchar
+  SELECT y::varchar
+    FROM unnest(xpath(pth, _x_, ARRAY[ARRAY['fh', 'http://hl7.org/fhir']])) y
+    LIMIT 1
+
+
+func profile_to_resource_type(_profiles_ varchar[]) RETURNS varchar[]
   SELECT array_agg(replace("unnest", 'http://hl7.org/fhir/Profile/', ''))::varchar[]
-  FROM unnest(profiles);
-$$;
+  FROM unnest(_profiles_);
 
-CREATE OR REPLACE
-FUNCTION fpath(pth varchar, x xml) returns xml[]
-  as $$
-  BEGIN
-    return xpath(pth, x, ARRAY[ARRAY['fh', 'http://hl7.org/fhir']]);
-  END
-$$ language plpgsql IMMUTABLE;
+func fpath(_pth_ varchar, _x_ xml) returns xml[]
+  SELECT xpath(_pth_, _x_, ARRAY[ARRAY['fh', 'http://hl7.org/fhir']])
 
-CREATE or REPLACE
-FUNCTION xarrattr(pth varchar, x xml) returns varchar[]
-  as $$
-  BEGIN
-    RETURN array(select unnest(fpath(pth, x))::varchar);
-  END
-$$ language plpgsql;
+func xarrattr(pth varchar, x xml) returns varchar[]
+  SELECT array_agg(y::varchar)
+    from unnest(fpath(pth, x)) y
 
 \set fhir `cat profiles-resources.xml`
 
@@ -106,6 +91,7 @@ CREATE TABLE fhir.hardcoded_complex_params (
   path varchar[],
   type varchar
 );
+
 INSERT INTO fhir.hardcoded_complex_params
 (path, type) VALUES
 ('{ConceptMap,concept,map,product,concept}','uri'),
@@ -130,7 +116,6 @@ INSERT INTO fhir.hardcoded_complex_params
 
 -- TODO: fix lost params
 DROP TABLE IF EXISTS fhir.resource_indexables CASCADE;
-
 CREATE TABLE fhir.resource_indexables (
   param_name text,
   resource_type text,
@@ -140,6 +125,7 @@ CREATE TABLE fhir.resource_indexables (
   is_primitive boolean
 );
 
+/* TODO: use CTE */
 INSERT INTO fhir.resource_indexables
 (param_name, resource_type, path, search_type, type, is_primitive)
 SELECT
@@ -179,14 +165,16 @@ GROUP BY param_name, resource_type, path, search_type, type, is_primitive;
 INSERT INTO fhir.resource_indexables
 (param_name, resource_type, path, search_type, type, is_primitive)
 SELECT
-'_id' as param_name
-,resource_type as resource_type
-,ARRAY[resource_type,'_id'] as path
-,'identifier' as search_type
-,'uuid' as type
-, true as primitive
+  '_id' as param_name
+  ,resource_type as resource_type
+  ,ARRAY[resource_type,'_id'] as path
+  ,'identifier' as search_type
+  ,'uuid' as type
+  , true as primitive
 FROM fhir.resource_indexables
 GROUP BY resource_type;
 
 CREATE INDEX ON fhir.resource_indexables (resource_type, param_name, search_type);
---}}}
+
+/* vim ft=sql
+*/

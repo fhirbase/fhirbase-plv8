@@ -1,5 +1,3 @@
---db:fhirb
---{{{
 \set ucum `cat ucum-essence.xml`
 \set ns '{{u,http://unitsofmeasure.org/ucum-essence}}'
 
@@ -34,4 +32,6 @@ SELECT
 
   FROM (SELECT unnest(xpath('/u:root/unit', :'ucum', :'ns')) st ) u
 );
---}}}
+
+/* vim: ft=sql
+*/

@@ -8,3 +8,4 @@
 /tmp
 dev/performance/observations.sql
 *.fixture.sql
+dev/test.log

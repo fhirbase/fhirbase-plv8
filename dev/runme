@@ -22,6 +22,7 @@ function help_cmd {
     install dbname            generate and install fhirbase schema into specified DB
     integrate                 generate  test db and run tests
     test                      run tests
+    specs                     run specs
     build                     build fhirbase.sql file
     perf dbname num K         recreate & fill with performance data
     fill dbname num K         fill with performance data
@@ -31,48 +32,29 @@ EOF
 function install_cmd {
   DB=$1
   echo "DROP DATABASE IF EXISTS $DB; CREATE DATABASE $DB;" | psql $PSQL_ARGS -d postgres;
-  for scrpt in `ls *sql`; do
+  for scrpt in `ls *\.ssql`; do
     echo "Execute: $scrpt ..."
-    cat $scrpt | psql $PSQL_ARGS -d $DB -1
+    ./ssql $scrpt | psql $PSQL_ARGS -d $DB -1 > /dev/null
   done
 }
 
-function test_cmd {
-  echo "Run tests"
-  failed=()
-  outdir="/tmp/fhirbase-tests"
 
-  rm -rf $outdir
-  mkdir $outdir
-  for script in `ls test/*_test.sql`; do
-    nm=`basename $script`
-    example="expected/$nm.out"
-    out="$outdir/$nm.out"
-    echo "run $nm"
-    cat $script | psql $PSQL_ARGS -e -d $DB > $out
-    if diff -Bb $out $example
-    then
-      echo -e "\e[00;32m"
-      echo "OK"
-      echo -e "\e[00m"
-    else
-      echo -e "\e[00;31m"
-      failed+=$script
-      diff -Bb -y $out $example
-      echo -e "\e[00m"
-    fi
-  done
-  echo '-----------------------------'
-  if [ ${#failed[@]} -eq 0 ]; then
-    echo -e "\e[00;32m"
-    echo "Tests passed"
-  else
-    echo -e "\e[00;31m"
-    echo "Tests failed:"
-    echo $failed
-    echo -e "\e[00m"
-    exit 1
+function spec_cmd {
+  FILE=$1
+  if [ -z "$FILE" ]; then
+    FILE='test/*_spec.sql'
   fi
+  echo "spec $FILE"
+  for script in `ls $FILE`; do
+    echo "spec $script"
+    ./ssql $script | psql $PSQL_ARGS -d $DB > test.log
+  done
+}
+
+function load_cmd {
+  FILE=$1
+  echo "load $nm"
+  ./ssql $FILE | psql $PSQL_ARGS -d $DB
 }
 
 function build_cmd {
@@ -109,7 +91,7 @@ ARGV=$@
 
 case "$CMD" in
     "test" )
-        test_cmd
+        spec_cmd $2
         ;;
     "install" )
         install_cmd $2
@@ -121,6 +103,12 @@ case "$CMD" in
     "build" )
         install_cmd 'build_fhir'
         build_cmd
+        ;;
+    "load" )
+        load_cmd $2
+        ;;
+    "spec" )
+        spec_cmd $2
         ;;
     "perf" )
         install_cmd $2

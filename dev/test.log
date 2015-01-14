@@ -1,0 +1,61 @@
+SET
+ expect 
+--------
+ OK
+(1 row)
+
+ expect 
+--------
+ OK
+(1 row)
+
+ expect 
+--------
+ OK
+(1 row)
+
+ expect 
+--------
+ OK
+(1 row)
+
+ expect 
+--------
+ OK
+(1 row)
+
+ expect 
+--------
+ OK
+(1 row)
+
+ expect 
+--------
+ OK
+(1 row)
+
+ expect 
+--------
+ OK
+(1 row)
+
+ expect 
+--------
+ OK
+(1 row)
+
+ expect 
+--------
+ OK
+(1 row)
+
+ expect 
+--------
+ OK
+(1 row)
+
+ expect 
+--------
+ OK
+(1 row)
+

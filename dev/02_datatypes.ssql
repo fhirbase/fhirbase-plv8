@@ -1,31 +1,20 @@
---db:fhirb
---{{{
-
 --- load metadata about datatypes from xsd
 --- into meta tables
 
 drop schema if exists fhir cascade;
 create schema fhir;
 
-CREATE OR REPLACE
-FUNCTION xspath(pth varchar, x xml) returns xml[]
---- @private
---- HACK: see http://joelonsql.com/2013/05/13/xml-madness/
---- problems with namespaces
-AS $$
-BEGIN
-  return  xpath('/xml' || pth, xml('<xml xmlns:xs="xs">' || x || '</xml>'), ARRAY[ARRAY['xs','xs']]);
-END
-$$ language plpgsql IMMUTABLE;
+proc xspath(pth varchar, x xml) returns xml[]
+  --- @private
+  --- HACK: see http://joelonsql.com/2013/05/13/xml-madness/
+  --- problems with namespaces
+  BEGIN
+    RETURN  xpath('/xml' || pth, xml('<xml xmlns:xs="xs">' || x || '</xml>'), ARRAY[ARRAY['xs','xs']]);
 
-CREATE OR REPLACE
-FUNCTION xsattr(pth varchar, x xml) returns varchar
---- @private
-AS $$
-BEGIN
-  RETURN unnest(xspath( pth,x)) limit 1;
-END
-$$ language plpgsql IMMUTABLE;
+proc xsattr(pth varchar, x xml) returns varchar
+  --- @private
+  BEGIN
+    RETURN unnest(xspath( pth,x)) limit 1;
 
 CREATE TABLE fhir.datatypes (
 --- store list of datatypes
@@ -119,4 +108,6 @@ CREATE VIEW fhir.enums AS (
     FROM  fhir.datatype_enums
 GROUP BY  replace(datatype, '-list','')
 );
---}}}
+
+/* vim: ft=sql
+*/
