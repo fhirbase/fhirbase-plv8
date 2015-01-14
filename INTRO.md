@@ -321,7 +321,7 @@ SELECT fhir_read(
 [... skipped ...]
 ```
 
-You'll find version URL at path `entry.0.link.href` of fhir_read
+You'll find version URL at path `entry.0.link.0.href` of fhir_read
 result, in our example it's
 `http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee/_history/287cc966-8cac-4f7d-82a1-51d55a9f919e`.
 
