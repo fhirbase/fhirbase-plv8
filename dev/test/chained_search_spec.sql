@@ -55,6 +55,33 @@ expect 'find by _id'
      )
 => 1::bigint
 
+expect 'find by _ids'
+   SELECT count(*)
+     FROM search(
+       'Patient',
+       format('_id=%s,%s',
+         _extract_id(getv('pt')->>'id'),
+         _extract_id(getv('pt-noise')->>'id')
+       )
+     )
+=> 2::bigint
+
+expect 'search by ref'
+  SELECT string_agg(logical_id::varchar, '|')
+    FROM search(
+      'Patient',
+      'organization='|| _extract_id(getv('org')->>'id')
+    )
+=> _extract_id(getv('pt')->>'id')
+
+expect 'non existing'
+  SELECT count(*)
+    FROM search(
+      'Patient',
+      'organization=nonexist'
+    )
+=> 0::bigint
+
 expect
   SELECT string_agg(logical_id::varchar, '|')
     FROM search(

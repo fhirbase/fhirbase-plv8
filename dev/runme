@@ -47,7 +47,7 @@ function spec_cmd {
   echo "spec $FILE"
   for script in `ls $FILE`; do
     echo "spec $script"
-    ./ssql $script | psql $PSQL_ARGS -d $DB > test.log
+    ./ssql $script | psql $PSQL_ARGS -e -d $DB > test.log
   done
 }
 

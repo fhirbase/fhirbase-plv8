@@ -1,24 +1,12 @@
 BEGIN;
-BEGIN
-SELECT setv( 'cfg', '{"base":"https://test.me"}');
- setv 
-------
- cfg
-(1 row)
+setv( 'cfg', '{"base":"https://test.me"}');
 
-SELECT setv('alert-json','{"resourceType": "Alert", "note": "old-note" }');
-    setv    
-------------
- alert-json
-(1 row)
+\set alert `cat test/fixtures/alert.json`
 
-SELECT setv('device-json', '{"resourceType": "Device", "manufacturer": "Acme" }');
-    setv     
--------------
- device-json
-(1 row)
+setv('alert-json','{"resourceType": "Alert", "note": "old-note" }');
+setv('device-json', '{"resourceType": "Device", "manufacturer": "Acme" }');
 
-SELECT setv('bundle-json',
+setv('bundle-json',
   $$ {
     "resourceType" : "Bundle",
     "entry" : [
@@ -40,24 +28,11 @@ SELECT setv('bundle-json',
     ]
   }
   $$::jsonb);
-    setv     
--------------
- bundle-json
-(1 row)
 
-SELECT setv('alert', fhir_create(getv('cfg'), getv('alert-json'))#>'{entry,0}');
- setv  
--------
- alert
-(1 row)
+setv('alert', fhir_create(getv('cfg'), getv('alert-json'))#>'{entry,0}');
+setv('device', fhir_create(getv('cfg'), getv('device-json'))#>'{entry,0}');
 
-SELECT setv('device', fhir_create(getv('cfg'), getv('device-json'))#>'{entry,0}');
-  setv  
---------
- device
-(1 row)
-
-SELECT setv('trans',
+setv('trans',
   fhir_transaction(
     getv('cfg'),
     _tpl(
@@ -68,40 +43,25 @@ SELECT setv('trans',
     )::jsonb
   )
 );
- setv  
--------
- trans
-(1 row)
 
-SELECT expect('', 'test/transaction_test.sql:47',(
+expect
   fhir_read(
      getv('cfg'), 'Device', getv('trans')#>>'{entry,0,id}'
   )#>>'{entry,0,content,manufacturer}'
-),( 'handmade'));
- expect 
---------
- OK
-(1 row)
+=> 'handmade'
 
-SELECT expect('', 'test/transaction_test.sql:53',(
+expect
   fhir_read(
      getv('cfg'), 'Alert', getv('trans')#>>'{entry,1,id}'
   )#>>'{entry,0,content,note}'
-),( 'new-note'));
- expect 
---------
- OK
-(1 row)
+=> 'new-note'
 
-SELECT expect('', 'test/transaction_test.sql:59',(
+expect
   fhir_is_deleted_resource(
      getv('cfg'), 'Device', getv('trans')#>>'{entry,2,id}'
   )
-),( true));
- expect 
---------
- OK
-(1 row)
+=> true
 
+--TODO: more asserts
 ROLLBACK;
-ROLLBACK
+
