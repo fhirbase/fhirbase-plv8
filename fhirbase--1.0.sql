@@ -281,7 +281,7 @@ $$;
 --
 
 CREATE FUNCTION _debug(x anyelement) RETURNS anyelement
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql IMMUTABLE
     AS $$
 BEGIN
   RAISE NOTICE 'DEBUG %', x;
@@ -392,7 +392,7 @@ $$;
 --
 
 CREATE FUNCTION _fhir_spilt_to_table(_str text) RETURNS TABLE(value text)
-    LANGUAGE sql
+    LANGUAGE sql IMMUTABLE
     AS $_$
   SELECT _fhir_unescape_param(x)
    FROM regexp_split_to_table(regexp_replace(_str, $RE$([^\\]),$RE$, E'\\1,,,,,'), ',,,,,') x
@@ -404,7 +404,7 @@ $_$;
 --
 
 CREATE FUNCTION _fhir_unescape_param(_str text) RETURNS text
-    LANGUAGE sql
+    LANGUAGE sql IMMUTABLE
     AS $_$
   SELECT regexp_replace(_str, $RE$\\([,$|])$RE$, E'\\1', 'g')
 $_$;
@@ -430,6 +430,35 @@ CREATE FUNCTION _get_modifier(_key_ text) RETURNS text
     LANGUAGE sql IMMUTABLE
     AS $$
   SELECT nullif(split_part(_last(regexp_split_to_array(_key_,'\.')), ':',2), '');
+$$;
+
+
+SET search_path = fhir, pg_catalog;
+
+--
+-- Name: resource_indexables; Type: TABLE; Schema: fhir; Owner: -; Tablespace: 
+--
+
+CREATE TABLE resource_indexables (
+    param_name text,
+    resource_type text,
+    path character varying[],
+    search_type text,
+    type text,
+    is_primitive boolean
+);
+
+
+SET search_path = public, pg_catalog;
+
+--
+-- Name: _index_name(fhir.resource_indexables); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION _index_name(_meta fhir.resource_indexables) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$
+    SELECT replace(lower(_meta.resource_type || '_' || _meta.param_name || '_' ||  _last(_meta.path) || '_' || _meta.search_type || '_idx')::varchar,'-','_')
 $$;
 
 
@@ -501,7 +530,7 @@ $$;
 --
 
 CREATE FUNCTION _merge_tags(_old_tags jsonb, _new_tags jsonb) RETURNS jsonb
-    LANGUAGE sql
+    LANGUAGE sql IMMUTABLE
     AS $$
  SELECT json_agg(x.x)::jsonb FROM (
    SELECT jsonb_array_elements(_new_tags) x
@@ -667,7 +696,7 @@ $$;
 --
 
 CREATE FUNCTION assert(_pred boolean, mess character varying) RETURNS character varying
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql IMMUTABLE
     AS $$
 DECLARE
   item jsonb;
@@ -688,7 +717,7 @@ $$;
 --
 
 CREATE FUNCTION assert_eq(expec anyelement, res anyelement, mess character varying) RETURNS character varying
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql IMMUTABLE
     AS $$
 DECLARE
   item jsonb;
@@ -709,7 +738,7 @@ $$;
 --
 
 CREATE FUNCTION assert_raise(exp character varying, str text, mess character varying) RETURNS character varying
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql IMMUTABLE
     AS $$
 BEGIN
   BEGIN
@@ -928,35 +957,52 @@ $$;
 
 
 --
+-- Name: drop_all_resource_indexes(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION drop_all_resource_indexes() RETURNS bigint
+    LANGUAGE sql IMMUTABLE
+    AS $$
+  SELECT count(_eval(drop_index_search_param_exp(ROW(x.*))))
+  from fhir.resource_indexables x
+$$;
+
+
+--
+-- Name: drop_index_search_param(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION drop_index_search_param(_resource_type text, _param_name text) RETURNS bigint
+    LANGUAGE sql
+    AS $$
+  SELECT count(_eval(drop_index_search_param_exp(ROW(x.*))))
+  FROM fhir.resource_indexables x
+  WHERE resource_type = _resource_type
+  AND  param_name = _param_name
+$$;
+
+
+--
+-- Name: drop_index_search_param_exp(fhir.resource_indexables); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION drop_index_search_param_exp(_meta fhir.resource_indexables) RETURNS text
+    LANGUAGE sql
+    AS $$
+  SELECT format('DROP INDEX IF EXISTS %I',_index_name(_meta))
+$$;
+
+
+--
 -- Name: drop_resource_indexes(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION drop_resource_indexes(_resource text) RETURNS bigint
     LANGUAGE sql IMMUTABLE
     AS $$
-  SELECT count(_eval(format('DROP INDEX IF EXISTS "%s"',indname)))
-  FROM (
-      SELECT i.relname as indname,
-      i.relowner as indowner,
-      idx.indrelid::regclass,
-      am.amname as indam,
-      idx.indkey,
-      ARRAY(
-        SELECT pg_get_indexdef(idx.indexrelid, k + 1, true)
-        FROM generate_subscripts(idx.indkey, 1) as k
-        ORDER BY k
-      ) as indkey_names,
-      idx.indexprs IS NOT NULL as indexprs,
-      idx.indpred IS NOT NULL as indpred
-      FROM   pg_index as idx
-      JOIN   pg_class as i
-      ON     i.oid = idx.indexrelid
-      JOIN   pg_am as am
-      ON     i.relam = am.oid
-      WHERE
-      idx.indrelid::regclass = quote_ident(lower(_resource))::regclass
-      and i.relname ilike '%_idx'
-  ) idx;
+  SELECT count(_eval(drop_index_search_param_exp(ROW(x.*))))
+  from fhir.resource_indexables x
+  where resource_type = _resource
 $$;
 
 
@@ -1079,6 +1125,28 @@ SELECT json_build_object(
       )
   )]
 )::jsonb;
+$$;
+
+
+--
+-- Name: fhir_create(jsonb, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_create(_cfg jsonb, _resource jsonb) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+  SELECT fhir_create(_cfg, (_resource->>'resourceType'), gen_random_uuid(), _resource, '[]'::jsonb);
+$$;
+
+
+--
+-- Name: fhir_create(jsonb, text, jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION fhir_create(_cfg jsonb, _type text, _resource jsonb) RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+  SELECT fhir_create(_cfg, _type, gen_random_uuid(), _resource, '[]'::jsonb);
 $$;
 
 
@@ -1801,24 +1869,6 @@ SELECT array_agg(x)::varchar[] FROM (
 $$;
 
 
-SET search_path = fhir, pg_catalog;
-
---
--- Name: resource_indexables; Type: TABLE; Schema: fhir; Owner: -; Tablespace: 
---
-
-CREATE TABLE resource_indexables (
-    param_name text,
-    resource_type text,
-    path character varying[],
-    search_type text,
-    type text,
-    is_primitive boolean
-);
-
-
-SET search_path = public, pg_catalog;
-
 --
 -- Name: index_date_exp(fhir.resource_indexables); Type: FUNCTION; Schema: public; Owner: -
 --
@@ -1829,7 +1879,7 @@ CREATE FUNCTION index_date_exp(_meta fhir.resource_indexables) RETURNS text
   SELECT
     format(
        'CREATE INDEX %I ON %I USING GIST (index_as_date(content,%L::text[], %L) range_ops)'
-      ,replace(lower(_meta.resource_type || '_' || _meta.param_name || '_' || _last(_meta.path) || '_token_idx')::varchar,'-','_')
+      ,_index_name(_meta)
       ,lower(_meta.resource_type)
       ,_rest(_meta.path)::varchar
       ,_meta.type
@@ -1881,7 +1931,7 @@ CREATE FUNCTION index_reference_exp(_meta fhir.resource_indexables) RETURNS text
   SELECT
     format(
       'CREATE INDEX %I ON %I USING GIN (index_as_reference(content,%L))'
-      ,replace(lower(_meta.resource_type || '_' || _meta.param_name || '_' || _last(_meta.path) || '_token_idx')::varchar,'-','_')
+      ,_index_name(_meta)
       ,lower(_meta.resource_type)
       ,_rest(_meta.path)::varchar
     )
@@ -1929,7 +1979,7 @@ CREATE FUNCTION index_search_param_exp(x fhir.resource_indexables) RETURNS text
    WHEN x.search_type = 'token' THEN index_token_exp(x)
    WHEN x.search_type = 'reference' THEN index_reference_exp(x)
    WHEN x.search_type = 'string' THEN index_string_exp(x)
-   WHEN x.search_type = 'date' THEN index_string_exp(x)
+   WHEN x.search_type = 'date' THEN index_date_exp(x)
    ELSE ''
  END
 $$;
@@ -1945,7 +1995,7 @@ CREATE FUNCTION index_string_exp(_meta fhir.resource_indexables) RETURNS text
   SELECT
     format(
        'CREATE INDEX %I ON %I USING GIN (index_as_string(content,%L::text[]) gin_trgm_ops)'
-      ,replace(lower(_meta.resource_type || '_' || _meta.param_name || '_' || _last(_meta.path) || '_token_idx')::varchar,'-','_')
+      ,_index_name(_meta)
       ,lower(_meta.resource_type)
       ,_rest(_meta.path)::varchar
     )
@@ -1962,7 +2012,7 @@ CREATE FUNCTION index_token_exp(_meta fhir.resource_indexables) RETURNS text
   SELECT
    format(
     'CREATE INDEX %I ON %I USING GIN (%s(content,%L))'
-    , replace(lower(_meta.resource_type || '_' || _meta.param_name || '_' || _last(_meta.path) || '_token_idx')::varchar,'-','_')
+    , _index_name(_meta)
     , lower(_meta.resource_type)
     , _token_index_fn(_meta.type, _meta.is_primitive)
     , _rest(_meta.path)::varchar
@@ -1975,7 +2025,7 @@ $$;
 --
 
 CREATE FUNCTION json_array_to_str_array(_jsons jsonb[]) RETURNS character varying[]
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql IMMUTABLE
     AS $$
 DECLARE
   item jsonb;
@@ -1996,7 +2046,7 @@ $$;
 --
 
 CREATE FUNCTION json_get_in(json jsonb, path character varying[]) RETURNS jsonb[]
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql IMMUTABLE
     AS $$
 DECLARE
   item jsonb;
@@ -5890,8 +5940,8 @@ author	Composition	{Composition,author}	reference	ResourceReference	f
 patient	CarePlan	{CarePlan,patient}	reference	ResourceReference	f
 expiry	Substance	{Substance,instance,expiry}	date	dateTime	t
 identifier	Composition	{Composition,identifier}	token	Identifier	f
-date	Observation	{Observation,appliesdateTime}	date	dateTime	t
 status	DocumentReference	{DocumentReference,status}	token	code	t
+date	Observation	{Observation,appliesdateTime}	date	dateTime	t
 active	Organization	{Organization,active}	token	boolean	t
 datewritten	MedicationPrescription	{MedicationPrescription,dateWritten}	date	dateTime	t
 fulfillment	OrderResponse	{OrderResponse,fulfillment}	reference	ResourceReference	f
@@ -9009,10 +9059,10 @@ CREATE INDEX resource_indexables_resource_type_param_name_search_type_idx ON res
 SET search_path = public, pg_catalog;
 
 --
--- Name: adversereaction_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: adversereaction_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX adversereaction_date_date_token_idx ON adversereaction USING gin (index_as_string(content, '{date}'::text[]) gin_trgm_ops);
+CREATE INDEX adversereaction_date_date_date_idx ON adversereaction USING gist (index_as_date(content, '{date}'::text[], 'dateTime'::text));
 
 
 --
@@ -9030,17 +9080,17 @@ CREATE UNIQUE INDEX adversereaction_logical_id_as_varchar_idx ON adversereaction
 
 
 --
--- Name: adversereaction_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: adversereaction_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX adversereaction_subject_subject_token_idx ON adversereaction USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX adversereaction_subject_subject_reference_idx ON adversereaction USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
--- Name: adversereaction_substance_substance_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: adversereaction_substance_substance_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX adversereaction_substance_substance_token_idx ON adversereaction USING gin (index_as_reference(content, '{exposure,substance}'::text[]));
+CREATE INDEX adversereaction_substance_substance_reference_idx ON adversereaction USING gin (index_as_reference(content, '{exposure,substance}'::text[]));
 
 
 --
@@ -9065,17 +9115,17 @@ CREATE UNIQUE INDEX alert_logical_id_as_varchar_idx ON alert USING btree (((logi
 
 
 --
--- Name: alert_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: alert_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX alert_subject_subject_token_idx ON alert USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX alert_subject_subject_reference_idx ON alert USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
--- Name: allergyintolerance_date_recordeddate_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: allergyintolerance_date_recordeddate_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX allergyintolerance_date_recordeddate_token_idx ON allergyintolerance USING gin (index_as_string(content, '{recordedDate}'::text[]) gin_trgm_ops);
+CREATE INDEX allergyintolerance_date_recordeddate_date_idx ON allergyintolerance USING gist (index_as_date(content, '{recordedDate}'::text[], 'dateTime'::text));
 
 
 --
@@ -9093,10 +9143,10 @@ CREATE UNIQUE INDEX allergyintolerance_logical_id_as_varchar_idx ON allergyintol
 
 
 --
--- Name: allergyintolerance_recorder_recorder_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: allergyintolerance_recorder_recorder_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX allergyintolerance_recorder_recorder_token_idx ON allergyintolerance USING gin (index_as_reference(content, '{recorder}'::text[]));
+CREATE INDEX allergyintolerance_recorder_recorder_reference_idx ON allergyintolerance USING gin (index_as_reference(content, '{recorder}'::text[]));
 
 
 --
@@ -9107,17 +9157,17 @@ CREATE INDEX allergyintolerance_status_status_token_idx ON allergyintolerance US
 
 
 --
--- Name: allergyintolerance_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: allergyintolerance_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX allergyintolerance_subject_subject_token_idx ON allergyintolerance USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX allergyintolerance_subject_subject_reference_idx ON allergyintolerance USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
--- Name: allergyintolerance_substance_substance_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: allergyintolerance_substance_substance_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX allergyintolerance_substance_substance_token_idx ON allergyintolerance USING gin (index_as_reference(content, '{substance}'::text[]));
+CREATE INDEX allergyintolerance_substance_substance_reference_idx ON allergyintolerance USING gin (index_as_reference(content, '{substance}'::text[]));
 
 
 --
@@ -9135,38 +9185,38 @@ CREATE INDEX careplan_activitycode_code_token_idx ON careplan USING gin (index_c
 
 
 --
--- Name: careplan_activitydate_timingperiod_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: careplan_activitydate_timingperiod_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX careplan_activitydate_timingperiod_token_idx ON careplan USING gin (index_as_string(content, '{activity,simple,timingPeriod}'::text[]) gin_trgm_ops);
-
-
---
--- Name: careplan_activitydate_timingschedule_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX careplan_activitydate_timingschedule_token_idx ON careplan USING gin (index_as_string(content, '{activity,simple,timingSchedule}'::text[]) gin_trgm_ops);
+CREATE INDEX careplan_activitydate_timingperiod_date_idx ON careplan USING gist (index_as_date(content, '{activity,simple,timingPeriod}'::text[], 'Period'::text));
 
 
 --
--- Name: careplan_activitydetail_detail_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: careplan_activitydate_timingschedule_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX careplan_activitydetail_detail_token_idx ON careplan USING gin (index_as_reference(content, '{activity,detail}'::text[]));
-
-
---
--- Name: careplan_condition_concern_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX careplan_condition_concern_token_idx ON careplan USING gin (index_as_reference(content, '{concern}'::text[]));
+CREATE INDEX careplan_activitydate_timingschedule_date_idx ON careplan USING gist (index_as_date(content, '{activity,simple,timingSchedule}'::text[], 'Schedule'::text));
 
 
 --
--- Name: careplan_date_period_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: careplan_activitydetail_detail_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX careplan_date_period_token_idx ON careplan USING gin (index_as_string(content, '{period}'::text[]) gin_trgm_ops);
+CREATE INDEX careplan_activitydetail_detail_reference_idx ON careplan USING gin (index_as_reference(content, '{activity,detail}'::text[]));
+
+
+--
+-- Name: careplan_condition_concern_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX careplan_condition_concern_reference_idx ON careplan USING gin (index_as_reference(content, '{concern}'::text[]));
+
+
+--
+-- Name: careplan_date_period_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX careplan_date_period_date_idx ON careplan USING gist (index_as_date(content, '{period}'::text[], 'Period'::text));
 
 
 --
@@ -9184,31 +9234,31 @@ CREATE UNIQUE INDEX careplan_logical_id_as_varchar_idx ON careplan USING btree (
 
 
 --
--- Name: careplan_participant_member_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: careplan_participant_member_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX careplan_participant_member_token_idx ON careplan USING gin (index_as_reference(content, '{participant,member}'::text[]));
-
-
---
--- Name: careplan_patient_patient_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX careplan_patient_patient_token_idx ON careplan USING gin (index_as_reference(content, '{patient}'::text[]));
+CREATE INDEX careplan_participant_member_reference_idx ON careplan USING gin (index_as_reference(content, '{participant,member}'::text[]));
 
 
 --
--- Name: composition_attester_party_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: careplan_patient_patient_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX composition_attester_party_token_idx ON composition USING gin (index_as_reference(content, '{attester,party}'::text[]));
+CREATE INDEX careplan_patient_patient_reference_idx ON careplan USING gin (index_as_reference(content, '{patient}'::text[]));
 
 
 --
--- Name: composition_author_author_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: composition_attester_party_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX composition_author_author_token_idx ON composition USING gin (index_as_reference(content, '{author}'::text[]));
+CREATE INDEX composition_attester_party_reference_idx ON composition USING gin (index_as_reference(content, '{attester,party}'::text[]));
+
+
+--
+-- Name: composition_author_author_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX composition_author_author_reference_idx ON composition USING gin (index_as_reference(content, '{author}'::text[]));
 
 
 --
@@ -9226,10 +9276,10 @@ CREATE INDEX composition_context_code_token_idx ON composition USING gin (index_
 
 
 --
--- Name: composition_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: composition_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX composition_date_date_token_idx ON composition USING gin (index_as_string(content, '{date}'::text[]) gin_trgm_ops);
+CREATE INDEX composition_date_date_date_idx ON composition USING gist (index_as_date(content, '{date}'::text[], 'dateTime'::text));
 
 
 --
@@ -9254,10 +9304,10 @@ CREATE UNIQUE INDEX composition_logical_id_as_varchar_idx ON composition USING b
 
 
 --
--- Name: composition_section_content_content_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: composition_section_content_content_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX composition_section_content_content_token_idx ON composition USING gin (index_as_reference(content, '{section,content}'::text[]));
+CREATE INDEX composition_section_content_content_reference_idx ON composition USING gin (index_as_reference(content, '{section,content}'::text[]));
 
 
 --
@@ -9268,10 +9318,10 @@ CREATE INDEX composition_section_type_code_token_idx ON composition USING gin (i
 
 
 --
--- Name: composition_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: composition_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX composition_subject_subject_token_idx ON composition USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX composition_subject_subject_reference_idx ON composition USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
@@ -9282,10 +9332,10 @@ CREATE INDEX composition_type_type_token_idx ON composition USING gin (index_cod
 
 
 --
--- Name: conceptmap_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: conceptmap_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX conceptmap_date_date_token_idx ON conceptmap USING gin (index_as_string(content, '{date}'::text[]) gin_trgm_ops);
+CREATE INDEX conceptmap_date_date_date_idx ON conceptmap USING gist (index_as_date(content, '{date}'::text[], 'dateTime'::text));
 
 
 --
@@ -9296,10 +9346,10 @@ CREATE INDEX conceptmap_dependson_concept_token_idx ON conceptmap USING gin (ind
 
 
 --
--- Name: conceptmap_description_description_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: conceptmap_description_description_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX conceptmap_description_description_token_idx ON conceptmap USING gin (index_as_string(content, '{description}'::text[]) gin_trgm_ops);
+CREATE INDEX conceptmap_description_description_string_idx ON conceptmap USING gin (index_as_string(content, '{description}'::text[]) gin_trgm_ops);
 
 
 --
@@ -9324,10 +9374,10 @@ CREATE UNIQUE INDEX conceptmap_logical_id_as_varchar_idx ON conceptmap USING btr
 
 
 --
--- Name: conceptmap_name_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: conceptmap_name_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX conceptmap_name_name_token_idx ON conceptmap USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
+CREATE INDEX conceptmap_name_name_string_idx ON conceptmap USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
 
 
 --
@@ -9338,17 +9388,17 @@ CREATE INDEX conceptmap_product_concept_token_idx ON conceptmap USING gin (index
 
 
 --
--- Name: conceptmap_publisher_publisher_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: conceptmap_publisher_publisher_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX conceptmap_publisher_publisher_token_idx ON conceptmap USING gin (index_as_string(content, '{publisher}'::text[]) gin_trgm_ops);
+CREATE INDEX conceptmap_publisher_publisher_string_idx ON conceptmap USING gin (index_as_string(content, '{publisher}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: conceptmap_source_source_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: conceptmap_source_source_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX conceptmap_source_source_token_idx ON conceptmap USING gin (index_as_reference(content, '{source}'::text[]));
+CREATE INDEX conceptmap_source_source_reference_idx ON conceptmap USING gin (index_as_reference(content, '{source}'::text[]));
 
 
 --
@@ -9366,10 +9416,10 @@ CREATE INDEX conceptmap_system_system_token_idx ON conceptmap USING gin (index_p
 
 
 --
--- Name: conceptmap_target_target_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: conceptmap_target_target_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX conceptmap_target_target_token_idx ON conceptmap USING gin (index_as_reference(content, '{target}'::text[]));
+CREATE INDEX conceptmap_target_target_reference_idx ON conceptmap USING gin (index_as_reference(content, '{target}'::text[]));
 
 
 --
@@ -9380,10 +9430,10 @@ CREATE INDEX conceptmap_version_version_token_idx ON conceptmap USING gin (index
 
 
 --
--- Name: condition_asserter_asserter_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: condition_asserter_asserter_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX condition_asserter_asserter_token_idx ON condition USING gin (index_as_reference(content, '{asserter}'::text[]));
+CREATE INDEX condition_asserter_asserter_reference_idx ON condition USING gin (index_as_reference(content, '{asserter}'::text[]));
 
 
 --
@@ -9401,17 +9451,17 @@ CREATE INDEX condition_code_code_token_idx ON condition USING gin (index_codeabl
 
 
 --
--- Name: condition_date_asserted_dateasserted_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: condition_date_asserted_dateasserted_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX condition_date_asserted_dateasserted_token_idx ON condition USING gin (index_as_string(content, '{dateAsserted}'::text[]) gin_trgm_ops);
+CREATE INDEX condition_date_asserted_dateasserted_date_idx ON condition USING gist (index_as_date(content, '{dateAsserted}'::text[], 'date'::text));
 
 
 --
--- Name: condition_encounter_encounter_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: condition_encounter_encounter_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX condition_encounter_encounter_token_idx ON condition USING gin (index_as_reference(content, '{encounter}'::text[]));
+CREATE INDEX condition_encounter_encounter_reference_idx ON condition USING gin (index_as_reference(content, '{encounter}'::text[]));
 
 
 --
@@ -9443,10 +9493,10 @@ CREATE UNIQUE INDEX condition_logical_id_as_varchar_idx ON condition USING btree
 
 
 --
--- Name: condition_onset_onsetdate_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: condition_onset_onsetdate_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX condition_onset_onsetdate_token_idx ON condition USING gin (index_as_string(content, '{onsetdate}'::text[]) gin_trgm_ops);
+CREATE INDEX condition_onset_onsetdate_date_idx ON condition USING gist (index_as_date(content, '{onsetdate}'::text[], 'date'::text));
 
 
 --
@@ -9457,10 +9507,10 @@ CREATE INDEX condition_related_code_code_token_idx ON condition USING gin (index
 
 
 --
--- Name: condition_related_item_target_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: condition_related_item_target_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX condition_related_item_target_token_idx ON condition USING gin (index_as_reference(content, '{relatedItem,target}'::text[]));
+CREATE INDEX condition_related_item_target_reference_idx ON condition USING gin (index_as_reference(content, '{relatedItem,target}'::text[]));
 
 
 --
@@ -9485,24 +9535,24 @@ CREATE INDEX condition_status_status_token_idx ON condition USING gin (index_pri
 
 
 --
--- Name: condition_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: condition_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX condition_subject_subject_token_idx ON condition USING gin (index_as_reference(content, '{subject}'::text[]));
-
-
---
--- Name: conformance_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX conformance_date_date_token_idx ON conformance USING gin (index_as_string(content, '{date}'::text[]) gin_trgm_ops);
+CREATE INDEX condition_subject_subject_reference_idx ON condition USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
--- Name: conformance_description_description_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: conformance_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX conformance_description_description_token_idx ON conformance USING gin (index_as_string(content, '{description}'::text[]) gin_trgm_ops);
+CREATE INDEX conformance_date_date_date_idx ON conformance USING gist (index_as_date(content, '{date}'::text[], 'dateTime'::text));
+
+
+--
+-- Name: conformance_description_description_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX conformance_description_description_string_idx ON conformance USING gin (index_as_string(content, '{description}'::text[]) gin_trgm_ops);
 
 
 --
@@ -9555,24 +9605,24 @@ CREATE INDEX conformance_mode_mode_token_idx ON conformance USING gin (index_pri
 
 
 --
--- Name: conformance_name_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: conformance_name_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX conformance_name_name_token_idx ON conformance USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
-
-
---
--- Name: conformance_profile_profile_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX conformance_profile_profile_token_idx ON conformance USING gin (index_as_reference(content, '{rest,resource,profile}'::text[]));
+CREATE INDEX conformance_name_name_string_idx ON conformance USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: conformance_publisher_publisher_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: conformance_profile_profile_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX conformance_publisher_publisher_token_idx ON conformance USING gin (index_as_string(content, '{publisher}'::text[]) gin_trgm_ops);
+CREATE INDEX conformance_profile_profile_reference_idx ON conformance USING gin (index_as_reference(content, '{rest,resource,profile}'::text[]));
+
+
+--
+-- Name: conformance_publisher_publisher_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX conformance_publisher_publisher_string_idx ON conformance USING gin (index_as_string(content, '{publisher}'::text[]) gin_trgm_ops);
 
 
 --
@@ -9583,10 +9633,10 @@ CREATE INDEX conformance_resource_type_token_idx ON conformance USING gin (index
 
 
 --
--- Name: conformance_software_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: conformance_software_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX conformance_software_name_token_idx ON conformance USING gin (index_as_string(content, '{software,name}'::text[]) gin_trgm_ops);
+CREATE INDEX conformance_software_name_string_idx ON conformance USING gin (index_as_string(content, '{software,name}'::text[]) gin_trgm_ops);
 
 
 --
@@ -9597,10 +9647,10 @@ CREATE INDEX conformance_status_status_token_idx ON conformance USING gin (index
 
 
 --
--- Name: conformance_supported_profile_profile_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: conformance_supported_profile_profile_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX conformance_supported_profile_profile_token_idx ON conformance USING gin (index_as_reference(content, '{profile}'::text[]));
+CREATE INDEX conformance_supported_profile_profile_reference_idx ON conformance USING gin (index_as_reference(content, '{profile}'::text[]));
 
 
 --
@@ -9625,10 +9675,10 @@ CREATE INDEX device_identifier_identifier_token_idx ON device USING gin (index_i
 
 
 --
--- Name: device_location_location_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: device_location_location_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX device_location_location_token_idx ON device USING gin (index_as_reference(content, '{location}'::text[]));
+CREATE INDEX device_location_location_reference_idx ON device USING gin (index_as_reference(content, '{location}'::text[]));
 
 
 --
@@ -9639,31 +9689,31 @@ CREATE UNIQUE INDEX device_logical_id_as_varchar_idx ON device USING btree (((lo
 
 
 --
--- Name: device_manufacturer_manufacturer_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: device_manufacturer_manufacturer_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX device_manufacturer_manufacturer_token_idx ON device USING gin (index_as_string(content, '{manufacturer}'::text[]) gin_trgm_ops);
-
-
---
--- Name: device_model_model_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX device_model_model_token_idx ON device USING gin (index_as_string(content, '{model}'::text[]) gin_trgm_ops);
+CREATE INDEX device_manufacturer_manufacturer_string_idx ON device USING gin (index_as_string(content, '{manufacturer}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: device_organization_owner_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: device_model_model_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX device_organization_owner_token_idx ON device USING gin (index_as_reference(content, '{owner}'::text[]));
+CREATE INDEX device_model_model_string_idx ON device USING gin (index_as_string(content, '{model}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: device_patient_patient_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: device_organization_owner_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX device_patient_patient_token_idx ON device USING gin (index_as_reference(content, '{patient}'::text[]));
+CREATE INDEX device_organization_owner_reference_idx ON device USING gin (index_as_reference(content, '{owner}'::text[]));
+
+
+--
+-- Name: device_patient_patient_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX device_patient_patient_reference_idx ON device USING gin (index_as_reference(content, '{patient}'::text[]));
 
 
 --
@@ -9674,10 +9724,10 @@ CREATE INDEX device_type_type_token_idx ON device USING gin (index_codeableconce
 
 
 --
--- Name: device_udi_udi_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: device_udi_udi_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX device_udi_udi_token_idx ON device USING gin (index_as_string(content, '{udi}'::text[]) gin_trgm_ops);
+CREATE INDEX device_udi_udi_string_idx ON device USING gin (index_as_string(content, '{udi}'::text[]) gin_trgm_ops);
 
 
 --
@@ -9709,24 +9759,24 @@ CREATE UNIQUE INDEX deviceobservationreport_logical_id_as_varchar_idx ON deviceo
 
 
 --
--- Name: deviceobservationreport_observation_observation_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: deviceobservationreport_observation_observation_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX deviceobservationreport_observation_observation_token_idx ON deviceobservationreport USING gin (index_as_reference(content, '{virtualDevice,channel,metric,observation}'::text[]));
-
-
---
--- Name: deviceobservationreport_source_source_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX deviceobservationreport_source_source_token_idx ON deviceobservationreport USING gin (index_as_reference(content, '{source}'::text[]));
+CREATE INDEX deviceobservationreport_observation_observation_reference_idx ON deviceobservationreport USING gin (index_as_reference(content, '{virtualDevice,channel,metric,observation}'::text[]));
 
 
 --
--- Name: deviceobservationreport_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: deviceobservationreport_source_source_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX deviceobservationreport_subject_subject_token_idx ON deviceobservationreport USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX deviceobservationreport_source_source_reference_idx ON deviceobservationreport USING gin (index_as_reference(content, '{source}'::text[]));
+
+
+--
+-- Name: deviceobservationreport_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX deviceobservationreport_subject_subject_reference_idx ON deviceobservationreport USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
@@ -9744,17 +9794,17 @@ CREATE INDEX diagnosticorder_code_code_token_idx ON diagnosticorder USING gin (i
 
 
 --
--- Name: diagnosticorder_encounter_encounter_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: diagnosticorder_encounter_encounter_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX diagnosticorder_encounter_encounter_token_idx ON diagnosticorder USING gin (index_as_reference(content, '{encounter}'::text[]));
+CREATE INDEX diagnosticorder_encounter_encounter_reference_idx ON diagnosticorder USING gin (index_as_reference(content, '{encounter}'::text[]));
 
 
 --
--- Name: diagnosticorder_event_date_datetime_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: diagnosticorder_event_date_datetime_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX diagnosticorder_event_date_datetime_token_idx ON diagnosticorder USING gin (index_as_string(content, '{event,dateTime}'::text[]) gin_trgm_ops);
+CREATE INDEX diagnosticorder_event_date_datetime_date_idx ON diagnosticorder USING gist (index_as_date(content, '{event,dateTime}'::text[], 'dateTime'::text));
 
 
 --
@@ -9800,10 +9850,10 @@ CREATE UNIQUE INDEX diagnosticorder_logical_id_as_varchar_idx ON diagnosticorder
 
 
 --
--- Name: diagnosticorder_orderer_orderer_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: diagnosticorder_orderer_orderer_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX diagnosticorder_orderer_orderer_token_idx ON diagnosticorder USING gin (index_as_reference(content, '{orderer}'::text[]));
+CREATE INDEX diagnosticorder_orderer_orderer_reference_idx ON diagnosticorder USING gin (index_as_reference(content, '{orderer}'::text[]));
 
 
 --
@@ -9814,24 +9864,24 @@ CREATE INDEX diagnosticorder_status_status_token_idx ON diagnosticorder USING gi
 
 
 --
--- Name: diagnosticorder_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: diagnosticorder_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX diagnosticorder_subject_subject_token_idx ON diagnosticorder USING gin (index_as_reference(content, '{subject}'::text[]));
-
-
---
--- Name: diagnosticreport_date_diagnosticdatetime_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX diagnosticreport_date_diagnosticdatetime_token_idx ON diagnosticreport USING gin (index_as_string(content, '{diagnosticdateTime}'::text[]) gin_trgm_ops);
+CREATE INDEX diagnosticorder_subject_subject_reference_idx ON diagnosticorder USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
--- Name: diagnosticreport_date_diagnosticperiod_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: diagnosticreport_date_diagnosticdatetime_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX diagnosticreport_date_diagnosticperiod_token_idx ON diagnosticreport USING gin (index_as_string(content, '{diagnosticPeriod}'::text[]) gin_trgm_ops);
+CREATE INDEX diagnosticreport_date_diagnosticdatetime_date_idx ON diagnosticreport USING gist (index_as_date(content, '{diagnosticdateTime}'::text[], 'dateTime'::text));
+
+
+--
+-- Name: diagnosticreport_date_diagnosticperiod_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX diagnosticreport_date_diagnosticperiod_date_idx ON diagnosticreport USING gist (index_as_date(content, '{diagnosticPeriod}'::text[], 'Period'::text));
 
 
 --
@@ -9856,17 +9906,17 @@ CREATE INDEX diagnosticreport_identifier_identifier_token_idx ON diagnosticrepor
 
 
 --
--- Name: diagnosticreport_image_link_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: diagnosticreport_image_link_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX diagnosticreport_image_link_token_idx ON diagnosticreport USING gin (index_as_reference(content, '{image,link}'::text[]));
+CREATE INDEX diagnosticreport_image_link_reference_idx ON diagnosticreport USING gin (index_as_reference(content, '{image,link}'::text[]));
 
 
 --
--- Name: diagnosticreport_issued_issued_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: diagnosticreport_issued_issued_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX diagnosticreport_issued_issued_token_idx ON diagnosticreport USING gin (index_as_string(content, '{issued}'::text[]) gin_trgm_ops);
+CREATE INDEX diagnosticreport_issued_issued_date_idx ON diagnosticreport USING gist (index_as_date(content, '{issued}'::text[], 'dateTime'::text));
 
 
 --
@@ -9884,24 +9934,24 @@ CREATE INDEX diagnosticreport_name_name_token_idx ON diagnosticreport USING gin 
 
 
 --
--- Name: diagnosticreport_performer_performer_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: diagnosticreport_performer_performer_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX diagnosticreport_performer_performer_token_idx ON diagnosticreport USING gin (index_as_reference(content, '{performer}'::text[]));
-
-
---
--- Name: diagnosticreport_request_requestdetail_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX diagnosticreport_request_requestdetail_token_idx ON diagnosticreport USING gin (index_as_reference(content, '{requestDetail}'::text[]));
+CREATE INDEX diagnosticreport_performer_performer_reference_idx ON diagnosticreport USING gin (index_as_reference(content, '{performer}'::text[]));
 
 
 --
--- Name: diagnosticreport_result_result_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: diagnosticreport_request_requestdetail_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX diagnosticreport_result_result_token_idx ON diagnosticreport USING gin (index_as_reference(content, '{result}'::text[]));
+CREATE INDEX diagnosticreport_request_requestdetail_reference_idx ON diagnosticreport USING gin (index_as_reference(content, '{requestDetail}'::text[]));
+
+
+--
+-- Name: diagnosticreport_result_result_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX diagnosticreport_result_result_reference_idx ON diagnosticreport USING gin (index_as_reference(content, '{result}'::text[]));
 
 
 --
@@ -9912,10 +9962,10 @@ CREATE INDEX diagnosticreport_service_servicecategory_token_idx ON diagnosticrep
 
 
 --
--- Name: diagnosticreport_specimen_specimen_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: diagnosticreport_specimen_specimen_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX diagnosticreport_specimen_specimen_token_idx ON diagnosticreport USING gin (index_as_reference(content, '{specimen}'::text[]));
+CREATE INDEX diagnosticreport_specimen_specimen_reference_idx ON diagnosticreport USING gin (index_as_reference(content, '{specimen}'::text[]));
 
 
 --
@@ -9926,17 +9976,17 @@ CREATE INDEX diagnosticreport_status_status_token_idx ON diagnosticreport USING 
 
 
 --
--- Name: diagnosticreport_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: diagnosticreport_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX diagnosticreport_subject_subject_token_idx ON diagnosticreport USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX diagnosticreport_subject_subject_reference_idx ON diagnosticreport USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
--- Name: documentmanifest_author_author_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentmanifest_author_author_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentmanifest_author_author_token_idx ON documentmanifest USING gin (index_as_reference(content, '{author}'::text[]));
+CREATE INDEX documentmanifest_author_author_reference_idx ON documentmanifest USING gin (index_as_reference(content, '{author}'::text[]));
 
 
 --
@@ -9947,24 +9997,24 @@ CREATE INDEX documentmanifest_confidentiality_confidentiality_token_idx ON docum
 
 
 --
--- Name: documentmanifest_content_content_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentmanifest_content_content_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentmanifest_content_content_token_idx ON documentmanifest USING gin (index_as_reference(content, '{content}'::text[]));
-
-
---
--- Name: documentmanifest_created_created_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX documentmanifest_created_created_token_idx ON documentmanifest USING gin (index_as_string(content, '{created}'::text[]) gin_trgm_ops);
+CREATE INDEX documentmanifest_content_content_reference_idx ON documentmanifest USING gin (index_as_reference(content, '{content}'::text[]));
 
 
 --
--- Name: documentmanifest_description_description_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentmanifest_created_created_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentmanifest_description_description_token_idx ON documentmanifest USING gin (index_as_string(content, '{description}'::text[]) gin_trgm_ops);
+CREATE INDEX documentmanifest_created_created_date_idx ON documentmanifest USING gist (index_as_date(content, '{created}'::text[], 'dateTime'::text));
+
+
+--
+-- Name: documentmanifest_description_description_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX documentmanifest_description_description_string_idx ON documentmanifest USING gin (index_as_string(content, '{description}'::text[]) gin_trgm_ops);
 
 
 --
@@ -9982,10 +10032,10 @@ CREATE UNIQUE INDEX documentmanifest_logical_id_as_varchar_idx ON documentmanife
 
 
 --
--- Name: documentmanifest_recipient_recipient_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentmanifest_recipient_recipient_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentmanifest_recipient_recipient_token_idx ON documentmanifest USING gin (index_as_reference(content, '{recipient}'::text[]));
+CREATE INDEX documentmanifest_recipient_recipient_reference_idx ON documentmanifest USING gin (index_as_reference(content, '{recipient}'::text[]));
 
 
 --
@@ -9996,17 +10046,17 @@ CREATE INDEX documentmanifest_status_status_token_idx ON documentmanifest USING 
 
 
 --
--- Name: documentmanifest_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentmanifest_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentmanifest_subject_subject_token_idx ON documentmanifest USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX documentmanifest_subject_subject_reference_idx ON documentmanifest USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
--- Name: documentmanifest_supersedes_supercedes_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentmanifest_supersedes_supercedes_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentmanifest_supersedes_supercedes_token_idx ON documentmanifest USING gin (index_as_reference(content, '{supercedes}'::text[]));
+CREATE INDEX documentmanifest_supersedes_supercedes_reference_idx ON documentmanifest USING gin (index_as_reference(content, '{supercedes}'::text[]));
 
 
 --
@@ -10017,17 +10067,17 @@ CREATE INDEX documentmanifest_type_type_token_idx ON documentmanifest USING gin 
 
 
 --
--- Name: documentreference_authenticator_authenticator_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentreference_authenticator_authenticator_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentreference_authenticator_authenticator_token_idx ON documentreference USING gin (index_as_reference(content, '{authenticator}'::text[]));
+CREATE INDEX documentreference_authenticator_authenticator_reference_idx ON documentreference USING gin (index_as_reference(content, '{authenticator}'::text[]));
 
 
 --
--- Name: documentreference_author_author_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentreference_author_author_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentreference_author_author_token_idx ON documentreference USING gin (index_as_reference(content, '{author}'::text[]));
+CREATE INDEX documentreference_author_author_reference_idx ON documentreference USING gin (index_as_reference(content, '{author}'::text[]));
 
 
 --
@@ -10045,24 +10095,24 @@ CREATE INDEX documentreference_confidentiality_confidentiality_token_idx ON docu
 
 
 --
--- Name: documentreference_created_created_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentreference_created_created_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentreference_created_created_token_idx ON documentreference USING gin (index_as_string(content, '{created}'::text[]) gin_trgm_ops);
-
-
---
--- Name: documentreference_custodian_custodian_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX documentreference_custodian_custodian_token_idx ON documentreference USING gin (index_as_reference(content, '{custodian}'::text[]));
+CREATE INDEX documentreference_created_created_date_idx ON documentreference USING gist (index_as_date(content, '{created}'::text[], 'dateTime'::text));
 
 
 --
--- Name: documentreference_description_description_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentreference_custodian_custodian_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentreference_description_description_token_idx ON documentreference USING gin (index_as_string(content, '{description}'::text[]) gin_trgm_ops);
+CREATE INDEX documentreference_custodian_custodian_reference_idx ON documentreference USING gin (index_as_reference(content, '{custodian}'::text[]));
+
+
+--
+-- Name: documentreference_description_description_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX documentreference_description_description_string_idx ON documentreference USING gin (index_as_string(content, '{description}'::text[]) gin_trgm_ops);
 
 
 --
@@ -10094,10 +10144,10 @@ CREATE INDEX documentreference_full_text_idx ON documentreference USING gin (to_
 
 
 --
--- Name: documentreference_indexed_indexed_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentreference_indexed_indexed_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentreference_indexed_indexed_token_idx ON documentreference USING gin (index_as_string(content, '{indexed}'::text[]) gin_trgm_ops);
+CREATE INDEX documentreference_indexed_indexed_date_idx ON documentreference USING gist (index_as_date(content, '{indexed}'::text[], 'instant'::text));
 
 
 --
@@ -10108,10 +10158,10 @@ CREATE INDEX documentreference_language_primarylanguage_token_idx ON documentref
 
 
 --
--- Name: documentreference_location_location_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentreference_location_location_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentreference_location_location_token_idx ON documentreference USING gin (index_as_string(content, '{location}'::text[]) gin_trgm_ops);
+CREATE INDEX documentreference_location_location_string_idx ON documentreference USING gin (index_as_string(content, '{location}'::text[]) gin_trgm_ops);
 
 
 --
@@ -10122,17 +10172,17 @@ CREATE UNIQUE INDEX documentreference_logical_id_as_varchar_idx ON documentrefer
 
 
 --
--- Name: documentreference_period_period_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentreference_period_period_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentreference_period_period_token_idx ON documentreference USING gin (index_as_string(content, '{context,period}'::text[]) gin_trgm_ops);
+CREATE INDEX documentreference_period_period_date_idx ON documentreference USING gist (index_as_date(content, '{context,period}'::text[], 'Period'::text));
 
 
 --
--- Name: documentreference_relatesto_target_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentreference_relatesto_target_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentreference_relatesto_target_token_idx ON documentreference USING gin (index_as_reference(content, '{relatesTo,target}'::text[]));
+CREATE INDEX documentreference_relatesto_target_reference_idx ON documentreference USING gin (index_as_reference(content, '{relatesTo,target}'::text[]));
 
 
 --
@@ -10150,10 +10200,10 @@ CREATE INDEX documentreference_status_status_token_idx ON documentreference USIN
 
 
 --
--- Name: documentreference_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: documentreference_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX documentreference_subject_subject_token_idx ON documentreference USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX documentreference_subject_subject_reference_idx ON documentreference USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
@@ -10164,10 +10214,10 @@ CREATE INDEX documentreference_type_type_token_idx ON documentreference USING gi
 
 
 --
--- Name: encounter_date_period_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: encounter_date_period_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX encounter_date_period_token_idx ON encounter USING gin (index_as_string(content, '{period}'::text[]) gin_trgm_ops);
+CREATE INDEX encounter_date_period_date_idx ON encounter USING gist (index_as_date(content, '{period}'::text[], 'Period'::text));
 
 
 --
@@ -10185,24 +10235,24 @@ CREATE INDEX encounter_identifier_identifier_token_idx ON encounter USING gin (i
 
 
 --
--- Name: encounter_indication_indication_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: encounter_indication_indication_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX encounter_indication_indication_token_idx ON encounter USING gin (index_as_reference(content, '{indication}'::text[]));
-
-
---
--- Name: encounter_location_location_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX encounter_location_location_token_idx ON encounter USING gin (index_as_reference(content, '{location,location}'::text[]));
+CREATE INDEX encounter_indication_indication_reference_idx ON encounter USING gin (index_as_reference(content, '{indication}'::text[]));
 
 
 --
--- Name: encounter_location_period_period_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: encounter_location_location_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX encounter_location_period_period_token_idx ON encounter USING gin (index_as_string(content, '{location,period}'::text[]) gin_trgm_ops);
+CREATE INDEX encounter_location_location_reference_idx ON encounter USING gin (index_as_reference(content, '{location,location}'::text[]));
+
+
+--
+-- Name: encounter_location_period_period_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX encounter_location_period_period_date_idx ON encounter USING gist (index_as_date(content, '{location,period}'::text[], 'Period'::text));
 
 
 --
@@ -10220,10 +10270,10 @@ CREATE INDEX encounter_status_status_token_idx ON encounter USING gin (index_pri
 
 
 --
--- Name: encounter_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: encounter_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX encounter_subject_subject_token_idx ON encounter USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX encounter_subject_subject_reference_idx ON encounter USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
@@ -10241,10 +10291,10 @@ CREATE UNIQUE INDEX familyhistory_logical_id_as_varchar_idx ON familyhistory USI
 
 
 --
--- Name: familyhistory_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: familyhistory_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX familyhistory_subject_subject_token_idx ON familyhistory USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX familyhistory_subject_subject_reference_idx ON familyhistory USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
@@ -10297,10 +10347,10 @@ CREATE UNIQUE INDEX group_logical_id_as_varchar_idx ON "group" USING btree (((lo
 
 
 --
--- Name: group_member_member_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: group_member_member_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX group_member_member_token_idx ON "group" USING gin (index_as_reference(content, '{member}'::text[]));
+CREATE INDEX group_member_member_reference_idx ON "group" USING gin (index_as_reference(content, '{member}'::text[]));
 
 
 --
@@ -10339,10 +10389,10 @@ CREATE INDEX imagingstudy_bodysite_bodysite_token_idx ON imagingstudy USING gin 
 
 
 --
--- Name: imagingstudy_date_datetime_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: imagingstudy_date_datetime_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX imagingstudy_date_datetime_token_idx ON imagingstudy USING gin (index_as_string(content, '{dateTime}'::text[]) gin_trgm_ops);
+CREATE INDEX imagingstudy_date_datetime_date_idx ON imagingstudy USING gist (index_as_date(content, '{dateTime}'::text[], 'dateTime'::text));
 
 
 --
@@ -10388,10 +10438,10 @@ CREATE INDEX imagingstudy_study_uid_token_idx ON imagingstudy USING gin (index_p
 
 
 --
--- Name: imagingstudy_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: imagingstudy_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX imagingstudy_subject_subject_token_idx ON imagingstudy USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX imagingstudy_subject_subject_reference_idx ON imagingstudy USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
@@ -10402,10 +10452,10 @@ CREATE INDEX imagingstudy_uid_uid_token_idx ON imagingstudy USING gin (index_pri
 
 
 --
--- Name: immunization_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: immunization_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX immunization_date_date_token_idx ON immunization USING gin (index_as_string(content, '{date}'::text[]) gin_trgm_ops);
+CREATE INDEX immunization_date_date_date_idx ON immunization USING gist (index_as_date(content, '{date}'::text[], 'dateTime'::text));
 
 
 --
@@ -10423,10 +10473,10 @@ CREATE INDEX immunization_identifier_identifier_token_idx ON immunization USING 
 
 
 --
--- Name: immunization_location_location_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: immunization_location_location_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX immunization_location_location_token_idx ON immunization USING gin (index_as_reference(content, '{location}'::text[]));
+CREATE INDEX immunization_location_location_reference_idx ON immunization USING gin (index_as_reference(content, '{location}'::text[]));
 
 
 --
@@ -10437,38 +10487,38 @@ CREATE UNIQUE INDEX immunization_logical_id_as_varchar_idx ON immunization USING
 
 
 --
--- Name: immunization_lot_number_lotnumber_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: immunization_lot_number_lotnumber_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX immunization_lot_number_lotnumber_token_idx ON immunization USING gin (index_as_string(content, '{lotNumber}'::text[]) gin_trgm_ops);
-
-
---
--- Name: immunization_manufacturer_manufacturer_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX immunization_manufacturer_manufacturer_token_idx ON immunization USING gin (index_as_reference(content, '{manufacturer}'::text[]));
+CREATE INDEX immunization_lot_number_lotnumber_string_idx ON immunization USING gin (index_as_string(content, '{lotNumber}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: immunization_performer_performer_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: immunization_manufacturer_manufacturer_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX immunization_performer_performer_token_idx ON immunization USING gin (index_as_reference(content, '{performer}'::text[]));
-
-
---
--- Name: immunization_reaction_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX immunization_reaction_date_date_token_idx ON immunization USING gin (index_as_string(content, '{reaction,date}'::text[]) gin_trgm_ops);
+CREATE INDEX immunization_manufacturer_manufacturer_reference_idx ON immunization USING gin (index_as_reference(content, '{manufacturer}'::text[]));
 
 
 --
--- Name: immunization_reaction_detail_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: immunization_performer_performer_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX immunization_reaction_detail_token_idx ON immunization USING gin (index_as_reference(content, '{reaction,detail}'::text[]));
+CREATE INDEX immunization_performer_performer_reference_idx ON immunization USING gin (index_as_reference(content, '{performer}'::text[]));
+
+
+--
+-- Name: immunization_reaction_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX immunization_reaction_date_date_date_idx ON immunization USING gist (index_as_date(content, '{reaction,date}'::text[], 'dateTime'::text));
+
+
+--
+-- Name: immunization_reaction_detail_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX immunization_reaction_detail_reference_idx ON immunization USING gin (index_as_reference(content, '{reaction,detail}'::text[]));
 
 
 --
@@ -10493,17 +10543,17 @@ CREATE INDEX immunization_refused_refusedindicator_token_idx ON immunization USI
 
 
 --
--- Name: immunization_requester_requester_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: immunization_requester_requester_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX immunization_requester_requester_token_idx ON immunization USING gin (index_as_reference(content, '{requester}'::text[]));
+CREATE INDEX immunization_requester_requester_reference_idx ON immunization USING gin (index_as_reference(content, '{requester}'::text[]));
 
 
 --
--- Name: immunization_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: immunization_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX immunization_subject_subject_token_idx ON immunization USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX immunization_subject_subject_reference_idx ON immunization USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
@@ -10514,10 +10564,10 @@ CREATE INDEX immunization_vaccine_type_vaccinetype_token_idx ON immunization USI
 
 
 --
--- Name: immunizationrecommendation_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: immunizationrecommendation_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX immunizationrecommendation_date_date_token_idx ON immunizationrecommendation USING gin (index_as_string(content, '{recommendation,date}'::text[]) gin_trgm_ops);
+CREATE INDEX immunizationrecommendation_date_date_date_idx ON immunizationrecommendation USING gist (index_as_date(content, '{recommendation,date}'::text[], 'dateTime'::text));
 
 
 --
@@ -10556,17 +10606,17 @@ CREATE INDEX immunizationrecommendation_status_forecaststatus_token_idx ON immun
 
 
 --
--- Name: immunizationrecommendation_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: immunizationrecommendation_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX immunizationrecommendation_subject_subject_token_idx ON immunizationrecommendation USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX immunizationrecommendation_subject_subject_reference_idx ON immunizationrecommendation USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
--- Name: immunizationrecommendation_support_supportingimmunization_token; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: immunizationrecommendation_support_supportingimmunization_refer; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX immunizationrecommendation_support_supportingimmunization_token ON immunizationrecommendation USING gin (index_as_reference(content, '{recommendation,supportingImmunization}'::text[]));
+CREATE INDEX immunizationrecommendation_support_supportingimmunization_refer ON immunizationrecommendation USING gin (index_as_reference(content, '{recommendation,supportingImmunization}'::text[]));
 
 
 --
@@ -10584,10 +10634,10 @@ CREATE INDEX list_code_code_token_idx ON list USING gin (index_codeableconcept_a
 
 
 --
--- Name: list_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: list_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX list_date_date_token_idx ON list USING gin (index_as_string(content, '{date}'::text[]) gin_trgm_ops);
+CREATE INDEX list_date_date_date_idx ON list USING gist (index_as_date(content, '{date}'::text[], 'dateTime'::text));
 
 
 --
@@ -10605,10 +10655,10 @@ CREATE INDEX list_full_text_idx ON list USING gin (to_tsvector('english'::regcon
 
 
 --
--- Name: list_item_item_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: list_item_item_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX list_item_item_token_idx ON list USING gin (index_as_reference(content, '{entry,item}'::text[]));
+CREATE INDEX list_item_item_reference_idx ON list USING gin (index_as_reference(content, '{entry,item}'::text[]));
 
 
 --
@@ -10619,24 +10669,24 @@ CREATE UNIQUE INDEX list_logical_id_as_varchar_idx ON list USING btree (((logica
 
 
 --
--- Name: list_source_source_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: list_source_source_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX list_source_source_token_idx ON list USING gin (index_as_reference(content, '{source}'::text[]));
-
-
---
--- Name: list_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX list_subject_subject_token_idx ON list USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX list_source_source_reference_idx ON list USING gin (index_as_reference(content, '{source}'::text[]));
 
 
 --
--- Name: location_address_address_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: list_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX location_address_address_token_idx ON location USING gin (index_as_string(content, '{address}'::text[]) gin_trgm_ops);
+CREATE INDEX list_subject_subject_reference_idx ON list USING gin (index_as_reference(content, '{subject}'::text[]));
+
+
+--
+-- Name: location_address_address_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX location_address_address_string_idx ON location USING gin (index_as_string(content, '{address}'::text[]) gin_trgm_ops);
 
 
 --
@@ -10661,17 +10711,17 @@ CREATE UNIQUE INDEX location_logical_id_as_varchar_idx ON location USING btree (
 
 
 --
--- Name: location_name_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: location_name_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX location_name_name_token_idx ON location USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
+CREATE INDEX location_name_name_string_idx ON location USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: location_partof_partof_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: location_partof_partof_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX location_partof_partof_token_idx ON location USING gin (index_as_reference(content, '{partOf}'::text[]));
+CREATE INDEX location_partof_partof_reference_idx ON location USING gin (index_as_reference(content, '{partOf}'::text[]));
 
 
 --
@@ -10689,10 +10739,10 @@ CREATE INDEX location_type_type_token_idx ON location USING gin (index_codeablec
 
 
 --
--- Name: media_date_datetime_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: media_date_datetime_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX media_date_datetime_token_idx ON media USING gin (index_as_string(content, '{dateTime}'::text[]) gin_trgm_ops);
+CREATE INDEX media_date_datetime_date_idx ON media USING gist (index_as_date(content, '{dateTime}'::text[], 'dateTime'::text));
 
 
 --
@@ -10717,17 +10767,17 @@ CREATE UNIQUE INDEX media_logical_id_as_varchar_idx ON media USING btree (((logi
 
 
 --
--- Name: media_operator_operator_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: media_operator_operator_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX media_operator_operator_token_idx ON media USING gin (index_as_reference(content, '{operator}'::text[]));
+CREATE INDEX media_operator_operator_reference_idx ON media USING gin (index_as_reference(content, '{operator}'::text[]));
 
 
 --
--- Name: media_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: media_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX media_subject_subject_token_idx ON media USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX media_subject_subject_reference_idx ON media USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
@@ -10766,10 +10816,10 @@ CREATE INDEX medication_container_container_token_idx ON medication USING gin (i
 
 
 --
--- Name: medication_content_item_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medication_content_item_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medication_content_item_token_idx ON medication USING gin (index_as_reference(content, '{package,content,item}'::text[]));
+CREATE INDEX medication_content_item_reference_idx ON medication USING gin (index_as_reference(content, '{package,content,item}'::text[]));
 
 
 --
@@ -10787,10 +10837,10 @@ CREATE INDEX medication_full_text_idx ON medication USING gin (to_tsvector('engl
 
 
 --
--- Name: medication_ingredient_item_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medication_ingredient_item_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medication_ingredient_item_token_idx ON medication USING gin (index_as_reference(content, '{product,ingredient,item}'::text[]));
+CREATE INDEX medication_ingredient_item_reference_idx ON medication USING gin (index_as_reference(content, '{product,ingredient,item}'::text[]));
 
 
 --
@@ -10801,31 +10851,31 @@ CREATE UNIQUE INDEX medication_logical_id_as_varchar_idx ON medication USING btr
 
 
 --
--- Name: medication_manufacturer_manufacturer_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medication_manufacturer_manufacturer_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medication_manufacturer_manufacturer_token_idx ON medication USING gin (index_as_reference(content, '{manufacturer}'::text[]));
-
-
---
--- Name: medication_name_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX medication_name_name_token_idx ON medication USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
+CREATE INDEX medication_manufacturer_manufacturer_reference_idx ON medication USING gin (index_as_reference(content, '{manufacturer}'::text[]));
 
 
 --
--- Name: medicationadministration_device_device_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medication_name_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationadministration_device_device_token_idx ON medicationadministration USING gin (index_as_reference(content, '{device}'::text[]));
+CREATE INDEX medication_name_name_string_idx ON medication USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: medicationadministration_encounter_encounter_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationadministration_device_device_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationadministration_encounter_encounter_token_idx ON medicationadministration USING gin (index_as_reference(content, '{encounter}'::text[]));
+CREATE INDEX medicationadministration_device_device_reference_idx ON medicationadministration USING gin (index_as_reference(content, '{device}'::text[]));
+
+
+--
+-- Name: medicationadministration_encounter_encounter_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationadministration_encounter_encounter_reference_idx ON medicationadministration USING gin (index_as_reference(content, '{encounter}'::text[]));
 
 
 --
@@ -10850,10 +10900,10 @@ CREATE UNIQUE INDEX medicationadministration_logical_id_as_varchar_idx ON medica
 
 
 --
--- Name: medicationadministration_medication_medication_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationadministration_medication_medication_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationadministration_medication_medication_token_idx ON medicationadministration USING gin (index_as_reference(content, '{medication}'::text[]));
+CREATE INDEX medicationadministration_medication_medication_reference_idx ON medicationadministration USING gin (index_as_reference(content, '{medication}'::text[]));
 
 
 --
@@ -10864,17 +10914,17 @@ CREATE INDEX medicationadministration_notgiven_wasnotgiven_token_idx ON medicati
 
 
 --
--- Name: medicationadministration_patient_patient_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationadministration_patient_patient_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationadministration_patient_patient_token_idx ON medicationadministration USING gin (index_as_reference(content, '{patient}'::text[]));
+CREATE INDEX medicationadministration_patient_patient_reference_idx ON medicationadministration USING gin (index_as_reference(content, '{patient}'::text[]));
 
 
 --
--- Name: medicationadministration_prescription_prescription_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationadministration_prescription_prescription_reference_id; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationadministration_prescription_prescription_token_idx ON medicationadministration USING gin (index_as_reference(content, '{prescription}'::text[]));
+CREATE INDEX medicationadministration_prescription_prescription_reference_id ON medicationadministration USING gin (index_as_reference(content, '{prescription}'::text[]));
 
 
 --
@@ -10885,24 +10935,24 @@ CREATE INDEX medicationadministration_status_status_token_idx ON medicationadmin
 
 
 --
--- Name: medicationadministration_whengiven_whengiven_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationadministration_whengiven_whengiven_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationadministration_whengiven_whengiven_token_idx ON medicationadministration USING gin (index_as_string(content, '{whenGiven}'::text[]) gin_trgm_ops);
-
-
---
--- Name: medicationdispense_destination_destination_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX medicationdispense_destination_destination_token_idx ON medicationdispense USING gin (index_as_reference(content, '{dispense,destination}'::text[]));
+CREATE INDEX medicationadministration_whengiven_whengiven_date_idx ON medicationadministration USING gist (index_as_date(content, '{whenGiven}'::text[], 'Period'::text));
 
 
 --
--- Name: medicationdispense_dispenser_dispenser_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationdispense_destination_destination_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationdispense_dispenser_dispenser_token_idx ON medicationdispense USING gin (index_as_reference(content, '{dispenser}'::text[]));
+CREATE INDEX medicationdispense_destination_destination_reference_idx ON medicationdispense USING gin (index_as_reference(content, '{dispense,destination}'::text[]));
+
+
+--
+-- Name: medicationdispense_dispenser_dispenser_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationdispense_dispenser_dispenser_reference_idx ON medicationdispense USING gin (index_as_reference(content, '{dispenser}'::text[]));
 
 
 --
@@ -10927,31 +10977,31 @@ CREATE UNIQUE INDEX medicationdispense_logical_id_as_varchar_idx ON medicationdi
 
 
 --
--- Name: medicationdispense_medication_medication_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationdispense_medication_medication_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationdispense_medication_medication_token_idx ON medicationdispense USING gin (index_as_reference(content, '{dispense,medication}'::text[]));
-
-
---
--- Name: medicationdispense_patient_patient_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX medicationdispense_patient_patient_token_idx ON medicationdispense USING gin (index_as_reference(content, '{patient}'::text[]));
+CREATE INDEX medicationdispense_medication_medication_reference_idx ON medicationdispense USING gin (index_as_reference(content, '{dispense,medication}'::text[]));
 
 
 --
--- Name: medicationdispense_prescription_authorizingprescription_token_i; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationdispense_patient_patient_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationdispense_prescription_authorizingprescription_token_i ON medicationdispense USING gin (index_as_reference(content, '{authorizingPrescription}'::text[]));
+CREATE INDEX medicationdispense_patient_patient_reference_idx ON medicationdispense USING gin (index_as_reference(content, '{patient}'::text[]));
 
 
 --
--- Name: medicationdispense_responsibleparty_responsibleparty_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationdispense_prescription_authorizingprescription_referen; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationdispense_responsibleparty_responsibleparty_token_idx ON medicationdispense USING gin (index_as_reference(content, '{substitution,responsibleParty}'::text[]));
+CREATE INDEX medicationdispense_prescription_authorizingprescription_referen ON medicationdispense USING gin (index_as_reference(content, '{authorizingPrescription}'::text[]));
+
+
+--
+-- Name: medicationdispense_responsibleparty_responsibleparty_reference_; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationdispense_responsibleparty_responsibleparty_reference_ ON medicationdispense USING gin (index_as_reference(content, '{substitution,responsibleParty}'::text[]));
 
 
 --
@@ -10969,31 +11019,31 @@ CREATE INDEX medicationdispense_type_type_token_idx ON medicationdispense USING 
 
 
 --
--- Name: medicationdispense_whenhandedover_whenhandedover_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationdispense_whenhandedover_whenhandedover_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationdispense_whenhandedover_whenhandedover_token_idx ON medicationdispense USING gin (index_as_string(content, '{dispense,whenHandedOver}'::text[]) gin_trgm_ops);
-
-
---
--- Name: medicationdispense_whenprepared_whenprepared_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX medicationdispense_whenprepared_whenprepared_token_idx ON medicationdispense USING gin (index_as_string(content, '{dispense,whenPrepared}'::text[]) gin_trgm_ops);
+CREATE INDEX medicationdispense_whenhandedover_whenhandedover_date_idx ON medicationdispense USING gist (index_as_date(content, '{dispense,whenHandedOver}'::text[], 'dateTime'::text));
 
 
 --
--- Name: medicationprescription_datewritten_datewritten_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationdispense_whenprepared_whenprepared_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationprescription_datewritten_datewritten_token_idx ON medicationprescription USING gin (index_as_string(content, '{dateWritten}'::text[]) gin_trgm_ops);
+CREATE INDEX medicationdispense_whenprepared_whenprepared_date_idx ON medicationdispense USING gist (index_as_date(content, '{dispense,whenPrepared}'::text[], 'dateTime'::text));
 
 
 --
--- Name: medicationprescription_encounter_encounter_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationprescription_datewritten_datewritten_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationprescription_encounter_encounter_token_idx ON medicationprescription USING gin (index_as_reference(content, '{encounter}'::text[]));
+CREATE INDEX medicationprescription_datewritten_datewritten_date_idx ON medicationprescription USING gist (index_as_date(content, '{dateWritten}'::text[], 'dateTime'::text));
+
+
+--
+-- Name: medicationprescription_encounter_encounter_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationprescription_encounter_encounter_reference_idx ON medicationprescription USING gin (index_as_reference(content, '{encounter}'::text[]));
 
 
 --
@@ -11018,17 +11068,17 @@ CREATE UNIQUE INDEX medicationprescription_logical_id_as_varchar_idx ON medicati
 
 
 --
--- Name: medicationprescription_medication_medication_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationprescription_medication_medication_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationprescription_medication_medication_token_idx ON medicationprescription USING gin (index_as_reference(content, '{medication}'::text[]));
+CREATE INDEX medicationprescription_medication_medication_reference_idx ON medicationprescription USING gin (index_as_reference(content, '{medication}'::text[]));
 
 
 --
--- Name: medicationprescription_patient_patient_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationprescription_patient_patient_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationprescription_patient_patient_token_idx ON medicationprescription USING gin (index_as_reference(content, '{patient}'::text[]));
+CREATE INDEX medicationprescription_patient_patient_reference_idx ON medicationprescription USING gin (index_as_reference(content, '{patient}'::text[]));
 
 
 --
@@ -11039,10 +11089,10 @@ CREATE INDEX medicationprescription_status_status_token_idx ON medicationprescri
 
 
 --
--- Name: medicationstatement_device_device_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationstatement_device_device_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationstatement_device_device_token_idx ON medicationstatement USING gin (index_as_reference(content, '{device}'::text[]));
+CREATE INDEX medicationstatement_device_device_reference_idx ON medicationstatement USING gin (index_as_reference(content, '{device}'::text[]));
 
 
 --
@@ -11067,24 +11117,24 @@ CREATE UNIQUE INDEX medicationstatement_logical_id_as_varchar_idx ON medications
 
 
 --
--- Name: medicationstatement_medication_medication_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationstatement_medication_medication_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationstatement_medication_medication_token_idx ON medicationstatement USING gin (index_as_reference(content, '{medication}'::text[]));
-
-
---
--- Name: medicationstatement_patient_patient_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX medicationstatement_patient_patient_token_idx ON medicationstatement USING gin (index_as_reference(content, '{patient}'::text[]));
+CREATE INDEX medicationstatement_medication_medication_reference_idx ON medicationstatement USING gin (index_as_reference(content, '{medication}'::text[]));
 
 
 --
--- Name: medicationstatement_when_given_whengiven_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: medicationstatement_patient_patient_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX medicationstatement_when_given_whengiven_token_idx ON medicationstatement USING gin (index_as_string(content, '{whenGiven}'::text[]) gin_trgm_ops);
+CREATE INDEX medicationstatement_patient_patient_reference_idx ON medicationstatement USING gin (index_as_reference(content, '{patient}'::text[]));
+
+
+--
+-- Name: medicationstatement_when_given_whengiven_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX medicationstatement_when_given_whengiven_date_idx ON medicationstatement USING gist (index_as_date(content, '{whenGiven}'::text[], 'Period'::text));
 
 
 --
@@ -11102,17 +11152,17 @@ CREATE UNIQUE INDEX messageheader_logical_id_as_varchar_idx ON messageheader USI
 
 
 --
--- Name: observation_date_appliesdatetime_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: observation_date_appliesdatetime_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX observation_date_appliesdatetime_token_idx ON observation USING gin (index_as_string(content, '{appliesdateTime}'::text[]) gin_trgm_ops);
+CREATE INDEX observation_date_appliesdatetime_date_idx ON observation USING gist (index_as_date(content, '{appliesdateTime}'::text[], 'dateTime'::text));
 
 
 --
--- Name: observation_date_appliesperiod_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: observation_date_appliesperiod_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX observation_date_appliesperiod_token_idx ON observation USING gin (index_as_string(content, '{appliesPeriod}'::text[]) gin_trgm_ops);
+CREATE INDEX observation_date_appliesperiod_date_idx ON observation USING gist (index_as_date(content, '{appliesPeriod}'::text[], 'Period'::text));
 
 
 --
@@ -11137,17 +11187,17 @@ CREATE INDEX observation_name_name_token_idx ON observation USING gin (index_cod
 
 
 --
--- Name: observation_performer_performer_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: observation_performer_performer_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX observation_performer_performer_token_idx ON observation USING gin (index_as_reference(content, '{performer}'::text[]));
+CREATE INDEX observation_performer_performer_reference_idx ON observation USING gin (index_as_reference(content, '{performer}'::text[]));
 
 
 --
--- Name: observation_related_target_target_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: observation_related_target_target_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX observation_related_target_target_token_idx ON observation USING gin (index_as_reference(content, '{related,target}'::text[]));
+CREATE INDEX observation_related_target_target_reference_idx ON observation USING gin (index_as_reference(content, '{related,target}'::text[]));
 
 
 --
@@ -11165,10 +11215,10 @@ CREATE INDEX observation_reliability_reliability_token_idx ON observation USING 
 
 
 --
--- Name: observation_specimen_specimen_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: observation_specimen_specimen_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX observation_specimen_specimen_token_idx ON observation USING gin (index_as_reference(content, '{specimen}'::text[]));
+CREATE INDEX observation_specimen_specimen_reference_idx ON observation USING gin (index_as_reference(content, '{specimen}'::text[]));
 
 
 --
@@ -11179,10 +11229,10 @@ CREATE INDEX observation_status_status_token_idx ON observation USING gin (index
 
 
 --
--- Name: observation_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: observation_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX observation_subject_subject_token_idx ON observation USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX observation_subject_subject_reference_idx ON observation USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
@@ -11200,59 +11250,59 @@ CREATE INDEX observation_value_concept_valuestring_token_idx ON observation USIN
 
 
 --
--- Name: observation_value_date_valueperiod_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: observation_value_date_valueperiod_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX observation_value_date_valueperiod_token_idx ON observation USING gin (index_as_string(content, '{valuePeriod}'::text[]) gin_trgm_ops);
-
-
---
--- Name: observation_value_string_valueattachment_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX observation_value_string_valueattachment_token_idx ON observation USING gin (index_as_string(content, '{valueAttachment}'::text[]) gin_trgm_ops);
+CREATE INDEX observation_value_date_valueperiod_date_idx ON observation USING gist (index_as_date(content, '{valuePeriod}'::text[], 'Period'::text));
 
 
 --
--- Name: observation_value_string_valuecodeableconcept_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: observation_value_string_valueattachment_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX observation_value_string_valuecodeableconcept_token_idx ON observation USING gin (index_as_string(content, '{valueCodeableConcept}'::text[]) gin_trgm_ops);
-
-
---
--- Name: observation_value_string_valueperiod_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX observation_value_string_valueperiod_token_idx ON observation USING gin (index_as_string(content, '{valuePeriod}'::text[]) gin_trgm_ops);
+CREATE INDEX observation_value_string_valueattachment_string_idx ON observation USING gin (index_as_string(content, '{valueAttachment}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: observation_value_string_valuequantity_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: observation_value_string_valuecodeableconcept_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX observation_value_string_valuequantity_token_idx ON observation USING gin (index_as_string(content, '{valueQuantity}'::text[]) gin_trgm_ops);
-
-
---
--- Name: observation_value_string_valueratio_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX observation_value_string_valueratio_token_idx ON observation USING gin (index_as_string(content, '{valueRatio}'::text[]) gin_trgm_ops);
+CREATE INDEX observation_value_string_valuecodeableconcept_string_idx ON observation USING gin (index_as_string(content, '{valueCodeableConcept}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: observation_value_string_valuesampleddata_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: observation_value_string_valueperiod_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX observation_value_string_valuesampleddata_token_idx ON observation USING gin (index_as_string(content, '{valueSampledData}'::text[]) gin_trgm_ops);
+CREATE INDEX observation_value_string_valueperiod_string_idx ON observation USING gin (index_as_string(content, '{valuePeriod}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: observation_value_string_valuestring_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: observation_value_string_valuequantity_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX observation_value_string_valuestring_token_idx ON observation USING gin (index_as_string(content, '{valuestring}'::text[]) gin_trgm_ops);
+CREATE INDEX observation_value_string_valuequantity_string_idx ON observation USING gin (index_as_string(content, '{valueQuantity}'::text[]) gin_trgm_ops);
+
+
+--
+-- Name: observation_value_string_valueratio_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX observation_value_string_valueratio_string_idx ON observation USING gin (index_as_string(content, '{valueRatio}'::text[]) gin_trgm_ops);
+
+
+--
+-- Name: observation_value_string_valuesampleddata_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX observation_value_string_valuesampleddata_string_idx ON observation USING gin (index_as_string(content, '{valueSampledData}'::text[]) gin_trgm_ops);
+
+
+--
+-- Name: observation_value_string_valuestring_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX observation_value_string_valuestring_string_idx ON observation USING gin (index_as_string(content, '{valuestring}'::text[]) gin_trgm_ops);
 
 
 --
@@ -11270,24 +11320,24 @@ CREATE UNIQUE INDEX operationoutcome_logical_id_as_varchar_idx ON operationoutco
 
 
 --
--- Name: order_authority_authority_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: order_authority_authority_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX order_authority_authority_token_idx ON "order" USING gin (index_as_reference(content, '{authority}'::text[]));
-
-
---
--- Name: order_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX order_date_date_token_idx ON "order" USING gin (index_as_string(content, '{date}'::text[]) gin_trgm_ops);
+CREATE INDEX order_authority_authority_reference_idx ON "order" USING gin (index_as_reference(content, '{authority}'::text[]));
 
 
 --
--- Name: order_detail_detail_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: order_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX order_detail_detail_token_idx ON "order" USING gin (index_as_reference(content, '{detail}'::text[]));
+CREATE INDEX order_date_date_date_idx ON "order" USING gist (index_as_date(content, '{date}'::text[], 'dateTime'::text));
+
+
+--
+-- Name: order_detail_detail_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX order_detail_detail_reference_idx ON "order" USING gin (index_as_reference(content, '{detail}'::text[]));
 
 
 --
@@ -11305,24 +11355,24 @@ CREATE UNIQUE INDEX order_logical_id_as_varchar_idx ON "order" USING btree (((lo
 
 
 --
--- Name: order_source_source_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: order_source_source_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX order_source_source_token_idx ON "order" USING gin (index_as_reference(content, '{source}'::text[]));
-
-
---
--- Name: order_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX order_subject_subject_token_idx ON "order" USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX order_source_source_reference_idx ON "order" USING gin (index_as_reference(content, '{source}'::text[]));
 
 
 --
--- Name: order_target_target_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: order_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX order_target_target_token_idx ON "order" USING gin (index_as_reference(content, '{target}'::text[]));
+CREATE INDEX order_subject_subject_reference_idx ON "order" USING gin (index_as_reference(content, '{subject}'::text[]));
+
+
+--
+-- Name: order_target_target_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX order_target_target_reference_idx ON "order" USING gin (index_as_reference(content, '{target}'::text[]));
 
 
 --
@@ -11333,10 +11383,10 @@ CREATE INDEX order_when_code_code_token_idx ON "order" USING gin (index_codeable
 
 
 --
--- Name: order_when_schedule_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: order_when_schedule_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX order_when_schedule_token_idx ON "order" USING gin (index_as_string(content, '{when,schedule}'::text[]) gin_trgm_ops);
+CREATE INDEX order_when_schedule_date_idx ON "order" USING gist (index_as_date(content, '{when,schedule}'::text[], 'Schedule'::text));
 
 
 --
@@ -11347,17 +11397,17 @@ CREATE INDEX orderresponse_code_code_token_idx ON orderresponse USING gin (index
 
 
 --
--- Name: orderresponse_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: orderresponse_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX orderresponse_date_date_token_idx ON orderresponse USING gin (index_as_string(content, '{date}'::text[]) gin_trgm_ops);
+CREATE INDEX orderresponse_date_date_date_idx ON orderresponse USING gist (index_as_date(content, '{date}'::text[], 'dateTime'::text));
 
 
 --
--- Name: orderresponse_fulfillment_fulfillment_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: orderresponse_fulfillment_fulfillment_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX orderresponse_fulfillment_fulfillment_token_idx ON orderresponse USING gin (index_as_reference(content, '{fulfillment}'::text[]));
+CREATE INDEX orderresponse_fulfillment_fulfillment_reference_idx ON orderresponse USING gin (index_as_reference(content, '{fulfillment}'::text[]));
 
 
 --
@@ -11375,17 +11425,17 @@ CREATE UNIQUE INDEX orderresponse_logical_id_as_varchar_idx ON orderresponse USI
 
 
 --
--- Name: orderresponse_request_request_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: orderresponse_request_request_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX orderresponse_request_request_token_idx ON orderresponse USING gin (index_as_reference(content, '{request}'::text[]));
+CREATE INDEX orderresponse_request_request_reference_idx ON orderresponse USING gin (index_as_reference(content, '{request}'::text[]));
 
 
 --
--- Name: orderresponse_who_who_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: orderresponse_who_who_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX orderresponse_who_who_token_idx ON orderresponse USING gin (index_as_reference(content, '{who}'::text[]));
+CREATE INDEX orderresponse_who_who_reference_idx ON orderresponse USING gin (index_as_reference(content, '{who}'::text[]));
 
 
 --
@@ -11417,17 +11467,17 @@ CREATE UNIQUE INDEX organization_logical_id_as_varchar_idx ON organization USING
 
 
 --
--- Name: organization_name_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: organization_name_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX organization_name_name_token_idx ON organization USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
+CREATE INDEX organization_name_name_string_idx ON organization USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: organization_partof_partof_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: organization_partof_partof_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX organization_partof_partof_token_idx ON organization USING gin (index_as_reference(content, '{partOf}'::text[]));
+CREATE INDEX organization_partof_partof_reference_idx ON organization USING gin (index_as_reference(content, '{partOf}'::text[]));
 
 
 --
@@ -11445,10 +11495,10 @@ CREATE INDEX other_code_code_token_idx ON other USING gin (index_codeableconcept
 
 
 --
--- Name: other_created_created_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: other_created_created_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX other_created_created_token_idx ON other USING gin (index_as_string(content, '{created}'::text[]) gin_trgm_ops);
+CREATE INDEX other_created_created_date_idx ON other USING gist (index_as_date(content, '{created}'::text[], 'date'::text));
 
 
 --
@@ -11466,10 +11516,10 @@ CREATE UNIQUE INDEX other_logical_id_as_varchar_idx ON other USING btree (((logi
 
 
 --
--- Name: other_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: other_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX other_subject_subject_token_idx ON other USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX other_subject_subject_reference_idx ON other USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
@@ -11480,10 +11530,10 @@ CREATE INDEX patient_active_active_token_idx ON patient USING gin (index_primiti
 
 
 --
--- Name: patient_address_address_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: patient_address_address_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX patient_address_address_token_idx ON patient USING gin (index_as_string(content, '{address}'::text[]) gin_trgm_ops);
+CREATE INDEX patient_address_address_string_idx ON patient USING gin (index_as_string(content, '{address}'::text[]) gin_trgm_ops);
 
 
 --
@@ -11501,17 +11551,17 @@ CREATE INDEX patient_animal_species_species_token_idx ON patient USING gin (inde
 
 
 --
--- Name: patient_birthdate_birthdate_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: patient_birthdate_birthdate_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX patient_birthdate_birthdate_token_idx ON patient USING gin (index_as_string(content, '{birthDate}'::text[]) gin_trgm_ops);
+CREATE INDEX patient_birthdate_birthdate_date_idx ON patient USING gist (index_as_date(content, '{birthDate}'::text[], 'dateTime'::text));
 
 
 --
--- Name: patient_family_family_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: patient_family_family_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX patient_family_family_token_idx ON patient USING gin (index_as_string(content, '{name,family}'::text[]) gin_trgm_ops);
+CREATE INDEX patient_family_family_string_idx ON patient USING gin (index_as_string(content, '{name,family}'::text[]) gin_trgm_ops);
 
 
 --
@@ -11529,10 +11579,10 @@ CREATE INDEX patient_gender_gender_token_idx ON patient USING gin (index_codeabl
 
 
 --
--- Name: patient_given_given_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: patient_given_given_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX patient_given_given_token_idx ON patient USING gin (index_as_string(content, '{name,given}'::text[]) gin_trgm_ops);
+CREATE INDEX patient_given_given_string_idx ON patient USING gin (index_as_string(content, '{name,given}'::text[]) gin_trgm_ops);
 
 
 --
@@ -11550,10 +11600,10 @@ CREATE INDEX patient_language_communication_token_idx ON patient USING gin (inde
 
 
 --
--- Name: patient_link_other_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: patient_link_other_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX patient_link_other_token_idx ON patient USING gin (index_as_reference(content, '{link,other}'::text[]));
+CREATE INDEX patient_link_other_reference_idx ON patient USING gin (index_as_reference(content, '{link,other}'::text[]));
 
 
 --
@@ -11564,38 +11614,38 @@ CREATE UNIQUE INDEX patient_logical_id_as_varchar_idx ON patient USING btree (((
 
 
 --
--- Name: patient_name_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: patient_name_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX patient_name_name_token_idx ON patient USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
-
-
---
--- Name: patient_provider_managingorganization_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX patient_provider_managingorganization_token_idx ON patient USING gin (index_as_reference(content, '{managingOrganization}'::text[]));
+CREATE INDEX patient_name_name_string_idx ON patient USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: patient_telecom_telecom_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: patient_provider_managingorganization_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX patient_telecom_telecom_token_idx ON patient USING gin (index_as_string(content, '{telecom}'::text[]) gin_trgm_ops);
-
-
---
--- Name: practitioner_address_address_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX practitioner_address_address_token_idx ON practitioner USING gin (index_as_string(content, '{address}'::text[]) gin_trgm_ops);
+CREATE INDEX patient_provider_managingorganization_reference_idx ON patient USING gin (index_as_reference(content, '{managingOrganization}'::text[]));
 
 
 --
--- Name: practitioner_family_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: patient_telecom_telecom_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX practitioner_family_name_token_idx ON practitioner USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
+CREATE INDEX patient_telecom_telecom_string_idx ON patient USING gin (index_as_string(content, '{telecom}'::text[]) gin_trgm_ops);
+
+
+--
+-- Name: practitioner_address_address_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX practitioner_address_address_string_idx ON practitioner USING gin (index_as_string(content, '{address}'::text[]) gin_trgm_ops);
+
+
+--
+-- Name: practitioner_family_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX practitioner_family_name_string_idx ON practitioner USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
 
 
 --
@@ -11613,10 +11663,10 @@ CREATE INDEX practitioner_gender_gender_token_idx ON practitioner USING gin (ind
 
 
 --
--- Name: practitioner_given_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: practitioner_given_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX practitioner_given_name_token_idx ON practitioner USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
+CREATE INDEX practitioner_given_name_string_idx ON practitioner USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
 
 
 --
@@ -11634,38 +11684,38 @@ CREATE UNIQUE INDEX practitioner_logical_id_as_varchar_idx ON practitioner USING
 
 
 --
--- Name: practitioner_name_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: practitioner_name_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX practitioner_name_name_token_idx ON practitioner USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
-
-
---
--- Name: practitioner_organization_organization_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX practitioner_organization_organization_token_idx ON practitioner USING gin (index_as_reference(content, '{organization}'::text[]));
+CREATE INDEX practitioner_name_name_string_idx ON practitioner USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: practitioner_phonetic_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: practitioner_organization_organization_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX practitioner_phonetic_name_token_idx ON practitioner USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
-
-
---
--- Name: practitioner_telecom_telecom_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX practitioner_telecom_telecom_token_idx ON practitioner USING gin (index_as_string(content, '{telecom}'::text[]) gin_trgm_ops);
+CREATE INDEX practitioner_organization_organization_reference_idx ON practitioner USING gin (index_as_reference(content, '{organization}'::text[]));
 
 
 --
--- Name: procedure_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: practitioner_phonetic_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX procedure_date_date_token_idx ON procedure USING gin (index_as_string(content, '{date}'::text[]) gin_trgm_ops);
+CREATE INDEX practitioner_phonetic_name_string_idx ON practitioner USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
+
+
+--
+-- Name: practitioner_telecom_telecom_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX practitioner_telecom_telecom_string_idx ON practitioner USING gin (index_as_string(content, '{telecom}'::text[]) gin_trgm_ops);
+
+
+--
+-- Name: procedure_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX procedure_date_date_date_idx ON procedure USING gist (index_as_date(content, '{date}'::text[], 'Period'::text));
 
 
 --
@@ -11683,10 +11733,10 @@ CREATE UNIQUE INDEX procedure_logical_id_as_varchar_idx ON procedure USING btree
 
 
 --
--- Name: procedure_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: procedure_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX procedure_subject_subject_token_idx ON procedure USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX procedure_subject_subject_reference_idx ON procedure USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
@@ -11704,17 +11754,17 @@ CREATE INDEX profile_code_code_token_idx ON profile USING gin (index_coding_as_t
 
 
 --
--- Name: profile_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: profile_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX profile_date_date_token_idx ON profile USING gin (index_as_string(content, '{date}'::text[]) gin_trgm_ops);
+CREATE INDEX profile_date_date_date_idx ON profile USING gist (index_as_date(content, '{date}'::text[], 'dateTime'::text));
 
 
 --
--- Name: profile_description_description_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: profile_description_description_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX profile_description_description_token_idx ON profile USING gin (index_as_string(content, '{description}'::text[]) gin_trgm_ops);
+CREATE INDEX profile_description_description_string_idx ON profile USING gin (index_as_string(content, '{description}'::text[]) gin_trgm_ops);
 
 
 --
@@ -11746,17 +11796,17 @@ CREATE UNIQUE INDEX profile_logical_id_as_varchar_idx ON profile USING btree (((
 
 
 --
--- Name: profile_name_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: profile_name_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX profile_name_name_token_idx ON profile USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
+CREATE INDEX profile_name_name_string_idx ON profile USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: profile_publisher_publisher_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: profile_publisher_publisher_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX profile_publisher_publisher_token_idx ON profile USING gin (index_as_string(content, '{publisher}'::text[]) gin_trgm_ops);
+CREATE INDEX profile_publisher_publisher_string_idx ON profile USING gin (index_as_string(content, '{publisher}'::text[]) gin_trgm_ops);
 
 
 --
@@ -11774,10 +11824,10 @@ CREATE INDEX profile_type_type_token_idx ON profile USING gin (index_primitive_a
 
 
 --
--- Name: profile_valueset_referenceresourcereference_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: profile_valueset_referenceresourcereference_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX profile_valueset_referenceresourcereference_token_idx ON profile USING gin (index_as_reference(content, '{structure,element,definition,binding,referenceResourceReference}'::text[]));
+CREATE INDEX profile_valueset_referenceresourcereference_reference_idx ON profile USING gin (index_as_reference(content, '{structure,element,definition,binding,referenceResourceReference}'::text[]));
 
 
 --
@@ -11788,10 +11838,10 @@ CREATE INDEX profile_version_version_token_idx ON profile USING gin (index_primi
 
 
 --
--- Name: provenance_end_end_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: provenance_end_end_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX provenance_end_end_token_idx ON provenance USING gin (index_as_string(content, '{period,end}'::text[]) gin_trgm_ops);
+CREATE INDEX provenance_end_end_date_idx ON provenance USING gist (index_as_date(content, '{period,end}'::text[], 'dateTime'::text));
 
 
 --
@@ -11802,10 +11852,10 @@ CREATE INDEX provenance_full_text_idx ON provenance USING gin (to_tsvector('engl
 
 
 --
--- Name: provenance_location_location_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: provenance_location_location_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX provenance_location_location_token_idx ON provenance USING gin (index_as_reference(content, '{location}'::text[]));
+CREATE INDEX provenance_location_location_reference_idx ON provenance USING gin (index_as_reference(content, '{location}'::text[]));
 
 
 --
@@ -11830,10 +11880,10 @@ CREATE INDEX provenance_partytype_type_token_idx ON provenance USING gin (index_
 
 
 --
--- Name: provenance_target_target_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: provenance_target_target_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX provenance_target_target_token_idx ON provenance USING gin (index_as_reference(content, '{target}'::text[]));
+CREATE INDEX provenance_target_target_reference_idx ON provenance USING gin (index_as_reference(content, '{target}'::text[]));
 
 
 --
@@ -11865,24 +11915,24 @@ CREATE INDEX query_response_identifier_token_idx ON query USING gin (index_primi
 
 
 --
--- Name: questionnaire_author_author_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: questionnaire_author_author_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX questionnaire_author_author_token_idx ON questionnaire USING gin (index_as_reference(content, '{author}'::text[]));
-
-
---
--- Name: questionnaire_authored_authored_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX questionnaire_authored_authored_token_idx ON questionnaire USING gin (index_as_string(content, '{authored}'::text[]) gin_trgm_ops);
+CREATE INDEX questionnaire_author_author_reference_idx ON questionnaire USING gin (index_as_reference(content, '{author}'::text[]));
 
 
 --
--- Name: questionnaire_encounter_encounter_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: questionnaire_authored_authored_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX questionnaire_encounter_encounter_token_idx ON questionnaire USING gin (index_as_reference(content, '{encounter}'::text[]));
+CREATE INDEX questionnaire_authored_authored_date_idx ON questionnaire USING gist (index_as_date(content, '{authored}'::text[], 'dateTime'::text));
+
+
+--
+-- Name: questionnaire_encounter_encounter_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX questionnaire_encounter_encounter_reference_idx ON questionnaire USING gin (index_as_reference(content, '{encounter}'::text[]));
 
 
 --
@@ -11921,17 +11971,17 @@ CREATE INDEX questionnaire_status_status_token_idx ON questionnaire USING gin (i
 
 
 --
--- Name: questionnaire_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: questionnaire_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX questionnaire_subject_subject_token_idx ON questionnaire USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX questionnaire_subject_subject_reference_idx ON questionnaire USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
--- Name: relatedperson_address_address_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: relatedperson_address_address_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX relatedperson_address_address_token_idx ON relatedperson USING gin (index_as_string(content, '{address}'::text[]) gin_trgm_ops);
+CREATE INDEX relatedperson_address_address_string_idx ON relatedperson USING gin (index_as_string(content, '{address}'::text[]) gin_trgm_ops);
 
 
 --
@@ -11963,24 +12013,24 @@ CREATE UNIQUE INDEX relatedperson_logical_id_as_varchar_idx ON relatedperson USI
 
 
 --
--- Name: relatedperson_name_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: relatedperson_name_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX relatedperson_name_name_token_idx ON relatedperson USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
-
-
---
--- Name: relatedperson_patient_patient_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
---
-
-CREATE INDEX relatedperson_patient_patient_token_idx ON relatedperson USING gin (index_as_reference(content, '{patient}'::text[]));
+CREATE INDEX relatedperson_name_name_string_idx ON relatedperson USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: relatedperson_telecom_telecom_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: relatedperson_patient_patient_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX relatedperson_telecom_telecom_token_idx ON relatedperson USING gin (index_as_string(content, '{telecom}'::text[]) gin_trgm_ops);
+CREATE INDEX relatedperson_patient_patient_reference_idx ON relatedperson USING gin (index_as_reference(content, '{patient}'::text[]));
+
+
+--
+-- Name: relatedperson_telecom_telecom_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX relatedperson_telecom_telecom_string_idx ON relatedperson USING gin (index_as_string(content, '{telecom}'::text[]) gin_trgm_ops);
 
 
 --
@@ -12005,17 +12055,17 @@ CREATE INDEX securityevent_altid_altid_token_idx ON securityevent USING gin (ind
 
 
 --
--- Name: securityevent_date_datetime_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: securityevent_date_datetime_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX securityevent_date_datetime_token_idx ON securityevent USING gin (index_as_string(content, '{event,dateTime}'::text[]) gin_trgm_ops);
+CREATE INDEX securityevent_date_datetime_date_idx ON securityevent USING gist (index_as_date(content, '{event,dateTime}'::text[], 'instant'::text));
 
 
 --
--- Name: securityevent_desc_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: securityevent_desc_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX securityevent_desc_name_token_idx ON securityevent USING gin (index_as_string(content, '{object,name}'::text[]) gin_trgm_ops);
+CREATE INDEX securityevent_desc_name_string_idx ON securityevent USING gin (index_as_string(content, '{object,name}'::text[]) gin_trgm_ops);
 
 
 --
@@ -12040,10 +12090,10 @@ CREATE UNIQUE INDEX securityevent_logical_id_as_varchar_idx ON securityevent USI
 
 
 --
--- Name: securityevent_name_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: securityevent_name_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX securityevent_name_name_token_idx ON securityevent USING gin (index_as_string(content, '{participant,name}'::text[]) gin_trgm_ops);
+CREATE INDEX securityevent_name_name_string_idx ON securityevent USING gin (index_as_string(content, '{participant,name}'::text[]) gin_trgm_ops);
 
 
 --
@@ -12054,10 +12104,10 @@ CREATE INDEX securityevent_object_type_type_token_idx ON securityevent USING gin
 
 
 --
--- Name: securityevent_reference_reference_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: securityevent_reference_reference_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX securityevent_reference_reference_token_idx ON securityevent USING gin (index_as_reference(content, '{object,reference}'::text[]));
+CREATE INDEX securityevent_reference_reference_reference_idx ON securityevent USING gin (index_as_reference(content, '{object,reference}'::text[]));
 
 
 --
@@ -12110,17 +12160,17 @@ CREATE UNIQUE INDEX specimen_logical_id_as_varchar_idx ON specimen USING btree (
 
 
 --
--- Name: specimen_subject_subject_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: specimen_subject_subject_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX specimen_subject_subject_token_idx ON specimen USING gin (index_as_reference(content, '{subject}'::text[]));
+CREATE INDEX specimen_subject_subject_reference_idx ON specimen USING gin (index_as_reference(content, '{subject}'::text[]));
 
 
 --
--- Name: substance_expiry_expiry_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: substance_expiry_expiry_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX substance_expiry_expiry_token_idx ON substance USING gin (index_as_string(content, '{instance,expiry}'::text[]) gin_trgm_ops);
+CREATE INDEX substance_expiry_expiry_date_idx ON substance USING gist (index_as_date(content, '{instance,expiry}'::text[], 'dateTime'::text));
 
 
 --
@@ -12145,10 +12195,10 @@ CREATE UNIQUE INDEX substance_logical_id_as_varchar_idx ON substance USING btree
 
 
 --
--- Name: substance_substance_substance_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: substance_substance_substance_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX substance_substance_substance_token_idx ON substance USING gin (index_as_reference(content, '{ingredient,substance}'::text[]));
+CREATE INDEX substance_substance_substance_reference_idx ON substance USING gin (index_as_reference(content, '{ingredient,substance}'::text[]));
 
 
 --
@@ -12201,10 +12251,10 @@ CREATE UNIQUE INDEX supply_logical_id_as_varchar_idx ON supply USING btree (((lo
 
 
 --
--- Name: supply_patient_patient_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: supply_patient_patient_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX supply_patient_patient_token_idx ON supply USING gin (index_as_reference(content, '{patient}'::text[]));
+CREATE INDEX supply_patient_patient_reference_idx ON supply USING gin (index_as_reference(content, '{patient}'::text[]));
 
 
 --
@@ -12215,10 +12265,10 @@ CREATE INDEX supply_status_status_token_idx ON supply USING gin (index_primitive
 
 
 --
--- Name: supply_supplier_supplier_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: supply_supplier_supplier_reference_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX supply_supplier_supplier_token_idx ON supply USING gin (index_as_reference(content, '{dispense,supplier}'::text[]));
+CREATE INDEX supply_supplier_supplier_reference_idx ON supply USING gin (index_as_reference(content, '{dispense,supplier}'::text[]));
 
 
 --
@@ -12229,17 +12279,17 @@ CREATE INDEX valueset_code_code_token_idx ON valueset USING gin (index_primitive
 
 
 --
--- Name: valueset_date_date_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: valueset_date_date_date_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX valueset_date_date_token_idx ON valueset USING gin (index_as_string(content, '{date}'::text[]) gin_trgm_ops);
+CREATE INDEX valueset_date_date_date_idx ON valueset USING gist (index_as_date(content, '{date}'::text[], 'dateTime'::text));
 
 
 --
--- Name: valueset_description_description_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: valueset_description_description_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX valueset_description_description_token_idx ON valueset USING gin (index_as_string(content, '{description}'::text[]) gin_trgm_ops);
+CREATE INDEX valueset_description_description_string_idx ON valueset USING gin (index_as_string(content, '{description}'::text[]) gin_trgm_ops);
 
 
 --
@@ -12264,17 +12314,17 @@ CREATE UNIQUE INDEX valueset_logical_id_as_varchar_idx ON valueset USING btree (
 
 
 --
--- Name: valueset_name_name_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: valueset_name_name_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX valueset_name_name_token_idx ON valueset USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
+CREATE INDEX valueset_name_name_string_idx ON valueset USING gin (index_as_string(content, '{name}'::text[]) gin_trgm_ops);
 
 
 --
--- Name: valueset_publisher_publisher_token_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: valueset_publisher_publisher_string_idx; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX valueset_publisher_publisher_token_idx ON valueset USING gin (index_as_string(content, '{publisher}'::text[]) gin_trgm_ops);
+CREATE INDEX valueset_publisher_publisher_string_idx ON valueset USING gin (index_as_string(content, '{publisher}'::text[]) gin_trgm_ops);
 
 
 --
