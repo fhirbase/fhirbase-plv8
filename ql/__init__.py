@@ -1,10 +1,8 @@
-#!/usr/bin/env python
-
 import re
-import sys
 import os
 import sha
 import subprocess
+from . import prepr
 
 def getin(d, ks):
     for p in ks:
@@ -86,28 +84,36 @@ def should_reload(fl, digest):
     return not res or res.find(digest) == -1
     return True
 
-def load_to_pg(fl, content):
+def load_to_pg(fl, content, force=False):
     s = sha.new(content).hexdigest()
-    if should_reload(fl, s):
-        res = shell("./ssql %s | psql -v ON_ERROR_STOP=1 -d test" % fl)
-        if res.returncode == 0:
+    if force or should_reload(fl, s):
+        sql = prepr.process(fl, content)
+        pr = subprocess.Popen('psql -v ON_ERROR_STOP=1 -d test', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        pr.stdin.write(sql)
+        pr.stdin.write("\\q\r")
+        pr.stdin.close()
+        pr.wait()
+        if pr.returncode == 0:
             pgexec('DELETE FROM modules WHERE file=\'%s\'' % fl)
             pgexec('INSERT INTO modules (file,digest) VALUES (\'%s\',\'%s\')' % (fl, s))
-        else:
-            print '\x1b[31mERROR: while loading %s\x1b[0m' % fl
+        if pr.stderr:
+            err = pr.stderr.read()
+            if err and pr.returncode != 0:
+                print '\x1b[31m%s\x1b[0m' % err
+                raise Exception(err)
+            elif err and pr.returncode == 0:
+                print '\x1b[33m%s\x1b[0m' % err
 
-def reload(fl):
+def reload(fl, force=False):
     idx = dict(files=dict(),deps=dict())
     read_imports(fl, idx)
     deps = resolve(idx['deps'])
     silent_pgexec('CREATE table IF NOT EXISTS modules (file text primary key, digest text);')
+    # print '<- %s: %s' % (fl,deps)
     print '<- %s' % fl
     for f in deps:
-        load_to_pg(f, idx['files'][f])
+        load_to_pg(f, idx['files'][f], force)
 
 def test():
     deps = dict(a=['b','c','z'], c=['d','z'], b=['d','e'], x=['y','z'])
     print resolve(deps)
-
-for fl in sys.argv[1:]:
-    reload(fl)

@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+
+import ql
+import os
+import ql.prepr
+import sys
+
+
+def each_file(fls,cb):
+    for fl in fls:
+        if os.path.isfile(fl):
+            cb(fl)
+        else:
+            print 'Could not fild file %s' % fl
+
+def run_tests(args):
+    def run(fl):
+        ql.reload(fl)
+    each_file(args,run)
+
+def compile(args):
+    def run(fl):
+        f = open(fl)
+        print '-- FILE: %s' % fl
+        print ql.prepr.process(fl, f.read())
+        f.close
+    each_file(args,run)
+
+def reload(args):
+    def run(fl):
+        ql.reload(fl, True)
+    each_file(args,run)
+
+def load(args):
+    def run(fl):
+        ql.reload(fl)
+    each_file(args,run)
+
+cmd = sys.argv[1]
+
+commands = dict(test=run_tests, compile=compile, load=load, reload=reload)
+
+print cmd
+if cmd in commands:
+    print 'run command %s' % cmd
+    commands[cmd](sys.argv[2:])
+else:
+    print 'Unknown command %s' % cmd
+
+
