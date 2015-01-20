@@ -11,3 +11,4 @@ dev/performance/observations.sql
 dev/test.log
 dev/perf/observations.sql
 old/*
+.tmp
