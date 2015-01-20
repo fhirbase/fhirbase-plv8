@@ -4,6 +4,7 @@ import ql
 import os
 import ql.prepr
 import sys
+import glob
 
 
 def each_file(fls,cb):
@@ -14,9 +15,18 @@ def each_file(fls,cb):
             print 'Could not fild file %s' % fl
 
 def run_tests(args):
+    if not args:
+        args = glob.glob('./test/*_spec.sql')
+
+    ql.pgexec('SELECT tests.start()')
     def run(fl):
         ql.reload(fl)
+
     each_file(args,run)
+    if ql.to_pg('SELECT tests.fail()') != 0:
+        print ql.red('FAILED TESTS')
+        print ql.red(ql.pgexec('SELECT * from tests.report()'))
+        sys.exit(1)
 
 def compile(args):
     def run(fl):
@@ -35,6 +45,15 @@ def load(args):
     def run(fl):
         ql.reload(fl)
     each_file(args,run)
+
+def itegrate(args):
+    print 'TODO'
+
+def build(args):
+    print 'TODO'
+
+def install(args):
+    print 'TODO'
 
 cmd = sys.argv[1]
 

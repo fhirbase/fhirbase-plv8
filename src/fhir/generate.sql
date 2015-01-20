@@ -33,6 +33,7 @@ func! generate_base_tables() returns text
    'ns', 'TODO')
   )
 
+
 SELECT this.generate_base_tables();
 
 

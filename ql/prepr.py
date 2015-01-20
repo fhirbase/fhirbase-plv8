@@ -70,6 +70,7 @@ def process(nm, content):
     res.append('create schema %s;' % ns)
 
     for idx,line in enumerate(content.splitlines()):
+      if line.strip() == '': continue
       if (state != 'start' and state != 'assert') and not re.search("^\s",line):
         close_stmt(res,state, line)
         state = 'start'
@@ -102,7 +103,7 @@ def process(nm, content):
       elif state == 'start' and line.find('delv') == 0:
         res.append('SELECT %s' % line.replace('delv','vars.delv'))
       elif line != '\n':
-        if line.find('\\') == 0:
+        if line.find('\\') == 0 or line.find('$SQL') > -1:
             res.append(macroexpand(nm, ns, idx, line))
         else:
             res.append("%s -- %s:%s" % (macroexpand(nm, ns, idx, line.rstrip()), nm, idx))

@@ -1,45 +1,46 @@
 -- #import ./vars.sql
 
-proc assert(_pred boolean, mess varchar) RETURNS varchar
-  --- simple test fn
-  item jsonb;
-  acc varchar[] := array[]::varchar[];
+create table this.results (
+  file text,
+  expected text,
+  actual text,
+  message text
+);
+
+proc! start() returns text
   BEGIN
-    IF _pred THEN
-      RETURN 'OK ' || mess;
-    ELSE
-      RAISE EXCEPTION 'NOT OK %',  mess;
-      RETURN 'not ok';
-    END IF;
+    TRUNCATE this.results;
+    RETURN 'start tests';
+
+func! report() returns setof tests.results
+  SELECT * FROM this.results
 
 proc _debug(x anyelement) RETURNS anyelement
   BEGIN
     RAISE NOTICE 'DEBUG %', x;
     RETURN x;
 
-proc assert_eq(expec anyelement, res anyelement, mess varchar) RETURNS varchar
-  item jsonb;
-  acc varchar[] := array[]::varchar[];
+proc! fail() RETURNS text
+  _cnt_ integer;
   BEGIN
-    IF expec = res  OR (expec IS NULL AND res IS NULL) THEN
-      RETURN 'OK ' || mess;
-    ELSE
-      RAISE EXCEPTION E'assert_eq % FAILED:\nEXPECTED: %\nACTUAL:   %', mess, expec, res;
+    SELECT count(*) INTO _cnt_ from this.results;
+    IF _cnt_ > 0 THEN
+      RAISE EXCEPTION '% tests failed', _cnt_;
       RETURN 'NOT OK';
     END IF;
 
-proc expect(mess varchar, loc varchar, res anyelement, expec anyelement) RETURNS varchar
-  item jsonb;
-  acc varchar[] := array[]::varchar[];
+proc! expect(_mess_ text, _loc_ text, _act_ anyelement, _expec_ anyelement) RETURNS text
   BEGIN
-    IF expec = res  OR (expec IS NULL AND res IS NULL) THEN
+    IF _expec_ = _act_  OR (_expec_ IS NULL AND _act_ IS NULL) THEN
       RETURN 'OK';
     ELSE
-      RAISE INFO E'\tFAILED: % \n\tEXPECTED:\t%\n\tACTUAL:  \t%\n\tFILE: %', mess, expec, res, loc;
+      RAISE INFO E'\tFAILED: % \n\tEXPECTED:\t%\n\tACTUAL:  \t%\n\tFILE: %', _mess_, _expec_, _act_, _loc_;
+      insert into this.results (file,expected,actual, message)
+        values (_loc_, _expec_, _act_, _mess_);
       RETURN 'NOT OK';
     END IF;
 
-proc expect_raise(_err_ text, _loc_ text, _code_ varchar) RETURNS varchar
+proc! expect_raise(_err_ text, _loc_ text, _code_ text) RETURNS text
   BEGIN
     BEGIN
       EXECUTE _code_;
@@ -54,4 +55,3 @@ proc expect_raise(_err_ text, _loc_ text, _code_ varchar) RETURNS varchar
     END;
     RAISE INFO E'\tFAILED NO EXCEPTION: \n\tEXPECTED EXCEPTION: %\n\tBUT NO EXEPTION RAISED\n\tFILE: %', _err_, _loc_;
     RETURN 'NOT OK';
-

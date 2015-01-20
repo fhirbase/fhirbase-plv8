@@ -84,6 +84,23 @@ def should_reload(fl, digest):
     return not res or res.find(digest) == -1
     return True
 
+def red(txt):
+    return '\x1b[31m%s\x1b[0m' % txt
+
+def to_pg(sql):
+    pr = subprocess.Popen('psql -v ON_ERROR_STOP=1 -d test', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    pr.stdin.write(sql)
+    pr.stdin.write("\\q\r")
+    pr.stdin.close()
+    pr.wait()
+    if pr.stderr:
+        err = pr.stderr.read()
+        if err and pr.returncode != 0:
+            print '\x1b[31m%s\x1b[0m' % err
+        elif err and pr.returncode == 0:
+            print '\x1b[33m%s\x1b[0m' % err
+    return pr.returncode
+
 def load_to_pg(fl, content, force=False):
     s = sha.new(content).hexdigest()
     if force or should_reload(fl, s):
