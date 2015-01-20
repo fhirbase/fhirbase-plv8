@@ -1,0 +1,115 @@
+#!/usr/bin/env python
+
+import re
+import sys
+import os.path
+
+def close_fn(mod):
+  print '$$ ' + mod + ';'
+  print
+
+def open_fn(fn):
+  print "CREATE OR REPLACE"
+  print fn,
+  print "LANGUAGE sql AS $$"
+
+def open_proc(fn):
+  print "CREATE OR REPLACE"
+  print fn,
+  print "LANGUAGE plpgsql AS $$"
+  print "DECLARE"
+
+def close_proc(mod):
+  print '  END; $$ ' + mod + ';'
+  print
+
+def macroexpand(fl, ns, ln, line):
+    return line.replace('this.',ns + '.').replace('getv(','vars.getv(')
+
+def open_expect_raise(fl, ln, line):
+  txt = line.replace('expect_raise','').replace('\'','').strip()
+  print "SELECT tests.expect_raise('%s', '%s:%d'," % (txt, fl, ln + 1)
+  print '($SQL$'
+
+def close_expect_raise():
+  print '$SQL$));'
+
+def open_assert(fl, ln, line):
+  txt = line.replace('expect','').replace('\'','').strip()
+  print "SELECT tests.expect('%s', '%s:%d',(" % (txt, fl, ln + 1)
+
+def inline_assert(fl, ln, line):
+  if line.find('--')== 0: return
+  if line.find('/*')== 0: return
+  (expr, expect) = line.split(' => ')
+  print "SELECT tests.expect('', '%s:%d',(%s),(%s));" % (fl, ln + 1, expr.strip(), expect.strip())
+
+def close_assert(line):
+  print '),(%s));' % line.replace('=>','').rstrip()
+
+def close_stmt(st, line):
+  if st == 'fn':
+    close_fn('IMMUTABLE')
+  elif st=='fn!':
+    close_fn('')
+  elif st == 'pr':
+    close_proc('IMMUTABLE')
+  elif st=='pr!':
+    close_proc('')
+  elif st=='assert':
+    close_assert(line)
+  elif st=='expect_raise':
+    close_expect_raise()
+
+def process_file(nm):
+    f = open(nm, 'r')
+    state = 'start'
+    ns = os.path.splitext(os.path.basename(nm))[0]
+
+    print 'drop schema if exists %s cascade;' % ns
+    print 'create schema %s;' % ns
+
+    for idx,line in enumerate(f):
+      if (state != 'start' and state != 'assert') and not re.search("^\s",line):
+        close_stmt(state, line)
+        state = 'start'
+
+      if state == 'start' and line.find("proc!") == 0:
+        open_proc(line.replace('proc! ', 'function %s.' % ns))
+        state = 'pr!'
+      elif state == 'start' and line.find("proc") == 0:
+        open_proc(line.replace('proc ', 'function %s.' % ns))
+        state = 'pr'
+      elif state == 'start' and line.find("func!") == 0:
+        open_fn(line.replace('func! ', 'function %s.' % ns))
+        state = 'fn!'
+      elif state == 'start' and line.find("func") == 0:
+        open_fn(line.replace('func ', 'function %s.' % ns))
+        state = 'fn'
+      elif state == 'start' and line.find("expect_raise") == 0:
+        open_expect_raise(nm, idx, line)
+        state = 'expect_raise'
+      elif state == 'start' and line.find("expect") == 0:
+        open_assert(nm, idx, line)
+        state = 'assert'
+      elif state == 'assert' and line.find("=>") == 0:
+        close_stmt(state, line)
+        state = 'start'
+      elif state == 'start' and line.find(' => ') > 0:
+        inline_assert(nm, idx, line)
+      elif state == 'start' and line.find('setv') == 0:
+        print 'SELECT %s' % line.replace('setv','vars.setv')
+      elif state == 'start' and line.find('delv') == 0:
+        print 'SELECT %s' % line.replace('delv','vars.delv')
+      elif line != '\n':
+        if line.find('\\') == 0:
+            print macroexpand(nm, ns, idx, line),
+        else:
+            print '%s -- %s:%s' % (macroexpand(nm, ns, idx, line.rstrip()), nm, idx)
+
+    if state != 'start':
+      close_stmt(state, '')
+
+    f.close()
+
+process_file(sys.argv[1])
