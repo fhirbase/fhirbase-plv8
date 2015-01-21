@@ -57,14 +57,23 @@ def read_imports(fl, idx):
     f.close()
     return idx
 
-def pgcall(sql):
-    subprocess.call(["psql", "-d", "test", "-c", sql])
+def silent_pgexec(db, sql):
+    return subprocess.Popen("psql -d %s -c \"%s\" &2> /dev/null" % (db,sql),shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE).stdout.read()
 
-def pgexec(sql):
-    return subprocess.Popen("psql -d test -c \"%s\"" % sql,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE).stdout.read()
-
-def silent_pgexec(sql):
-    return subprocess.Popen("psql -d test -c \"%s\" &2> /dev/null" % sql,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE).stdout.read()
+def pgexec(db, sql):
+    pr = subprocess.Popen('psql -v ON_ERROR_STOP=1 -d %s' % db, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    pr.stdin.write(sql)
+    pr.stdin.write("\\q\r")
+    pr.stdin.close()
+    pr.wait()
+    returncode = pr.returncode
+    err = pr.stderr and  pr.stderr.read()
+    out = pr.stdout and pr.stdout.read()
+    if err and pr.returncode != 0:
+        print '\x1b[31m%s\x1b[0m' % err
+    elif err and pr.returncode == 0:
+        print '\x1b[33m%s\x1b[0m' % err
+    return dict(returncode=returncode, stderr=err, stdout=out)
 
 def shell(cmd):
     pr = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE)
@@ -78,58 +87,37 @@ def is_changed(fl, content):
 def is_test_file(fl):
     return fl.find('_spec.sql') > 0
 
-def should_reload(fl, digest):
-    res = pgexec('SELECT digest FROM modules WHERE file=\'%s\'' % fl)
+def should_reload(db, fl, digest):
+    res = pgexec(db, 'SELECT digest FROM modules WHERE file=\'%s\'' % fl)
     if is_test_file(fl): return True
-    return not res or res.find(digest) == -1
+    return not res['stdout'] or res['stdout'].find(digest) == -1
     return True
 
-def red(txt):
-    return '\x1b[31m%s\x1b[0m' % txt
+def hl(cl, txt):
+    colors = dict(red=31,green=32,yellow=33)
+    code = colors[cl]
+    return '\x1b[%sm%s\x1b[0m' % (code,txt)
 
-def to_pg(sql):
-    pr = subprocess.Popen('psql -v ON_ERROR_STOP=1 -d test', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    pr.stdin.write(sql)
-    pr.stdin.write("\\q\r")
-    pr.stdin.close()
-    pr.wait()
-    if pr.stderr:
-        err = pr.stderr.read()
-        if err and pr.returncode != 0:
-            print '\x1b[31m%s\x1b[0m' % err
-        elif err and pr.returncode == 0:
-            print '\x1b[33m%s\x1b[0m' % err
-    return pr.returncode
-
-def load_to_pg(fl, content, force=False):
+def load_to_pg(db, fl, content, force=False):
     s = sha.new(content).hexdigest()
-    if force or should_reload(fl, s):
+    if force or should_reload(db, fl, s):
+        print '\t<- %s' % fl
         sql = prepr.process(fl, content)
-        pr = subprocess.Popen('psql -v ON_ERROR_STOP=1 -d test', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        pr.stdin.write(sql)
-        pr.stdin.write("\\q\r")
-        pr.stdin.close()
-        pr.wait()
-        if pr.returncode == 0:
-            pgexec('DELETE FROM modules WHERE file=\'%s\'' % fl)
-            pgexec('INSERT INTO modules (file,digest) VALUES (\'%s\',\'%s\')' % (fl, s))
-        if pr.stderr:
-            err = pr.stderr.read()
-            if err and pr.returncode != 0:
-                print '\x1b[31m%s\x1b[0m' % err
-                raise Exception(err)
-            elif err and pr.returncode == 0:
-                print '\x1b[33m%s\x1b[0m' % err
+        res = pgexec(db, sql)
+        if res['returncode'] == 0:
+            pgexec(db, 'DELETE FROM modules WHERE file=\'%s\'' % fl)
+            pgexec(db, 'INSERT INTO modules (file,digest) VALUES (\'%s\',\'%s\')' % (fl, s))
+        if res['stderr'] and res['returncode'] != 0:
+            raise Exception(err)
 
-def reload(fl, force=False):
+def reload(db, fl, force=False):
     idx = dict(files=dict(),deps=dict())
     read_imports(fl, idx)
     deps = resolve(idx['deps'])
-    silent_pgexec('CREATE table IF NOT EXISTS modules (file text primary key, digest text);')
-    # print '<- %s: %s' % (fl,deps)
-    print '<- %s' % fl
+    silent_pgexec(db, 'CREATE table IF NOT EXISTS modules (file text primary key, digest text);')
+    print 'Load %s' % fl
     for f in deps:
-        load_to_pg(f, idx['files'][f], force)
+        load_to_pg(db, f, idx['files'][f], force)
 
 def test():
     deps = dict(a=['b','c','z'], c=['d','z'], b=['d','e'], x=['y','z'])

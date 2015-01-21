@@ -1,4 +1,5 @@
 -- #import ../gen.sql
+-- #import ./generate.sql
 
 func! fhir_tags(_cfg jsonb) RETURNS jsonb
   --IS 'Return all tags in system';

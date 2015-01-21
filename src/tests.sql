@@ -26,8 +26,8 @@ proc! fail() RETURNS text
     SELECT count(*) INTO _cnt_ from this.results;
     IF _cnt_ > 0 THEN
       RAISE EXCEPTION '% tests failed', _cnt_;
-      RETURN 'NOT OK';
     END IF;
+    RETURN 'NOT OK';
 
 proc! expect(_mess_ text, _loc_ text, _act_ anyelement, _expec_ anyelement) RETURNS text
   BEGIN

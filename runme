@@ -6,6 +6,7 @@ import ql.prepr
 import sys
 import glob
 
+db = 'test'
 
 def each_file(fls,cb):
     for fl in fls:
@@ -15,18 +16,23 @@ def each_file(fls,cb):
             print 'Could not fild file %s' % fl
 
 def run_tests(args):
+    load(['./src/tests.sql'])
     if not args:
         args = glob.glob('./test/*_spec.sql')
 
-    ql.pgexec('SELECT tests.start()')
+    ql.pgexec(db, 'SELECT tests.start()')
     def run(fl):
-        ql.reload(fl)
+        ql.reload(db, fl)
 
     each_file(args,run)
-    if ql.to_pg('SELECT tests.fail()') != 0:
-        print ql.red('FAILED TESTS')
-        print ql.red(ql.pgexec('SELECT * from tests.report()'))
+    res = ql.pgexec(db, 'SELECT tests.fail()')
+    if res['returncode'] != 0:
+        print ql.hl('red','FAILED TESTS')
+        report = ql.pgexec(db, 'SELECT * from tests.report()')['stdout']
+        print ql.hl('red', report)
         sys.exit(1)
+    else:
+        print ql.hl('green','All tests passed')
 
 def compile(args):
     def run(fl):
@@ -37,17 +43,19 @@ def compile(args):
     each_file(args,run)
 
 def reload(args):
-    def run(fl):
-        ql.reload(fl, True)
+    if not args: args = glob.glob('./src/**/*.sql')
+    def run(fl): ql.reload(db, fl, True)
     each_file(args,run)
 
 def load(args):
-    def run(fl):
-        ql.reload(fl)
+    if not args: args = glob.glob('./src/**/*.sql')
+    def run(fl): ql.reload(db, fl)
     each_file(args,run)
 
-def itegrate(args):
-    print 'TODO'
+def integrate(args):
+    print ql.pgexec('postgres','drop database if exists %s' % db)['stdout']
+    print ql.pgexec('postgres','create database %s' % db)['stdout']
+    run_tests([])
 
 def build(args):
     print 'TODO'
@@ -57,7 +65,7 @@ def install(args):
 
 cmd = sys.argv[1]
 
-commands = dict(test=run_tests, compile=compile, load=load, reload=reload)
+commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate)
 
 print cmd
 if cmd in commands:
@@ -65,5 +73,3 @@ if cmd in commands:
     commands[cmd](sys.argv[2:])
 else:
     print 'Unknown command %s' % cmd
-
-
