@@ -36,3 +36,14 @@ jsonbext.jsonb_primitive_to_text('"str"'::jsonb) => 'str'::text
 jsonbext.jsonb_primitive_to_text('"str"'::jsonb) => 'str'::text
 
 jsonbext.jsonb_primitive_to_text('null'::jsonb) => NULL::text
+
+jsonbext.assoc('{}'::jsonb, 'a', '1'::jsonb) => '{"a":1}'
+
+jsonbext.assoc('{"a":42}'::jsonb, 'a', '1'::jsonb) => '{"a":1}'
+
+jsonbext.assoc('{"a":1}'::jsonb, 'a', '42'::jsonb) => '{"a":42}'
+
+expect 'merge'
+  jsonbext.merge('{"a":1, "b":2, "c":3}'::jsonb, '{"d":4,"e":5}'::jsonb)
+=> '{"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}'::jsonb
+

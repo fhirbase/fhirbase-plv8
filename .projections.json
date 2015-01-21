@@ -1,0 +1,12 @@
+{
+  "src/*.sql": {
+    "type": "src",
+    "alternate": "test/{}_spec.sql",
+    "make": "./runme load {file}"
+  },
+  "test/*_spec.sql": {
+    "type": "test",
+    "alternate": "src/{}.sql",
+    "make": "./runme test {file}"
+  }
+}

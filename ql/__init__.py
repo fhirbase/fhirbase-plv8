@@ -108,7 +108,7 @@ def load_to_pg(db, fl, content, force=False):
             pgexec(db, 'DELETE FROM modules WHERE file=\'%s\'' % fl)
             pgexec(db, 'INSERT INTO modules (file,digest) VALUES (\'%s\',\'%s\')' % (fl, s))
         if res['stderr'] and res['returncode'] != 0:
-            raise Exception(err)
+            raise Exception(res['stderr'])
 
 def reload(db, fl, force=False):
     idx = dict(files=dict(),deps=dict())

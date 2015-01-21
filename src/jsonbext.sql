@@ -51,6 +51,23 @@ proc json_array_to_str_array(_jsons jsonb[]) RETURNS text[]
     END LOOP;
     RETURN acc;
 
+func assoc(_from_ jsonb, _key_ text, _value_ jsonb) RETURNS jsonb
+   SELECT json_object_agg(key, value)::jsonb FROM (
+     SELECT * FROM (
+       SELECT x.*, 'a' as tp FROM jsonb_each(_from_) x
+       UNION SELECT _key_ as key, _value_ as value, 'b' as tp
+     ) _ ORDER BY tp
+   ) _
+
+func merge(_to_ jsonb, _from_ jsonb) RETURNS jsonb
+   SELECT json_object_agg(key, value)::jsonb FROM (
+     SELECT * FROM (
+       SELECT x.*, 'a' as tp FROM jsonb_each(_to_) x
+       UNION
+       SELECT y.*, 'b' as tp FROM jsonb_each(_from_) y
+     ) _ ORDER BY tp
+   ) _
+
 func jsonb_primitive_to_text(x jsonb) RETURNS text
   SELECT CASE
    WHEN jsonb_typeof(x) = 'null' THEN

@@ -106,7 +106,7 @@ def process(nm, content):
         if line.find('\\') == 0 or line.find('$SQL') > -1:
             res.append(macroexpand(nm, ns, idx, line))
         else:
-            res.append("%s -- %s:%s" % (macroexpand(nm, ns, idx, line.rstrip()), nm, idx))
+            res.append("%s -- %s:%s" % (macroexpand(nm, ns, idx, line.rstrip()), ns, idx))
 
     if state != 'start':
       close_stmt(res,state, '')

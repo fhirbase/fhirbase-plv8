@@ -105,3 +105,80 @@ expect
 SELECT count(*) from patient => 0::bigint
 
 ROLLBACK;
+
+BEGIN;
+
+SELECT generate.generate_tables('{Patient}');
+
+
+setv('with-id',
+  crud.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
+);
+
+crud.read('{}'::jsonb, 'myid') => getv('with-id')
+crud.read('{}'::jsonb, 'Patient/myid') => getv('with-id')
+
+expect 'id is myid'
+  getv('with-id')->>'id'
+=> 'myid'
+
+expect 'patient in table'
+  SELECT count(*) FROM patient
+  WHERE logical_id = 'myid'
+=> 1::bigint
+
+expect 'meta info'
+  jsonb_typeof(getv('with-id')->'meta')
+=> 'object'
+
+expect 'meta info'
+  jsonb_typeof(getv('with-id')#>'{meta,versionId}')
+=> 'string'
+
+expect 'meta info'
+  jsonb_typeof(getv('with-id')#>'{meta,lastUpdated}')
+=> 'string'
+
+setv('without-id',
+  crud.create('{}'::jsonb, '{"resourceType":"Patient", "name":{"text":"Goga"}}'::jsonb)
+);
+
+expect 'id was set'
+  SELECT (getv('without-id')->>'id') IS NOT NULL
+=> true
+
+expect 'patient created'
+  SELECT count(*) FROM patient
+  WHERE logical_id = ((getv('without-id')->>'id')::uuid)::text
+=> 1::bigint
+
+expect_raise 'id and meta.versionId are required'
+  SELECT crud.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
+
+expect_raise 'expected last versionId'
+  SELECT crud.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)
+
+expect 'updated'
+  SELECT count(*) FROM patient_history
+  WHERE logical_id = 'myid'
+=> 0::bigint
+
+setv('updated',
+  crud.update('{}'::jsonb,
+    jsonbext.assoc(getv('with-id'),'name','{"text":"Updated name"}')
+  )
+);
+
+expect 'updated'
+  SELECT count(*) FROM patient_history
+  WHERE logical_id = 'myid'
+=> 1::bigint
+
+crud.read('{}'::jsonb, 'myid')#>>'{name,text}' => 'Updated name'
+
+
+/* expect */
+/*   SELECT E'\n' || string_agg(ROW(x.*)::text, E'\n') FROM patient x */
+/* => '' */
+
+ROLLBACK;
