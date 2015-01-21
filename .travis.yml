@@ -1,5 +1,5 @@
 # .travis.yml
 before_script:
-  - sudo su $USER -c "source ./travis_cfg.sh && ./install-postgres"
+  - sudo su $USER -c "source ./cfg/travis_cfg.sh && ./install-postgres"
 
-script: sudo su $USER -c "source /home/travis/build/fhirbase/fhirbase/travis_cfg.sh && ./runme integrate"
+script: sudo su $USER -c "source ./cfg/travis_cfg.sh && ./runme integrate"
