@@ -1,4 +1,4 @@
-export BUILD_DIR=/home/travis/build/fhirbase/fhirbase
+export BUILD_DIR=/home/travis/build/fhirbase/fhirbase/db
 
 export PGDATA=$BUILD_DIR/data
 export PGPORT=5777
