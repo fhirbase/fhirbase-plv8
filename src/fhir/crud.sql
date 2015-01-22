@@ -77,10 +77,14 @@ proc! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
       _resource_ := jsonbext.assoc(_resource_, 'id', ('"' || _id_ || '"')::jsonb);
     END IF;
 
-    _meta_ := json_build_object(
+    _meta_ := jsonbext.merge(
+      COALESCE(_resource_->'meta','{}'::jsonb),
+      json_build_object(
        'versionId', _vid_,
       'lastUpdated', _published_
+      )::jsonb
     );
+
 
     _resource_ := jsonbext.assoc(_resource_, 'meta', _meta_);
 
@@ -97,6 +101,7 @@ proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
   _old_vid_ text;
   _new_vid_ text;
   _vid_check_ text;
+  _updated_ timestamptz;
   _resource_type_ text;
   BEGIN
     _id_ := _resource_->>'id';
@@ -119,17 +124,18 @@ proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
         INSERT INTO "{{tbl}}_history"
           (logical_id, version_id, published, updated, content, category)
           SELECT
-          logical_id, version_id, published, current_timestamp, content, category
+          logical_id, version_id, published, updated, content, category
           FROM "{{tbl}}" WHERE version_id = $1 LIMIT 1
       $SQL$, 'tbl', lower(_resource_type_))
     USING _old_vid_;
 
+    _updated_ := current_timestamp + interval '1 microseconds';
     _new_vid_ := gen_random_uuid()::text;
     _resource_ := jsonbext.assoc(_resource_, 'meta',
       jsonbext.merge(_resource_->'meta',
         json_build_object(
           'versionId', _new_vid_,
-          'lastUpdated', current_timestamp
+          'lastUpdated', _updated_
         )::jsonb
       )
     );
@@ -139,208 +145,117 @@ proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
         UPDATE "{{tbl}}" SET
         version_id = $2,
         content = $3,
-        updated = current_timestamp
+        updated = $4
         WHERE version_id = $1
       $SQL$, 'tbl', lower(_resource_type_))
-    USING _old_vid_, _new_vid_, _resource_;
+    USING _old_vid_, _new_vid_, _resource_, _updated_;
 
     RETURN this.read(_cfg_, _id_);
 
-proc! delete(_cfg_ jsonb, _id_ text) RETURNS jsonb
+proc! delete(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS jsonb
   -- Update resource, creating new version\nReturns bundle with one entry
+  _resource_ jsonb;
   BEGIN
     -- TODO: move old one to history, update existing
-    RETURN '{}'::jsonb;
+    _resource_ := this.read(_cfg_, _id_);
 
---- END NEW API
---- END NEW API
-
---- # Instance Level Interactions
-func fhir_read(_cfg_ jsonb, _type_ text, _url_ text) RETURNS jsonb
-  -- bundle
-  WITH entry AS (
-    SELECT this._build_entry(_cfg_, row(r.*)) as entry
-      FROM resource r
-     WHERE r.resource_type = _type_
-       AND r.logical_id = this._extract_id(_url_))
-  SELECT this._build_bundle('Concrete resource by id ' || this._extract_id(_url_), 1, (SELECT json_agg(entry) FROM entry));
-
-
-/* TODO: guard from _cfg_ null */
-proc! fhir_create(_cfg_ jsonb, _type text, _id text, _resource jsonb, _tags jsonb) RETURNS jsonb
-  __published timestamptz :=  CURRENT_TIMESTAMP;
-  __vid text := gen_random_uuid()::text;
-  BEGIN
-    EXECUTE
-      gen._tpl($SQL$
-        INSERT INTO "{{tbl}}"
-        (logical_id, version_id, published, updated, content, category)
-        VALUES
-        ($1, $2, $3, $4, $5, $6)
-      $SQL$, 'tbl', lower(_type))
-    USING _id, __vid, __published, __published, _resource, _tags;
-
-    RETURN this.fhir_read(_cfg_, _type, _id::text);
-
-func fhir_create(_cfg_ jsonb, _type text, _resource jsonb, _tags jsonb) RETURNS jsonb
-  SELECT this.fhir_create(_cfg_, _type, gen_random_uuid()::text, _resource, _tags)
-
-func fhir_create(_cfg_ jsonb, _type text, _resource jsonb) RETURNS jsonb
-  SELECT this.fhir_create(_cfg_, _type, gen_random_uuid()::text, _resource, '[]'::jsonb)
-
-func fhir_create(_cfg_ jsonb, _resource jsonb) RETURNS jsonb
-  SELECT this.fhir_create(_cfg_, (_resource->>'resourceType'), gen_random_uuid()::text, _resource, '[]'::jsonb)
-
-func fhir_vread(_cfg_ jsonb, _type_ text, _url_ text) RETURNS jsonb
-  --- Read the state of a specific version of the resource
-  --- return bundle with one entry
-  --- 'Read specific version of resource with _type_\nReturns bundle with one entry';
-  WITH entry AS (
-    SELECT this._build_entry(_cfg_, row(r.*)) as entry
-      FROM (
-        SELECT * FROM resource
-         WHERE resource_type = _type_
-           AND logical_id = this._extract_id(_url_)
-           AND version_id = this._extract_vid(_url_)
-        UNION
-        SELECT * FROM resource_history
-         WHERE resource_type = _type_
-           AND logical_id = this._extract_id(_url_)
-           AND version_id = this._extract_vid(_url_)) r)
-  SELECT this._build_bundle('Version of resource by id=' || this._extract_id(_url_) || ' vid=' || this._extract_vid(_url_),
-    1,
-    (SELECT json_agg(entry) FROM entry e));
-
-proc! fhir_update(_cfg_ jsonb, _type text, _url_ text, _location_ text, _resource_ jsonb, _tags_ jsonb) RETURNS jsonb
-  -- Update resource, creating new version\nReturns bundle with one entry
-  __vid text;
-  BEGIN
-    __vid := (SELECT version_id FROM resource WHERE logical_id = this._extract_id(_url_));
-
-    IF this._extract_vid(_location_) <> __vid THEN
-      RAISE EXCEPTION E'Wrong version_id %. Current is %',
-      this._extract_vid(_location_), __vid;
-      RETURN NULL;
+    IF _resource_ IS NULL THEN
+      IF this.is_deleted(_cfg_, _resource_type_, _id_) THEN
+        RAISE EXCEPTION 'resource with id="%s" already deleted', _id_;
+      ELSE
+        RAISE EXCEPTION 'resource with id="%s" does not exist', _id_;
+      END IF;
     END IF;
 
     EXECUTE
       gen._tpl($SQL$
         INSERT INTO "{{tbl}}_history"
-        (logical_id, version_id, published, updated, content, category)
-        SELECT
-        logical_id, version_id, published, current_timestamp, content, category
-        FROM "{{tbl}}" WHERE version_id = $1 LIMIT 1
-      $SQL$, 'tbl', lower(_type))
-    USING __vid;
+            (logical_id, version_id, published, updated, content)
+          SELECT
+             logical_id, version_id, published, updated, content
+          FROM "{{tbl}}" WHERE logical_id = $1 LIMIT 1;
 
-    EXECUTE
-      gen._tpl($SQL$
-        UPDATE "{{tbl}}" SET
-        version_id = gen_random_uuid()::text,
-        content = $2,
-        category = util._merge_tags(category, $3),
-        updated = current_timestamp
-        WHERE version_id = $1
-      $SQL$, 'tbl', lower(_type))
-    USING __vid, _resource_, _tags_;
+        DELETE FROM "{{tbl}}" WHERE logical_id = $1
+      $SQL$, 'tbl', lower(_resource_type_))
+    USING this._extract_id(_id_);
 
-    RETURN this.fhir_read(_cfg_, _type , this._extract_id(_url_));
+    RETURN _resource_;
 
-proc! fhir_delete(_cfg_ jsonb, _type text, _url text) RETURNS jsonb
-  __bundle jsonb;
-  BEGIN
-    __bundle := this.fhir_read(_cfg_, _type, _url);
-
-    EXECUTE
-      gen._tpl($SQL$
-        INSERT INTO "{{tbl}}_history"
-        (logical_id, version_id, published, updated, content, category)
-        SELECT
-        logical_id, version_id, published, current_timestamp, content, category
-        FROM "{{tbl}}" WHERE logical_id = $1 LIMIT 1;
-
-        DELETE FROM "{{tbl}}" WHERE logical_id = $1;
-      $SQL$, 'tbl', lower(_type))
-    USING this._extract_id(_url);
-
-    RETURN __bundle;
-
-func! fhir_history(_cfg_ jsonb, _type_ text, _url_ text, _params_ jsonb) RETURNS jsonb
-  WITH entry AS (
-    SELECT this._build_entry(_cfg_, row(r.*)) as entry
-      FROM (
-        SELECT * FROM resource
-         WHERE resource_type = _type_
-           AND logical_id = this._extract_id(_url_)
-        UNION
-        SELECT * FROM resource_history
-         WHERE resource_type = _type_
-           AND logical_id = this._extract_id(_url_)
-      ) r
+func! is_deleted(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS boolean
+  SELECT
+  EXISTS (
+    SELECT * FROM resource_history
+     WHERE resource_type = _resource_type_
+       AND logical_id = this._extract_id(_id_)
+  ) AND NOT EXISTS (
+    SELECT * FROM resource
+     WHERE resource_type = _resource_type_
+       AND logical_id = this._extract_id(_id_)
   )
-  SELECT this._build_bundle(
-    'History of resource by id=' || this._extract_id(_url_),
-    (SELECT count(*)::int FROM entry),
-    (SELECT json_agg(entry) FROM entry e)
-  );
 
-
-func! fhir_history(_cfg_ jsonb, _type_ text, _params_ jsonb) RETURNS jsonb
-  WITH entry AS (
-    SELECT this._build_entry(_cfg_, row(r.*)) as entry
-      FROM (
-        SELECT * FROM resource
-         WHERE resource_type = _type_
-        UNION
-        SELECT * FROM resource_history
-         WHERE resource_type = _type_
-      ) r
-  )
-  SELECT this._build_bundle(
-    'History of resource by type =' || _type_,
-    (SELECT count(*)::int FROM entry),
-    (SELECT json_agg(entry) FROM entry e)
-  );
-
-func! fhir_history(_cfg_ jsonb, _params_ jsonb) RETURNS jsonb
-  WITH entry AS (
-    SELECT this._build_entry(_cfg_, row(r.*)) as entry
-      FROM (
-        SELECT * FROM resource
-        UNION
-        SELECT * FROM resource_history
-      ) r
-  )
-  SELECT this._build_bundle(
-    'History of all resources',
-    (SELECT count(*)::int FROM entry),
-    (SELECT json_agg(entry) FROM entry e)
-  );
-
-
-func! fhir_is_latest_resource(_cfg_ jsonb, _type_ text, _id_ text, _vid_ text) RETURNS boolean
+func! is_latest(_cfg_ jsonb, _resource_type_ text, _id_ text, _vid_ text) RETURNS boolean
     SELECT EXISTS (
       SELECT * FROM resource r
-     WHERE r.resource_type = _type_
+     WHERE r.resource_type = _resource_type_
        AND r.logical_id = this._extract_id(_id_)
        AND r.version_id = this._extract_vid(_vid_)
     )
 
-func! fhir_is_resource_exists(_cfg_ jsonb, _type_ text, _id_ text) RETURNS boolean
+func! is_exists(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS boolean
     SELECT EXISTS (
       SELECT * FROM resource r
-     WHERE r.resource_type = _type_
+     WHERE r.resource_type = _resource_type_
        AND r.logical_id = this._extract_id(_id_)
     )
 
-func! fhir_is_deleted_resource(_cfg_ jsonb, _type_ text, _id_ text) RETURNS boolean
-  SELECT
-  EXISTS (
-    SELECT * FROM resource_history
-     WHERE resource_type = _type_
-       AND logical_id = this._extract_id(_id_)
-  ) AND NOT EXISTS (
-    SELECT * FROM resource
-     WHERE resource_type = _type_
-       AND logical_id = this._extract_id(_id_)
+func _history_entry(_cfg_ jsonb, _row_ "resource") RETURNS jsonb
+  SELECT json_build_object('resource', _row_.content)::jsonb
+
+func _history_bundle(_cfg_ jsonb, _entries_ jsonb) RETURNS jsonb
+  SELECT json_build_object(
+    'type', 'history',
+    'entry', _entries_
+  )::jsonb
+
+func! history(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS jsonb
+  WITH entry AS (
+    SELECT this._history_entry(_cfg_, row(r.*)) as entry
+      FROM (
+        SELECT * FROM resource
+         WHERE resource_type = _resource_type_
+           AND logical_id = this._extract_id(_id_)
+        UNION
+        SELECT * FROM resource_history
+         WHERE resource_type = _resource_type_
+           AND logical_id = this._extract_id(_id_)
+      ) r ORDER BY r.updated desc
   )
+  SELECT this._history_bundle(_cfg_, json_agg(entry)::jsonb)
+    FROM entry
+
+
+func! history(_cfg_ jsonb, _resource_type_ text) RETURNS jsonb
+  WITH entry AS (
+    SELECT this._history_entry(_cfg_, row(r.*)) as entry
+      FROM (
+        SELECT * FROM resource
+         WHERE resource_type = _resource_type_
+        UNION
+        SELECT * FROM resource_history
+         WHERE resource_type = _resource_type_
+      ) r ORDER BY r.updated desc
+  )
+  SELECT this._history_bundle(_cfg_, json_agg(entry)::jsonb)
+    FROM entry
+
+func! history(_cfg_ jsonb) RETURNS jsonb
+  WITH entry AS (
+    SELECT this._history_entry(_cfg_, row(r.*)) as entry
+      FROM (
+        SELECT * FROM resource
+        UNION
+        SELECT * FROM resource_history
+      ) r ORDER BY r.updated desc
+  )
+  SELECT this._history_bundle(_cfg_, json_agg(entry)::jsonb)
+    FROM entry

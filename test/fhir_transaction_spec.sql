@@ -12,12 +12,39 @@ setv( 'cfg', '{"base":"https://test.me"}');
 setv('alert-json','{"resourceType": "Alert", "note": "old-note" }');
 setv('device-json', '{"resourceType": "Device", "manufacturer": "Acme" }');
 
+setv('alert',  crud.create(getv('cfg'), getv('alert-json')));
+setv('device', crud.create(getv('cfg'), getv('device-json')));
+
 setv('bundle-json',
-  '{"resourceType" : "Bundle", "entry" : [ { "id" : "@create-device", "category" : [], "content" : { "resourceType": "Device", "manufacturer": "handmade"} }, { "id" : "{{update-alert}}", "link" : [{ "rel" : "self", "href" : "{{update-vid-alert}}" }], "category" : [], "content" : { "resourceType": "Alert", "note": "new-note" } }, { "id" : "{{delete-device}}", "deleted" : "2012-05-29T23:45:32+00:00" } ] }'::jsonb
+  json_build_object(
+    'resourceType', 'Bundle',
+    'entry', ARRAY[
+      json_build_object(
+        'id', '@create-device',
+        'resource', '{ "resourceType": "Device", "manufacturer": "handmade"}'::json
+      ),
+      json_build_object(
+        'id','????',
+        'resource', getv('alert')::json
+      ),
+      json_build_object(
+        'id', getv('device')->>'id',
+        'deleted', current_timestamp
+      )
+    ]::json[]
+  )::jsonb
 );
 
-setv('alert', crud.fhir_create(getv('cfg'), getv('alert-json'))#>'{entry,0}');
-setv('device', crud.fhir_create(getv('cfg'), getv('device-json'))#>'{entry,0}');
+getv('bundle-json') => '{}'::jsonb
+
+/* '{"resourceType" : "Bundle", "entry" : [ { "id" : "@create-device", */
+/* "category" : [], "content" : */
+/* { "resourceType": "Device", "manufacturer": "handmade"} }, */
+/* { "id" : "{{update-alert}}", "link" : [{ "rel" : "self", "href" : "{{update-vid-alert}}" }], "category" : [], */
+/* "content" : { "resourceType": "Alert", "note": "new-note" } },
+{ "id" : "{{delete-device}}",
+"deleted" : "2012-05-29T23:45:32+00:00" } ] }'::jsonb */
+
 
 setv('trans',
   transaction.fhir_transaction(
@@ -32,24 +59,22 @@ setv('trans',
 );
 
 expect
-  crud.fhir_read(
+  crud.read(
      getv('cfg'), 'Device', getv('trans')#>>'{entry,0,id}'
-  )#>>'{entry,0,content,manufacturer}'
+  )#>>'{manufacturer}'
 => 'handmade'
 
 expect
-  crud.fhir_read(
+  crud.read(
      getv('cfg'), 'Alert', getv('trans')#>>'{entry,1,id}'
-  )#>>'{entry,0,content,note}'
+  )#>>'{note}'
 => 'new-note'
 
 expect
-  crud.fhir_is_deleted_resource(
+  crud.is_deleted(
      getv('cfg'), 'Device', getv('trans')#>>'{entry,2,id}'
   )
 => true
 
 --TODO: more asserts
 ROLLBACK;
-
-

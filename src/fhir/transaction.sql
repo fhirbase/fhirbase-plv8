@@ -11,6 +11,9 @@ func _replace_references(_resource_ text, _references_ json[]) RETURNS text
    ELSE _resource_
    END
 
+
+-- TODO: refactor to proc and sub procedures
+
 func! fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb
   --Update, create or delete a set of resources as a single transaction\nReturns bundle with entries
   WITH entries AS (
@@ -32,7 +35,7 @@ func! fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb
   ), created_resources AS (
     SELECT
       r.id as alternative,
-      crud.fhir_create(_cfg, r.resource_type, r.content::jsonb, r.category::jsonb)#>'{entry,0}' as entry
+      crud.create(_cfg, r.content::jsonb)#>'{entry,0}' as entry
     FROM create_resources r
   ), reference AS (
     SELECT array(
@@ -46,16 +49,14 @@ func! fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb
   ), updated_resources AS (
     SELECT
       r.id as alternative,
-      crud.fhir_update(_cfg, r.resource_type, cr.entry->>'id',
-        cr.entry#>>'{link,0,href}',
-        this._replace_references(r.content::text, rf.refs)::jsonb, '[]'::jsonb)#>'{entry,0}' as entry
+      crud.update(_cfg, this._replace_references(r.content::text, rf.refs)::jsonb) as entry
     FROM create_resources r
     JOIN created_resources cr on cr.alternative = r.id
     JOIN reference rf on 1=1
     UNION ALL
     SELECT
       r.id as alternative,
-      crud.fhir_update(_cfg, r.resource_type, r.id, r.vid, this._replace_references(r.content::text, rf.refs)::jsonb, r.category::jsonb)#>'{entry,0}' as entry
+      crud.update(_cfg, this._replace_references(r.content::text, rf.refs)::jsonb) as entry
     FROM update_resources r, reference rf
   ), delete_resources AS (
     SELECT i.*
@@ -67,7 +68,7 @@ func! fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb
       SELECT
         r.id as alternative,
         ('{"id": "' || r.id || '"}')::jsonb as entry,
-        crud.fhir_delete(_cfg, rs.resource_type, r.id) as deleted
+        crud.delete(_cfg, rs.resource_type, r.id) as deleted
       FROM delete_resources r
       JOIN resource rs on rs.logical_id::text = crud._extract_id(r.id)
     ) d

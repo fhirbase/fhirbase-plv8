@@ -25,101 +25,15 @@ BEGIN;
 
 SELECT generate.generate_tables('{Patient}');
 
-setv('cfg','{"base":"https://test.me"}'::jsonb);
-setv('ptj','{"resourceType":"Patient","name":{"text":"Goga"}}'::jsonb);
-setv('uptj','{"resourceType":"Patient","name":{"text":"Magoga"}}'::jsonb);
-
-setv('ipt',
-  fhir_create(getv('cfg'), 'Patient', getv('ptj'),null)#>'{entry,0}'
-);
-
-setv('upt',
-  fhir_update(
-    getv('cfg'), 'Patient',
-    getv('ipt')#>>'{id}',
-    getv('ipt')#>>'{link,0,href}',
-    getv('uptj'),
-    null
-  )#>'{entry,0}'
-);
-
-getv('upt')->'content' => getv('uptj')
-
-SELECT count(*) FROM patient => 1::bigint
-SELECT count(*) FROM patient_history => 1::bigint
-
-expect 'history'
-  jsonb_array_length(
-    fhir_history(getv('cfg'), 'Patient', getv('ipt')#>>'{id}', '{}'::jsonb)->'entry'
-  )
-=> 2
-
-expect 'history resource'
-  jsonb_array_length(
-    fhir_history(getv('cfg'), 'Patient', null)->'entry'
-  )
-=> 2
-
-expect 'history all resources'
-  jsonb_array_length(
-    fhir_history(getv('cfg'), null)->'entry'
-  )
-=> 2
-
-expect
-  fhir_is_latest_resource(
-    getv('cfg'),
-    'Patient',
-    getv('upt')->>'id',
-    getv('ipt')#>>'{link,0,href}'
-  )
-=> false
-
-expect
-  fhir_is_latest_resource(
-    getv('cfg'),
-    'Patient',
-    getv('upt')->>'id',
-    getv('upt')#>>'{link,0,href}'
-  )
-=> true
-
-expect
-  fhir_is_deleted_resource(
-    getv('cfg'),
-    'Patient',
-    getv('upt')->>'id'
-  )
-=> false
-
-SELECT fhir_delete( getv('cfg'), 'Patient', getv('upt')->>'id');
-
-expect
-  fhir_is_deleted_resource(
-    getv('cfg'),
-    'Patient',
-    getv('upt')->>'id'
-  )
-=> true
-
-SELECT count(*) from patient => 0::bigint
-
-ROLLBACK;
-
-BEGIN;
-
-SELECT generate.generate_tables('{Patient}');
-
-
-setv('with-id',
+setv('created',
   crud.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
 );
 
-crud.read('{}'::jsonb, 'myid') => getv('with-id')
-crud.read('{}'::jsonb, 'Patient/myid') => getv('with-id')
+crud.read('{}'::jsonb, 'myid') => getv('created')
+crud.read('{}'::jsonb, 'Patient/myid') => getv('created')
 
 expect 'id is myid'
-  getv('with-id')->>'id'
+  getv('created')->>'id'
 => 'myid'
 
 expect 'patient in table'
@@ -128,15 +42,15 @@ expect 'patient in table'
 => 1::bigint
 
 expect 'meta info'
-  jsonb_typeof(getv('with-id')->'meta')
+  jsonb_typeof(getv('created')->'meta')
 => 'object'
 
 expect 'meta info'
-  jsonb_typeof(getv('with-id')#>'{meta,versionId}')
+  jsonb_typeof(getv('created')#>'{meta,versionId}')
 => 'string'
 
 expect 'meta info'
-  jsonb_typeof(getv('with-id')#>'{meta,lastUpdated}')
+  jsonb_typeof(getv('created')#>'{meta,lastUpdated}')
 => 'string'
 
 setv('without-id',
@@ -146,6 +60,11 @@ setv('without-id',
 expect 'id was set'
   SELECT (getv('without-id')->>'id') IS NOT NULL
 => true
+
+
+expect 'meta respected in create'
+  crud.create('{}'::jsonb, '{"resourceType":"Patient", "meta":{"tags":[1]}}'::jsonb)#>'{meta,tags}'
+=> '[1]'::jsonb
 
 expect 'patient created'
   SELECT count(*) FROM patient
@@ -165,7 +84,7 @@ expect 'updated'
 
 setv('updated',
   crud.update('{}'::jsonb,
-    jsonbext.assoc(getv('with-id'),'name','{"text":"Updated name"}')
+    jsonbext.assoc(getv('created'),'name','{"text":"Updated name"}')
   )
 );
 
@@ -176,6 +95,60 @@ expect 'updated'
 
 crud.read('{}'::jsonb, 'myid')#>>'{name,text}' => 'Updated name'
 
+crud.vread('{}'::jsonb, getv('created')#>>'{meta,versionId}') => getv('created')
+
+expect "latest"
+  crud.is_latest('{}'::jsonb, 'Patient', 'myid',
+    getv('updated')#>>'{meta,versionId}')
+=> true
+
+expect "not latest"
+  crud.is_latest('{}'::jsonb, 'Patient', 'myid',
+    getv('created')#>>'{meta,versionId}')
+=> false
+
+crud.history('{}'::jsonb, 'Patient', 'myid')#>'{entry,0,resource}' => getv('updated')
+crud.history('{}'::jsonb, 'Patient', 'myid')#>'{entry,1,resource}' => getv('created')
+
+expect '2 items for resource history'
+  jsonb_array_length(
+    crud.history('{}'::jsonb, 'Patient', 'myid')->'entry'
+  )
+=> 2
+
+expect '4 items for resource type history'
+  jsonb_array_length(
+    crud.history('{}'::jsonb, 'Patient')->'entry'
+  )
+=> 4
+
+expect '2 items for resource type history'
+  jsonb_array_length(
+    crud.history('{}'::jsonb)->'entry'
+  )
+=> 4
+
+-- DELETE
+
+crud.is_exists('{}'::jsonb, 'Patient', 'myid') => true
+crud.is_deleted('{}'::jsonb, 'Patient', 'myid') => false
+
+setv('deleted',
+  crud.delete('{}'::jsonb, 'Patient', 'myid')
+);
+
+expect_raise 'already deleted'
+  SELECT crud.delete('{}'::jsonb, 'Patient', 'myid')
+
+expect_raise 'does not exist'
+  SELECT crud.delete('{}'::jsonb, 'Patient', 'nonexisting')
+
+crud.read('{}'::jsonb, 'myid') => null
+
+crud.is_exists('{}'::jsonb, 'Patient', 'myid') => false
+crud.is_deleted('{}'::jsonb, 'Patient', 'myid') => true
+
+getv('deleted')#>>'{meta,versionId}' => getv('updated')#>>'{meta,versionId}'
 
 /* expect */
 /*   SELECT E'\n' || string_agg(ROW(x.*)::text, E'\n') FROM patient x */
