@@ -95,6 +95,7 @@ proc! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
     RETURN this.read(_cfg_, _id_);
 
 
+-- TODO versionId as md5 or sha1
 proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
   -- Update resource, creating new version\nReturns bundle with one entry
   _id_ text;

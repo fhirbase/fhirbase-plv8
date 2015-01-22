@@ -20,59 +20,59 @@ setv('bundle-json',
     'resourceType', 'Bundle',
     'entry', ARRAY[
       json_build_object(
-        'id', '@create-device',
-        'resource', '{ "resourceType": "Device", "manufacturer": "handmade"}'::json
+        'status', 'create',
+        'resource', '{"resourceType": "Device", "manufacturer": "handmade"}'::json
       ),
       json_build_object(
-        'id','????',
-        'resource', getv('alert')::json
+        'status', 'update',
+        'resource', jsonbext.assoc(getv('alert'), 'note', '"new-note"'::jsonb)::json
       ),
       json_build_object(
-        'id', getv('device')->>'id',
-        'deleted', current_timestamp
+        'status', 'delete',
+        'deleted', json_build_object(
+          'type', 'Device',
+          'resourceId', getv('device')->>'id',
+          'versionId', getv('device')#>>'{meta,versionId}',
+          'instant', current_timestamp
+        )
       )
     ]::json[]
   )::jsonb
 );
 
-getv('bundle-json') => '{}'::jsonb
-
-/* '{"resourceType" : "Bundle", "entry" : [ { "id" : "@create-device", */
-/* "category" : [], "content" : */
-/* { "resourceType": "Device", "manufacturer": "handmade"} }, */
-/* { "id" : "{{update-alert}}", "link" : [{ "rel" : "self", "href" : "{{update-vid-alert}}" }], "category" : [], */
-/* "content" : { "resourceType": "Alert", "note": "new-note" } },
-{ "id" : "{{delete-device}}",
-"deleted" : "2012-05-29T23:45:32+00:00" } ] }'::jsonb */
-
 
 setv('trans',
-  transaction.fhir_transaction(
+  transaction.transaction(
     getv('cfg'),
-    gen._tpl(
-      getv('bundle-json')::text,
-      'update-alert', getv('alert')->>'id',
-      'delete-device', getv('device')->>'id',
-      'update-vid-alert', crud._extract_vid((getv('alert')#>>'{link,0,href}'))
-    )::jsonb
+    getv('bundle-json')
   )
 );
 
+getv('trans')->>'type' => 'transaction-responce'
+
+expect
+  jsonb_array_length(
+    getv('trans')->'entry'
+  )
+=> 3
+
 expect
   crud.read(
-     getv('cfg'), 'Device', getv('trans')#>>'{entry,0,id}'
+     getv('cfg'), getv('trans')#>>'{entry,0,resource,id}'
   )#>>'{manufacturer}'
 => 'handmade'
 
 expect
   crud.read(
-     getv('cfg'), 'Alert', getv('trans')#>>'{entry,1,id}'
+     getv('cfg'), getv('trans')#>>'{entry,1,resource,id}'
   )#>>'{note}'
 => 'new-note'
 
 expect
   crud.is_deleted(
-     getv('cfg'), 'Device', getv('trans')#>>'{entry,2,id}'
+    getv('cfg'),
+    'Device',
+    getv('trans')#>>'{entry,2,resource,id}'
   )
 => true
 
