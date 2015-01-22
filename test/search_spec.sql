@@ -13,9 +13,9 @@ BEGIN;
 SELECT generate.generate_base_tables();
 SELECT generate.generate_tables('{Patient}');
 
-SELECT crud.fhir_create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1973"}'::jsonb);
-SELECT crud.fhir_create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1983"}'::jsonb);
-SELECT crud.fhir_create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1993"}'::jsonb);
+SELECT crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1973"}'::jsonb);
+SELECT crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1983"}'::jsonb);
+SELECT crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1993"}'::jsonb);
 
 SELECT count(*) FROM search('Patient', 'birthdate=>1970') => 3::bigint
 SELECT count(*) FROM search('Patient', 'birthdate=>1980') => 2::bigint
@@ -33,10 +33,10 @@ setv('cfg','{"base":"https://test.me"}'::jsonb);
 
 setv('pt-tpl', '{"resourceType":"Patient", "gender":"%s", "birthDate":"%s"}');
 
-SELECT crud.fhir_create(getv('cfg'), format(getv('pt-tpl')::text, 'mail', '1970')::jsonb);
-SELECT crud.fhir_create(getv('cfg'), format(getv('pt-tpl')::text, 'mail', '1980')::jsonb);
-SELECT crud.fhir_create(getv('cfg'), format(getv('pt-tpl')::text, 'femail', '1985')::jsonb);
-SELECT crud.fhir_create(getv('cfg'), format(getv('pt-tpl')::text, 'femail', '1990')::jsonb);
+SELECT crud.create(getv('cfg'), format(getv('pt-tpl')::text, 'mail', '1970')::jsonb);
+SELECT crud.create(getv('cfg'), format(getv('pt-tpl')::text, 'mail', '1980')::jsonb);
+SELECT crud.create(getv('cfg'), format(getv('pt-tpl')::text, 'femail', '1985')::jsonb);
+SELECT crud.create(getv('cfg'), format(getv('pt-tpl')::text, 'femail', '1990')::jsonb);
 
 SELECT build_search_query('Patient', '_count=50&_page=3');
 
@@ -65,7 +65,7 @@ setv('cfg', '{"base":"https://test.me"}'::jsonb);
 setv('device', '{"resourceType": "Device", "model": "Jóe", "manufacturer": "Acme" }');
 
 setv('dev',
-  crud.fhir_create(getv('cfg'), 'Device', getv('device'), null)
+  crud.create(getv('cfg'), getv('device'))
 );
 
 expect
