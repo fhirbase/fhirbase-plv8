@@ -25,6 +25,10 @@ expect 'generate id by sha'
   gen_version_id('{"resourceType":"Patient", "name":{"text":"Goga"}, "meta": {"tags":["ups"]}}'::jsonb)
 => gen_version_id('{"name":{"text":"Goga"}, "resourceType":"Patient"}'::jsonb)
 
+expect 'generate id by sha'
+  gen_logical_id('{"resourceType":"Patient", "name":{"text":"Goga"}, "meta": {"tags":["ups"]}}'::jsonb)
+=> gen_logical_id('{"name":{"text":"Goga"}, "resourceType":"Patient"}'::jsonb)
+
 BEGIN;
 
 SELECT generate.generate_tables('{Patient}');
@@ -72,7 +76,7 @@ expect 'meta respected in create'
 
 expect 'patient created'
   SELECT count(*) FROM patient
-  WHERE logical_id = ((getv('without-id')->>'id')::uuid)::text
+  WHERE logical_id = getv('without-id')->>'id'
 => 1::bigint
 
 expect_raise 'id and meta.versionId are required'

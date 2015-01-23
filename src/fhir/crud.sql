@@ -38,16 +38,6 @@ func _extract_vid(_id_ text) RETURNS text
   -- TODO: raise if not valid url
   SELECT coll._last(regexp_split_to_array(_id_, '/_history/'));
 
-func _build_bundle(_title_ text, _total_ integer, _entry_ json) RETURNS jsonb
-  SELECT  json_build_object(
-    'title', _title_,
-    'id', this._sha1(_entry_::text),
-    'resourceType', 'Bundle',
-    'totalResults', _total_,
-    'updated', now(),
-    'entry', _entry_
-  )::jsonb
-
 --- NEW API
 --- NEW API
 

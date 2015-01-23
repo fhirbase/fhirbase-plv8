@@ -237,13 +237,20 @@ proc! explain_search(_resource_type text, query text) RETURNS table( "plan" text
   BEGIN
     RETURN QUERY EXECUTE 'EXPLAIN ANALYZE ' || build_search_query(_resource_type, query);
 
-func fhir_search(_cfg jsonb, _type_ text, _params_ text) RETURNS jsonb
+func _search_entry(_cfg_ jsonb, _row_ "resource") RETURNS jsonb
+  SELECT json_build_object('resource', _row_.content)::jsonb
+
+func _search_bundle(_cfg_ jsonb, _entries_ jsonb) RETURNS jsonb
+  SELECT json_build_object(
+    'type', 'search',
+    'entry', _entries_
+  )::jsonb
+
+func fhir_search(_cfg_ jsonb, _type_ text, _params_ text) RETURNS jsonb
   WITH entry AS (
-    SELECT crud._build_entry(_cfg, row(r.*)) as entry
+    SELECT this._search_entry(_cfg_, row(r.*)) as entry
       FROM this.search(_type_, _params_) r
   )
-  SELECT crud._build_bundle(
-    'Search ' || _type_  || ' by ' || _params_,
-    (SELECT count(*)::int FROM entry),
-    (SELECT COALESCE(json_agg(entry),'[]'::json) FROM entry e)
+  SELECT this._search_bundle(
+    _cfg_, (SELECT COALESCE(json_agg(entry),'[]'::json)::jsonb FROM entry)
   )

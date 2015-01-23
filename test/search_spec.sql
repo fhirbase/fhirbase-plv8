@@ -61,7 +61,7 @@ BEGIN;
 SELECT generate.generate_base_tables();
 SELECT generate.generate_tables('{Device}');
 
-setv('cfg', '{"base":"https://test.me"}'::jsonb);
+setv('cfg', '{"base":"https://test.me"}');
 setv('device', '{"resourceType": "Device", "model": "Jóe", "manufacturer": "Acme" }');
 
 setv('dev',
@@ -69,15 +69,15 @@ setv('dev',
 );
 
 expect
-  fhir_search(getv('cfg'), 'Device', 'model=Joe')#>>'{entry,0,content,resourceType}'
+  fhir_search(getv('cfg'), 'Device', 'model=Joe')#>>'{entry,0,resource,resourceType}'
 => 'Device'
 
 expect
-  fhir_search(getv('cfg'), 'Device', 'manufacturer=Ácme')#>>'{entry,0,content,resourceType}'
+  fhir_search(getv('cfg'), 'Device', 'manufacturer=Ácme')#>>'{entry,0,resource,resourceType}'
 => 'Device'
 
 expect
-  fhir_search(getv('cfg'), 'Device', 'model=Jóe')#>>'{entry,0,content,resourceType}'
+  fhir_search(getv('cfg'), 'Device', 'model=Jóe')#>>'{entry,0,resource,resourceType}'
 => 'Device'
 
 ROLLBACK;
