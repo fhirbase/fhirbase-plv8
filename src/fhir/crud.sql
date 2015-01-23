@@ -6,6 +6,19 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm; -- for ilike optimisation in search
 
+func _sha1(x text) RETURNS text
+  SELECT encode(digest(x, 'sha1'), 'hex')
+
+func gen_version_id(_res_ jsonb) RETURNS text
+  -- remove meta
+  SELECT this._sha1(jsonbext.assoc(_res_, 'meta', '[]')::text)
+
+func gen_logical_id(_res_ jsonb) RETURNS text
+  -- remove meta
+  SELECT this._sha1(jsonbext.assoc(_res_, 'meta', '[]')::text)
+
+-- TODO: rename
+
 func _build_url(_cfg_ jsonb, VARIADIC path text[]) RETURNS text
   SELECT _cfg_->>'base' || '/' || (SELECT string_agg(x, '/') FROM unnest(path) x)
 
@@ -28,29 +41,15 @@ func _extract_vid(_id_ text) RETURNS text
 func _build_bundle(_title_ text, _total_ integer, _entry_ json) RETURNS jsonb
   SELECT  json_build_object(
     'title', _title_,
-    'id', gen_random_uuid()::text,
+    'id', this._sha1(_entry_::text),
     'resourceType', 'Bundle',
     'totalResults', _total_,
     'updated', now(),
     'entry', _entry_
   )::jsonb
 
--- TODO: move out of crud to util
-func _build_entry(_cfg_ jsonb, _line "resource") RETURNS json
-  SELECT row_to_json(x.*) FROM (
-    SELECT _line.content,
-           _line.updated,
-           _line.published AS published,
-           this._build_id(_cfg_, _line.resource_type, _line.logical_id) AS id,
-           _line.category,
-           json_build_array(
-             this._build_link(_cfg_, _line.resource_type, _line.logical_id, _line.version_id)::json
-           )::jsonb   AS link
-  ) x
-
 --- NEW API
 --- NEW API
-
 
 func! read(_cfg_ jsonb, _id_ text) RETURNS jsonb
    SELECT content FROM resource WHERE logical_id = this._extract_id(_id_) limit 1
@@ -66,14 +65,15 @@ proc! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
   _id_ text;
   _published_ timestamptz :=  CURRENT_TIMESTAMP;
   _type_ text;
-  _vid_ text := gen_random_uuid()::text;
+  _vid_ text;
   _meta_ jsonb;
   BEGIN
     _type_ := lower(_resource_->>'resourceType');
     _id_ := _resource_->>'id';
+    _vid_ := this.gen_version_id(_resource_);
 
     IF _id_ is NULL THEN
-      _id_ := gen_random_uuid();
+      _id_ := _vid_;
       _resource_ := jsonbext.assoc(_resource_, 'id', ('"' || _id_ || '"')::jsonb);
     END IF;
 
@@ -84,7 +84,6 @@ proc! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
       'lastUpdated', _published_
       )::jsonb
     );
-
 
     _resource_ := jsonbext.assoc(_resource_, 'meta', _meta_);
 
@@ -98,6 +97,7 @@ proc! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
 -- TODO versionId as md5 or sha1
 proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
   -- Update resource, creating new version\nReturns bundle with one entry
+  --TODO: detect when content not changed
   _id_ text;
   _old_vid_ text;
   _new_vid_ text;
@@ -131,7 +131,7 @@ proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
     USING _old_vid_;
 
     _updated_ := current_timestamp + interval '1 microseconds';
-    _new_vid_ := gen_random_uuid()::text;
+    _new_vid_ := this.gen_version_id(_resource_);
     _resource_ := jsonbext.assoc(_resource_, 'meta',
       jsonbext.merge(_resource_->'meta',
         json_build_object(

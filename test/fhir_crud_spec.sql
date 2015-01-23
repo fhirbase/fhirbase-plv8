@@ -21,6 +21,10 @@ _extract_vid('rid/_history/vid') => 'vid'
 _extract_vid('http://ups/rid/_history/vid') => 'vid'
 
 
+expect 'generate id by sha'
+  gen_version_id('{"resourceType":"Patient", "name":{"text":"Goga"}, "meta": {"tags":["ups"]}}'::jsonb)
+=> gen_version_id('{"name":{"text":"Goga"}, "resourceType":"Patient"}'::jsonb)
+
 BEGIN;
 
 SELECT generate.generate_tables('{Patient}');
