@@ -2,7 +2,7 @@
 
 -- most of params should go from _cfg
 -- TODO: check all fields
-func fhir_conformance(_cfg jsonb) RETURNS jsonb
+func conformance(_cfg jsonb) RETURNS jsonb
   SELECT json_build_object(
     'resourceType', 'Conformance',
     'identifier', _cfg->'identifier',
@@ -48,7 +48,7 @@ func fhir_conformance(_cfg jsonb) RETURNS jsonb
   )::jsonb
 
 
-func fhir_profile(_cfg jsonb, _resource_name_ text) RETURNS jsonb
+func profile(_cfg jsonb, _resource_name_ text) RETURNS jsonb
   WITH elems AS (
     SELECT array_to_string(e.path,'.') as path,
            json_build_object(

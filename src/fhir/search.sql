@@ -231,11 +231,11 @@ func build_search_query(_resource_type text, _query text) RETURNS text
 
 proc! search(_resource_type text, query text) RETURNS SETOF resource
   BEGIN
-    RETURN QUERY EXECUTE build_search_query(_resource_type, query);
+    RETURN QUERY EXECUTE this.build_search_query(_resource_type, query);
 
 proc! explain_search(_resource_type text, query text) RETURNS table( "plan" text)
   BEGIN
-    RETURN QUERY EXECUTE 'EXPLAIN ANALYZE ' || build_search_query(_resource_type, query);
+    RETURN QUERY EXECUTE 'EXPLAIN ANALYZE ' || this.build_search_query(_resource_type, query);
 
 func _search_entry(_cfg_ jsonb, _row_ "resource") RETURNS jsonb
   SELECT json_build_object('resource', _row_.content)::jsonb
