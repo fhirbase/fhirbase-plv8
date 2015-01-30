@@ -69,6 +69,10 @@ setv('dev',
 );
 
 expect
+  fhir_search(getv('cfg'), 'Device', '')#>>'{resourceType}'
+=> 'Bundle'
+
+expect
   fhir_search(getv('cfg'), 'Device', 'model=Joe')#>>'{entry,0,resource,resourceType}'
 => 'Device'
 

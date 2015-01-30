@@ -242,6 +242,7 @@ func _search_entry(_cfg_ jsonb, _row_ "resource") RETURNS jsonb
 
 func _search_bundle(_cfg_ jsonb, _entries_ jsonb) RETURNS jsonb
   SELECT json_build_object(
+    'resourceType', 'Bundle',
     'type', 'search',
     'entry', _entries_
   )::jsonb
