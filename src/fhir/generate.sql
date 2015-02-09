@@ -36,7 +36,6 @@ func! generate_base_tables() returns text
 
 SELECT this.generate_base_tables();
 
-
 func! generate_tables(_profiles_ text[]) returns text
   --genarate all tables
   SELECT
@@ -44,8 +43,6 @@ func! generate_tables(_profiles_ text[]) returns text
   gen._eval(
     gen._tpl($SQL$
       SET client_min_messages to 'panic';
-      --SELECT generate_base_tables('{{ns}}');
-
       CREATE TABLE "{{tbl_name}}" () INHERITS (resource);
 
       ALTER TABLE "{{tbl_name}}"

@@ -45,4 +45,6 @@ func conformance(_cfg jsonb) RETURNS jsonb
 
 
 func profile(_cfg jsonb, _resource_name_ text) RETURNS jsonb
-  select content from metadata.profile where id = _resource_name_
+  select  content
+    from metadata.profile
+    where lower(id) = lower(_resource_name_)

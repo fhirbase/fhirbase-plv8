@@ -65,10 +65,10 @@ func _expand_search_params(_resource_type text, _query text) RETURNS setof query
            x.operator,
            x.value
      FROM  params x
-     JOIN  resources.resource_indexables ri
-       ON  ri.param_name = split_part(key[1], ':',1)
-      AND  ri.resource_type = x.res
-     JOIN  resources.resource_elements re
+     JOIN  metadata.searchparameter ri
+       ON  ri.name = split_part(key[1], ':',1)
+      AND  ri.base = x.res
+     JOIN  metadata.profile_elements re
        ON  re.path = ri.path
     WHERE array_length(key,1) > 1
   )
@@ -85,9 +85,9 @@ func _expand_search_params(_resource_type text, _query text) RETURNS setof query
     operator,
     value
   FROM params p
-  JOIN resources.resource_indexables ri
-    ON ri.resource_type = res
-   AND ri.param_name = key[1]
+  JOIN metadata.searchparameter ri
+    ON ri.base = res
+   AND ri.name = key[1]
  where array_length(key,1) = 1
   ORDER by p.chain
 
@@ -171,9 +171,9 @@ func build_sorting(_resource_type varchar, _query text) RETURNS text
   ), with_meta AS (
     SELECT *
       FROM params x
-      JOIN resources.resource_indexables fr
-        ON fr.resource_type = _resource_type
-       AND fr.param_name = x.param_name
+      JOIN metadata.searchparameter sp
+        ON sp.base = _resource_type
+       AND sp.name = x.param_name
   ORDER BY weight
   )
   SELECT k.column1

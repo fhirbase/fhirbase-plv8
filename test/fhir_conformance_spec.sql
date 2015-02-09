@@ -1,4 +1,5 @@
 -- #import ../src/tests.sql
+-- #import ../src/fhir/metadata.sql
 -- #import ../src/fhir/conformance.sql
 
 conformance.conformance('{"version":"0.1"}')->>'version' => '0.1'
@@ -10,9 +11,9 @@ expect 'no resources unless generated'
 
 BEGIN;
 
-UPDATE resources.resources
+UPDATE metadata.profile
    SET installed = true
- WHERE resource_name in ('Patient', 'Encounter');
+ WHERE id in ('Patient', 'Encounter');
 
 expect 'no resources unless generated'
   jsonb_array_length(
@@ -22,4 +23,6 @@ expect 'no resources unless generated'
 
 ROLLBACK;
 
-conformance.profile(null::jsonb, 'Patient')#>>'{structure,0,differential,element,0,path}' => 'Patient'
+expect 'patient'
+  conformance.profile(null::jsonb, 'Patient')->>'id'
+=> 'Patient'
