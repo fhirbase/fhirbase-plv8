@@ -76,6 +76,9 @@ func! generate_tables(resources text[]) returns text
         ALTER COLUMN content SET NOT NULL,
         ALTER COLUMN resource_type SET DEFAULT '{{resource_type}}';
 
+     UPDATE resources.resources
+       SET installed = true
+        WHERE lower(resource_name) = '{{tbl_name}}';
     $SQL$,
     'ns', 'TODO',
     'tbl_name', lower(path[1]),

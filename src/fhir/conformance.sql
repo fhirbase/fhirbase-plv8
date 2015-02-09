@@ -22,11 +22,11 @@ func conformance(_cfg jsonb) RETURNS jsonb
       'operation', ARRAY['{ "code": "transaction" }'::json, '{ "code": "history-system" }'::json],
       'cors', _cfg->'cors',
       'resource',
-        (SELECT json_agg(
+        COALESCE((SELECT json_agg(
             json_build_object(
-              'type', e.path[1],
+              'type', r.resource_name,
               'profile', json_build_object(
-                'reference', _cfg->>'base' || '/Profile/' || e.path[1]
+                'reference', _cfg->>'base' || '/Profile/' || r.resource_name
               ),
               'readHistory', true,
               'updateCreate', true,
@@ -35,15 +35,15 @@ func conformance(_cfg jsonb) RETURNS jsonb
                 SELECT  json_agg(t.*)  FROM (
                   SELECT sp.name, sp.type, sp.documentation
                   FROM resources.resource_search_params sp
-                    WHERE sp.path[1] = e.path[1]
+                    WHERE sp.path[1] = r.resource_name
                 ) t
               )
 
             )
           )
-          FROM resources.resource_elements e
-          WHERE array_length(path,1) = 1
-        )
+          FROM resources.resources r
+          WHERE r.installed = true
+        ), '[]'::json)
     )]
   )::jsonb
 

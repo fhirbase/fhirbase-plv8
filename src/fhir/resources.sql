@@ -1,6 +1,12 @@
 -- #import ../coll.sql
 
-DROP TABLE IF EXISTS this.resource_elements CASCADE;
+CREATE TABLE this.resources (
+  version text,
+  resource_name text,
+  installed boolean DEFAULT false,
+  PRIMARY KEY(resource_name)
+);
+
 CREATE TABLE this.resource_elements (
   version text,
   path text[],
@@ -11,7 +17,6 @@ CREATE TABLE this.resource_elements (
   PRIMARY KEY(path)
 );
 
-DROP TABLE IF EXISTS this.resource_search_params CASCADE;
 CREATE TABLE this.resource_search_params (
   _id SERIAL  PRIMARY KEY,
   resource text,
@@ -53,6 +58,12 @@ select
     SELECT unnest(this.fpath('//fh:resource/fh:Profile/fh:snapshot/fh:element', :'fhir')) as el
   ) els
 ;
+
+INSERT INTO this.resources
+  (version, resource_name)
+  select '0.4.0', path[1]
+    from this.resource_elements
+ group by path[1];
 
 \set fhirs `cat src/fhir/search-parameters.xml`
 

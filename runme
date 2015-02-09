@@ -6,7 +6,11 @@ import ql.prepr
 import sys
 import glob
 
-db = 'test'
+if 'DB' in os.environ:
+    db = os.environ['DB']
+else:
+    print "Please set env DB=?"
+    exit(1)
 
 def each_file(fls,cb):
     for fl in fls:
