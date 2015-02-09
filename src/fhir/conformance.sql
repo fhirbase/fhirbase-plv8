@@ -38,7 +38,6 @@ func conformance(_cfg jsonb) RETURNS jsonb
                     WHERE sp.path[1] = r.resource_name
                 ) t
               )
-
             )
           )
           FROM resources.resources r
