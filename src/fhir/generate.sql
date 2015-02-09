@@ -1,5 +1,5 @@
 -- #import ../gen.sql
--- #import ./resources.sql
+-- #import ./metadata.sql
 
 func! generate_base_tables() returns text
   --genarate base tables
@@ -37,7 +37,7 @@ func! generate_base_tables() returns text
 SELECT this.generate_base_tables();
 
 
-func! generate_tables(resources text[]) returns text
+func! generate_tables(_profiles_ text[]) returns text
   --genarate all tables
   SELECT
   count(
@@ -76,16 +76,16 @@ func! generate_tables(resources text[]) returns text
         ALTER COLUMN content SET NOT NULL,
         ALTER COLUMN resource_type SET DEFAULT '{{resource_type}}';
 
-     UPDATE resources.resources
+     UPDATE metadata.profile
        SET installed = true
-        WHERE lower(resource_name) = '{{tbl_name}}';
+        WHERE lower(id) = '{{tbl_name}}';
     $SQL$,
     'ns', 'TODO',
-    'tbl_name', lower(path[1]),
-    'resource_type', path[1])))::text
-  FROM resources.resource_elements
-  WHERE array_length(path,1) = 1
-    AND (resources IS NULL OR resources @> ARRAY[path[1]::text]);
+    'tbl_name', lower(id),
+    'resource_type', id)))::text
+  FROM metadata.profile
+  WHERE base is null
+    AND (_profiles_ IS NULL OR _profiles_ @> ARRAY[id]);
 
 func! generate_tables() returns text
    SELECT this.generate_tables(null)

@@ -1,6 +1,6 @@
 -- #import ../coll.sql
 -- #import ../gen.sql
--- #import ./resources.sql
+-- #import ./metadata.sql
 -- #import ./index_fns.sql
 -- #import ./index_date.sql
 

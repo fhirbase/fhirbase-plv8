@@ -104,6 +104,7 @@ def load_to_pg(db, fl, content, force=False):
         print '\t<- %s' % fl
         sql = prepr.process(fl, content)
         res = pgexec(db, sql)
+        print res['stdout']
         if res['returncode'] == 0:
             pgexec(db, 'DELETE FROM modules WHERE file=\'%s\'' % fl)
             pgexec(db, 'INSERT INTO modules (file,digest) VALUES (\'%s\',\'%s\')' % (fl, s))
