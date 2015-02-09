@@ -11,9 +11,9 @@ expect 'meta information updated'
   SELECT count(*)
     from profile
     WHERE installed = true
-=> 1::bigint
+=> 3::bigint
 
-SELECT logical_id FROM profile WHERE installed = true LIMIT 1 => 'Patient'
+SELECT installed FROM profile WHERE logical_id = 'Patient' LIMIT 1 => true
 
 ROLLBACK;
 

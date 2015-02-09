@@ -132,8 +132,14 @@ TRUNCATE profile_elements;
 \set datatypes `cat fhir/profiles-types.json`
 select array_length(this.load_bundle(:'datatypes'), 1);
 
+
 \set profs `cat fhir/profiles-resources.json`
 SELECT array_length(metadata.load_bundle(:'profs'),1);
+
+-- mark installed
+UPDATE profile
+  SET installed = true
+WHERE logical_id in ('Profile', 'SearchParameter');
 
 TRUNCATE searchparameter;
 

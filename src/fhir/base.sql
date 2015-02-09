@@ -43,6 +43,16 @@ ALTER TABLE profile
   ALTER COLUMN content SET NOT NULL,
   ALTER COLUMN resource_type SET DEFAULT 'Profile';
 
+CREATE TABLE profile_history () INHERITS (resource_history);
+ALTER TABLE profile_history
+  ADD PRIMARY KEY (version_id),
+  ALTER COLUMN updated SET NOT NULL,
+  ALTER COLUMN updated SET DEFAULT CURRENT_TIMESTAMP,
+  ALTER COLUMN published SET NOT NULL,
+  ALTER COLUMN published SET DEFAULT CURRENT_TIMESTAMP,
+  ALTER COLUMN content SET NOT NULL,
+  ALTER COLUMN resource_type SET DEFAULT 'Profile';
+
 CREATE TABLE profile_elements (
   profile_id text,
   path text[],
@@ -68,6 +78,16 @@ CREATE TABLE searchparameter (
 
 ALTER TABLE searchparameter
   ADD PRIMARY KEY (logical_id),
+  ALTER COLUMN updated SET NOT NULL,
+  ALTER COLUMN updated SET DEFAULT CURRENT_TIMESTAMP,
+  ALTER COLUMN published SET NOT NULL,
+  ALTER COLUMN published SET DEFAULT CURRENT_TIMESTAMP,
+  ALTER COLUMN content SET NOT NULL,
+  ALTER COLUMN resource_type SET DEFAULT 'SearchParameter';
+
+CREATE TABLE searchparameter_history () INHERITS (resource_history);
+ALTER TABLE searchparameter_history
+  ADD PRIMARY KEY (version_id),
   ALTER COLUMN updated SET NOT NULL,
   ALTER COLUMN updated SET DEFAULT CURRENT_TIMESTAMP,
   ALTER COLUMN published SET NOT NULL,

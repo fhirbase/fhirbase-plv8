@@ -4,9 +4,11 @@
 
 conformance.conformance('{"version":"0.1"}')->>'version' => '0.1'
 
-expect 'no resources unless generated'
-  conformance.conformance('{"version":"0.1"}')#>'{rest,0,resource}'
-=> '[]'::jsonb
+expect 'profile & search params unless installed'
+  jsonb_array_length(
+    conformance.conformance('{"version":"0.1"}')#>'{rest,0,resource}'
+  )
+=> 2
 
 
 BEGIN;
@@ -19,7 +21,7 @@ expect 'no resources unless generated'
   jsonb_array_length(
     conformance.conformance('{"version":"0.1"}')#>'{rest,0,resource}'
   )
-=> 2
+=> 4
 
 ROLLBACK;
 

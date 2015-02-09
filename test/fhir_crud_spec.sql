@@ -130,11 +130,11 @@ expect '4 items for resource type history'
   )
 => 4
 
-expect '2 items for resource type history'
+expect 'more then 4 items for all history'
   jsonb_array_length(
     crud.history('{}'::jsonb)->'entry'
-  )
-=> 4
+  ) > 4
+=> true
 
 -- DELETE
 
