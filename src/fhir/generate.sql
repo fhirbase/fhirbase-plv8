@@ -1,41 +1,6 @@
 -- #import ../gen.sql
 -- #import ./metadata.sql
 
-func! generate_base_tables() returns text
-  --genarate base tables
-  SELECT gen._eval(
-    gen._tpl($SQL$
-      SET client_min_messages=WARNING;
-      CREATE EXTENSION IF NOT EXISTS pgcrypto;
-      CREATE EXTENSION IF NOT EXISTS pg_trgm; -- for ilike optimisation in search
-
-      CREATE TABLE IF NOT EXISTS resource (
-        version_id text,
-        logical_id text,
-        resource_type text,
-        updated TIMESTAMP WITH TIME ZONE,
-        published  TIMESTAMP WITH TIME ZONE,
-        category jsonb,
-        content jsonb
-      );
-
-      CREATE TABLE IF NOT EXISTS resource_history (
-        version_id text,
-        logical_id text,
-        resource_type text,
-        updated TIMESTAMP WITH TIME ZONE,
-        published  TIMESTAMP WITH TIME ZONE,
-        category jsonb,
-        content jsonb
-      );
-      SET client_min_messages=INFO;
-   $SQL$,
-   'ns', 'TODO')
-  )
-
-
-SELECT this.generate_base_tables();
-
 func! generate_tables(_profiles_ text[]) returns text
   --genarate all tables
   SELECT
@@ -57,7 +22,7 @@ func! generate_tables(_profiles_ text[]) returns text
 
       -- this index speedup search joins (cause uuid are casted to texts)
       CREATE UNIQUE INDEX {{tbl_name}}_logical_id_as_text_idx
-        ON "{{tbl_name}}" (CAST(logical_id AS text));
+        ON "{{tbl_name}}" (logical_id);
 
       CREATE INDEX {{tbl_name}}_full_text_idx
         ON "{{tbl_name}}" USING gin(to_tsvector('english', content::text));
@@ -73,16 +38,16 @@ func! generate_tables(_profiles_ text[]) returns text
         ALTER COLUMN content SET NOT NULL,
         ALTER COLUMN resource_type SET DEFAULT '{{resource_type}}';
 
-     UPDATE metadata.profile
+     UPDATE profile
        SET installed = true
-        WHERE lower(id) = '{{tbl_name}}';
+        WHERE lower(logical_id) = '{{tbl_name}}';
     $SQL$,
     'ns', 'TODO',
-    'tbl_name', lower(id),
-    'resource_type', id)))::text
-  FROM metadata.profile
+    'tbl_name', lower(logical_id),
+    'resource_type', logical_id)))::text
+  FROM profile
   WHERE base is null
-    AND (_profiles_ IS NULL OR _profiles_ @> ARRAY[id]);
+    AND (_profiles_ IS NULL OR _profiles_ @> ARRAY[logical_id]);
 
 func! generate_tables() returns text
    SELECT this.generate_tables(null)

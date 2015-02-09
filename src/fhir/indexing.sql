@@ -9,10 +9,10 @@ CREATE EXTENSION IF NOT EXISTS btree_gist ;
 func _token_index_fn(dtype varchar, is_primitive boolean) RETURNS text
   SELECT  'index_fns.index_' || CASE WHEN is_primitive THEN 'primitive' ELSE lower(dtype::varchar) END || '_as_token'
 
-func _index_name(_meta metadata.searchparameter) RETURNS text
+func _index_name(_meta searchparameter) RETURNS text
   SELECT replace(lower(_meta.base || '_' || _meta.name || '_' ||  coll._last(_meta.path) || '_' || _meta.search_type || '_idx')::varchar,'-','_')
 
-func index_token_exp(_meta metadata.searchparameter) RETURNS text
+func index_token_exp(_meta searchparameter) RETURNS text
   SELECT
    format(
     'CREATE INDEX %I ON %I USING GIN (%s(content,%L))'
@@ -22,7 +22,7 @@ func index_token_exp(_meta metadata.searchparameter) RETURNS text
     , coll._rest(_meta.path)::varchar
    )
 
-func index_reference_exp(_meta metadata.searchparameter) RETURNS text
+func index_reference_exp(_meta searchparameter) RETURNS text
   SELECT
     format(
       'CREATE INDEX %I ON %I USING GIN (index_fns.index_as_reference(content,%L))'
@@ -31,7 +31,7 @@ func index_reference_exp(_meta metadata.searchparameter) RETURNS text
       ,coll._rest(_meta.path)::varchar
     )
 
-func index_string_exp(_meta metadata.searchparameter) RETURNS text
+func index_string_exp(_meta searchparameter) RETURNS text
   SELECT
     format(
        'CREATE INDEX %I ON %I USING GIN (index_fns.index_as_string(content,%L::text[]) gin_trgm_ops)'
@@ -40,7 +40,7 @@ func index_string_exp(_meta metadata.searchparameter) RETURNS text
       ,coll._rest(_meta.path)::varchar
     )
 
-func index_date_exp(_meta metadata.searchparameter) RETURNS text
+func index_date_exp(_meta searchparameter) RETURNS text
   SELECT
     format(
        'CREATE INDEX %I ON %I USING GIST (index_date.index_as_date(content,%L::text[], %L) range_ops)'
@@ -50,7 +50,7 @@ func index_date_exp(_meta metadata.searchparameter) RETURNS text
       ,_meta.type
     )
 
-func index_search_param_exp(x metadata.searchparameter) RETURNS text
+func index_search_param_exp(x searchparameter) RETURNS text
  SELECT
  CASE
    WHEN x.search_type = 'token' THEN this.index_token_exp(x)
@@ -62,17 +62,17 @@ func index_search_param_exp(x metadata.searchparameter) RETURNS text
 
 func index_search_param(_resource_type text, _name_ text) RETURNS text
   SELECT count(gen._eval(this.index_search_param_exp(ROW(x.*))))::text
-  FROM metadata.searchparameter x
+  FROM searchparameter x
   WHERE base = _resource_type
   AND  name = _name_
 
-func drop_index_search_param_exp(_meta metadata.searchparameter) RETURNS text
+func drop_index_search_param_exp(_meta searchparameter) RETURNS text
   SELECT format('DROP INDEX IF EXISTS %I',this._index_name(_meta))
 
 -- TODO: implement for symmetric api
 func drop_index_search_param(_resource_type text, _name_ text) RETURNS bigint
   SELECT count(gen._eval(this.drop_index_search_param_exp(ROW(x.*))))
-  FROM metadata.searchparameter x
+  FROM searchparameter x
   WHERE base = _resource_type
   AND  name = _name_
 
@@ -80,21 +80,21 @@ func drop_index_search_param(_resource_type text, _name_ text) RETURNS bigint
 func index_resource(_resource text) RETURNS table (idx text)
   SELECT
   gen._eval(this.index_search_param_exp(ROW(x.*)))
-  from metadata.searchparameter x
+  from searchparameter x
   where search_type IN ('token', 'reference', 'string', 'date')
   and base = _resource
 
 func index_all_resources() RETURNS table (idx text)
   SELECT
   gen._eval(this.index_search_param_exp(ROW(x.*)))
-  from metadata.searchparameter x
+  from searchparameter x
   where search_type IN ('token', 'reference', 'string', 'date')
 
 func drop_resource_indexes(_resource text) RETURNS bigint
   SELECT count(gen._eval(this.drop_index_search_param_exp(ROW(x.*))))
-  from metadata.searchparameter x
+  from searchparameter x
   where base = _resource
 
 func drop_all_resource_indexes() RETURNS bigint
   SELECT count(gen._eval(this.drop_index_search_param_exp(ROW(x.*))))
-  from metadata.searchparameter x
+  from searchparameter x

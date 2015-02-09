@@ -11,9 +11,9 @@ expect 'no resources unless generated'
 
 BEGIN;
 
-UPDATE metadata.profile
+UPDATE profile
    SET installed = true
- WHERE id in ('Patient', 'Encounter');
+ WHERE logical_id in ('Patient', 'Encounter');
 
 expect 'no resources unless generated'
   jsonb_array_length(

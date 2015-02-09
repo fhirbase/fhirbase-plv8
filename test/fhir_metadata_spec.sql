@@ -2,7 +2,7 @@
 -- #import ../src/fhir/metadata.sql
 
 
-select count(*) from metadata.profile => 137::bigint
-select count(*) from metadata.profile_elements => 4702::bigint
-select count(*) from metadata.searchparameter => 661::bigint
+select count(*) from profile => 137::bigint
+select count(*) from profile_elements => 4702::bigint
+select count(*) from searchparameter => 661::bigint
 

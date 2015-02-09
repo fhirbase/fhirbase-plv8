@@ -9,11 +9,11 @@ SELECT count(*) from patient => 0::bigint
 
 expect 'meta information updated'
   SELECT count(*)
-    from metadata.profile
+    from profile
     WHERE installed = true
 => 1::bigint
 
-SELECT id FROM metadata.profile WHERE installed = true LIMIT 1 => 'Patient'
+SELECT logical_id FROM profile WHERE installed = true LIMIT 1 => 'Patient'
 
 ROLLBACK;
 

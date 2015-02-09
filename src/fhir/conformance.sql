@@ -24,20 +24,20 @@ func conformance(_cfg jsonb) RETURNS jsonb
       'resource',
         COALESCE((SELECT json_agg(
             json_build_object(
-              'type', r.id,
+              'type', r.logical_id,
               'profile', json_build_object(
-                'reference', _cfg->>'base' || '/Profile/' || r.id
+                'reference', _cfg->>'base' || '/Profile/' || r.logical_id
               ),
               'readHistory', true,
               'updateCreate', true,
               'operation', ARRAY['{ "code": "read" }'::json, '{ "code": "vread" }'::json, '{ "code": "update" }'::json, '{ "code": "history-instance" }'::json, '{ "code": "create" }'::json, '{ "code": "history-type" }'::json],
               'searchParam',  (
-                SELECT  array_agg(sp.content)  FROM metadata.searchparameter sp
-                WHERE sp.base = r.id
+                SELECT  array_agg(sp.content)  FROM searchparameter sp
+                WHERE sp.base = r.logical_id
               )
             )
           )
-          FROM metadata.profile r
+          FROM profile r
           WHERE r.installed = true
         ), '[]'::json)
     )]
@@ -46,5 +46,5 @@ func conformance(_cfg jsonb) RETURNS jsonb
 
 func profile(_cfg jsonb, _resource_name_ text) RETURNS jsonb
   select  content
-    from metadata.profile
-    where lower(id) = lower(_resource_name_)
+    from profile
+    where lower(logical_id) = lower(_resource_name_)

@@ -1,33 +1,12 @@
 -- #import ../coll.sql
-
-CREATE TABLE this.profile (
-  id text PRIMARY KEY,
-  base text,
-  name text,
-  type text,
-  content jsonb,
-  installed boolean DEFAULT false
-);
-
-CREATE TABLE this.profile_elements (
-  profile_id text,
-  path text[],
-  min text,
-  max text,
-  type text[],
-  formal text,
-  comments text,
-  isSummary boolean,
-  ref_type text[],
-  PRIMARY KEY(profile_id, path)
-);
+-- #import base.sql
 
 func profile_to_resource_type(_ref_ text) RETURNS text
   select replace(_ref_, 'http://hl7.org/fhir/Profile/', '')
 
 func! load_elements(_prof_ jsonb) returns text
  with inserted as (
-    INSERT INTO this.profile_elements
+    INSERT INTO profile_elements
     (profile_id, path, min, max, type, formal, comments, isSummary, ref_type)
     select
       _prof_->>'id',
@@ -53,8 +32,8 @@ func! load_elements(_prof_ jsonb) returns text
  ) select string_agg(path, ',') from inserted
 
 func! load_profile(_prof_ jsonb) returns text
-   INSERT INTO this.profile
-   (id, name, type, base, content)
+   INSERT INTO profile
+   (logical_id, name, type, base, content)
    SELECT id, name, type, base, content FROM (
      SELECT _prof_#>>'{id}' as id,
             _prof_#>>'{name}' as name,
@@ -63,7 +42,7 @@ func! load_profile(_prof_ jsonb) returns text
             _prof_ as content,
             this.load_elements(_prof_)
    ) _
-   RETURNING id
+   RETURNING logical_id
 
 -- insert profiles from bundle into meta tables
 func! load_bundle(bundle jsonb) returns text[]
@@ -108,6 +87,7 @@ CREATE TABLE this.searchparameter (
   content jsonb
 );
 
+-- TODO: truncate
 func! load_searchparameters(bundle jsonb) returns text[]
    with params as (
      SELECT x#>>'{resource,id}' as id,
@@ -125,15 +105,15 @@ func! load_searchparameters(bundle jsonb) returns text[]
     SELECT x.id, x.name, x.base, x.xpath, x.path, x.search_type, x.content,
       unnest(COALESCE(e.type, ARRAY[hp.type]::text[])) as type
       FROM params x
-      LEFT JOIN this.profile_elements e
+      LEFT JOIN profile_elements e
       ON e.path = x.path
       LEFT JOIN this.hardcoded_complex_params hp
       ON hp.path = x.path
       WHERE array_length(x.path,1) > 1
    ),
    inserted as (
-     INSERT INTO this.searchparameter
-     (id, name, base, xpath, search_type, type, content, path, is_primitive)
+     INSERT INTO searchparameter
+     (logical_id, name, base, xpath, search_type, type, content, path, is_primitive)
      SELECT id, name, base, xpath, search_type, type, content,
        CASE WHEN coll._last(path) ilike '%[x]' THEN
          coll._butlast(path) || (replace(coll._last(path),'[x]','') || type)::text
@@ -142,15 +122,20 @@ func! load_searchparameters(bundle jsonb) returns text[]
        END as path,
        substr(type, 1,1)=lower(substr(type, 1,1)) as is_primitive
        from  extended_params
-     RETURNING id
+     RETURNING logical_id
    )
-   SELECT array_agg(x.id) FROM inserted x
+   SELECT array_agg(x.logical_id) FROM inserted x
+
+TRUNCATE profile;
+TRUNCATE profile_elements;
 
 \set datatypes `cat fhir/profiles-types.json`
 select array_length(this.load_bundle(:'datatypes'), 1);
 
 \set profs `cat fhir/profiles-resources.json`
 SELECT array_length(metadata.load_bundle(:'profs'),1);
+
+TRUNCATE searchparameter;
 
 \set searchp `cat fhir/search-parameters.json`
 select array_length(this.load_searchparameters(:'searchp'), 1);

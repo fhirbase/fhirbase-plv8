@@ -10,7 +10,6 @@ build_sorting('Patient', '_sort=given') =>  E'\n ORDER BY (jsonbext.json_get_in(
 BEGIN;
 
 
-SELECT generate.generate_base_tables();
 SELECT generate.generate_tables('{Patient}');
 
 SELECT crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1973"}'::jsonb);
@@ -26,7 +25,6 @@ ROLLBACK;
 
 BEGIN;
 
-SELECT generate.generate_base_tables();
 SELECT generate.generate_tables('{Patient}');
 
 setv('cfg','{"base":"https://test.me"}'::jsonb);
@@ -58,7 +56,6 @@ ROLLBACK;
 
 BEGIN;
 
-SELECT generate.generate_base_tables();
 SELECT generate.generate_tables('{Device}');
 
 setv('cfg', '{"base":"https://test.me"}');
