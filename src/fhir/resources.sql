@@ -57,6 +57,7 @@ select
   FROM (
     SELECT unnest(this.fpath('//fh:resource/fh:Profile/fh:snapshot/fh:element', :'fhir')) as el
   ) els
+  WHERE regexp_split_to_array(this.xattr('./path/@value', el), '\.') IS NOT NULL
 ;
 
 INSERT INTO this.resources
