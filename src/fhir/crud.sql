@@ -199,7 +199,7 @@ func! is_exists(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS boolean
        AND r.logical_id = this._extract_id(_id_)
     )
 
-func _history_entry(_cfg_ jsonb, _row_ "resource") RETURNS jsonb
+func _history_entry(_cfg_ jsonb, _row_ resource) RETURNS jsonb
   SELECT json_build_object('resource', _row_.content)::jsonb
 
 func _history_bundle(_cfg_ jsonb, _entries_ jsonb) RETURNS jsonb

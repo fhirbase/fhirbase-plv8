@@ -1,5 +1,5 @@
 -- #import ../coll.sql
--- #import base.sql
+-- #import ./base.sql
 
 func profile_to_resource_type(_ref_ text) RETURNS text
   select replace(_ref_, 'http://hl7.org/fhir/Profile/', '')
