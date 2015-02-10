@@ -7,6 +7,8 @@ SET search_path TO search, vars, public;
 
 build_sorting('Patient', '_sort=given') =>  E'\n ORDER BY (jsonbext.json_get_in(patient.content, \'{name,given}\'))[1]::text ASC'
 
+SELECT logical_id FROM search.search('Profile', 'name=Patient&_count=1') => 'Patient'
+
 BEGIN;
 
 
