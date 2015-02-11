@@ -1,4 +1,5 @@
 -- #import ../coll.sql
+-- #import ../jsonbext.sql
 -- #import ./base.sql
 
 func profile_to_resource_type(_ref_ text) RETURNS text
@@ -31,6 +32,9 @@ func! load_elements(_prof_ jsonb) returns text
     returning path::text
  ) select string_agg(path, ',') from inserted
 
+func remove_generated_html(_prof_ jsonb) returns jsonb
+  SELECT jsonbext.merge(_prof_, '{"text":{"status":"generated","div":"<div>too costy</div>"}}'::jsonb)
+
 func! load_profile(_prof_ jsonb) returns text
    INSERT INTO profile
    (logical_id, name, type, base, content)
@@ -39,7 +43,7 @@ func! load_profile(_prof_ jsonb) returns text
             _prof_#>>'{name}' as name,
             _prof_#>>'{type}' as type,
             _prof_#>>'{base}' as base,
-            _prof_ as content,
+            this.remove_generated_html(_prof_) as content,
             this.load_elements(_prof_)
    ) _
    RETURNING logical_id
