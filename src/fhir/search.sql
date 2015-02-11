@@ -110,7 +110,7 @@ func build_token_cond(tbl text, _q query_param) RETURNS text
   -- build condition for token
   -- (index_codeableconcept_as_token(content, '{name}') &&  '{term,term2}'varachr[])
   SELECT
-    format('%s(%I.content, %L) && %L::varchar[]',
+    format('%s(%I.content, %L) && %L::text[]',
       indexing._token_index_fn(_q.type, _q.is_primitive),
       tbl,
       _q.field_path,
@@ -142,7 +142,7 @@ func build_reference_cond(tbl text, _q query_param) RETURNS text
   -- build condition for reference
   -- (index_as_reference(content, '{name}') &&  '{term,term2}'varachr[])
   -- TODO: respect modifier provider:Organization=id => 'Organization/id'
- SELECT format('index_fns.index_as_reference(content, %L) && %L::varchar[]', _q.field_path, _q.value)
+ SELECT format('index_fns.index_as_reference(content, %L) && %L::text[]', _q.field_path, _q.value)
 
 func build_cond(tbl text, _q query_param) RETURNS text
   SELECT
@@ -159,7 +159,7 @@ func build_cond(tbl text, _q query_param) RETURNS text
     this.build_reference_cond(tbl, _q)
   END as cnd
 
-func build_sorting(_resource_type varchar, _query text) RETURNS text
+func build_sorting(_resource_type text, _query text) RETURNS text
   WITH params AS (
     SELECT ROW_NUMBER() OVER () as weight,
            value[1] as param_name,
@@ -197,7 +197,7 @@ func build_search_query(_resource_type text, _query text) RETURNS text
     FROM  this._expand_search_params(_resource_type, _query) x
   ), joins AS ( --TODO: what if no middle join present ie we have a.b.c.attr = x and no a.b.attr condition
     SELECT
-      format(E'JOIN %I ON index_fns.index_as_reference(%I.content, %L) && ARRAY[%I.logical_id]::varchar[] AND \n %s',
+      format(E'JOIN %I ON index_fns.index_as_reference(%I.content, %L) && ARRAY[%I.logical_id]::text[] AND \n %s',
         lower(resource_type),
         lower(parent_resource),
         link_path,
