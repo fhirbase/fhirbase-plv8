@@ -1,4 +1,4 @@
-export BUILD_DIR=`pwd`/../tmp
+export BUILD_DIR=`pwd`/../.build
 
 export PGDATA=$BUILD_DIR/data
 export PGPORT=5777

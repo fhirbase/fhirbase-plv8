@@ -1,5 +1,6 @@
 #!/bin/bash
 # This script build postgresql from source
+mkdir -p $BUILD_DIR
 
 sudo apt-get -qq update
 sudo apt-get -qqy install git build-essential gettext libreadline6 libreadline6-dev zlib1g-dev flex bison libxml2-dev libxslt-dev || echo 'Ups. No sudo'
