@@ -35,10 +35,10 @@ func! load_elements(_prof_ jsonb) returns text
 func remove_generated_html(_prof_ jsonb) returns jsonb
   SELECT jsonbext.merge(_prof_, '{"text":{"status":"generated","div":"<div>too costy</div>"}}'::jsonb)
 
-func! load_profile(_prof_ jsonb) returns text
+func! load_profile(_prof_ jsonb, _kind_ text) returns text
    INSERT INTO profile
-   (logical_id, name, type, base, content)
-   SELECT id, name, type, base, content FROM (
+   (logical_id, name, type, kind, base, content)
+   SELECT id, name, type, _kind_, base, content FROM (
      SELECT _prof_#>>'{id}' as id,
             _prof_#>>'{name}' as name,
             _prof_#>>'{type}' as type,
@@ -49,8 +49,8 @@ func! load_profile(_prof_ jsonb) returns text
    RETURNING logical_id
 
 -- insert profiles from bundle into meta tables
-func! load_bundle(bundle jsonb) returns text[]
- SELECT array_agg(this.load_profile(x->'resource'))
+func! load_bundle(bundle jsonb, _kind_ text) returns text[]
+ SELECT array_agg(this.load_profile(x->'resource', _kind_))
    FROM jsonb_array_elements(bundle#>'{entry}') x
    WHERE x#>>'{resource,resourceType}' = 'Profile'
 
@@ -134,11 +134,11 @@ TRUNCATE profile;
 TRUNCATE profile_elements;
 
 \set datatypes `cat fhir/profiles-types.json`
-select array_length(this.load_bundle(:'datatypes'), 1);
+select array_length(this.load_bundle(:'datatypes', 'datatype'), 1);
 
 
 \set profs `cat fhir/profiles-resources.json`
-SELECT array_length(metadata.load_bundle(:'profs'),1);
+SELECT array_length(metadata.load_bundle(:'profs', 'resource'),1);
 
 -- mark installed
 UPDATE profile

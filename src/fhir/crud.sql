@@ -202,6 +202,7 @@ func! is_exists(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS boolean
 func _history_bundle(_cfg_ jsonb, _entries_ jsonb) RETURNS jsonb
   SELECT json_build_object(
     'type', 'history',
+    'resourceType', 'Bundle',
     'entry', _entries_
   )::jsonb
 

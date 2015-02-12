@@ -7,7 +7,6 @@ func! generate_tables(_profiles_ text[]) returns text
   count(
   gen._eval(
     gen._tpl($SQL$
-      SET client_min_messages to 'panic';
       CREATE TABLE "{{tbl_name}}" () INHERITS (resource);
 
       ALTER TABLE "{{tbl_name}}"
@@ -46,7 +45,7 @@ func! generate_tables(_profiles_ text[]) returns text
     'tbl_name', lower(logical_id),
     'resource_type', logical_id)))::text
   FROM profile
-  WHERE base is null
+  WHERE kind = 'resource' AND installed = false
     AND (_profiles_ IS NULL OR _profiles_ @> ARRAY[logical_id]);
 
 func! generate_tables() returns text

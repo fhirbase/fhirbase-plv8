@@ -31,6 +31,7 @@ CREATE TABLE profile (
   base text,
   name text,
   type text,
+  kind text,
   installed boolean DEFAULT false
 ) INHERITS (resource);
 
