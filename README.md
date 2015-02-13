@@ -5,11 +5,6 @@ Open source relational storage for
 
 [![Build Status](https://travis-ci.org/fhirbase/fhirbase.png?branch=master)](https://travis-ci.org/fhirbase/fhirbase)
 
-Powered by [Health Samurai](http://healthsamurai.github.io/)
-
-Sponsored by:
-
-![choice-hs.com](http://choice-hs.com/Images/Shared/Choice-HSLogo.png)
 
 ## Live Demo
 
@@ -45,12 +40,9 @@ preserving ACID guaranties and richness of SQL query language.
 
 Here is list of PostgreSQL features we use:
 
-* [xml](http://www.postgresql.org/docs/9.4/static/functions-xml.html)
 * [jsonb](http://www.postgresql.org/docs/9.4/static/functions-json.html)
 * [gin & gist](http://www.postgresql.org/docs/9.1/static/textsearch-indexes.html)
 * [inheritance](http://www.postgresql.org/docs/9.4/static/tutorial-inheritance.html)
-* [materialized views](http://www.postgresql.org/docs/9.4/static/sql-altermaterializedview.html)
-* [uuid](http://www.postgresql.org/docs/9.4/static/pgcrypto.html)
 
 We actively collaborate with PostgreSQL lead developers to craft
 production ready storage for FHIR.
@@ -85,7 +77,7 @@ go into database by generic SQL interface and complete your business task.
 Please follow
 [FHIRPlace installation instructions](https://github.com/fhirbase/fhirplace#installation).
 
-## Build on linux
+## Install on linux
 
 Requirements:
 * PostgreSQL 9.4 (http://www.postgresql.org/about/news/1522/)
@@ -119,7 +111,7 @@ export DB=mydb
 ```
 
 
-### Using docker
+### Install with docker
 
 Fhirbase could be installed using [docker]()
 
@@ -392,6 +384,12 @@ Returns conformance resource jsonb;
 * Star us on GitHub
 * If you encountered a bug, please [make an Issue](https://github.com/fhirbase/fhirplace/issues/new)
 * Contribute to FHIRBase − see [dev/README.md](https://github.com/fhirbase/fhirbase/blob/master/dev/README.md)
+
+## Thxs
+
+Powered by [Health Samurai](http://healthsamurai.github.io/)
+
+Sponsored by: ![choice-hs.com](http://choice-hs.com/Images/Shared/Choice-HSLogo.png)
 
 ## Development
 

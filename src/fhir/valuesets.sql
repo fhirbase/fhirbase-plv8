@@ -1,4 +1,3 @@
--- #import ./generate.sql
 -- #import ./crud.sql
 
 drop table if exists valueset, conceptmap;
