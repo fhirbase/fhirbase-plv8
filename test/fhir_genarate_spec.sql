@@ -11,7 +11,7 @@ expect 'meta information updated'
   SELECT count(*)
     from profile
     WHERE installed = true
-=> 3::bigint
+=> 5::bigint
 
 SELECT installed FROM profile WHERE logical_id = 'Patient' LIMIT 1 => true
 
