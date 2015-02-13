@@ -34,11 +34,10 @@ RUN echo "host all  all    0.0.0.0/0  md5" >> $PGDATA/pg_hba.conf
 RUN echo "listen_addresses='*'" >> $PGDATA/postgresql.conf
 RUN echo "port=$PGPORT" >> $PGDATA/postgresql.conf
 
+RUN sudo apt-get -qqy install python
 
 ENV PGDATABASE fhirbase
 ADD . /home/fhirbase/fhirbase
-
-RUN sudo apt-get -qqy install python
 
 RUN cd ~/ && pg_ctl -D data -w start && cd ~/fhirbase && env DB=$PGDATABASE ./runme integrate && pg_ctl -w -D ~/data stop
 RUN cd ~/ && pg_ctl -D data -w start && psql -c "alter user fhirbase with password 'fhirbase'; select generate.generate_tables()" && pg_ctl -w -D ~/data stop
