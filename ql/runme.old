@@ -1,0 +1,125 @@
+#!/bin/bash
+
+if [ -z "$DB" ]; then
+  echo "Need to set DB='fhirb'"
+  DB='fhirb'
+fi
+
+if [ -z "$PSQL_ARGS" ]; then
+  echo "Need to set PSQL_ARGS='-h localhost'"
+  PSQL_ARGS='-h localhost'
+fi
+
+function help_cmd {
+    cat <<EOF
+    Usage: $0 [-c config_file.sh] [command] [args]
+
+    FHIRbase developer tool
+
+    Available commands:
+
+    -h || help                this help text
+    install dbname            generate and install fhirbase schema into specified DB
+    integrate                 generate  test db and run tests
+    test                      run tests
+    specs                     run specs
+    build                     build fhirbase.sql file
+    perf dbname num K         recreate & fill with performance data
+    fill dbname num K         fill with performance data
+EOF
+}
+
+function install_cmd {
+  DB=$1
+  echo "DROP DATABASE IF EXISTS $DB; CREATE DATABASE $DB;" | psql $PSQL_ARGS -d postgres;
+  for scrpt in `ls *\.ssql`; do
+    echo "Execute: $scrpt ..."
+    ./ssql $scrpt | psql $PSQL_ARGS -d $DB -1 > /dev/null
+  done
+}
+
+
+function spec_cmd {
+  FILE=$1
+  if [ -z "$FILE" ]; then
+    FILE='test/*_spec.sql'
+  fi
+  echo "spec $FILE"
+  for script in `ls $FILE`; do
+    echo "spec $script"
+    ./ssql $script | psql $PSQL_ARGS -e -d $DB > test.log
+  done
+}
+
+function load_cmd {
+  FILE=$1
+  echo "load $nm"
+  ./ssql $FILE | psql $PSQL_ARGS -d $DB
+}
+
+function build_cmd {
+  install_cmd 'build_fhir'
+  pg_dump $PSQL_ARGS \
+    --format=plain \
+    --no-acl \
+    --no-owner \
+    --file=../fhirbase--1.0.sql \
+    'build_fhir' \
+    && echo "FhirBase schema successfully builded"
+}
+
+function fill_cmd {
+  DB=$1
+  NUM=$2
+  echo "Fill with $NUM K patients"
+  cat perf/data.sql | psql $DB
+  cat perf/generate.sql | psql $DB
+
+  for ((n=0; n<$NUM ;n++));
+  do
+psql $DB <<EOF > /dev/null
+ \timing
+ SELECT _generate_pt()
+ \q
+EOF
+  printf '.'
+  done
+}
+
+CMD=$1
+ARGV=$@
+
+case "$CMD" in
+    "test" )
+        spec_cmd $2
+        ;;
+    "install" )
+        install_cmd $2
+        ;;
+    "integrate" )
+        install_cmd $DB
+        spec_cmd
+        ;;
+    "build" )
+        install_cmd 'build_fhir'
+        build_cmd
+        ;;
+    "load" )
+        load_cmd $2
+        ;;
+    "spec" )
+        spec_cmd $2
+        ;;
+    "perf" )
+        install_cmd $2
+        fill_cmd $2 $3
+        ;;
+    "fill" )
+        fill_cmd $2 $3
+        ;;
+    *)
+        help_cmd
+        exit
+esac
+
+exit 0

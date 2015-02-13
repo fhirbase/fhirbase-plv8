@@ -14,7 +14,8 @@ ENV PG_BRANCH REL9_4_STABLE
 ENV PG_REPO git://git.postgresql.org/git/postgresql.git
 
 RUN git clone -b $PG_BRANCH --depth=1 $PG_REPO $HOME/src
-RUN XML2_CONFIG=`which xml2-config` cd $HOME/src && ./configure --prefix=$HOME/bin  --with-libxml && make && make install
+# RUN XML2_CONFIG=`which xml2-config` cd $HOME/src && ./configure --prefix=$HOME/bin  --with-libxml && make && make install
+RUN cd $HOME/src && ./configure --prefix=$HOME/bin && make && make install
 
 ENV SOURCE_DIR $HOME/src
 RUN cd $SOURCE_DIR/contrib/pgcrypto && make && make install
@@ -33,8 +34,12 @@ RUN echo "host all  all    0.0.0.0/0  md5" >> $PGDATA/pg_hba.conf
 RUN echo "listen_addresses='*'" >> $PGDATA/postgresql.conf
 RUN echo "port=$PGPORT" >> $PGDATA/postgresql.conf
 
-ADD ./dev /home/fhirbase/fhirbase
-RUN cd ~/ && pg_ctl -D data -w start && cd ~/fhirbase && ./runme install fhirbase && pg_ctl -w -D ~/data stop
-RUN cd ~/ && pg_ctl -D data -w start && psql -c "alter user fhirbase with password 'fhirbase';" && pg_ctl -w -D ~/data stop
+RUN sudo apt-get -qqy install python
+
+ENV PGDATABASE fhirbase
+ADD . /home/fhirbase/fhirbase
+
+RUN cd ~/ && pg_ctl -D data -w start && cd ~/fhirbase && env DB=$PGDATABASE ./runme integrate && pg_ctl -w -D ~/data stop
+RUN cd ~/ && pg_ctl -D data -w start && psql -c "alter user fhirbase with password 'fhirbase'; select generate.generate_tables()" && pg_ctl -w -D ~/data stop
 EXPOSE 5432
 CMD cd ~/ && postgres -D data

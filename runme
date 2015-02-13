@@ -1,0 +1,79 @@
+#!/usr/bin/env python
+
+import ql
+import os
+import ql.prepr
+import sys
+import glob
+
+if 'DB' in os.environ:
+    db = os.environ['DB']
+else:
+    print "Please set env DB=?"
+    exit(1)
+
+def each_file(fls,cb):
+    for fl in fls:
+        if os.path.isfile(fl):
+            cb(fl)
+        else:
+            print 'Could not fild file %s' % fl
+
+def run_tests(args):
+    load(['./src/tests.sql'])
+    if not args:
+        args = glob.glob('./test/*_spec.sql')
+
+    ql.pgexec(db, 'SELECT tests.start()')
+    def run(fl):
+        ql.reload(db, fl)
+
+    each_file(args,run)
+    res = ql.pgexec(db, 'SELECT tests.fail()')
+    if res['returncode'] != 0:
+        print ql.hl('red','FAILED TESTS')
+        report = ql.pgexec(db, 'SELECT * from tests.report()')['stdout']
+        print ql.hl('red', report)
+        sys.exit(1)
+    else:
+        print ql.hl('green','All tests passed')
+
+def compile(args):
+    def run(fl):
+        f = open(fl)
+        print '-- FILE: %s' % fl
+        print ql.prepr.process(fl, f.read())
+        f.close
+    each_file(args,run)
+
+def reload(args):
+    if not args: args = glob.glob('./src/**/*.sql')
+    def run(fl): ql.reload(db, fl, True)
+    each_file(args,run)
+
+def load(args):
+    if not args: args = glob.glob('./src/**/*.sql')
+    def run(fl): ql.reload(db, fl)
+    each_file(args,run)
+
+def integrate(args):
+    print ql.pgexec('postgres','drop database if exists %s' % db)['stdout']
+    print ql.pgexec('postgres','create database %s' % db)['stdout']
+    run_tests([])
+
+def build(args):
+    print 'TODO'
+
+def install(args):
+    print 'TODO'
+
+cmd = sys.argv[1]
+
+commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate)
+
+print cmd
+if cmd in commands:
+    print 'run command %s' % cmd
+    commands[cmd](sys.argv[2:])
+else:
+    print 'Unknown command %s' % cmd

@@ -85,7 +85,7 @@ go into database by generic SQL interface and complete your business task.
 Please follow
 [FHIRPlace installation instructions](https://github.com/fhirbase/fhirplace#installation).
 
-## Build
+## Build on linux
 
 Requirements:
 * PostgreSQL 9.4 (http://www.postgresql.org/about/news/1522/)
@@ -99,8 +99,12 @@ source on debian/ubuntu and create local user cluster with:
 
 
 ```bash
-source local_cfg.sh && ./install-postgres
+source cfg/local_cfg.sh && ./install-postgres
+psql postgresql
 ```
+
+By default postgresql will be built in .build directory.
+`source cfg/local_cfg.sh` in fresh shell to export required variables
 
 NOTE: you can tune configuration in local_cfg.sh.
 
@@ -109,11 +113,42 @@ You can install FHIRBase:
 ```bash
 source local_cfg.sh
 echo 'CREATE DATABASE mydb' | psql postgres
-psql mydb < fhirbase--1.0.sql
+export DB=mydb
+
+./runme integrate
 ```
 
-TODO: test script to verify installation
 
+### Using docker
+
+Fhirbase could be installed using [docker]()
+
+```
+#run database container
+docker run --name=fhirbase -d fhirbase/fhirbase
+
+docker inspect fhirbase
+# read ip of started container
+
+docker run --rm -i -t fhirbase/fhirbase psql -h <container-ip> -U fhirbase -p 5432
+```
+
+Here we used image from dockerhub - [fhirbase](https://registry.hub.docker.com/u/fhirbase/fhirbase)
+
+You could build image by yourself:
+
+```
+git clone https://github.com/fhirbase/fhirbase/
+cd fhirbase
+docker build -t fhirbase:latest .
+#run database container
+docker run --name=fhirbase -d fhirbase
+
+docker inspect fhirbase
+# read ip of started container
+
+docker run --rm -i -t fhirbase psql -h <container-ip> -U fhirbase -p 5432
+```
 
 ## Overview
 
