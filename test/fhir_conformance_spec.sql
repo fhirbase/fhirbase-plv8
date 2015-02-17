@@ -3,6 +3,7 @@
 -- #import ../src/fhir/valuesets.sql
 -- #import ../src/fhir/conformance.sql
 
+BEGIN;
 conformance.conformance('{"version":"0.1"}')->>'version' => '0.1'
 
 expect 'profile & search params unless installed'
@@ -12,7 +13,6 @@ expect 'profile & search params unless installed'
 => 4
 
 
-BEGIN;
 
 UPDATE profile
    SET installed = true
@@ -24,8 +24,9 @@ expect 'no resources unless generated'
   )
 => 6
 
-ROLLBACK;
 
 expect 'patient'
   conformance.profile(null::jsonb, 'Patient')->>'id'
 => 'Patient'
+
+ROLLBACK;
