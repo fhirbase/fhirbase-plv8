@@ -26,7 +26,7 @@ def run_tests(args):
 
     ql.pgexec(db, 'SELECT tests.start()')
     def run(fl):
-        ql.reload(db, fl)
+        ql.reload_test(db, fl)
 
     each_file(args,run)
     res = ql.pgexec(db, 'SELECT tests.fail()')
@@ -62,14 +62,20 @@ def integrate(args):
     run_tests([])
 
 def build(args):
-    print 'TODO'
+    ql.pgdump(db)
 
 def install(args):
     print 'TODO'
 
+commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build)
+
+if len(sys.argv) < 2:
+  print "Please use command:"
+  print commands.keys()
+  exit(1)
+
 cmd = sys.argv[1]
 
-commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate)
 
 print cmd
 if cmd in commands:
@@ -77,3 +83,4 @@ if cmd in commands:
     commands[cmd](sys.argv[2:])
 else:
     print 'Unknown command %s' % cmd
+    print commands

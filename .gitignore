@@ -13,3 +13,4 @@ dev/perf/observations.sql
 old/*
 .tmp
 *.pyc
+dist

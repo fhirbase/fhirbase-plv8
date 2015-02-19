@@ -120,6 +120,19 @@ def reload(db, fl, force=False):
     for f in deps:
         load_to_pg(db, f, idx['files'][f], force)
 
+def reload_test(db, fl, force=False):
+    idx = dict(files=dict(),deps=dict())
+    read_imports(fl, idx)
+    deps = resolve(idx['deps'])
+    silent_pgexec(db, 'CREATE table IF NOT EXISTS modules (file text primary key, digest text);')
+    print 'Load %s' % fl
+    for f in deps:
+        load_to_pg(db, f, idx['files'][f])
+
+def pgdump(db):
+    print("mkdir -p dist && pg_dump %s --format=plain --no-acl --no-owner --file=dist/fhirbase.sql" % db)
+    os.system("mkdir -p dist && pg_dump %s -v --format=plain --no-acl --no-owner --file=dist/fhirbase.sql" % db)
+
 def test():
     deps = dict(a=['b','c','z'], c=['d','z'], b=['d','e'], x=['y','z'])
     print resolve(deps)
