@@ -62,6 +62,7 @@ def integrate(args):
     run_tests([])
 
 def build(args):
+    integrate(args)
     ql.pgdump(db)
 
 def install(args):

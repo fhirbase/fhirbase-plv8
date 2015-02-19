@@ -31,9 +31,12 @@ def resolve_recur(k, t, acc):
     acc['idx'][k] = True
     return acc
 
+def normalize_path(pth):
+    return os.path.abspath(pth)
+
 def resolve_import(fl, pth):
     flpath = os.path.split(fl)
-    return '/'.join(flpath[:-1]) + '/' + pth
+    return normalize_path('/'.join(flpath[:-1]) + '/' + pth)
 
 # TODO: support relative paths
 def extract_import(fl, l):
@@ -41,7 +44,9 @@ def extract_import(fl, l):
     pth = l.split('#import')[1].strip()
     return resolve_import(fl, pth)
 
-def read_imports(fl, idx):
+
+def read_imports(flr, idx):
+    fl = normalize_path(flr)
     if fl in idx['files']: return idx
     if not os.path.isfile(fl):
         raise Exception('Could not find file: %s' % fl)
@@ -131,7 +136,7 @@ def reload_test(db, fl, force=False):
 
 def pgdump(db):
     print("mkdir -p dist && pg_dump %s --format=plain --no-acl --no-owner --file=dist/fhirbase.sql" % db)
-    os.system("mkdir -p dist && pg_dump %s -v --format=plain --no-acl --no-owner --file=dist/fhirbase.sql" % db)
+    os.system("mkdir -p dist && pg_dump %s --format=plain --no-acl --no-owner --file=dist/fhirbase.sql" % db)
 
 def test():
     deps = dict(a=['b','c','z'], c=['d','z'], b=['d','e'], x=['y','z'])
