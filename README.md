@@ -47,7 +47,6 @@ Here is list of PostgreSQL features we use:
 We actively collaborate with PostgreSQL lead developers to craft
 production ready storage for FHIR.
 
-
 > Why we are doing this inside database?
 
 We decided to implement most of FHIR specification inside database for
@@ -64,13 +63,10 @@ go into database by generic SQL interface and complete your business task.
 
 ## Features
 
-* resources versioning
-* CRUD operations on resources
-* search operations
-* optional indexing (to speedup search)
-* history
-* tags operations
+* CRUD on resources with history
+* search operations with optional indexing (to speedup search)
 * transaction
+* TODO: meta operations
 
 ## Installation
 
@@ -222,162 +218,29 @@ All procedures have first parameter `_cfg::jsonb` with configuration params, whi
 Now there is only one paramenter [base] (Service Root URL):
 `{"base":"http://myserver"}`
 
-### CRUD
+###  Examples
 
-CRUD operations on resource are represented as set of procedures:
-
-#### FUNCTION fhir_create(_cfg jsonb, _type_ varchar, _resource_ jsonb, _tags_ jsonb)
-Create a new resource with a server assigned id
-Return bundle with newly entry;
-
-Example:
+TODO: more API documentation
 
 ```sql
-SELECT fhir_create(
-  '{"base":"fhir/end/point"}',
-  'Patient',
-  '{"resourceType":"Patient"}');
+SELECT generate.generate_tables('{Patient}');
+SELECT indexing.index_search_param('Patient','name');
+SELECT indexing.index_resource('Patient');
+
+SELECT crud.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid", "name": [{"text":"Ivan"}]}'::jsonb);
+SELECT crud.read('{}'::jsonb, 'myid');
+SELECT crud.update('{}'::jsonb, updatedJsonWithId);
+
+SELECT crud.is_exists('{}'::jsonb, 'Patient', 'myid');
+SELECT crud.is_deleted('{}'::jsonb, 'Patient', 'myid');
+
+SELECT crud.delete('{}'::jsonb, 'Patient', 'myid');
+SELECT search.fhir_search('{}'::jsonb, 'Patient', 'name=Ivan');
 ```
-
-Result will be:
-
-```json
-Result:
-
-{
-  "id": "f27638e4-801b-4c5b-8d16-81912358f537",
-  "entry":
-   [{
-     "id": "fhir/end/point/Patient/7043326d-f2eb-4d8b-81c5-13ace5a8a3d7",
-     "link": [{"rel": "self", "href": "fhir/end/point/Patient/7043326d-f2eb-4d8b-81c5-13ace5a8a3d7/_history/7dd8adfc-0f3b-4b21-b44a-497dba699df9"}],
-     "content": {
-        "resourceType": "Patient"
-     },
-     "updated": "2014-12-19T22:54:16.926811+04:00",
-     "category": [],
-     "published": "2014-12-19T22:54:16.926811+04:00"
-   }],
-  "title": "Concrete resource by id 7043326d-f2eb-4d8b-81c5-13ace5a8a3d7",
-  "updated": "2014-12-19T22:54:16.926811+04:00",
-  "resourceType": "Bundle",
-  "totalResults": 1
-}
-```
-
-fhir_create has several forms:
-
-*  fhir_create(_cfg jsonb, _resource jsonb)
-*  fhir_create(_cfg jsonb, _type text, _id uuid, _resource jsonb, _tags jsonb)
-*  fhir_create(_cfg jsonb, _type text, _resource jsonb)
-*  fhir_create(_cfg jsonb, _type text, _resource jsonb, _tags jsonb)
-
-You can skip _type parameter (it will be taken from resourceType attribute of resource).
-
-Also you can pass tags as jsonb array: ```'[{"label":???, "system":???, "value":???}]'::jsonb```
-
-#### FUNCTION fhir_read(_cfg jsonb, _type_ varchar, _id_ uuid)
-
-Read the current state of the resource by logicalId (TODO: or by reference/url)
-Return bundle with only one entry for uniformity;
-
-```SQL
-
-SELECT fhir_read('{"base":"fhir/end/point"}', 'Patient', uuid);
-
--- or you can search resource by id with ordinary SELECT
-
-SELECT * FROM patient WHERE logical_id = 'uuid'
-
-```
-
-#### FUNCTION fhir_vread(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid)
-
-Read specific version of resource with _type_
-Returns bundle with one entry;
-
-#### FUNCTION fhir_update(_cfg jsonb, _type_ varchar, _id_ uuid, _vid_ uuid, _resource_ jsonb, _tags_ jsonb)
-Update resource, creating new version
-Returns bundle with one entry;
-
-#### FUNCTION fhir_delete(_cfg jsonb, _type_ varchar, _id_ uuid)
-DELETE resource by its id AND return deleted version
-Return bundle with one deleted version entry ;
-
-#### FUNCTION fhir_history(_cfg jsonb, _type_ varchar, _id_ uuid, _params_ jsonb)
-Retrieve the changes history for a particular resource with logical id (_id_)
-Return bundle with entries representing versions;
-
-
-### SEARCH
-
-#### FUNCTION fhir_search(_cfg jsonb, _type_ varchar, _params_ jsonb)
-
-Search in resources with _type_ by _params_
-Returns bundle with entries;
-
-
-Helpful functions:
-
-* search('Patient', 'name=smith') -- returns rows from resoure table
-* build_search_query('Patient', 'name=smith') -- shows generated search sql
-* analyze_search('Patient', 'name=smith') -- shows execution plan for search query
-
-### INDEXING
-
-Indexes are optional.
-
-Index for specific search parameter could be created
-using `index_search_param()` function:
-
-```sql
-SELECT index_search_param('Patient', 'name');
--- Time: 96168.725 ms
-
-SELECT count(*) FROM patient;
---  count
----------
---  2262107
--- (1 row)
-
-SELECT content->'name'
-FROM search('Patient', 'name=john');
--- Time with index: 20.859 ms
--- Time without index: 1186.767 ms
-
-SELECT content->'name'
-FROM search('Patient', 'name=nonexisting');
--- Time with index: 20.01 ms
--- Time without index (i.e. full scan): 74429.122 ms
-
-SELECT fhir_search('{}'::jsonb, 'Patient', 'name=john');
--- Time: 35.785 ms
-
--- But they are not for free
-
-SELECT admin_disk_usage_top(10);
-
--- public.patient,                      "454 MB"
--- public.patient_name_name_string_idx, "140 MB"
-```
-
-You can drop indexes:
-
-```sql
-SELECT drop_index_search_param('Patient','name');
-SELECT drop_resource_indexes('Patient');
-SELECT drop_all_resource_indexes();
-```
-
-### TAGS
-
-### OTHER
-
-#### FUNCTION fhir_conformance(_cfg jsonb)
-Returns conformance resource jsonb;
-
 
 ## Benchmarks
 
+TODO:
 
 ## Contribution
 
@@ -399,4 +262,4 @@ See development details in [dev/README.md](https://github.com/fhirbase/fhirbase/
 
 Copyright © 2014 health samurai.
 
-FHIRbase is released under the terms of the MIT License.
+fhirbase is released under the terms of the MIT License.

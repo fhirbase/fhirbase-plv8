@@ -7,7 +7,11 @@
 CREATE EXTENSION IF NOT EXISTS btree_gist ;
 
 func _token_index_fn(dtype text, is_primitive boolean) RETURNS text
-  SELECT  'index_fns.index_' || CASE WHEN is_primitive THEN 'primitive' ELSE lower(dtype::text) END || '_as_token'
+  SELECT  'index_fns.index_'
+  || CASE WHEN is_primitive THEN 'primitive'
+          WHEN dtype IS NOT NULL THEN lower(dtype::text)
+          ELSE 'ups' END
+  || '_as_token'
 
 func _index_name(_meta searchparameter) RETURNS text
   SELECT replace(lower(_meta.base || '_' || _meta.name || '_' ||  coll._last(_meta.path) || '_' || _meta.search_type || '_idx')::text,'-','_')
@@ -86,9 +90,13 @@ func index_resource(_resource text) RETURNS table (idx text)
 
 func index_all_resources() RETURNS table (idx text)
   SELECT
-  gen._eval(this.index_search_param_exp(ROW(x.*)))
+    gen._eval(this.index_search_param_exp(ROW(x.*)))
   from searchparameter x
+  join profile p ON p.name = x.base AND p.installed = true
   where search_type IN ('token', 'reference', 'string', 'date')
+  and x.type is not null
+
+-- TODO: show unsupported indexes
 
 func drop_resource_indexes(_resource text) RETURNS bigint
   SELECT count(gen._eval(this.drop_index_search_param_exp(ROW(x.*))))

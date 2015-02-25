@@ -23,6 +23,18 @@ func index_coding_as_token( content jsonb, path text[]) RETURNS text[]
     from codings
   ) _
 
+func index_contactpoint_as_token( content jsonb, path text[]) RETURNS text[]
+  WITH codings AS (
+    SELECT unnest as cd
+    FROM unnest(jsonbext.json_get_in(content, path))
+  )
+  SELECT array_agg(x)::text[] FROM (
+    SELECT cd->>'system' as x
+    from codings
+    UNION
+    SELECT cd->>'system' || '|' || (cd->>'value') as x
+    from codings
+  ) _
 
 func index_codeableconcept_as_token( content jsonb, path text[]) RETURNS text[]
   SELECT this.index_coding_as_token(content, array_append(path,'coding'))
