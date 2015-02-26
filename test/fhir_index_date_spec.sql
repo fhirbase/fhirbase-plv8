@@ -1,5 +1,5 @@
 -- #import ../src/tests.sql
--- #import ../src/fhir/index_date.sql
+-- #import ../src/index_date.sql
 
 set timezone='UTC';
 SET search_path TO index_date;

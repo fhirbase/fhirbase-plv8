@@ -1,4 +1,4 @@
--- #import ../coll.sql
+-- #import ./coll.sql
 -- #import ./index_fns.sql
 
 proc url_decode(input text) RETURNS text

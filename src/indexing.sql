@@ -1,5 +1,5 @@
--- #import ../coll.sql
--- #import ../gen.sql
+-- #import ./coll.sql
+-- #import ./gen.sql
 -- #import ./metadata.sql
 -- #import ./index_fns.sql
 -- #import ./index_date.sql

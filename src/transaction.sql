@@ -1,5 +1,5 @@
 -- #import ./crud.sql
--- #import ../coll.sql
+-- #import ./coll.sql
 
 func _replace_references(_resource_ text, _references_ json[]) RETURNS text
   SELECT

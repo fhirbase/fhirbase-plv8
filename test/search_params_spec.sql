@@ -1,5 +1,5 @@
 -- #import ../src/tests.sql
--- #import ../src/fhir/searh_params.sql
+-- #import ../src/searh_params.sql
 
 SET search_path TO searh_params;
 

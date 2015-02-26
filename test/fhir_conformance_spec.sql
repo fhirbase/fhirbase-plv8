@@ -1,7 +1,7 @@
 -- #import ../src/tests.sql
--- #import ../src/fhir/metadata.sql
--- #import ../src/fhir/valuesets.sql
--- #import ../src/fhir/conformance.sql
+-- #import ../src/metadata.sql
+-- #import ../src/valuesets.sql
+-- #import ../src/conformance.sql
 
 BEGIN;
 conformance.conformance('{"version":"0.1"}')->>'version' => '0.1'

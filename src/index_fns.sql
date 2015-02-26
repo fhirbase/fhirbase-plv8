@@ -2,8 +2,8 @@
 -- TOKEN INDEX
 -- TODO: create facade fn like date
 
--- #import ../jsonbext.sql
--- #import ../coll.sql
+-- #import ./jsonbext.sql
+-- #import ./coll.sql
 
 func index_primitive_as_token( content jsonb, path text[]) RETURNS text[]
   SELECT

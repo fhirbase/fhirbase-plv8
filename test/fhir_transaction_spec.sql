@@ -1,7 +1,7 @@
 -- #import ../src/gen.sql
--- #import ../src/fhir/crud.sql
--- #import ../src/fhir/generate.sql
--- #import ../src/fhir/transaction.sql
+-- #import ../src/crud.sql
+-- #import ../src/generate.sql
+-- #import ../src/transaction.sql
 
 BEGIN;
 SET search_path TO vars, public;

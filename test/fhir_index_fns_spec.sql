@@ -1,5 +1,5 @@
 -- #import ../src/tests.sql
--- #import ../src/fhir/index_fns.sql
+-- #import ../src/index_fns.sql
 
 BEGIN;
 

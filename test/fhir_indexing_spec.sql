@@ -1,6 +1,6 @@
 -- #import ../src/tests.sql
--- #import ../src/fhir/generate.sql
--- #import ../src/fhir/indexing.sql
+-- #import ../src/generate.sql
+-- #import ../src/indexing.sql
 
 BEGIN;
   /* SELECT drop_all_resource_indexes(); */

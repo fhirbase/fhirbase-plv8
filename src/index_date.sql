@@ -1,4 +1,4 @@
--- #import ../jsonbext.sql
+-- #import ./jsonbext.sql
 
 func _date_parse_to_lower(_date text) RETURNS timestamptz
   -- index date

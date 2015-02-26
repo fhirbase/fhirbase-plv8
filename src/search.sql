@@ -1,6 +1,6 @@
--- #import ../coll.sql
--- #import ../gen.sql
--- #import ../jsonbext.sql
+-- #import ./coll.sql
+-- #import ./gen.sql
+-- #import ./jsonbext.sql
 -- #import ./crud.sql
 -- #import ./index_date.sql
 -- #import ./index_fns.sql

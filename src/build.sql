@@ -1,5 +1,5 @@
--- #import fhir/crud.sql
--- #import fhir/valuesets.sql
--- #import fhir/search.sql
+-- #import ./crud.sql
+-- #import ./valuesets.sql
+-- #import ./search.sql
 
 select generate.generate_tables();

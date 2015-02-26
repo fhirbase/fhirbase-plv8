@@ -1,6 +1,6 @@
 -- #import ../src/tests.sql
--- #import ../src/fhir/generate.sql
--- #import ../src/fhir/valuesets.sql
+-- #import ../src/generate.sql
+-- #import ../src/valuesets.sql
 
 BEGIN;
 

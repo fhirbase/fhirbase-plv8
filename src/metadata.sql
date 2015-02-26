@@ -1,5 +1,5 @@
--- #import ../coll.sql
--- #import ../jsonbext.sql
+-- #import ./coll.sql
+-- #import ./jsonbext.sql
 -- #import ./base.sql
 
 func profile_to_resource_type(_ref_ text) RETURNS text

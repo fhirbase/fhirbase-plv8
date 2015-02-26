@@ -1,8 +1,8 @@
 -- #import ../src/tests.sql
--- #import ../src/fhir/search.sql
--- #import ../src/fhir/generate.sql
--- #import ../src/fhir/crud.sql
--- #import ../src/fhir/tags.sql
+-- #import ../src/search.sql
+-- #import ../src/generate.sql
+-- #import ../src/crud.sql
+-- #import ../src/tags.sql
 
 -- TODO: fixit
 /* \set old_tags '[{"scheme": "http://pt.com", "term": "http://pt/vip", "label":"pt"}]' */

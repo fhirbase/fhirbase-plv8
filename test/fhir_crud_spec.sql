@@ -1,5 +1,5 @@
 -- #import ../src/tests.sql
--- #import ../src/fhir/crud.sql
+-- #import ../src/crud.sql
 SET search_path TO crud, vars, public;
 
 _build_url('{"base":"base"}', 'a','b','c') => 'base/a/b/c'

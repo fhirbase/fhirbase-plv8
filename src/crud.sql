@@ -1,6 +1,6 @@
--- #import ../gen.sql
--- #import ../coll.sql
--- #import ../util.sql
+-- #import ./gen.sql
+-- #import ./coll.sql
+-- #import ./util.sql
 -- #import ./generate.sql
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;

@@ -1,4 +1,4 @@
--- #import ../gen.sql
+-- #import ./gen.sql
 -- #import ./metadata.sql
 
 func! generate_tables(_profiles_ text[]) returns text

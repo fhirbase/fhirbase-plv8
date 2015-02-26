@@ -1,4 +1,4 @@
--- #import ../gen.sql
+-- #import ./gen.sql
 -- #import ./generate.sql
 
 func! fhir_tags(_cfg jsonb) RETURNS jsonb
