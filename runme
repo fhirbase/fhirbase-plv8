@@ -3,6 +3,7 @@
 import ql
 import os
 import ql.prepr
+import ql.migrate
 import sys
 import glob
 
@@ -68,7 +69,10 @@ def build(args):
 def install(args):
     print 'TODO'
 
-commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build)
+def migrate(args):
+    ql.migrate.migrate()
+
+commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate)
 
 if len(sys.argv) < 2:
   print "Please use command:"
