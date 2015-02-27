@@ -1,6 +1,5 @@
 -- #import ../src/tests.sql
 -- #import ../src/generate.sql
--- #import ../src/valuesets.sql
 
 BEGIN;
 

@@ -5,7 +5,6 @@
 -- #import ./index_date.sql
 -- #import ./index_fns.sql
 -- #import ./indexing.sql
--- #import ./metadata.sql
 -- #import ./searh_params.sql
 
 -- TODO: split into pure functions and search impl

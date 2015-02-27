@@ -1,5 +1,8 @@
 # .travis.yml
-before_script:
-  - sudo su $USER -c "source ./cfg/travis_cfg.sh && ./install-postgres"
+addons:
+  postgresql: "9.4"
 
-script: sudo su $USER -c "source ./cfg/travis_cfg.sh && env DB=test ./runme integrate"
+#before_script:
+#- sudo su $USER -c "source ./cfg/travis_cfg.sh && ./install-postgres"
+
+script: sudo su $USER -c "env PGUSER=postgres DB=test ./runme integrate"

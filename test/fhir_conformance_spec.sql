@@ -1,6 +1,4 @@
 -- #import ../src/tests.sql
--- #import ../src/metadata.sql
--- #import ../src/valuesets.sql
 -- #import ../src/conformance.sql
 
 BEGIN;

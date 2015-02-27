@@ -1,5 +1,4 @@
 -- #import ../src/tests.sql
--- #import ../src/metadata.sql
 
 
 select count(*) from profile => 137::bigint

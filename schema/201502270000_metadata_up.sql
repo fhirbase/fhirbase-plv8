@@ -1,6 +1,19 @@
--- #import ./coll.sql
--- #import ./jsonbext.sql
--- #import ./base.sql
+func merge(_to_ jsonb, _from_ jsonb) RETURNS jsonb
+   SELECT json_object_agg(key, value)::jsonb FROM (
+     SELECT * FROM (
+       SELECT x.*, 'a' as tp FROM jsonb_each(_to_) x
+       UNION
+       SELECT y.*, 'b' as tp FROM jsonb_each(_from_) y
+     ) _ ORDER BY tp
+   ) _
+
+func _butlast(_ar_ anyarray) RETURNS anyarray
+  --- cut last element of array
+  SELECT _ar_[array_lower(_ar_,1) : array_upper(_ar_,1) - 1]
+
+func _last(_ar_ anyarray) RETURNS anyelement
+  --- return last element of collection
+  SELECT _ar_[array_length(_ar_,1)];
 
 func profile_to_resource_type(_ref_ text) RETURNS text
   select replace(_ref_, 'http://hl7.org/fhir/Profile/', '')
@@ -33,7 +46,7 @@ func! load_elements(_prof_ jsonb) returns text
  ) select string_agg(path, ',') from inserted
 
 func remove_generated_html(_prof_ jsonb) returns jsonb
-  SELECT jsonbext.merge(_prof_, '{"text":{"status":"generated","div":"<div>too costy</div>"}}'::jsonb)
+  SELECT this.merge(_prof_, '{"text":{"status":"generated","div":"<div>too costy</div>"}}'::jsonb)
 
 func! load_profile(_prof_ jsonb, _kind_ text) returns text
    INSERT INTO profile
@@ -119,8 +132,8 @@ func! load_searchparameters(bundle jsonb) returns text[]
      INSERT INTO searchparameter
      (logical_id, name, base, xpath, search_type, type, content, path, is_primitive)
      SELECT id, name, base, xpath, search_type, type, content,
-       CASE WHEN coll._last(path) ilike '%[x]' THEN
-         coll._butlast(path) || (replace(coll._last(path),'[x]','') || type)::text
+       CASE WHEN this._last(path) ilike '%[x]' THEN
+         this._butlast(path) || (replace(this._last(path),'[x]','') || type)::text
        ELSE
          path
        END as path,
@@ -138,7 +151,7 @@ select array_length(this.load_bundle(:'datatypes', 'datatype'), 1);
 
 
 \set profs `cat fhir/profiles-resources.json`
-SELECT array_length(metadata.load_bundle(:'profs', 'resource'),1);
+SELECT array_length(this.load_bundle(:'profs', 'resource'),1);
 
 -- mark installed
 UPDATE profile

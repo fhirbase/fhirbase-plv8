@@ -14,7 +14,7 @@ else:
     exit(1)
 
 def each_file(fls,cb):
-    for fl in fls:
+    for fl in sorted(fls):
         if os.path.isfile(fl):
             cb(fl)
         else:
@@ -60,6 +60,7 @@ def load(args):
 def integrate(args):
     print ql.pgexec('postgres','drop database if exists %s' % db)['stdout']
     print ql.pgexec('postgres','create database %s' % db)['stdout']
+    migrate(args)
     run_tests([])
 
 def build(args):
@@ -70,7 +71,7 @@ def install(args):
     print 'TODO'
 
 def migrate(args):
-    ql.migrate.migrate()
+    ql.migrate.migrate(db)
 
 commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate)
 

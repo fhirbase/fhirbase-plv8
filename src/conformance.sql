@@ -1,5 +1,3 @@
--- #import ./metadata.sql
-
 -- most of params should go from _cfg
 -- TODO: check all fields
 func conformance(_cfg jsonb) RETURNS jsonb

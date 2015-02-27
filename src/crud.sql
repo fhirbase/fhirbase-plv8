@@ -1,3 +1,4 @@
+-- #import ./jsonbext.sql
 -- #import ./gen.sql
 -- #import ./coll.sql
 -- #import ./util.sql
