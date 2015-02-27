@@ -223,20 +223,22 @@ Now there is only one paramenter [base] (Service Root URL):
 TODO: more API documentation
 
 ```sql
-SELECT generate.generate_tables('{Patient}');
-SELECT indexing.index_search_param('Patient','name');
-SELECT indexing.index_resource('Patient');
+SELECT fhir.generate_tables('{Patient}');
+SELECT fhir.index_search_param('Patient','name');
+SELECT fhir.index_resource('Patient');
 
-SELECT crud.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid", "name": [{"text":"Ivan"}]}'::jsonb);
-SELECT crud.read('{}'::jsonb, 'myid');
-SELECT crud.update('{}'::jsonb, updatedJsonWithId);
+SELECT fhir.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid", "name": [{"text":"Ivan"}]}'::jsonb);
+SELECT fhir.read('{}'::jsonb, 'myid');
+SELECT fhir.update('{}'::jsonb, updatedJsonWithId);
 
-SELECT crud.is_exists('{}'::jsonb, 'Patient', 'myid');
-SELECT crud.is_deleted('{}'::jsonb, 'Patient', 'myid');
+SELECT fhir.is_exists('{}'::jsonb, 'Patient', 'myid');
+SELECT fhir.is_deleted('{}'::jsonb, 'Patient', 'myid');
 
-SELECT crud.delete('{}'::jsonb, 'Patient', 'myid');
-SELECT search.fhir_search('{}'::jsonb, 'Patient', 'name=Ivan');
+SELECT fhir.delete('{}'::jsonb, 'Patient', 'myid');
+SELECT fhir.search('{}'::jsonb, 'Patient', 'name=Ivan');
 ```
+
+See full list of API functions in [src/fhir.sql].
 
 ## Benchmarks
 
