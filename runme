@@ -4,6 +4,7 @@ import ql
 import os
 import ql.prepr
 import ql.migrate
+from ql.pg import psql
 import sys
 import glob
 
@@ -25,15 +26,15 @@ def run_tests(args):
     if not args:
         args = glob.glob('./test/*_spec.sql')
 
-    ql.pgexec(db, 'SELECT tests.start()')
+    psql(db, 'SELECT tests.start()')
     def run(fl):
         ql.reload_test(db, fl)
 
     each_file(args,run)
-    res = ql.pgexec(db, 'SELECT tests.fail()')
+    res = psql(db, 'SELECT tests.fail()')
     if res['returncode'] != 0:
         print ql.hl('red','FAILED TESTS')
-        report = ql.pgexec(db, 'SELECT * from tests.report()')['stdout']
+        report = psql(db, 'SELECT * from tests.report()')['stdout']
         print ql.hl('red', report)
         sys.exit(1)
     else:
@@ -58,8 +59,8 @@ def load(args):
     each_file(args,run)
 
 def integrate(args):
-    print ql.pgexec('postgres','drop database if exists %s' % db)['stdout']
-    print ql.pgexec('postgres','create database %s' % db)['stdout']
+    print psql('postgres','drop database if exists %s' % db)['stdout']
+    print psql('postgres','create database %s' % db)['stdout']
     migrate(args)
     run_tests([])
 
