@@ -4,6 +4,7 @@ addons:
 
 before_script:
   - sudo apt-get remove postgresql postgresql-9.1 -qq --purge
+  - sudo apt-get remove postgresql postgresql-9.2 -qq --purge
   - sudo apt-get remove postgresql postgresql-9.3 -qq --purge
 #- sudo su $USER -c "source ./cfg/travis_cfg.sh && ./install-postgres"
 
