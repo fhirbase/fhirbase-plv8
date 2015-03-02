@@ -51,6 +51,7 @@ function replace_version() {
   #file="README.md"
   # Replace AUTOVERSION to current $TRAVIS_TAG value
   #sed -i.bak "s/AUTO_VERSION/${TRAVIS_TAG}/g" "${file}" && rm "${file}".bak
+  echo 'fix version';
 }
 # |                  ↑↑↑↑↑                      |
 # |---------------------------------------------|
