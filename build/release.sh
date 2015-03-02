@@ -65,14 +65,6 @@ function precheck() {
       echo "Example: cd ${__root} && ${__script_path}"
       exit 1
   fi
-
-  # Travis check: if not Travis - need to prompt new version
-  # Place it into TRAVIS_TAG
-  if [ ! -n "${TRAVIS}" ]; then
-      echo "Script not being run in Travis environment"
-      read -p "Enter new ${bower_repo_name} version: " TRAVIS_TAG
-      echo "${TRAVIS_TAG}"
-  fi
 }
 
 function travis_decrypt_deploy_key() {
@@ -111,16 +103,20 @@ function clone() {
 function push() {
   cd ../"${bower_repo_name}"
 
-  # Replace version number
-  replace_version
+  if [ -n "${TRAVIS_TAG}" ]; then
+    # Replace version number
+    replace_version
+
+    git add .
+    git commit -m "Travis release for version ${TRAVIS_TAG}"
+    git tag -a -m "${TRAVIS_TAG}" "${TRAVIS_TAG}"
+    git push --follow-tags origin master
+    echo "Released version ${TRAVIS_TAG} successfully!"
+  fi
 
   git add .
-  git commit -m "Travis release for version ${TRAVIS_TAG}"
-  git tag -a -m "${TRAVIS_TAG}" "${TRAVIS_TAG}"
-
-  git push --follow-tags origin master
-
-  echo "Released version ${TRAVIS_TAG} successfully!"
+  git commit -m "Travis build ${date}"
+  git push origin master
 }
 
 # 1. Precheck operations
