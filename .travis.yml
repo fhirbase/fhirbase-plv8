@@ -1,5 +1,4 @@
 # .travis.yml
-sudo: false # enable docker
 addons:
   postgresql: "9.4"
 
