@@ -1,4 +1,4 @@
-update profile set installed = true
+update structuredefinition set installed = true
   where name in ('ValueSet', 'ConceptMap');
 
 func assoc(_from_ jsonb, _key_ text, _value_ jsonb) RETURNS jsonb

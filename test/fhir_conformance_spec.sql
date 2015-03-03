@@ -4,7 +4,7 @@
 BEGIN;
 conformance.conformance('{"version":"0.1"}')->>'version' => '0.1'
 
-expect 'profile & search params unless installed'
+expect 'structuredefinition & search params unless installed'
   jsonb_array_length(
     conformance.conformance('{"version":"0.1"}')#>'{rest,0,resource}'
   )
@@ -12,7 +12,7 @@ expect 'profile & search params unless installed'
 
 
 
-UPDATE profile
+UPDATE structuredefinition
    SET installed = true
  WHERE logical_id in ('Patient', 'Encounter');
 
@@ -24,7 +24,7 @@ expect 'no resources unless generated'
 
 
 expect 'patient'
-  conformance.profile(null::jsonb, 'Patient')->>'id'
+  conformance.structuredefinition(null::jsonb, 'Patient')->>'id'
 => 'Patient'
 
 ROLLBACK;

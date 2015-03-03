@@ -3,13 +3,14 @@
 -- #import ./crud.sql
 -- #import ./indexing.sql
 -- #import ./search.sql
+-- #import ./admin.sql
 
 -- AIP facade
 
 -- generation
 
-func! generate_tables(_profiles_ text[]) returns text
-  select generate.generate_tables(_profiles_)
+func! generate_tables(_resources_ text[]) returns text
+  select generate.generate_tables(_resources_)
 
 func! generate_tables() returns text
    SELECT generate.generate_tables()
@@ -38,8 +39,8 @@ func! drop_all_resource_indexes() RETURNS bigint
 func conformance(_cfg jsonb) RETURNS jsonb
    SELECT conformance.conformance(_cfg )
 
-func profile(_cfg jsonb, _resource_name_ text) RETURNS jsonb
-  SELECT conformance.profile(_cfg , _resource_name_)
+func structuredefinition(_cfg jsonb, _resource_name_ text) RETURNS jsonb
+  SELECT conformance.structuredefinition(_cfg , _resource_name_)
 
 -- crud
 

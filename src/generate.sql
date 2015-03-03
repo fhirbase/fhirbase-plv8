@@ -1,6 +1,6 @@
 -- #import ./gen.sql
 
-func! generate_tables(_profiles_ text[]) returns text
+func! generate_tables(_resources_ text[]) returns text
   --genarate all tables
   SELECT
   count(
@@ -36,16 +36,16 @@ func! generate_tables(_profiles_ text[]) returns text
         ALTER COLUMN content SET NOT NULL,
         ALTER COLUMN resource_type SET DEFAULT '{{resource_type}}';
 
-     UPDATE profile
+     UPDATE structuredefinition
        SET installed = true
         WHERE lower(logical_id) = '{{tbl_name}}';
     $SQL$,
     'ns', 'TODO',
     'tbl_name', lower(logical_id),
     'resource_type', logical_id)))::text
-  FROM profile
+  FROM structuredefinition
   WHERE kind = 'resource' AND installed = false
-    AND (_profiles_ IS NULL OR _profiles_ @> ARRAY[logical_id]);
+    AND (_resources_ IS NULL OR _resources_ @> ARRAY[logical_id]);
 
 func! generate_tables() returns text
    SELECT this.generate_tables(null)

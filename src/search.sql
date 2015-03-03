@@ -68,7 +68,7 @@ func _expand_search_params(_resource_type text, _query text) RETURNS setof query
      JOIN  searchparameter ri
        ON  ri.name = split_part(key[1], ':',1)
       AND  ri.base = x.res
-     JOIN  profile_elements re
+     JOIN  structuredefinition_elements re
        ON  re.path = ri.path
     WHERE array_length(key,1) > 1
   )

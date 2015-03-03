@@ -91,7 +91,7 @@ func index_all_resources() RETURNS table (idx text)
   SELECT
     gen._eval(this.index_search_param_exp(ROW(x.*)))
   from searchparameter x
-  join profile p ON p.name = x.base AND p.installed = true
+  join structuredefinition p ON p.name = x.base AND p.installed = true
   where search_type IN ('token', 'reference', 'string', 'date')
   and x.type is not null
 

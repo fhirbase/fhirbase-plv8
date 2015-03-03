@@ -35,14 +35,14 @@ func conformance(_cfg jsonb) RETURNS jsonb
               )
             )
           )
-          FROM profile r
+          FROM structuredefinition r
           WHERE r.installed = true
         ), '[]'::json)
     )]
   )::jsonb
 
 
-func profile(_cfg jsonb, _resource_name_ text) RETURNS jsonb
+func structuredefinition(_cfg jsonb, _resource_name_ text) RETURNS jsonb
   select  content
-    from profile
+    from structuredefinition
     where lower(logical_id) = lower(_resource_name_)
