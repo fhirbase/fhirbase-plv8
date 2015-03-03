@@ -80,30 +80,52 @@ Requirements:
 You can install fhirbase:
 
 ```bash
-sudo apt-get install postgresql-9.4
-sudo su postgres
-echo 'CREATE DATABASE mydb' | psql postgres
-export DB=mydb
+sudo apt-get install postgresql-9.4 curl
+# create local user for ident auth
+sudo su postgres -c 'createuser -s <you-local-user>'
+# create empty database
+psql -d postgres -c 'create database test'
+# install last version of fhirbase
+curl https://raw.githubusercontent.com/fhirbase/fhirbase-build/master/fhirbase.sql | psql -d test
+# generate tables
+psql -d test -c 'SELECT fhir.generate_tables()'
 
+psql
+#> \dt
+```
+
+## Development installation
+
+For development environment:
+
+```bash
+sudo apt-get install -qqy postgresql-9.4 curl python
+sudo su postgres -c 'createuser -s <you-local-user>'
+export PGUSER=<you-local-user>
+export DB=test
+
+git clone https://github.com/fhirbase/fhirbase
+cd fhirbase
 ./runme integrate
 ```
 
-
 ### Install with docker
 
-Fhirbase could be installed using [docker]()
+Fhirbase could be installed using [docker](https://www.docker.com/)
 
-```
+```bash
 #run database container
-docker run --name=fhirbase -d fhirbase/fhirbase
+docker run --name=fhirbase -d fhirbase/fhirbase-build
 
 docker inspect fhirbase
 # read ip of started container
 
-docker run --rm -i -t fhirbase/fhirbase psql -h <container-ip> -U fhirbase -p 5432
+docker run --rm -i -t fhirbase/fhirbase-build psql -h <container-ip> -U fhirbase -p 5432
 ```
 
-Here we used image from dockerhub - [fhirbase](https://registry.hub.docker.com/u/fhirbase/fhirbase)
+There are two images on dockerhub:
+ * [fhirbase](https://registry.hub.docker.com/u/fhirbase/fhirbase) - auto-build
+ * [fhirbase-build](https://registry.hub.docker.com/u/fhirbase/fhirbase-build) - manual build (more robust)
 
 You could build image by yourself:
 
@@ -119,10 +141,6 @@ docker inspect fhirbase
 
 docker run --rm -i -t fhirbase psql -h <container-ip> -U fhirbase -p 5432
 ```
-
-## Overview
-
-To start quickly read [Getting Started Guide](https://github.com/fhirbase/fhirbase/blob/master/INTRO.md).
 
 ### STRUCTURE
 
