@@ -103,20 +103,20 @@ function clone() {
 function push() {
   cd ../"${bower_repo_name}"
 
+  git add .
+
   if [ -n "${TRAVIS_TAG}" ]; then
     # Replace version number
     replace_version
 
-    git add .
     git commit -m "Travis release for version ${TRAVIS_TAG}"
     git tag -a -m "${TRAVIS_TAG}" "${TRAVIS_TAG}"
     git push --follow-tags origin master
     echo "Released version ${TRAVIS_TAG} successfully!"
+  else
+    git commit -m "Travis build ${date}"
+    git push origin master
   fi
-
-  git add .
-  git commit -m "Travis build ${date}"
-  git push origin master
 }
 
 # 1. Precheck operations
