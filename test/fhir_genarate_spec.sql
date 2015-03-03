@@ -11,9 +11,11 @@ expect 'meta information updated'
   SELECT count(*)
     from structuredefinition
     WHERE installed = true
-=> 5::bigint
+=> 6::bigint
 
 SELECT installed FROM structuredefinition WHERE logical_id = 'Patient' LIMIT 1 => true
+
+SELECT generate.generate_tables();
 
 ROLLBACK;
 

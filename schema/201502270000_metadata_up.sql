@@ -152,7 +152,7 @@ SELECT array_length(this.load_bundle(:'profs', 'resource'),1);
 -- mark installed
 UPDATE structuredefinition
   SET installed = true
-WHERE logical_id in ('StructureDefinition', 'SearchParameter');
+WHERE logical_id in ('StructureDefinition', 'SearchParameter', 'Resource');
 
 \set searchp `cat fhir/search-parameters.json`
 select array_length(this.load_searchparameters(:'searchp'), 1);

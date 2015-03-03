@@ -8,7 +8,7 @@ expect 'structuredefinition & search params unless installed'
   jsonb_array_length(
     conformance.conformance('{"version":"0.1"}')#>'{rest,0,resource}'
   )
-=> 4
+=> 5
 
 
 
@@ -20,7 +20,7 @@ expect 'no resources unless generated'
   jsonb_array_length(
     conformance.conformance('{"version":"0.1"}')#>'{rest,0,resource}'
   )
-=> 6
+=> 7
 
 
 expect 'patient'

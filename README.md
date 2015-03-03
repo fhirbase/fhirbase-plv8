@@ -68,38 +68,20 @@ go into database by generic SQL interface and complete your business task.
 * transaction
 * TODO: meta operations
 
-## Installation
-
-Please follow
-[FHIRPlace installation instructions](https://github.com/fhirbase/fhirplace#installation).
-
 ## Install on linux
 
 Requirements:
-* PostgreSQL 9.4 (http://www.postgresql.org/about/news/1522/)
+* PostgreSQL 9.4
 * pgcrypto
 * pg_trgm
 * btree_gin
 * btree_gist
 
-You can download postgresql 9.4 pre-release or build Postgresql from
-source on debian/ubuntu and create local user cluster with:
-
+You can install fhirbase:
 
 ```bash
-source cfg/local_cfg.sh && ./install-postgres
-psql postgresql
-```
-
-By default postgresql will be built in .build directory.
-`source cfg/local_cfg.sh` in fresh shell to export required variables
-
-NOTE: you can tune configuration in local_cfg.sh.
-
-You can install FHIRBase:
-
-```bash
-source local_cfg.sh
+sudo apt-get install postgresql-9.4
+sudo su postgres
 echo 'CREATE DATABASE mydb' | psql postgres
 export DB=mydb
 
