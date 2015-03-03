@@ -18,4 +18,4 @@ USER postgres
 RUN pg_ctl -w start && cd /fhirbase && psql -d postgres -c "create database $PGDATABASE" && env DB=$PGDATABASE ./runme integrate && pg_ctl -w stop
 RUN pg_ctl -w start && createuser -s fhirbase && psql -c "alter user fhirbase with password 'fhirbase'; select generate.generate_tables(); select indexing.index_all_resources()" && pg_ctl -w stop
 EXPOSE 5432
-CMD pg_ctl -w start
+CMD ["postgres"]
