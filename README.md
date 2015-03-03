@@ -1,4 +1,4 @@
-# FHIRBase
+# fhirbase
 
 Open source relational storage for
 [FHIR](http://hl7.org/implement/standards/fhir/) targeting real production.
@@ -52,7 +52,7 @@ production ready storage for FHIR.
 We decided to implement most of FHIR specification inside database for
 scalability reason (all data operations is done efficiently in databse).
 
-This approach also gives you possibility use FHIRBase from your
+This approach also gives you possibility use fhirbase from your
 prefered lang/platform (.NET, java, ruby, nodejs etc).
 We implemented FHIR compliant server in clojure, with small amount of
 code - [FHIRPlace](https://github.com/fhirbase/fhirplace/).
@@ -214,11 +214,8 @@ CREATE TABLE "patient_history" (
 For more information
 [see source code](https://github.com/fhirbase/fhirbase/blob/master/dev/4_generation.sql#L51):
 
-Most of FHIR complaint operations could be done with FHIRBase procedures,
+Most of FHIR complaint operations could be done with fhirbase procedures,
 which guaranties data integrity and do heavy job for you.
-All procedures have first parameter `_cfg::jsonb` with configuration params, which required for url generation.
-Now there is only one paramenter [base] (Service Root URL):
-`{"base":"http://myserver"}`
 
 ###  Examples
 
@@ -229,15 +226,15 @@ SELECT fhir.generate_tables('{Patient}');
 SELECT fhir.index_search_param('Patient','name');
 SELECT fhir.index_resource('Patient');
 
-SELECT fhir.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid", "name": [{"text":"Ivan"}]}'::jsonb);
-SELECT fhir.read('{}'::jsonb, 'myid');
-SELECT fhir.update('{}'::jsonb, updatedJsonWithId);
+SELECT fhir.create('{"resourceType":"Patient", "id":"myid", "name": [{"text":"Ivan"}]}'::jsonb);
+SELECT fhir.read('Patient', 'myid');
+SELECT fhir.update(updatedJsonWithId);
 
-SELECT fhir.is_exists('{}'::jsonb, 'Patient', 'myid');
-SELECT fhir.is_deleted('{}'::jsonb, 'Patient', 'myid');
+SELECT fhir.is_exists('Patient', 'myid');
+SELECT fhir.is_deleted('Patient', 'myid');
 
-SELECT fhir.delete('{}'::jsonb, 'Patient', 'myid');
-SELECT fhir.search('{}'::jsonb, 'Patient', 'name=Ivan');
+SELECT fhir.delete('Patient', 'myid');
+SELECT fhir.search('Patient', 'name=Ivan');
 ```
 
 See full list of API functions in [src/fhir.sql].
@@ -250,7 +247,7 @@ TODO:
 
 * Star us on GitHub
 * If you encountered a bug, please [make an Issue](https://github.com/fhirbase/fhirplace/issues/new)
-* Contribute to FHIRBase − see [dev/README.md](https://github.com/fhirbase/fhirbase/blob/master/dev/README.md)
+* Contribute to fhirbase − see [dev/README.md](https://github.com/fhirbase/fhirbase/blob/master/dev/README.md)
 
 ## Thxs
 

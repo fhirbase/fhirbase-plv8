@@ -8,11 +8,11 @@ BEGIN;
 SELECT fhir.generate_tables('{Patient}');
 
 setv('created',
-  fhir.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
+  fhir.create( '{"resourceType":"Patient", "id":"myid"}'::jsonb)
 );
 
-fhir.read('{}'::jsonb, 'myid') => getv('created')
-fhir.read('{}'::jsonb, 'Patient/myid') => getv('created')
+fhir.read('Patient', 'myid') => getv('created')
+fhir.read('Patient', 'Patient/myid') => getv('created')
 
 expect 'id is myid'
   getv('created')->>'id'
@@ -36,7 +36,7 @@ expect 'meta info'
 => 'string'
 
 setv('without-id',
-  fhir.create('{}'::jsonb, '{"resourceType":"Patient", "name":{"text":"Goga"}}'::jsonb)
+  fhir.create( '{"resourceType":"Patient", "name":{"text":"Goga"}}'::jsonb)
 );
 
 expect 'id was set'
@@ -45,7 +45,7 @@ expect 'id was set'
 
 
 expect 'meta respected in create'
-  fhir.create('{}'::jsonb, '{"resourceType":"Patient", "meta":{"tags":[1]}}'::jsonb)#>'{meta,tags}'
+  fhir.create( '{"resourceType":"Patient", "meta":{"tags":[1]}}'::jsonb)#>'{meta,tags}'
 => '[1]'::jsonb
 
 expect 'patient created'
@@ -54,10 +54,10 @@ expect 'patient created'
 => 1::bigint
 
 expect_raise 'id and meta.versionId are required'
-  SELECT fhir.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
+  SELECT fhir.update( '{"resourceType":"Patient", "id":"myid"}'::jsonb)
 
 expect_raise 'expected last versionId'
-  SELECT fhir.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)
+  SELECT fhir.update( '{"resourceType":"Patient", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)
 
 expect 'updated'
   SELECT count(*) FROM patient_history
@@ -65,7 +65,7 @@ expect 'updated'
 => 0::bigint
 
 setv('updated',
-  fhir.update('{}'::jsonb,
+  fhir.update(
     jsonbext.assoc(getv('created'),'name','{"text":"Updated name"}')
   )
 );
@@ -75,60 +75,60 @@ expect 'updated'
   WHERE logical_id = 'myid'
 => 1::bigint
 
-fhir.read('{}'::jsonb, 'myid')#>>'{name,text}' => 'Updated name'
+fhir.read('Patient', 'myid')#>>'{name,text}' => 'Updated name'
 
-fhir.vread('{}'::jsonb, getv('created')#>>'{meta,versionId}') => getv('created')
+fhir.vread('Patient', getv('created')#>>'{meta,versionId}') => getv('created')
 
 expect "latest"
-  fhir.is_latest('{}'::jsonb, 'Patient', 'myid',
+  fhir.is_latest( 'Patient', 'myid',
     getv('updated')#>>'{meta,versionId}')
 => true
 
 expect "not latest"
-  fhir.is_latest('{}'::jsonb, 'Patient', 'myid',
+  fhir.is_latest( 'Patient', 'myid',
     getv('created')#>>'{meta,versionId}')
 => false
 
-fhir.history('{}'::jsonb, 'Patient', 'myid')#>'{entry,0,resource}' => getv('updated')
-fhir.history('{}'::jsonb, 'Patient', 'myid')#>'{entry,1,resource}' => getv('created')
+fhir.history( 'Patient', 'myid')#>'{entry,0,resource}' => getv('updated')
+fhir.history( 'Patient', 'myid')#>'{entry,1,resource}' => getv('created')
 
 expect '2 items for resource history'
   jsonb_array_length(
-    fhir.history('{}'::jsonb, 'Patient', 'myid')->'entry'
+    fhir.history( 'Patient', 'myid')->'entry'
   )
 => 2
 
 expect '4 items for resource type history'
   jsonb_array_length(
-    fhir.history('{}'::jsonb, 'Patient')->'entry'
+    fhir.history( 'Patient')->'entry'
   )
 => 4
 
 expect 'more then 4 items for all history'
   jsonb_array_length(
-    fhir.history('{}'::jsonb)->'entry'
+    fhir.history()->'entry'
   ) > 4
 => true
 
 -- DELETE
 
-fhir.is_exists('{}'::jsonb, 'Patient', 'myid') => true
-fhir.is_deleted('{}'::jsonb, 'Patient', 'myid') => false
+fhir.is_exists( 'Patient', 'myid') => true
+fhir.is_deleted( 'Patient', 'myid') => false
 
 setv('deleted',
-  fhir.delete('{}'::jsonb, 'Patient', 'myid')
+  fhir.delete( 'Patient', 'myid')
 );
 
 expect_raise 'already deleted'
-  SELECT fhir.delete('{}'::jsonb, 'Patient', 'myid')
+  SELECT fhir.delete( 'Patient', 'myid')
 
 expect_raise 'does not exist'
-  SELECT fhir.delete('{}'::jsonb, 'Patient', 'nonexisting')
+  SELECT fhir.delete( 'Patient', 'nonexisting')
 
-fhir.read('{}'::jsonb, 'myid') => null
+fhir.read('Patient', 'myid') => null
 
-fhir.is_exists('{}'::jsonb, 'Patient', 'myid') => false
-fhir.is_deleted('{}'::jsonb, 'Patient', 'myid') => true
+fhir.is_exists('Patient', 'myid') => false
+fhir.is_deleted('Patient', 'myid') => true
 
 getv('deleted')#>>'{meta,versionId}' => getv('updated')#>>'{meta,versionId}'
 

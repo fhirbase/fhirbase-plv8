@@ -8,11 +8,11 @@ BEGIN;
 SELECT fhir.generate_tables('{Order}');
 
 setv('created',
-  fhir.create('{}'::jsonb, '{"resourceType":"Order", "id":"myid"}'::jsonb)
+  fhir.create( '{"resourceType":"Order", "id":"myid"}'::jsonb)
 );
 
-fhir.read('{}'::jsonb, 'myid') => getv('created')
-fhir.read('{}'::jsonb, 'Order/myid') => getv('created')
+fhir.read('Order', 'myid') => getv('created')
+fhir.read('Order', 'Order/myid') => getv('created')
 
 expect 'id is myid'
   getv('created')->>'id'
@@ -36,7 +36,7 @@ expect 'meta info'
 => 'string'
 
 setv('without-id',
-  fhir.create('{}'::jsonb, '{"resourceType":"Order", "name":{"text":"Goga"}}'::jsonb)
+  fhir.create( '{"resourceType":"Order", "name":{"text":"Goga"}}'::jsonb)
 );
 
 expect 'id was set'
@@ -45,7 +45,7 @@ expect 'id was set'
 
 
 expect 'meta respected in create'
-  fhir.create('{}'::jsonb, '{"resourceType":"Order", "meta":{"tags":[1]}}'::jsonb)#>'{meta,tags}'
+  fhir.create( '{"resourceType":"Order", "meta":{"tags":[1]}}'::jsonb)#>'{meta,tags}'
 => '[1]'::jsonb
 
 expect 'order created'
@@ -54,10 +54,10 @@ expect 'order created'
 => 1::bigint
 
 expect_raise 'id and meta.versionId are required'
-  SELECT fhir.update('{}'::jsonb, '{"resourceType":"Order", "id":"myid"}'::jsonb)
+  SELECT fhir.update( '{"resourceType":"Order", "id":"myid"}'::jsonb)
 
 expect_raise 'expected last versionId'
-  SELECT fhir.update('{}'::jsonb, '{"resourceType":"Order", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)
+  SELECT fhir.update( '{"resourceType":"Order", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)
 
 expect 'updated'
   SELECT count(*) FROM "order_history"
@@ -65,7 +65,7 @@ expect 'updated'
 => 0::bigint
 
 setv('updated',
-  fhir.update('{}'::jsonb,
+  fhir.update(
     jsonbext.assoc(getv('created'),'name','{"text":"Updated name"}')
   )
 );
@@ -75,38 +75,38 @@ expect 'updated'
   WHERE logical_id = 'myid'
 => 1::bigint
 
-fhir.read('{}'::jsonb, 'myid')#>>'{name,text}' => 'Updated name'
+fhir.read('Order', 'myid')#>>'{name,text}' => 'Updated name'
 
-fhir.vread('{}'::jsonb, getv('created')#>>'{meta,versionId}') => getv('created')
+fhir.vread('Order', getv('created')#>>'{meta,versionId}') => getv('created')
 
 expect "latest"
-  fhir.is_latest('{}'::jsonb, 'Order', 'myid',
+  fhir.is_latest( 'Order', 'myid',
     getv('updated')#>>'{meta,versionId}')
 => true
 
 expect "not latest"
-  fhir.is_latest('{}'::jsonb, 'Order', 'myid',
+  fhir.is_latest( 'Order', 'myid',
     getv('created')#>>'{meta,versionId}')
 => false
 
-fhir.history('{}'::jsonb, 'Order', 'myid')#>'{entry,0,resource}' => getv('updated')
-fhir.history('{}'::jsonb, 'Order', 'myid')#>'{entry,1,resource}' => getv('created')
+fhir.history( 'Order', 'myid')#>'{entry,0,resource}' => getv('updated')
+fhir.history( 'Order', 'myid')#>'{entry,1,resource}' => getv('created')
 
 expect '2 items for resource history'
   jsonb_array_length(
-    fhir.history('{}'::jsonb, 'Order', 'myid')->'entry'
+    fhir.history( 'Order', 'myid')->'entry'
   )
 => 2
 
 expect '4 items for resource type history'
   jsonb_array_length(
-    fhir.history('{}'::jsonb, 'Order')->'entry'
+    fhir.history( 'Order')->'entry'
   )
 => 4
 
 expect 'more then 4 items for all history'
   jsonb_array_length(
-    fhir.history('{}'::jsonb)->'entry'
+    fhir.history()->'entry'
   ) > 4
 => true
 
@@ -114,29 +114,29 @@ expect 'more then 4 items for all history'
 
 expect 'not empty search'
   jsonb_array_length(
-    fhir.search('{}'::jsonb, 'Order', '')->'entry'
+    fhir.search( 'Order', '')->'entry'
   )
 => 3
 
 -- DELETE
 
-fhir.is_exists('{}'::jsonb, 'Order', 'myid') => true
-fhir.is_deleted('{}'::jsonb, 'Order', 'myid') => false
+fhir.is_exists( 'Order', 'myid') => true
+fhir.is_deleted( 'Order', 'myid') => false
 
 setv('deleted',
-  fhir.delete('{}'::jsonb, 'Order', 'myid')
+  fhir.delete( 'Order', 'myid')
 );
 
 expect_raise 'already deleted'
-  SELECT fhir.delete('{}'::jsonb, 'Order', 'myid')
+  SELECT fhir.delete( 'Order', 'myid')
 
 expect_raise 'does not exist'
-  SELECT fhir.delete('{}'::jsonb, 'Order', 'nonexisting')
+  SELECT fhir.delete( 'Order', 'nonexisting')
 
-fhir.read('{}'::jsonb, 'myid') => null
+fhir.read('Order', 'myid') => null
 
-fhir.is_exists('{}'::jsonb, 'Order', 'myid') => false
-fhir.is_deleted('{}'::jsonb, 'Order', 'myid') => true
+fhir.is_exists( 'Order', 'myid') => false
+fhir.is_deleted( 'Order', 'myid') => true
 
 
 getv('deleted')#>>'{meta,versionId}' => getv('updated')#>>'{meta,versionId}'

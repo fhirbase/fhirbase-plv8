@@ -35,7 +35,7 @@ deploy_enc_iv="${encrypted_d53c8cce442b_iv}"
 
 # Enter project build commands inside of build() function
 function build() {
-  su $USER -c "env PGUSER=postgres DB=test ./runme build"
+  sudo su $USER -c "env PGUSER=postgres DB=test ./runme build"
 }
 
 # Enter built files copying to bower directory inside of copy() function
@@ -120,17 +120,22 @@ function push() {
 }
 
 # 1. Precheck operations
+echo 'Precheck'
 precheck
 
 # 2.1 Decrypt private key, if on Travis
 # 2.2 Clone repositories
+echo 'clone'
 clone
 
 # 3. Build files for Bower
+echo 'build'
 build
 
 # 4. Copy built files to Bower repo
+echo 'copy'
 copy
 
 # 5. Commit and push new bower files to github
+echo 'push'
 push

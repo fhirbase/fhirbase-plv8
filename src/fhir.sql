@@ -36,51 +36,51 @@ func! drop_all_resource_indexes() RETURNS bigint
  SELECT  indexing.drop_all_resource_indexes()
 
 -- conformance
-func conformance(_cfg jsonb) RETURNS jsonb
-   SELECT conformance.conformance(_cfg )
+func conformance(_cfg_ jsonb) RETURNS jsonb
+   SELECT conformance.conformance(_cfg_ )
 
-func structuredefinition(_cfg jsonb, _resource_name_ text) RETURNS jsonb
-  SELECT conformance.structuredefinition(_cfg , _resource_name_)
+func structuredefinition(_cfg_ jsonb, _resource_name_ text) RETURNS jsonb
+  SELECT conformance.structuredefinition(_cfg_ , _resource_name_)
 
 -- crud
 
-func! read(_cfg_ jsonb, _id_ text) RETURNS jsonb
-  SELECT crud.read(_cfg_ , _id_ )
+func! read(_resource_type_ text, _id_ text) RETURNS jsonb
+  SELECT crud.read('{}'::jsonb , _id_ )
 
-func! vread(_cfg_ jsonb, _id_ text) RETURNS jsonb
-  SELECT crud.vread(_cfg_ , _id_ )
+func! vread(_resource_type_ text, _id_ text) RETURNS jsonb
+  SELECT crud.vread('{}'::jsonb , _id_ )
 
-func! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
-  SELECT crud.create(_cfg_, _resource_)
+func! create(_resource_ jsonb) RETURNS jsonb
+  SELECT crud.create('{}'::jsonb, _resource_)
 
-func! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
-  SELECT crud.update(_cfg_ , _resource_ )
+func! update(_resource_ jsonb) RETURNS jsonb
+  SELECT crud.update('{}'::jsonb , _resource_ )
 
-func! delete(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS jsonb
-  SELECT crud.delete(_cfg_ , _resource_type_ , _id_)
+func! delete(_resource_type_ text, _id_ text) RETURNS jsonb
+  SELECT crud.delete('{}'::jsonb , _resource_type_ , _id_)
 
-func! is_deleted(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS boolean
-  SELECT crud.is_deleted(_cfg_ , _resource_type_ , _id_ )
+func! is_deleted(_resource_type_ text, _id_ text) RETURNS boolean
+  SELECT crud.is_deleted('{}'::jsonb , _resource_type_ , _id_ )
 
-func! is_latest(_cfg_ jsonb, _resource_type_ text, _id_ text, _vid_ text) RETURNS boolean
-  SELECT crud.is_latest(_cfg_ , _resource_type_ , _id_ , _vid_ )
+func! is_latest( _resource_type_ text, _id_ text, _vid_ text) RETURNS boolean
+  SELECT crud.is_latest('{}'::jsonb , _resource_type_ , _id_ , _vid_ )
 
-func! is_exists(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS boolean
-  SELECT crud.is_exists(_cfg_ , _resource_type_ , _id_ )
+func! is_exists(_resource_type_ text, _id_ text) RETURNS boolean
+  SELECT crud.is_exists('{}'::jsonb , _resource_type_ , _id_ )
 
-func! history(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS jsonb
-  SELECT crud.history(_cfg_ , _resource_type_ , _id_ )
+func! history(_resource_type_ text, _id_ text) RETURNS jsonb
+  SELECT crud.history('{}'::jsonb , _resource_type_ , _id_ )
 
-func! history(_cfg_ jsonb, _resource_type_ text) RETURNS jsonb
-  SELECT crud.history(_cfg_ , _resource_type_ )
+func! history(_resource_type_ text) RETURNS jsonb
+  SELECT crud.history('{}'::jsonb , _resource_type_ )
 
-func! history(_cfg_ jsonb) RETURNS jsonb
-  SELECT crud.history(_cfg_)
+func! history() RETURNS jsonb
+  SELECT crud.history('{}'::jsonb)
 
 -- search
 
-func search(_cfg_ jsonb, _type_ text, _params_ text) RETURNS jsonb
-  SELECT search.fhir_search(_cfg_ , _type_ , _params_ )
+func search( _type_ text, _params_ text) RETURNS jsonb
+  SELECT search.fhir_search('{}'::jsonb , _type_ , _params_ )
 
 func! explain_search(_resource_type text, query text) RETURNS table( "plan" text)
   SELECT search.explain_search(_resource_type, query)
