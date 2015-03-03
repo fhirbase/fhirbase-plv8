@@ -11,7 +11,7 @@ expect 'meta information updated'
   SELECT count(*)
     from structuredefinition
     WHERE installed = true
-=> 6::bigint
+=> 7::bigint
 
 SELECT installed FROM structuredefinition WHERE logical_id = 'Patient' LIMIT 1 => true
 

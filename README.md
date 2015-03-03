@@ -94,6 +94,8 @@ psql
 #> \dt
 ```
 
+Here is asci cast for simplest installation - [https://asciinema.org/a/17236].
+
 ## Development installation
 
 For development environment:
