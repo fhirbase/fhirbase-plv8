@@ -35,7 +35,7 @@ deploy_enc_iv="${encrypted_d53c8cce442b_iv}"
 
 # Enter project build commands inside of build() function
 function build() {
-  sudo su $USER -c "env PGUSER=postgres DB=test ./runme build"
+  su $USER -c "env PGUSER=postgres DB=test ./runme build"
 }
 
 # Enter built files copying to bower directory inside of copy() function
