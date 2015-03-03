@@ -3,11 +3,11 @@ sudo: false # enable docker
 addons:
   postgresql: "9.4"
 
-#before_script:
-#  - apt-get remove postgresql postgresql-9.1 -qq --purge
-#  - apt-get remove postgresql postgresql-9.2 -qq --purge
-#  - apt-get remove postgresql postgresql-9.3 -qq --purge
+before_script:
+  - sudo apt-get remove postgresql postgresql-9.1 -qq --purge
+  - sudo apt-get remove postgresql postgresql-9.2 -qq --purge
+  - sudo apt-get remove postgresql postgresql-9.3 -qq --purge
 #- sudo su $USER -c "source ./cfg/travis_cfg.sh && ./install-postgres"
 
-script: env PGUSER=postgres DB=test ./runme integrate
+script: sudo su $USER -c "env PGUSER=postgres DB=test ./runme integrate"
 after_success: ./build/release.sh
