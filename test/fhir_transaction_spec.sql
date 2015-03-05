@@ -15,7 +15,7 @@ setv('device-json', '{"resourceType": "Device", "manufacturer": "Acme" }');
 setv('alert',  crud.create(getv('cfg'), getv('alert-json')));
 setv('device', crud.create(getv('cfg'), getv('device-json')));
 
-setv('bundle-json',
+setv('valid-transaction-bundle',
   json_build_object(
     'resourceType', 'Bundle',
     'entry', ARRAY[
@@ -41,30 +41,30 @@ setv('bundle-json',
 );
 
 
-setv('trans',
+setv('valid-trans',
   transaction.transaction(
     getv('cfg'),
-    getv('bundle-json')
+    getv('valid-transaction-bundle')
   )
 );
 
-getv('trans')->>'type' => 'transaction-response'
+getv('valid-trans')->>'type' => 'transaction-response'
 
 expect
   jsonb_array_length(
-    getv('trans')->'entry'
+    getv('valid-trans')->'entry'
   )
 => 3
 
 expect
   crud.read(
-     getv('cfg'), getv('trans')#>>'{entry,0,resource,id}'
+     getv('cfg'), getv('valid-trans')#>>'{entry,0,resource,id}'
   )#>>'{manufacturer}'
 => 'handmade'
 
 expect
   crud.read(
-     getv('cfg'), getv('trans')#>>'{entry,1,resource,id}'
+     getv('cfg'), getv('valid-trans')#>>'{entry,1,resource,id}'
   )#>>'{note}'
 => 'new-note'
 
@@ -72,9 +72,47 @@ expect
   crud.is_deleted(
     getv('cfg'),
     'Device',
-    getv('trans')#>>'{entry,2,resource,id}'
+    getv('valid-trans')#>>'{entry,2,resource,id}'
   )
 => true
+
+-----------------------------------------------------------------
+
+SELECT COUNT(*)::integer FROM ALERT => 1::integer
+
+setv('invalid-transaction-bundle',
+  json_build_object(
+    'resourceType', 'Bundle',
+    'entry', ARRAY[
+      json_build_object(
+        'status', 'create',
+        'resource', '{"resourceType": "Alert", "note": "another alert"}'::json
+      ),
+      json_build_object(
+        'status', 'delete',
+        'deleted', json_build_object(
+          'type', 'Device',
+          'resourceId', 'nonexistentid',
+          'instant', current_timestamp
+        )
+      ),
+      json_build_object(
+        'status', 'create',
+        'resource', '{"resourceType": "Alert", "note": "another alert 2"}'::json
+      )
+    ]::json[]
+  )::jsonb
+);
+
+expect_raise 'resource with id="nonexistentids" does not exist'
+  SELECT transaction.transaction(
+    getv('cfg'),
+    getv('invalid-transaction-bundle')
+  );
+
+expect
+  SELECT COUNT(*)::integer FROM alert
+=> 1::integer
 
 --TODO: more asserts
 ROLLBACK;
