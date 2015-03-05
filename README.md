@@ -50,7 +50,7 @@ production ready storage for FHIR.
 > Why we are doing this inside database?
 
 We decided to implement most of FHIR specification inside database for
-scalability reason (all data operations is done efficiently in databse).
+scalability reason (all data operations is done efficiently in database).
 
 This approach also gives you possibility use fhirbase from your
 prefered lang/platform (.NET, java, ruby, nodejs etc).
