@@ -48,7 +48,7 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
     END LOOP;
 
     RETURN json_build_object(
-       'type', 'transaction-responce',
+       'type', 'transaction-response',
        'entry', _entry_
     )::jsonb;
 

@@ -48,7 +48,7 @@ setv('trans',
   )
 );
 
-getv('trans')->>'type' => 'transaction-responce'
+getv('trans')->>'type' => 'transaction-response'
 
 expect
   jsonb_array_length(
