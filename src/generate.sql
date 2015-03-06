@@ -17,13 +17,12 @@ func! generate_tables(_resources_ text[]) returns text
         ALTER COLUMN content SET NOT NULL,
         ALTER COLUMN resource_type SET DEFAULT '{{resource_type}}';
 
-
       -- this index speedup search joins (cause uuid are casted to texts)
-      CREATE UNIQUE INDEX {{tbl_name}}_logical_id_as_text_idx
-        ON "{{tbl_name}}" (logical_id);
+      --CREATE UNIQUE INDEX {{tbl_name}}_logical_id_as_text_idx
+      --ON "{{tbl_name}}" (logical_id);
 
-      CREATE INDEX {{tbl_name}}_full_text_idx
-        ON "{{tbl_name}}" USING gin(to_tsvector('english', content::text));
+      --CREATE INDEX {{tbl_name}}_full_text_idx
+      --ON "{{tbl_name}}" USING gin(to_tsvector('english', content::text));
 
       CREATE TABLE "{{tbl_name}}_history" () INHERITS (resource_history);
 
