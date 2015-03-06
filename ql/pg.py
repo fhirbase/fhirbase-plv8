@@ -11,7 +11,7 @@ def psql(db, sql):
     out = pr.stdout and pr.stdout.read()
     if err and pr.returncode != 0:
         print '\x1b[31m%s\x1b[0m' % err
-        raise
+        raise Exception('sql error')
     elif err and pr.returncode == 0:
         print '\x1b[33m%s\x1b[0m' % err
     return dict(returncode=returncode, stderr=err, stdout=out)
