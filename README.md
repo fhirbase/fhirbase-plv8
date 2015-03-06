@@ -252,7 +252,7 @@ Then login and create app
     heroku login
     heroku apps:create your-app-name
 
-Then PostgreSQL 9.4 database
+Then create PostgreSQL 9.4 database
 
     heroku addons:add heroku-postgresql --app your-app-name --version=9.4
 
