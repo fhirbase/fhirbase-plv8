@@ -17,6 +17,8 @@ storage implementation - [fhirbase](https://github.com/fhirbase/fhirbase).
 FHIR describes ~ 100 [resources](http://hl7-fhir.github.io/resourcelist.html)
 as base StructureDefinitions, which by themselves are resources in FHIR terms.
 
+To setup fhirbase read [installation guide](installation.md).
+
 Fhirbase stores each resource in two tables - one for current version
 and second for previous versions of resources. By convention tables are named
 in downcase after resource types: Patient => patient, StructureDefinition => structuredefinition.
@@ -68,7 +70,7 @@ few tables for "meta" resources:
 This tables are filled with resources provided by FHIR distribution.
 
 Most of API for fhirbase are represented as functions in *fhir* schema,
-other schemas are used as code modules.
+other schemas are used as code library modules.
 
 First helpful function is `fhir.generate_tables(resources text[])`, which generates tables
 for specific resources passed as array.
@@ -99,7 +101,16 @@ fhirbase=# select fhir.generate_tables();
 ```
 
 When concrete resource type tables are generated,
-column installed in profile table for this resource is set to true.
+column *installed* in profile table for this resource is set to true.
+
+```sql
+SELECT logical_id, installed from structuredefinition
+WHERE logical_id = 'Patient'
+
+--  logical_id | installed
+----------------------------
+--  Patient    | true
+```
 
 Functions representing public API of fhirbase are all located in fhir schema.
 The first group of functions implements CRUD operations on resources:
@@ -313,3 +324,10 @@ select fhir.explain_search('Patient', 'name=david&count=10');
 -- Planning time: 0.449 ms
 -- Execution time: 6.946 ms
 ```
+
+### Performance Tests
+
+### Road Map
+
+
+
