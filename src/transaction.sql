@@ -79,6 +79,7 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
 
 proc! _process_entry(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
   _entry_ jsonb[];
+  _match_ jsonb[];
   _item_ jsonb;
   _params text[];
   _tmp text;
@@ -87,7 +88,6 @@ proc! _process_entry(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
     LOOP
       IF _item_#>>'{transaction,method}' = _method_ THEN
         _params := this._url_to_crud_action(_item_#>>'{transaction,url}', _item_#>>'{transaction,method}');
-        --_tmp := tests._debug(_item_)::text;
         IF _params[1] = 'create' THEN
           _entry_ := _entry_ || ARRAY[
             jsonbext.assoc(
@@ -117,7 +117,7 @@ proc! _process_entry(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
     END LOOP;
 
     RETURN json_build_object(
-       'match', '{}'::jsonb[],
+       'match', coalesce(_match_, '{}'::jsonb[]),
        'entry', coalesce(_entry_, '{}'::jsonb[])
     )::jsonb;
 
