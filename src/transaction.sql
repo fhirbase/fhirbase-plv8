@@ -11,6 +11,54 @@ func _replace_references(_resource_ text, _references_ json[]) RETURNS text
    ELSE _resource_
    END
 
+proc _url_to_crud_action(_url_ text, _method_ text) RETURNS text[]
+  matches text[];
+  BEGIN
+    CASE _method_
+    WHEN 'POST' THEN
+      matches := regexp_matches(_url_, '^/?([^/]+)$');
+
+      IF matches IS NULL THEN
+        matches := regexp_matches(_url_, '^/?([^/]+)/_search$');
+
+        IF matches IS NOT NULL THEN
+           RETURN ARRAY['search', matches[1]];
+        ELSE
+          RAISE EXCEPTION 'Wrong URL for POST action: %', _url_;
+        END IF;
+      ELSE
+        RETURN ARRAY['create', matches[1]];
+      END IF;
+    WHEN 'PUT', 'DELETE' THEN
+      matches := regexp_matches(_url_, '^/?([^/]+)/([^/]+)$');
+
+      IF matches IS NULL THEN
+        RAISE EXCEPTION 'Wrong URL for PUT/DELETE action: %', _url_;
+      END IF;
+
+      IF _method_ = 'PUT' THEN
+         RETURN ARRAY['update', matches[1], matches[2]];
+      ELSE
+        RETURN ARRAY['delete', matches[1], matches[2]];
+      END IF;
+    WHEN 'GET' THEN
+      matches := regexp_matches(_url_, '^/?([^/]+)/([^/]+)$');
+      IF matches IS NOT NULL THEN
+        RETURN ARRAY['read', matches[1], matches[2]];
+      END IF;
+
+      matches := regexp_matches(_url_, '^/?([^/]+)/([^/]+)/_history/([^/]+)$');
+      IF matches IS NOT NULL THEN
+        RETURN ARRAY['vread', matches[1], matches[2], matches[3]];
+      END IF;
+
+      matches := regexp_matches(_url_, '^/?([^/]+)$');
+      IF matches IS NOT NULL THEN
+        RETURN ARRAY['search', matches[1]];
+      ELSE
+        RAISE EXCEPTION 'Wrong URL for GET action: %', _url_;
+      END IF;
+    END CASE;
 
 proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
   --Update, create or delete a set of resources as a single transaction\nReturns bundle with entries
@@ -19,7 +67,6 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
   BEGIN
     FOR _item_ IN SELECT jsonb_array_elements(_bundle_->'entry')
     LOOP
-      -- TODO: replace ids
       IF _item_->> 'status' = 'create' THEN
         _entry_ := _entry_ || ARRAY[
           jsonbext.assoc(
