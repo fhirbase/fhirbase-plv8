@@ -3,11 +3,50 @@
 -- #import ../src/generate.sql
 -- #import ../src/transaction.sql
 
+expect
+  transaction._url_to_crud_action('/Device'::text, 'POST'::text)
+=> ARRAY['create', 'Device']::text[]
+
+expect
+  transaction._url_to_crud_action('/Patient/patient-id'::text, 'PUT'::text)
+=> ARRAY['update', 'Patient', 'patient-id']::text[]
+
+expect
+  transaction._url_to_crud_action('/Patient/patient-id'::text, 'DELETE'::text)
+=> ARRAY['delete', 'Patient', 'patient-id']::text[]
+
+expect
+  transaction._url_to_crud_action('/Patient'::text, 'GET'::text)
+=> ARRAY['search', 'Patient']::text[]
+
+expect
+  transaction._url_to_crud_action('/Patient/pid/_history/vid'::text, 'GET'::text)
+=> ARRAY['vread', 'Patient', 'pid', 'vid']::text[]
+
+expect
+  transaction._url_to_crud_action('/Patient/pid'::text, 'GET'::text)
+=> ARRAY['read', 'Patient', 'pid']::text[]
+
+expect
+  transaction._url_to_crud_action('/Patient/_search'::text, 'POST'::text)
+=> ARRAY['search', 'Patient']::text[]
+
+expect_raise 'Wrong URL'
+  SELECT transaction._url_to_crud_action('/Patient'::text, 'PUT'::text);
+
+expect_raise 'Wrong URL'
+  SELECT transaction._url_to_crud_action(''::text, 'POST'::text);
+
+expect_raise 'Wrong URL'
+  SELECT transaction._url_to_crud_action('/Patient/foobar/asd'::text, 'POST'::text);
+
+------------------------------------------------------------
+
 BEGIN;
 SET search_path TO vars, public;
 
 SELECT generate.generate_tables('{Patient,Alert,Device}');
-setv( 'cfg', '{"base":"https://test.me"}');
+setv('cfg', '{"base":"https://test.me"}');
 
 setv('alert-json','{"resourceType": "Alert", "note": "old-note" }');
 setv('device-json', '{"resourceType": "Device", "manufacturer": "Acme" }');
@@ -18,23 +57,18 @@ setv('device', crud.create(getv('cfg'), getv('device-json')));
 setv('valid-transaction-bundle',
   json_build_object(
     'resourceType', 'Bundle',
+    'type', 'transaction',
     'entry', ARRAY[
       json_build_object(
-        'status', 'create',
+        'transaction', '{"method": "POST", "url": "/Device"}'::json,
         'resource', '{"resourceType": "Device", "manufacturer": "handmade"}'::json
       ),
       json_build_object(
-        'status', 'update',
+        'transaction', ('{"method": "PUT", "url": "/Alert/' || getv('alert')->>'id' || '"}')::json,
         'resource', jsonbext.assoc(getv('alert'), 'note', '"new-note"'::jsonb)::json
       ),
       json_build_object(
-        'status', 'delete',
-        'deleted', json_build_object(
-          'type', 'Device',
-          'resourceId', getv('device')->>'id',
-          'versionId', getv('device')#>>'{meta,versionId}',
-          'instant', current_timestamp
-        )
+        'transaction', ('{"method": "DELETE", "url": "/Device/' || getv('device')->>'id' || '"}')::json
       )
     ]::json[]
   )::jsonb
@@ -114,5 +148,4 @@ expect
   SELECT COUNT(*)::integer FROM alert
 => 1::integer
 
---TODO: more asserts
 ROLLBACK;
