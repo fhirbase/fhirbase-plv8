@@ -64,14 +64,12 @@ proc _url_to_crud_action(_url_ text, _method_ text) RETURNS text[]
 proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
   --Update, create or delete a set of resources as a single transaction\nReturns bundle with entries
   _entry_ jsonb[];
-  _item_ jsonb;
-  _params text[];
-  _tmp text;
+  _method text;
   BEGIN
     _entry_ := _entry_ || this._process_entry(_cfg_, _bundle_, 'POST');
-    _entry_ := _entry_ || this._process_entry(_cfg_, _bundle_, 'PUT');
-    _entry_ := _entry_ || this._process_entry(_cfg_, _bundle_, 'DELETE');
-    _entry_ := _entry_ || this._process_entry(_cfg_, _bundle_, 'GET');
+    FOREACH _method IN ARRAY '{PUT,DELETE,GET}'::text[] LOOP
+      _entry_ := _entry_ || this._process_entry(_cfg_, _bundle_, _method);
+    END loop;
 
     RETURN json_build_object(
        'type', 'transaction-response',
