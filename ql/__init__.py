@@ -93,7 +93,7 @@ def load_to_pg(db, fl, content, force=False):
         print '\t<- %s' % fl
         sql = prepr.process(fl, content)
         res = psql(db, sql)
-        if os.environ['VERBOSE']:
+        if 'VERBOSE' in os.environ:
           print res['stdout']
         if res['returncode'] == 0:
             psql(db, 'DELETE FROM modules WHERE file=\'%s\'' % fl)

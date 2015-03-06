@@ -71,6 +71,7 @@ func! generate_pt(_limit_ integer) RETURNS bigint
   )
   select count(*) inserted;
 
+
 \timing
 select this.generate_pt(10000);
 select count(*) from patient;
