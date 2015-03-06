@@ -1,0 +1,39 @@
+1000  - Time: 1365.644 ms
+
+Timing is on.
+ count
+-------
+ 10000
+(1 row)
+
+Time: 5963.041 ms
+
+Timing is on.
+ count
+--------
+ 100000
+(1 row)
+
+Time: 58025.182 ms
+
+Timing is on.
+ count
+--------
+ 100000
+(1 row)
+
+(public.patient,"46 MB")
+
+Time: 30553.204 ms
+
+# with insert
+
+Timing is on.
+INSERT 0 100000
+Time: 4488.318 ms
+
+
+
+Timing is on.
+INSERT 0 200000
+Time: 8600.216 ms

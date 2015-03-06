@@ -12,11 +12,13 @@ func _sha1(x text) RETURNS text
 
 func gen_version_id(_res_ jsonb) RETURNS text
   -- remove meta
-  SELECT this._sha1(jsonbext.assoc(_res_, 'meta', '[]')::text)
+  SELECT --this._sha1(jsonbext.assoc(_res_, 'meta', '[]')::text)
+    gen_random_uuid()::text
 
 func gen_logical_id(_res_ jsonb) RETURNS text
   -- remove meta
-  SELECT this._sha1(jsonbext.assoc(_res_, 'meta', '[]')::text)
+  SELECT --this._sha1(jsonbext.assoc(_res_, 'meta', '[]')::text)
+    gen_random_uuid()::text
 
 -- TODO: rename
 

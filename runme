@@ -71,10 +71,15 @@ def build(args):
 def install(args):
     print 'TODO'
 
+
 def migrate(args):
     ql.migrate.migrate(db)
 
-commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate)
+def perf(args):
+    args = glob.glob('./perf/*.sql')
+    load(args)
+
+commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate, perf=perf)
 
 if len(sys.argv) < 2:
   print "Please use command:"
