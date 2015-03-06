@@ -252,7 +252,7 @@ Then login and create app
 ```sh
 heroku login
 heroku apps:create your-app-name
-``
+```
 
 Then create PostgreSQL 9.4 database
 
