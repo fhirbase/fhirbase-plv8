@@ -4,7 +4,10 @@ func gen_rand(_a_ text, _b_ text, _mod_ integer) RETURNS text
    (mod(ascii(_a_) +  ascii(_b_), _mod_) + 1)::text, 2, '0'
  )
 
-func! generate_pt(_limit_ integer) RETURNS bigint
+-- TODO: improve generator
+--       improve patient resource (add adress etc.)
+--       add more resources (encounter, order etc.)
+func! generate_patient(_limit_ integer) RETURNS bigint
   with x as (
     select *, row_number() over () from (
       select * from temp.human_names
@@ -29,7 +32,7 @@ func! generate_pt(_limit_ integer) RETURNS bigint
     join y on x.row_number = y.row_number
   ), inserted as (
     INSERT into patient (logical_id, version_id, content)
-    SELECT obj->'id', obj->>'{meta,versionId}', obj
+    SELECT obj->>'id', obj#>>'{meta,versionId}', obj
     FROM (
       SELECT
         json_build_object(
@@ -56,7 +59,11 @@ func! generate_pt(_limit_ integer) RETURNS bigint
   select count(*) inserted;
 
 \timing
-select this.generate_pt(100000);
+\set perf_patient_limit `echo $perf_patient_limit`
+select this.generate_patient((:'perf_patient_limit')::int);
 select count(*) from patient;
+
+-- -- select 'search by created patients'
+-- SELECT fhir.search('Patient', 'name=John');
 
 select admin.admin_disk_usage_top(10);

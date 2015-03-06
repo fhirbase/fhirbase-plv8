@@ -76,8 +76,19 @@ def migrate(args):
     ql.migrate.migrate(db)
 
 def perf(args):
-    args = glob.glob('./perf/*.sql')
-    load(args)
+    if not 'perf_patient_limit' in os.environ:
+        os.environ['perf_patient_limit'] = '1000'
+    if not args: args = glob.glob('./perf/*.sql')
+
+    batch_size = 1000
+    batch_count = int(os.environ['perf_patient_limit']) // batch_size
+    last_batch_size = int(os.environ['perf_patient_limit']) % batch_size
+    if batch_count > 0:
+        os.environ['perf_patient_limit'] = str(batch_size)
+        for x in range(0, batch_count): reload(args)
+    if last_batch_size > 0:
+        os.environ['perf_patient_limit'] = str(last_batch_size)
+        reload(args)
 
 commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate, perf=perf)
 
