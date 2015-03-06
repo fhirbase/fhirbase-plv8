@@ -66,9 +66,10 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
   _entry_ jsonb[];
   _method text;
   BEGIN
-    _entry_ := _entry_ || this._process_entry(_cfg_, _bundle_, 'POST');
+    _entry_ := _entry_ || jsonbext.jsonb_to_array(this._process_entry(_cfg_, _bundle_, 'POST')->'entry');
+    --_entry_ := _entry_ || (this._process_entry(_cfg_, _bundle_, 'POST')->'entry')::jsonb[];
     FOREACH _method IN ARRAY '{PUT,DELETE,GET}'::text[] LOOP
-      _entry_ := _entry_ || this._process_entry(_cfg_, _bundle_, _method);
+      _entry_ := _entry_ || jsonbext.jsonb_to_array(this._process_entry(_cfg_, _bundle_, _method)->'entry');
     END loop;
 
     RETURN json_build_object(
@@ -76,7 +77,7 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
        'entry', coalesce(_entry_, '{}'::jsonb[])
     )::jsonb;
 
-proc! _process_entry(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb[]
+proc! _process_entry(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
   _entry_ jsonb[];
   _item_ jsonb;
   _params text[];
@@ -115,7 +116,10 @@ proc! _process_entry(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb[]
       END IF;
     END LOOP;
 
-    RETURN coalesce(_entry_, '{}'::jsonb[]);
+    RETURN json_build_object(
+       'match', '{}'::jsonb[],
+       'entry', coalesce(_entry_, '{}'::jsonb[])
+    )::jsonb;
 
 /* func! fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb */
 /*   --Update, create or delete a set of resources as a single transaction\nReturns bundle with entries */

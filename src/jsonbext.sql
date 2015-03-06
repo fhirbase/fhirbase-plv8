@@ -1,4 +1,5 @@
 -- #import ./coll.sql
+-- #import ./tests.sql
 
 func _is_array(_json jsonb) RETURNS boolean
   SELECT jsonb_typeof(_json) = 'array';
@@ -75,3 +76,7 @@ func jsonb_primitive_to_text(x jsonb) RETURNS text
    ELSE
      json_build_object('x', x)->>'x'
   END
+
+func jsonb_to_array(_jsonb_ jsonb) RETURNS jsonb[]
+  SELECT array_agg(j)
+  FROM jsonb_array_elements(_jsonb_) j
