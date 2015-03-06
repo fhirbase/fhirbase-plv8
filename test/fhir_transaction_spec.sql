@@ -121,19 +121,14 @@ setv('invalid-transaction-bundle',
     'resourceType', 'Bundle',
     'entry', ARRAY[
       json_build_object(
-        'status', 'create',
+        'transaction', '{"method": "POST", "url": "/Alert"}'::json,
         'resource', '{"resourceType": "Alert", "note": "another alert"}'::json
       ),
       json_build_object(
-        'status', 'delete',
-        'deleted', json_build_object(
-          'type', 'Device',
-          'resourceId', 'nonexistentid',
-          'instant', current_timestamp
-        )
+        'transaction', ('{"method": "DELETE", "url": "/Device/nonexistentid"}')::json
       ),
       json_build_object(
-        'status', 'create',
+        'transaction', '{"method": "POST", "url": "/Alert"}'::json,
         'resource', '{"resourceType": "Alert", "note": "another alert 2"}'::json
       )
     ]::json[]
