@@ -267,7 +267,19 @@ curl https://raw.githubusercontent.com/fhirbase/fhirbase-build/master/fhirbase.s
   | pg:psql --app your-app-name YOUR_DB_NAME
 pg:psql --app your-app-name YOUR_DB_NAME --command 'SELECT fhir.generate_tables()'
 ```
+Then run benchmark
 
+```sh
+git clone https://github.com/fhirbase/fhirbase.git
+cd fhirbase
+PGHOST=your-host \
+  DB=YOUR_DB_NAME \
+  PGPORT=5432 \
+  PGUSER=your-user \
+  PGPASSWORD=your-password \
+  VERBOSE=1 \
+  ./runme perf
+```
 ## Contribution
 
 * Star us on GitHub

@@ -1,24 +1,8 @@
--- #import ../src/fhir.sql
-create schema if not exists temp;
-
-drop table if exists temp.human_names;
-
-create table temp.human_names (
-  year text,
-  name text,
-  percent numeric,
-  sex text
-);
-
-\copy temp.human_names (year,name,percent,sex) from  './perf/given_names.csv' with CSV;
-
-
+-- #import ./perf_schema.sql
 func gen_rand(_a_ text, _b_ text, _mod_ integer) RETURNS text
  SELECT lpad(
    (mod(ascii(_a_) +  ascii(_b_), _mod_) + 1)::text, 2, '0'
  )
-
-select fhir.generate_tables('{Patient}');
 
 func! generate_pt(_limit_ integer) RETURNS bigint
   with x as (
@@ -71,8 +55,8 @@ func! generate_pt(_limit_ integer) RETURNS bigint
   )
   select count(*) inserted;
 
-
 \timing
-select this.generate_pt(10000);
+select this.generate_pt(100000);
 select count(*) from patient;
+
 select admin.admin_disk_usage_top(10);

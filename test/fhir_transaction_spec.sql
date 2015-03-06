@@ -84,7 +84,8 @@ setv('valid-trans',
 
 getv('valid-trans')->>'type' => 'transaction-response'
 
---select tests._debug(getv('valid-trans'));
+--select tests._debug(jsonbext.jsonb_to_array(getv('valid-transaction-bundle')->'entry'));
+
 
 expect
   jsonb_array_length(
