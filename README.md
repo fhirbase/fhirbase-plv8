@@ -241,7 +241,24 @@ See full list of API functions in [src/fhir.sql].
 
 ## Benchmarks
 
-TODO:
+### Heroku
+
+Register on [Heroku][]
+
+[Heroku]: https://heroku.com
+
+Then login and create app
+
+    heroku login
+    heroku apps:create your-app-name
+
+Then PostgreSQL 9.4 database
+
+    heroku addons:add heroku-postgresql --app your-app-name --version=9.4
+
+Then restore fhirbase dump
+
+    heroku pg:psql --app your-app-name YOUR_DB_NAME < path/to/dump.sql
 
 ## Contribution
 
