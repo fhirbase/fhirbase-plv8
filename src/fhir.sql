@@ -90,3 +90,8 @@ func! _search(_resource_type text, query text) RETURNS SETOF resource
 
 func! search_sql(_resource_type_ text, _query_ text) RETURNS table( "plan" text)
   SELECT search.build_search_query(_resource_type_, _query_)
+
+-- admin functions
+func! admin_disk_usage_top(_limit_ integer) RETURNS  jsonb
+  SELECT json_agg(x.*)::jsonb FROM admin.admin_disk_usage_top(_limit_) x
+
