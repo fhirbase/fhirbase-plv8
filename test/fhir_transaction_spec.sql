@@ -64,11 +64,11 @@ setv('valid-transaction-bundle',
         'resource', '{"resourceType": "Device", "manufacturer": "handmade"}'::json
       ),
       json_build_object(
-        'transaction', ('{"method": "PUT", "url": "/Alert/' || getv('alert')->>'id' || '"}')::json,
+        'transaction', ('{"method": "PUT", "url": "/Alert/' || (getv('alert')->>'id') || '"}')::json,
         'resource', jsonbext.assoc(getv('alert'), 'note', '"new-note"'::jsonb)::json
       ),
       json_build_object(
-        'transaction', ('{"method": "DELETE", "url": "/Device/' || getv('device')->>'id' || '"}')::json
+        'transaction', ('{"method": "DELETE", "url": "/Device/' || (getv('device')->>'id') || '"}')::json
       )
     ]::json[]
   )::jsonb
@@ -83,6 +83,8 @@ setv('valid-trans',
 );
 
 getv('valid-trans')->>'type' => 'transaction-response'
+
+--select tests._debug(getv('valid-trans'));
 
 expect
   jsonb_array_length(
@@ -149,3 +151,5 @@ expect
 => 1::integer
 
 ROLLBACK;
+
+

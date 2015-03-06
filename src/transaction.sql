@@ -1,5 +1,6 @@
 -- #import ./crud.sql
 -- #import ./coll.sql
+-- #import ./tests.sql
 
 func _replace_references(_resource_ text, _references_ json[]) RETURNS text
   SELECT
@@ -64,10 +65,14 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
   --Update, create or delete a set of resources as a single transaction\nReturns bundle with entries
   _entry_ jsonb[];
   _item_ jsonb;
+  _params text[];
+  _tmp text;
   BEGIN
     FOR _item_ IN SELECT jsonb_array_elements(_bundle_->'entry')
     LOOP
-      IF _item_->> 'status' = 'create' THEN
+      _params := this._url_to_crud_action(_item_#>>'{transaction,url}', _item_#>>'{transaction,method}');
+      --_tmp := tests._debug(_item_)::text;
+      IF _params[1] = 'create' THEN
         _entry_ := _entry_ || ARRAY[
           jsonbext.assoc(
             _item_,
@@ -75,7 +80,7 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
             crud.create(_cfg_, _item_->'resource')
           )
         ]::jsonb[];
-      ELSIF _item_->> 'status' = 'update' THEN
+      ELSIF _params[1] = 'update' THEN
         _entry_ := _entry_ || ARRAY[
           jsonbext.assoc(
             _item_,
@@ -83,12 +88,12 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
             crud.update(_cfg_, _item_->'resource')
           )
         ]::jsonb[];
-      ELSIF _item_->>'status' = 'delete' THEN
+      ELSIF _params[1] = 'delete' THEN
         _entry_ := _entry_ || ARRAY[
           jsonbext.assoc(
             _item_,
             'resource',
-            crud.delete(_cfg_, _item_#>>'{deleted,type}', _item_#>>'{deleted,resourceId}')
+            crud.delete(_cfg_, _params[2], _params[3])
           )
         ]::jsonb[];
       END IF;
@@ -96,7 +101,7 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
 
     RETURN json_build_object(
        'type', 'transaction-response',
-       'entry', _entry_
+       'entry', coalesce(_entry_, '{}'::jsonb[])
     )::jsonb;
 
 /* func! fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb */
