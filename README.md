@@ -2,7 +2,7 @@
 
 ![fhirbase](https://avatars3.githubusercontent.com/u/6482975?v=3&s=400)
 
-Production-ready open source relational storage for
+Open source relational storage for
 [FHIR](http://hl7.org/implement/standards/fhir/) targeting real production.
 
 [![Build Status](https://travis-ci.org/fhirbase/fhirbase.png?branch=master)](https://travis-ci.org/fhirbase/fhirbase)

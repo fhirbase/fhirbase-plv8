@@ -1,3 +1,5 @@
+# TODO: outdated
+
 # FHIRBase Introduction
 
 FHIRBase is a PostgreSQL extension for storing and retrieving
@@ -128,17 +130,8 @@ Resources are created with **fhir_create** SP which takes four
 arguments:
 
 <dl>
-<dt>cfg (jsonb)</dt>
-<dd>Confguration data</dd>
-
-<dt>resource_type (varchar)</dt>
-<dd>Type of resource being created, e.g. 'Organization' or 'Patient'</dd>
-
 <dt>resource_content (jsonb)</dt>
 <dd>Content of resource being created</dd>
-
-<dt>tags (jsonb)</dt>
-<dd>Array of <a href="http://www.hl7.org/implement/standards/fhir/extras.html#tag">FHIR tags</a> for resource</dd>
 </dl>
 
 **Returns (jsonb):**
@@ -152,40 +145,25 @@ from standard
 without any tags:
 
 ```sql
-SELECT fhir_create(
-  '{"base": "http://localhost.local"}'::jsonb,
-  'Patient',
-  '{"resourceType":"Patient","text":{"status":"generated","div":"<div>\n      <table>\n        <tbody>\n          <tr>\n            <td>Name</td>\n            <td>Peter James <b>Chalmers</b> (&quot;Jim&quot;)</td>\n          </tr>\n          <tr>\n            <td>Address</td>\n            <td>534 Erewhon, Pleasantville, Vic, 3999</td>\n          </tr>\n          <tr>\n            <td>Contacts</td>\n            <td>Home: unknown. Work: (03) 5555 6473</td>\n          </tr>\n          <tr>\n            <td>Id</td>\n            <td>MRN: 12345 (Acme Healthcare)</td>\n          </tr>\n        </tbody>\n      </table>\n    </div>"},"identifier":[{"use":"usual","label":"MRN","system":"urn:oid:1.2.36.146.595.217.0.1","value":"12345","period":{"start":"2001-05-06"},"assigner":{"display":"Acme Healthcare"}}],"name":[{"use":"official","family":["Chalmers"],"given":["Peter","James"]},{"use":"usual","given":["Jim"]}],"telecom":[{"use":"home"},{"system":"phone","value":"(03) 5555 6473","use":"work"}],"gender":{"coding":[{"system":"http://hl7.org/fhir/v3/AdministrativeGender","code":"M","display":"Male"}]},"birthDate":"1974-12-25","deceasedBoolean":false,"address":[{"use":"home","line":["534 Erewhon St"],"city":"PleasantVille","state":"Vic","zip":"3999"}],"contact":[{"relationship":[{"coding":[{"system":"http://hl7.org/fhir/patient-contact-relationship","code":"partner"}]}],"name":{"family":["du","Marché"],"_family":[{"extension":[{"url":"http://hl7.org/fhir/Profile/iso-21090#qualifier","valueCode":"VV"}]},null],"given":["Bénédicte"]},"telecom":[{"system":"phone","value":"+33 (237) 998327"}]}],"managingOrganization":{"reference":"Organization/1"},"active":true}'::jsonb,
-  '[]'::jsonb);
+SELECT fhir.create(
+  '{"resourceType":"Patient","identifier":[{"use":"usual","label":"MRN","system":"urn:oid:1.2.36.146.595.217.0.1","value":"12345","period":{"start":"2001-05-06"},"assigner":{"display":"Acme Healthcare"}}],"name":[{"use":"official","family":["Chalmers"],"given":["Peter","James"]},{"use":"usual","given":["Jim"]}],"telecom":[{"use":"home"},{"system":"phone","value":"(03) 5555 6473","use":"work"}],"gender":{"coding":[{"system":"http://hl7.org/fhir/v3/AdministrativeGender","code":"M","display":"Male"}]},"birthDate":"1974-12-25","deceasedBoolean":false,"address":[{"use":"home","line":["534 Erewhon St"],"city":"PleasantVille","state":"Vic","zip":"3999"}],"contact":[{"relationship":[{"coding":[{"system":"http://hl7.org/fhir/patient-contact-relationship","code":"partner"}]}],"name":{"family":["du","Marché"],"_family":[{"extension":[{"url":"http://hl7.org/fhir/Profile/iso-21090#qualifier","valueCode":"VV"}]},null],"given":["Bénédicte"]},"telecom":[{"system":"phone","value":"+33 (237) 998327"}]}],"managingOrganization":{"reference":"Organization/1"},"active":true}'::jsonb,
+  );
 
-          fhir_create
+          fhir.create
 ---------------------------------------------------------------------------------
-{"id": "8d33a19b-af36-4e70-ae64-e705507eb074",
-"entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee",
-[ ... skipped ... ]
+{"id": "8d33a19b-af36-4e70-ae64-e705507eb074", "name": ....}
 ```
 
 When resource is created, FHIRBase assigns unique identifier to it. We
-need to "remember" (copy-paste) this identifier for later use. Look at
-JSON which `fhir_create` returned. It has two `id`s: the first one (at
-root level) is an ID of generated Bundle. In most cases, we don't need
-this. The second is at path `entry.0.id`, this is ID of newly created
-Patient. Copy-paste this ID somewhere, because we'll need it in the
+need to "remember" (copy-paste) this identifier for later use.
+Copy-paste this ID somewhere, because we'll need it in the
 next step.
-
-You may wonder, why this ID looks like an
-[URL](http://en.wikipedia.org/wiki/Uniform_resource_locator)? That's
-because FHIR describes RESTful Service, and therefore
-[resource identity is an URL](http://www.hl7.org/implement/standards/fhir/managing.html#identity).
 
 ## Reading resources
 
-To read latest version of Resource use **fhir_read** SP:
+To read latest version of Resource use **fhir.read** SP:
 
 <dl>
-<dt>cfg (jsonb)</dt>
-<dd>Confguration data</dd>
-
 <dt>resource_type (varchar)</dt>
 <dd>Type of resource being created, e.g. 'Organization' or 'Patient'</dd>
 
@@ -196,37 +174,21 @@ To read latest version of Resource use **fhir_read** SP:
 <dd>Bundle containing found Resource or empty Bundle if no such resource was found.</dd>
 </dl>
 
-Use following code to invoke `fhir_read`, just replace `[URL]` with
+Use following code to invoke `fhir.read`, just replace `[URL]` with
 Patient's identifier from previous step:
 
 ```sql
-SELECT fhir_read(
-  '{"base": "http://localhost.local"}'::jsonb,
-  'Patient',
-  '[URL]');
+SELECT fhir.read('Patient', '[URL]');
 
-          fhir_read
+          fhir.read
 ---------------------------------------------------------------------------------
-{"id": "8d33a19b-af36-4e70-ae64-e705507eb074",
-"entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee",
-[ ... skipped ... ]
+{"id": "b1f2890a..",...}
 ```
 
 ## Reading resource data in relational way
 
-Instead of invoking **fhir_read** SP, you can `SELECT` resource data
-from `resource` table. In that case you should use
-[logical ID](http://www.hl7.org/implement/standards/fhir/resources.html#metadata)
-and resource type to find resource among others. It's easy to get
-logical ID from URL:
-
-```
-http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee
-^                      ^       ^
-┕ protocol & domain    |       ┕ logical ID
-                       ┕ resource type
-```
-
+Instead of invoking **fhir.read** SP, you can `SELECT` resource data
+from `resource` table.
 Replace `[logical ID]` in following query with logical ID of
 previously inserted Patient resource and execute it.
 
@@ -277,74 +239,37 @@ logical ID only.
 To update resource data use **fhir_update** SP:
 
 <dl>
-<dt>cfg (jsonb)</dt>
-<dd>Confguration data</dd>
-
-<dt>resource_type (varchar)</dt>
-<dd>Type of resource being altered.</dd>
-
-<dt>url (varchar)</dt>
-<dd>URL of resource being altered.</dd>
-
-<dt>version_url (varchar)</dt>
-<dd>URL of latest resource version (for <a href="http://en.wikipedia.org/wiki/Optimistic_concurrency_control">optimistic locking</a>)</dd>
-
 <dt>new_resource (jsonb)</dt>
 <dd>New resource content.</dd>
-
-<dt>tags (jsonb)</dt>
-<dd>New set of tags to attach to resource.</dd>
-
 <dt>RETURNS (jsonb)</dt>
-<dd>Bundle containing new version of resource.</dd>
+<dd>updated resource</dd>
 </dl>
 
-Notice the `version_url` parameter, which is used for
-[Optimistic Locking](http://en.wikipedia.org/wiki/Optimistic_concurrency_control)
-during updates. Generally that means you have to read latest version
-of resource before performing update. If somebody performed concurrent
-update just before you, your update will fail.
 
-To read latest version of resource use already discussed **fhir_read** SP:
+To read latest version of resource use already discussed **fhir.read** SP:
 
 ```sql
-SELECT fhir_read(
-  '{"base": "http://localhost.local"}'::jsonb,
-  'Patient',
-  '[URL]');
+SELECT fhir.read('Patient', '[logical id]');
 
-               fhir_read
+               fhir.read
 ----------------------------------------------------------------------------
-{"id": "e81368f0-e353-4ca2-b9e3-bee767a187a8",
-"entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee",
-"link": [{"rel": "self", "href": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee/_history/287cc966-8cac-4f7d-82a1-51d55a9f919e"}]
-[... skipped ...]
+{"id": "b1f2890a-0536-4742-9d39-90be5d4637ee",...}
 ```
 
-You'll find version URL at path `entry.0.link.0.href` of fhir_read
-result, in our example it's
-`http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee/_history/287cc966-8cac-4f7d-82a1-51d55a9f919e`.
+TODO: write about meta.versionId
 
 Now let's invoke `fhir_update` with version URL we just received and
 change Patient.text value:
 
 ```sql
-SELECT fhir_update('{"base": "http://localhost.local"}'::jsonb,
-  'Patient',
-  '[URL]',
-  '[version URL]',
-  '{"resourceType":"Patient","text":{"status":"generated","div":"UPDATED CONTENT"},"identifier":[{"use":"usual","label":"MRN","system":"urn:oid:1.2.36.146.595.217.0.1","value":"12345","period":{"start":"2001-05-06"},"assigner":{"display":"Acme Healthcare"}}],"name":[{"use":"official","family":["Chalmers"],"given":["Peter","James"]},{"use":"usual","given":["Jim"]}],"telecom":[{"use":"home"},{"system":"phone","value":"(03) 5555 6473","use":"work"}],"gender":{"coding":[{"system":"http://hl7.org/fhir/v3/AdministrativeGender","code":"M","display":"Male"}]},"birthDate":"1974-12-25","deceasedBoolean":false,"address":[{"use":"home","line":["534 Erewhon St"],"city":"PleasantVille","state":"Vic","zip":"3999"}],"contact":[{"relationship":[{"coding":[{"system":"http://hl7.org/fhir/patient-contact-relationship","code":"partner"}]}],"name":{"family":["du","Marché"],"_family":[{"extension":[{"url":"http://hl7.org/fhir/Profile/iso-21090#qualifier","valueCode":"VV"}]},null],"given":["Bénédicte"]},"telecom":[{"system":"phone","value":"+33 (237) 998327"}]}],"managingOrganization":{"reference":"Organization/1"},"active":true}'::jsonb,
-  '[]'::jsonb);
+SELECT fhir_update(updated_resource) ;
 
                  fhir_update
 -------------------------------------------------------------------------
-{"id": "e4b207b8-fc2c-4317-b455-b762f26ec589", "entry": [{"id": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee", "link": [{"rel": "self", "href": "http://localhost.local/Patient/b1f2890a-0536-4742-9d39-90be5d4637ee/_history/abb33ccc-bb5a-4875-af43-9b3bba62a95c"}],
-[... skipped ...]
-"text": {"div": "UPDATED CONTENT", "status": "generated"}, "active": true,
-[... skipped ...]
+{"id": "b1f2890a-0536-4742-9d39-90be5d4637ee", ....}
 ```
 
-If version URL you passed to `fhir_update` isn't latest (optimistic locking has failed), you'll receive error message:
+If meta.versionId in resource you passed to `fhir.update` isn't latest (optimistic locking has failed), you'll receive error message:
 
 ```
 ERROR:  Wrong version_id 43d7c2cf-a1b5-4602-b9a2-ec55d1a2dda8. Current is abb33ccc-bb5a-4875-af43-9b3bba62a95c
@@ -352,16 +277,13 @@ ERROR:  Wrong version_id 43d7c2cf-a1b5-4602-b9a2-ec55d1a2dda8. Current is abb33c
 
 ## Reading previous versions of resource
 
-To receive all versions of specific resource use **fhir_history** SP:
+To receive all versions of specific resource use **fhir.history** SP:
 
 <dl>
-<dt>cfg (jsonb)</dt>
-<dd>Confguration data</dd>
-
 <dt>resource_type (varchar)</dt>
 <dd>Type of resource.</dd>
 
-<dt>url (varchar)</dt>
+<dt>id (varchar)</dt>
 <dd>URL of resource.</dd>
 
 <dt>options (jsonb)</dt>

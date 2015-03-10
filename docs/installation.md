@@ -22,11 +22,15 @@ vagrant ssh-config
 
 psql -h <ip> -p 5432 -U fhirbase
 # password: fhirbase
-> \dt
-# list tables
-# if you like gui interfaces, use pgadmin with connection string <ip>/fhirbase user: fhirbase, password: fhirbase
+
+# if you like gui interfaces,
+# use pgadmin with connection
+# * host: <ip>
+# * database: fhirbase
+# * user: fhirbase
+# * password: fhirbase
 ```
-## Install on linux
+## Install on linux (ubuntu)
 
 Requirements:
 * PostgreSQL 9.4
@@ -38,7 +42,7 @@ Requirements:
 You can install fhirbase:
 
 ```bash
-sudo apt-get install postgresql-9.4 curl
+sudo apt-get install postgresql-9.4 postgresql-contrib-9.4 curl
 # create local user for ident auth
 sudo su postgres -c 'createuser -s <you-local-user>'
 # create empty database
@@ -53,21 +57,6 @@ psql
 ```
 
 Here is asci cast for simplest installation - [https://asciinema.org/a/17236].
-
-## Development installation
-
-For development environment:
-
-```bash
-sudo apt-get install -qqy postgresql-9.4 curl python
-sudo su postgres -c 'createuser -s <you-local-user>'
-export PGUSER=<you-local-user>
-export DB=test
-
-git clone https://github.com/fhirbase/fhirbase
-cd fhirbase
-./runme integrate
-```
 
 ### Install with docker
 
@@ -101,3 +90,19 @@ docker inspect fhirbase
 
 docker run --rm -i -t fhirbase psql -h <container-ip> -U fhirbase -p 5432
 ```
+
+### Development installation
+
+For development environment:
+
+```bash
+sudo apt-get install -qqy postgresql-9.4 postgresql-contrib-9.4 curl python
+sudo su postgres -c 'createuser -s <you-local-user>'
+export PGUSER=<you-local-user>
+export DB=test
+
+git clone https://github.com/fhirbase/fhirbase
+cd fhirbase
+./runme integrate
+```
+
