@@ -156,7 +156,7 @@ setv('crossreferenced-transaction-bundle',
       json_build_object(
         'transaction', '{"method": "POST", "url": "/Device"}'::json,
         'base', 'urn:uuid:',
-        'resource', '{"resourceType": "Device", "patient": {"reference": "urn:uuid:0B3538BD-C3FC-414E-BF7E-248A23A58EC5"}}'::json
+        'resource', '{"resourceType": "Device", "patient": {"reference": "0B3538BD-C3FC-414E-BF7E-248A23A58EC5"}}'::json
       ),
       json_build_object(
         'transaction', '{"method": "POST", "url": "/Patient"}'::json,
@@ -174,10 +174,52 @@ setv('crossreferenced-transaction-response',
   )
 );
 
-select tests._debug(getv('crossreferenced-transaction-response')::text);
-
 expect
   getv('crossreferenced-transaction-response')#>>'{entry,0,resource,patient,reference}'
 => ('Patient/' || (getv('crossreferenced-transaction-response')#>>'{entry,1,resource,id}'))
+
+expect
+  crud.read(
+    getv('cfg'),
+    getv('crossreferenced-transaction-response')#>>'{entry,0,resource,id}'
+  )#>>'{patient,reference}'
+=> ('Patient/' || (getv('crossreferenced-transaction-response')#>>'{entry,1,resource,id}'))
+
+------------------------------------------------------------
+
+setv('crossreferenced-with-update-transaction-bundle',
+  json_build_object(
+    'resourceType', 'Bundle',
+    'type', 'transaction',
+    'base', getv('cfg')->>'base',
+    'entry', ARRAY[
+      json_build_object(
+        'transaction', '{"method": "POST", "url": "/Patient"}'::json,
+        'base', 'urn:uuid:',
+        'resource', '{"resourceType":"Patient", "name":{"text":"Archibald"}, "id": "archi"}'::json
+      ),
+      json_build_object(
+        'transaction',
+        ('{"method": "PUT", "url": "/Device/' || (getv('crossreferenced-transaction-response')#>>'{entry,0,resource,id}') || '"}')::json,
+        'base', 'urn:uuid:',
+        'resource', jsonbext.merge(
+          (getv('crossreferenced-transaction-response')#>'{entry,0,resource}'),
+          '{"patient": {"reference": "archi"}}'
+        )
+      )
+    ]::json[]
+  )::jsonb
+);
+
+setv('crossreferenced-with-update-transaction-response',
+  transaction.transaction(
+    getv('cfg'),
+    getv('crossreferenced-with-update-transaction-bundle')
+  )
+);
+
+expect
+  getv('crossreferenced-with-update-transaction-response')#>>'{entry,1,resource,patient,reference}'
+=> ('Patient/' || (getv('crossreferenced-with-update-transaction-response')#>>'{entry,0,resource,id}'))
 
 ROLLBACK;

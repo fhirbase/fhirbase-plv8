@@ -8,7 +8,11 @@ func _replace_references(_resource_ jsonb, _references_ jsonb[]) RETURNS jsonb
     CASE
     WHEN array_length(_references_, 1) > 0 THEN
      this._replace_references(
-       replace(_resource_::text, ('urn:uuid:' || (_references_[1]->>'local')), _references_[1]->>'created')::jsonb,
+       replace(
+         _resource_::text,
+         ('"' || (_references_[1]->>'local') || '"'),
+         '"' || (_references_[1]->>'created') || '"'
+       )::jsonb,
        coll._rest(_references_))
    ELSE _resource_
    END
@@ -64,7 +68,9 @@ proc _url_to_crud_action(_url_ text, _method_ text) RETURNS text[]
 
 proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
   --Update, create or delete a set of resources as a single transaction\nReturns bundle with entries
-  _entries_ jsonb[];
+  _result_ jsonb[];
+  _updated_entries_ jsonb[];
+  i integer;
 
   _entry_ jsonb;
   _entry_with_replaced_ids_ jsonb;
@@ -75,7 +81,8 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
   _ids_table jsonb[];
 
   BEGIN
-    _process := this._process_entry(_cfg_, _bundle_, 'POST');
+    -- POST step
+    _process := this._process_entries(_cfg_, _bundle_, 'POST');
     _created_entries := jsonbext.jsonb_to_array(_process->'entry');
     _ids_table := jsonbext.jsonb_to_array(_process->'ids');
 
@@ -83,7 +90,7 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
       _entry_with_replaced_ids_ := this._replace_references(_entry_, _ids_table);
 
       IF _entry_with_replaced_ids_ != _entry_ THEN
-        _entries_ := _entries_ || ARRAY[
+        _result_ := _result_ || ARRAY[
           jsonbext.assoc(
             _entry_with_replaced_ids_,
             'resource',
@@ -91,20 +98,32 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
           )
         ];
       ELSE
-        _entries_ := _entries_ || ARRAY[_entry_];
+        _result_ := _result_ || ARRAY[_entry_];
       END IF;
     END LOOP;
 
+    -- Replace IDs in PUT entries in source Bundle
+    _updated_entries_ = ARRAY[]::jsonb[];
+    FOREACH _entry_ IN ARRAY jsonbext.jsonb_to_array(_bundle_->'entry') LOOP
+      IF _entry_#>>'{transaction,method}' = 'PUT' THEN
+        _updated_entries_ := _updated_entries_ || this._replace_references(_entry_, _ids_table);
+      ELSE
+        _updated_entries_ := _updated_entries_ || _entry_;
+      END IF;
+    END LOOP;
+
+    _bundle_ := jsonbext.assoc(_bundle_, 'entry', array_to_json(_updated_entries_)::jsonb);
+
     FOREACH _method IN ARRAY '{PUT,DELETE,GET}'::text[] LOOP
-      _entries_ := _entries_ || jsonbext.jsonb_to_array(this._process_entry(_cfg_, _bundle_, _method)->'entry');
+      _result_ := _result_ || jsonbext.jsonb_to_array(this._process_entries(_cfg_, _bundle_, _method)->'entry');
     END loop;
 
     RETURN json_build_object(
        'type', 'transaction-response',
-       'entry', coalesce(_entries_, '{}'::jsonb[])
+       'entry', coalesce(_result_, '{}'::jsonb[])
     )::jsonb;
 
-proc! _process_entry(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
+proc! _process_entries(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
   _entry_ jsonb[];
   _ids_ jsonb[];
   _item_ jsonb;
