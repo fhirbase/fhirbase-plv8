@@ -80,7 +80,7 @@ def perf(args):
         os.environ['perf_patient_limit'] = '1000'
     if not args: args = glob.glob('./perf/*.sql')
 
-    batch_size = 1000
+    batch_size = 258000
     batch_count = int(os.environ['perf_patient_limit']) // batch_size
     last_batch_size = int(os.environ['perf_patient_limit']) % batch_size
     if batch_count > 0:
