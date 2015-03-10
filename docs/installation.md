@@ -1,5 +1,31 @@
 # Installation guide
 
+## Vagrant
+
+The simplest and cross-platform installation could be done using vagrant.
+
+Install [vagrant](http://www.vagrantup.com/downloads)
+
+```bash
+vagrant -v
+# Vagrant 1.7.2
+git clone https://github.com/fhirbase/fhirbase.git
+cd fhirbase
+vagrant up
+# this action could take a time to load fhirbase container
+
+vagrant ssh-config
+# HostName 172.17.0.15 <<- vm <ip>
+#  User vagrant
+#  Port 22
+
+
+psql -h <ip> -p 5432 -U fhirbase
+# password: fhirbase
+> \dt
+# list tables
+# if you like gui interfaces, use pgadmin with connection string <ip>/fhirbase user: fhirbase, password: fhirbase
+```
 ## Install on linux
 
 Requirements:

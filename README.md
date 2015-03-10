@@ -1,5 +1,7 @@
 # fhirbase
 
+![fhirbase](https://avatars3.githubusercontent.com/u/6482975?v=3&s=400)
+
 Production-ready open source relational storage for
 [FHIR](http://hl7.org/implement/standards/fhir/) targeting real production.
 
@@ -67,18 +69,13 @@ procedures:
 * [Overview](docs/overview.md)
 * [Development](docs/development.md)
 * [Benchmarks](docs/benchmarks.md)
-* TODO: guides
-   * python
-   * ruby
-   * node
-   * java
-   * .NET
 
 ## Roadmap
 
 * resources validation
 * referential integrity
 * terminology
+* guides for java, .NET, python, ruby, js
 
 ## Contribution
 
