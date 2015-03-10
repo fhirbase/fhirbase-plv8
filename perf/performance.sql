@@ -7,29 +7,23 @@ func gen_rand(_a_ text, _b_ text, _mod_ integer) RETURNS text
 -- TODO: improve generator
 --       improve patient resource (add adress etc.)
 --       add more resources (encounter, order etc.)
-func! generate_patient(_limit_ integer) RETURNS bigint
+func! generate_patient(_total_count_ integer, _offset_ integer) RETURNS bigint
   with x as (
-    select *, row_number() over () from (
-      select * from temp.human_names
-       order by year
-    ) _
-  ), y as (
-    select *, row_number() over () from (
-      select * from temp.human_names
-       order by percent
-    ) _
+    select * from temp.human_names_and_lastnames
+     -- order by percent desc
+     offset _total_count_ * _offset_
+     LIMIT _total_count_
   ), names as (
     select x.name as given_name,
-           y.name || substring(reverse(lower(x.name)) from 1 for 3) as family_name,
-           CASE WHEN x.sex = 'boy' THEN 'male' ELSE 'female' END as gender,
-           (x.year::int + y.year::int)/2
+           x.family as family_name,
+           x.sex as gender,
+           '1970'
            || '-'
-           || this.gen_rand(x.name,y.name, 12)
+           || this.gen_rand(x.name, x.family, 12)
            || '-'
-           || this.gen_rand(x.name,y.name, 28)
+           || this.gen_rand(x.name, x.family, 28)
           as birthDate
     from x
-    join y on x.row_number = y.row_number
   ), inserted as (
     INSERT into patient (logical_id, version_id, content)
     SELECT obj->>'id', obj#>>'{meta,versionId}', obj
@@ -52,7 +46,7 @@ func! generate_patient(_limit_ integer) RETURNS bigint
          ]
         )::jsonb as obj
         FROM names
-        LIMIT _limit_
+        LIMIT _total_count_
     ) _
     RETURNING logical_id
   )
@@ -60,7 +54,8 @@ func! generate_patient(_limit_ integer) RETURNS bigint
 
 \timing
 \set perf_patient_limit `echo $perf_patient_limit`
-select this.generate_patient((:'perf_patient_limit')::int);
+\set perf_patient_offset `echo $perf_patient_offset`
+select this.generate_patient((:'perf_patient_limit')::int, (:'perf_patient_offset')::int);
 select count(*) from patient;
 
 -- -- select 'search by created patients'
