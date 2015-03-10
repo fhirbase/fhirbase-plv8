@@ -10,8 +10,8 @@ func _replace_references(_resource_ jsonb, _references_ jsonb[]) RETURNS jsonb
      this._replace_references(
        replace(
          _resource_::text,
-         ('"' || (_references_[1]->>'local') || '"'),
-         '"' || (_references_[1]->>'created') || '"'
+         ('"reference": "' || (_references_[1]->>'local') || '"'),
+         '"reference": "' || (_references_[1]->>'created') || '"'
        )::jsonb,
        coll._rest(_references_))
    ELSE _resource_
