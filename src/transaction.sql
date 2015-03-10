@@ -2,12 +2,13 @@
 -- #import ./coll.sql
 -- #import ./tests.sql
 
-func _replace_references(_resource_ text, _references_ json[]) RETURNS text
+
+func _replace_references(_resource_ jsonb, _references_ jsonb[]) RETURNS jsonb
   SELECT
     CASE
     WHEN array_length(_references_, 1) > 0 THEN
      this._replace_references(
-       replace(_resource_, _references_[1]->>'alternative', _references_[1]->>'id'),
+       replace(_resource_::text, ('urn:uuid:' || (_references_[1]->>'local')), _references_[1]->>'created')::jsonb,
        coll._rest(_references_))
    ELSE _resource_
    END
@@ -63,38 +64,73 @@ proc _url_to_crud_action(_url_ text, _method_ text) RETURNS text[]
 
 proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
   --Update, create or delete a set of resources as a single transaction\nReturns bundle with entries
-  _entry_ jsonb[];
+  _entries_ jsonb[];
+
+  _entry_ jsonb;
+  _entry_with_replaced_ids_ jsonb;
+
   _method text;
+  _process jsonb;
+  _created_entries jsonb[];
+  _ids_table jsonb[];
+
   BEGIN
-    _entry_ := _entry_ || jsonbext.jsonb_to_array(this._process_entry(_cfg_, _bundle_, 'POST')->'entry');
-    --_entry_ := _entry_ || (this._process_entry(_cfg_, _bundle_, 'POST')->'entry')::jsonb[];
+    _process := this._process_entry(_cfg_, _bundle_, 'POST');
+    _created_entries := jsonbext.jsonb_to_array(_process->'entry');
+    _ids_table := jsonbext.jsonb_to_array(_process->'ids');
+
+    FOREACH _entry_ IN ARRAY _created_entries LOOP
+      _entry_with_replaced_ids_ := this._replace_references(_entry_, _ids_table);
+
+      IF _entry_with_replaced_ids_ != _entry_ THEN
+        _entries_ := _entries_ || ARRAY[
+          jsonbext.assoc(
+            _entry_with_replaced_ids_,
+            'resource',
+            crud.update(_cfg_, (_entry_with_replaced_ids_->'resource'))
+          )
+        ];
+      ELSE
+        _entries_ := _entries_ || ARRAY[_entry_];
+      END IF;
+    END LOOP;
+
     FOREACH _method IN ARRAY '{PUT,DELETE,GET}'::text[] LOOP
-      _entry_ := _entry_ || jsonbext.jsonb_to_array(this._process_entry(_cfg_, _bundle_, _method)->'entry');
+      _entries_ := _entries_ || jsonbext.jsonb_to_array(this._process_entry(_cfg_, _bundle_, _method)->'entry');
     END loop;
 
     RETURN json_build_object(
        'type', 'transaction-response',
-       'entry', coalesce(_entry_, '{}'::jsonb[])
+       'entry', coalesce(_entries_, '{}'::jsonb[])
     )::jsonb;
 
 proc! _process_entry(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
   _entry_ jsonb[];
-  _match_ jsonb[];
+  _ids_ jsonb[];
   _item_ jsonb;
   _params text[];
   _tmp text;
+  _local_id_ text;
+  _created_id_ text;
+  _resource_ jsonb;
   BEGIN
     FOR _item_ IN SELECT jsonb_array_elements(_bundle_->'entry')
     LOOP
       IF _item_#>>'{transaction,method}' = _method_ THEN
         _params := this._url_to_crud_action(_item_#>>'{transaction,url}', _item_#>>'{transaction,method}');
         IF _params[1] = 'create' THEN
+          _local_id_ := _item_#>>'{resource,id}';
+          _resource_ := crud.create(_cfg_, jsonbext.assoc(_item_->'resource', 'id', 'null'::jsonb));
+          _created_id_ := (_resource_->>'resourceType') || '/' || (_resource_->>'id');
+
+          IF _local_id_ IS NOT NULL THEN
+             _ids_ := _ids_ || ARRAY[
+               json_build_object('local', _local_id_, 'created', _created_id_)
+             ]::jsonb[];
+          END IF;
+
           _entry_ := _entry_ || ARRAY[
-            jsonbext.assoc(
-              _item_,
-              'resource',
-              crud.create(_cfg_, _item_->'resource')
-            )
+            jsonbext.assoc(_item_, 'resource', _resource_)
           ]::jsonb[];
         ELSIF _params[1] = 'update' THEN
           _entry_ := _entry_ || ARRAY[
@@ -117,7 +153,7 @@ proc! _process_entry(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
     END LOOP;
 
     RETURN json_build_object(
-       'match', coalesce(_match_, '{}'::jsonb[]),
+       'ids', coalesce(_ids_, '{}'::jsonb[]),
        'entry', coalesce(_entry_, '{}'::jsonb[])
     )::jsonb;
 

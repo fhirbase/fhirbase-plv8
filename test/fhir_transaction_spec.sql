@@ -86,7 +86,6 @@ getv('valid-trans')->>'type' => 'transaction-response'
 
 --select tests._debug(jsonbext.jsonb_to_array(getv('valid-transaction-bundle')->'entry'));
 
-
 expect
   jsonb_array_length(
     getv('valid-trans')->'entry'
@@ -146,6 +145,39 @@ expect
   SELECT COUNT(*)::integer FROM alert
 => 1::integer
 
+------------------------------------------------------------
+
+setv('crossreferenced-transaction-bundle',
+  json_build_object(
+    'resourceType', 'Bundle',
+    'type', 'transaction',
+    'base', getv('cfg')->>'base',
+    'entry', ARRAY[
+      json_build_object(
+        'transaction', '{"method": "POST", "url": "/Device"}'::json,
+        'base', 'urn:uuid:',
+        'resource', '{"resourceType": "Device", "patient": {"reference": "urn:uuid:0B3538BD-C3FC-414E-BF7E-248A23A58EC5"}}'::json
+      ),
+      json_build_object(
+        'transaction', '{"method": "POST", "url": "/Patient"}'::json,
+        'base', 'urn:uuid:',
+        'resource', '{"resourceType":"Patient", "name":{"text":"Goga"}, "id": "0B3538BD-C3FC-414E-BF7E-248A23A58EC5"}'::json
+      )
+    ]::json[]
+  )::jsonb
+);
+
+setv('crossreferenced-transaction-response',
+  transaction.transaction(
+    getv('cfg'),
+    getv('crossreferenced-transaction-bundle')
+  )
+);
+
+select tests._debug(getv('crossreferenced-transaction-response')::text);
+
+expect
+  getv('crossreferenced-transaction-response')#>>'{entry,0,resource,patient,reference}'
+=> ('Patient/' || (getv('crossreferenced-transaction-response')#>>'{entry,1,resource,id}'))
+
 ROLLBACK;
-
-
