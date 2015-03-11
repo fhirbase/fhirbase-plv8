@@ -53,9 +53,10 @@ func! generate_patient(_total_count_ integer, _offset_ integer) RETURNS bigint
   select count(*) inserted;
 
 \timing
-\set perf_patient_limit `echo $perf_patient_limit`
-\set perf_patient_offset `echo $perf_patient_offset`
-select this.generate_patient((:'perf_patient_limit')::int, (:'perf_patient_offset')::int);
+\set batch_size `echo $batch_size`
+\set batch_number `echo $batch_number`
+select this.generate_patient((:'batch_size')::int,
+                             (:'batch_number')::int);
 select count(*) from patient;
 
 -- SELECT fhir.search('Patient', 'name=John');

@@ -76,21 +76,21 @@ def migrate(args):
     ql.migrate.migrate(db)
 
 def perf(args):
-    if not 'perf_patient_limit' in os.environ:
-        os.environ['perf_patient_limit'] = '1000'
+    if not 'patients_total_count' in os.environ:
+        os.environ['patients_total_count'] = '10000'
     if not args: args = glob.glob('./perf/*.sql')
 
     batch_size = 1000000
-    batch_count = int(os.environ['perf_patient_limit']) // batch_size
-    last_batch_size = int(os.environ['perf_patient_limit']) % batch_size
-    if batch_count > 0:
-        os.environ['perf_patient_limit'] = str(batch_size)
-        for x in range(0, batch_count):
-            os.environ['perf_patient_offset'] = str(x)
+    full_batches_count = int(os.environ['patients_total_count']) // batch_size
+    last_batch_size = int(os.environ['patients_total_count']) % batch_size
+    if full_batches_count > 0:
+        os.environ['batch_size'] = str(batch_size)
+        for x in range(0, full_batches_count):
+            os.environ['batch_number'] = str(x)
             reload(args)
     if last_batch_size > 0:
-        os.environ['perf_patient_limit'] = str(last_batch_size)
-        os.environ['perf_patient_offset'] = str(batch_count)
+        os.environ['batch_size'] = str(last_batch_size)
+        os.environ['batch_number'] = str(full_batches_count)
         reload(args)
 
 commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate, perf=perf)

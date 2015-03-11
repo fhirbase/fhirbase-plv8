@@ -19,16 +19,19 @@ create table if not exists temp.human_names_and_lastnames (
   sex text
 );
 
+\set patients_total_count `echo $patients_total_count`
 with x as (
   select name, sex, avg(percent) as per
   from temp.human_names
   group by name, sex
   order by per desc
+  limit (|/ (:'patients_total_count')::int)::int
 ), y as (
   select name, avg(percent) as per
   from temp.human_names
   group by name
   order by per desc
+  limit (|/ (:'patients_total_count')::int)::int
 )
 INSERT into temp.human_names_and_lastnames (name, family, sex, percent)
 select name, family, sex, perc from (
