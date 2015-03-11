@@ -58,7 +58,9 @@ func! generate_patient(_total_count_ integer, _offset_ integer) RETURNS bigint
 select this.generate_patient((:'perf_patient_limit')::int, (:'perf_patient_offset')::int);
 select count(*) from patient;
 
--- -- select 'search by created patients'
+-- SELECT fhir.search('Patient', 'name=John');
+
+-- SELECT indexing.index_search_param('Patient','name');
 -- SELECT fhir.search('Patient', 'name=John');
 
 select admin.admin_disk_usage_top(10);
