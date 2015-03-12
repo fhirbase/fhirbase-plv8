@@ -16,9 +16,18 @@ For developers:
 
 Fhirbase could be installed using [docker](https://www.docker.com/)
 
+* Stable:
+* Select desired tag from tags for example 0.0.9-alpha4
+
+```bash
+sudo docker run -p 5433:5432 -d fhirbase/fhirbase-build:0.0.9-alpha4
+```
+
+
 ```bash
 #run database container
 docker run --name=fhirbase -d fhirbase/fhirbase-build
+
 
 docker inspect fhirbase
 # read ip of started container
