@@ -22,6 +22,13 @@ Fhirbase could be installed using [docker](https://www.docker.com/)
 ```bash
 sudo docker run --name=fhirbase -p 5433:5432 -d fhirbase/fhirbase-build:0.0.9-alpha4
 ```
+fhirbase will be accessible on localhost port 5433 user fhirbase password fhirbase
+To check run for example
+```bash
+psql -h localhost -p 5433 -U fhirbase
+\dt
+```
+you will see resource tables
 
 
 ```bash
