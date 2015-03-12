@@ -76,22 +76,24 @@ def migrate(args):
     ql.migrate.migrate(db)
 
 def perf(args):
+    perf_files = glob.glob('./perf/*.sql')
+    reload(perf_files)
+
     if not 'patients_total_count' in os.environ:
         os.environ['patients_total_count'] = '10000'
     if not args: args = glob.glob('./perf/*.sql')
 
+    offset = 0
+    total = int(os.environ['patients_total_count'])
     batch_size = 1000000
-    full_batches_count = int(os.environ['patients_total_count']) // batch_size
-    last_batch_size = int(os.environ['patients_total_count']) % batch_size
-    if full_batches_count > 0:
-        os.environ['batch_size'] = str(batch_size)
-        for x in range(0, full_batches_count):
-            os.environ['batch_number'] = str(x)
-            reload(args)
-    if last_batch_size > 0:
-        os.environ['batch_size'] = str(last_batch_size)
-        os.environ['batch_number'] = str(full_batches_count)
-        reload(args)
+
+    while (offset < total):
+        n = batch_size if (total - offset) > batch_size else (total - offset)
+
+        r = psql(db, "SELECT {0}, {1}".format(str(n), str(offset)))
+        print r["stdout"]
+
+        offset += n
 
 commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate, perf=perf)
 

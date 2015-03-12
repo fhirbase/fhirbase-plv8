@@ -1,27 +1,30 @@
 -- #import ./perf_schema.sql
-func gen_rand(_a_ text, _b_ text, _mod_ integer) RETURNS text
- SELECT lpad(
-   (mod(ascii(_a_) +  ascii(_b_), _mod_) + 1)::text, 2, '0'
- )
+
+func! random(a numeric, b numeric) RETURNS numeric
+  SELECT (a + (b - a) * random())::numeric;
+
+-- func gen_rand(_a_ text, _b_ text, _mod_ integer) RETURNS text
+--  SELECT lpad(
+--    (mod(ascii(_a_) +  ascii(_b_), _mod_) + 1)::text, 2, '0'
+--  )
 
 -- TODO: improve generator
 --       improve patient resource (add adress etc.)
 --       add more resources (encounter, order etc.)
-func! generate_patient(_total_count_ integer, _offset_ integer) RETURNS bigint
-  with x as (
-    select * from temp.human_names_and_lastnames
-     -- order by percent desc
-     offset _total_count_ * _offset_
+func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
+  WITH x as (
+    SELECT * from temp.human_names_and_lastnames
+     OFFSET _offset_
      LIMIT _total_count_
   ), names as (
     select x.name as given_name,
            x.family as family_name,
            x.sex as gender,
-           '1970'
+           this.random(1900, 2010)::text
            || '-'
-           || this.gen_rand(x.name, x.family, 12)
+           || lpad(this.random(1, 12)::text, 2, '0')
            || '-'
-           || this.gen_rand(x.name, x.family, 28)
+           || lpad(this.random(1, 28)::text, 2, '0')
           as birthDate
     from x
   ), inserted as (
@@ -55,13 +58,17 @@ func! generate_patient(_total_count_ integer, _offset_ integer) RETURNS bigint
 \timing
 \set batch_size `echo $batch_size`
 \set batch_number `echo $batch_number`
-select this.generate_patient((:'batch_size')::int,
-                             (:'batch_number')::int);
-select count(*) from patient;
+\set rand_seed `echo ${rand_seed:-0.321}`
+
+SELECT setseed(:'rand_seed'::float);
+
+-- select this.insert_patients((:'batch_size')::int,
+--                              (:'batch_number')::int);
+-- select count(*) from patient;
 
 -- SELECT fhir.search('Patient', 'name=John');
 
 -- SELECT indexing.index_search_param('Patient','name');
 -- SELECT fhir.search('Patient', 'name=John');
 
-select admin.admin_disk_usage_top(10);
+-- select admin.admin_disk_usage_top(10);
