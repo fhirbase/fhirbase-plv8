@@ -123,9 +123,13 @@ Here is asci cast for simplest installation - [https://asciinema.org/a/17236].
 
 ### Heroku
 
-Register on [Heroku][]
+Register on [Heroku](https://heroku.com)
 
-[Heroku]: https://heroku.com
+```bash
+# Run this from your terminal:
+# Please ensure that you have Ruby installed.
+wget -qO- https://toolbelt.heroku.com/install-ubuntu.sh | sh
+```
 
 Then login and create app
 
