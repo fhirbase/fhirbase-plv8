@@ -115,7 +115,7 @@ curl https://raw.githubusercontent.com/fhirbase/fhirbase-build/master/fhirbase.s
 # generate tables
 psql -d test -c 'SELECT fhir.generate_tables()'
 
-psql
+psql test
 #> \dt
 ```
 
