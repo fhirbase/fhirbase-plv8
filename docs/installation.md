@@ -64,7 +64,7 @@ psql
 
 Here is asci cast for simplest installation - [https://asciinema.org/a/17236].
 
-### Install with docker
+### Docker
 
 Fhirbase could be installed using [docker](https://www.docker.com/)
 
