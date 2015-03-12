@@ -1,11 +1,10 @@
 # Installation guide
 
+- [Docker](#docker)
 - [Vagrant](#vagrant)
-- [Docker](#install-with-docker)
-- [Install on linux (ubuntu)](#install-on-linux-ubuntu)
-- [Install with docker](#install-with-docker)
-- [Development installation](#development-installation)
+- [Ubuntu](#ubuntu)
 - [Heroku](#heroku)
+- [Development](#development)
 
 ## Vagrant
 
@@ -37,7 +36,7 @@ psql -h <ip> -p 5432 -U fhirbase
 # * user: fhirbase
 # * password: fhirbase
 ```
-## Install on linux (ubuntu)
+## Ubuntu
 
 Requirements:
 * PostgreSQL 9.4
@@ -98,7 +97,7 @@ docker inspect fhirbase
 docker run --rm -i -t fhirbase psql -h <container-ip> -U fhirbase -p 5432
 ```
 
-### Development installation
+### Development
 
 For development environment:
 
