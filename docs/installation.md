@@ -38,7 +38,7 @@ You could build image by yourself:
 ```
 git clone https://github.com/fhirbase/fhirbase/
 cd fhirbase
-docker build -t fhirbase:latest .
+sudo docker build -t fhirbase:latest .
 sudo docker run --name=fhirbase -p 5433:5432 -d fhirbase/fhirbase
 ```
 
@@ -49,9 +49,9 @@ You have to wait until image is loaded after that fhirbase will be accessible on
 To check if container is running
 
 ```
-docker inspect fhirbase
+sudo docker inspect fhirbase
 # read ip of started container
-docker run --rm -i -t fhirbase/fhirbase-build psql -h <container-ip> -U fhirbase -p 5432
+sudo docker run --rm -i -t fhirbase/fhirbase-build psql -h <container-ip> -U fhirbase -p 5432
 \dt
 ```
 
