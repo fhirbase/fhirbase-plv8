@@ -143,13 +143,14 @@ Then create PostgreSQL 9.4 database
 ```sh
 heroku addons:add heroku-postgresql --app your-app-name --version=9.4
 ```
+Find YOUR_DB_NAME at https://postgres.heroku.com/databases
 
 Then restore fhirbase dump and generate tables
 
 ```sh
 curl https://raw.githubusercontent.com/fhirbase/fhirbase-build/master/fhirbase.sql \
   | pg:psql --app your-app-name YOUR_DB_NAME
-pg:psql --app your-app-name YOUR_DB_NAME --command 'SELECT fhir.generate_tables()'
+heroku pg:psql --app your-app-name YOUR_DB_NAME --command 'SELECT fhir.generate_tables()'
 ```
 
 ### Development
