@@ -16,13 +16,14 @@ For developers:
 
 Fhirbase could be installed using [docker](https://www.docker.com/)
 
-* Stable:
-* Select desired tag from tags for example 0.0.9-alpha4
+* Stable versioned tagged build [fhirbase-build](https://registry.hub.docker.com/u/fhirbase/fhirbase-build)
+
+Select desired tag from tags for example 0.0.9-alpha4
 
 ```bash
 sudo docker run --name=fhirbase -p 5433:5432 -d fhirbase/fhirbase-build:0.0.9-alpha4
 ```
-fhirbase will be accessible on localhost port 5433 user fhirbase password fhirbase
+have to wait until image is loaded after that fhirbase will be accessible on localhost port 5433 user fhirbase password fhirbase
 To check run for example
 ```bash
 psql -h localhost -p 5433 -U fhirbase
@@ -30,11 +31,27 @@ psql -h localhost -p 5433 -U fhirbase
 ```
 you will see resource tables
 
+* Auto last development build on commit [fhirbase](https://registry.hub.docker.com/u/fhirbase/fhirbase)
 
 ```bash
-#run database container
-docker run --name=fhirbase -d fhirbase/fhirbase-build
+sudo docker run --name=fhirbase -p 5433:5432 -d fhirbase/fhirbase
+```
 
+*Build image locally from Dockerfile
+You could build image by yourself:
+
+```
+git clone https://github.com/fhirbase/fhirbase/
+cd fhirbase
+docker build -t fhirbase:latest .
+#run database container
+docker run --name=fhirbase -d fhirbase
+
+docker inspect fhirbase
+# read ip of started container
+
+docker run --rm -i -t fhirbase psql -h <container-ip> -U fhirbase -p 5432
+```
 
 docker inspect fhirbase
 # read ip of started container
@@ -43,10 +60,10 @@ docker run --rm -i -t fhirbase/fhirbase-build psql -h <container-ip> -U fhirbase
 ```
 
 There are two images on dockerhub:
- * [fhirbase](https://registry.hub.docker.com/u/fhirbase/fhirbase) - auto-build
- * [fhirbase-build](https://registry.hub.docker.com/u/fhirbase/fhirbase-build) - manual build (more robust)
+ *  - auto-build
+ *  - manual build (more robust)
 
-You could build image by yourself:
+
 
 ```
 git clone https://github.com/fhirbase/fhirbase/
