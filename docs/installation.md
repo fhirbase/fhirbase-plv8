@@ -41,58 +41,27 @@ cd fhirbase
 docker build -t fhirbase:latest .
 sudo docker run --name=fhirbase -p 5433:5432 -d fhirbase/fhirbase
 ```
+
 3. Check installation
 
-have to wait until image is loaded after that fhirbase will be accessible on localhost port 5433 user fhirbase password fhirbase
-To check run for example
+You have to wait until image is loaded after that fhirbase will be accessible on localhost port: 5433 user: fhirbase password: fhirbase
+
+To check if container is running
+
+```
+docker inspect fhirbase
+# read ip of started container
+docker run --rm -i -t fhirbase/fhirbase-build psql -h <container-ip> -U fhirbase -p 5432
+\dt
+```
+
+or
+
 ```bash
 psql -h localhost -p 5433 -U fhirbase
 \dt
 ```
 you will see resource tables
-
-
-
-*Build image locally from Dockerfile
-You could build image by yourself:
-
-```
-git clone https://github.com/fhirbase/fhirbase/
-cd fhirbase
-docker build -t fhirbase:latest .
-#run database container
-docker run --name=fhirbase -d fhirbase
-
-docker inspect fhirbase
-# read ip of started container
-
-docker run --rm -i -t fhirbase psql -h <container-ip> -U fhirbase -p 5432
-```
-
-docker inspect fhirbase
-# read ip of started container
-
-docker run --rm -i -t fhirbase/fhirbase-build psql -h <container-ip> -U fhirbase -p 5432
-```
-
-There are two images on dockerhub:
- *  - auto-build
- *  - manual build (more robust)
-
-
-
-```
-git clone https://github.com/fhirbase/fhirbase/
-cd fhirbase
-docker build -t fhirbase:latest .
-#run database container
-docker run --name=fhirbase -d fhirbase
-
-docker inspect fhirbase
-# read ip of started container
-
-docker run --rm -i -t fhirbase psql -h <container-ip> -U fhirbase -p 5432
-```
 
 ## Vagrant
 
