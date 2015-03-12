@@ -50,8 +50,8 @@ To check if container is running
 
 ```
 sudo docker inspect fhirbase
-# read ip of started container
-sudo docker run --rm -i -t fhirbase/fhirbase-build psql -h <container-ip> -U fhirbase -p 5432
+# read <Config.NetworkSettings.IPAddress> and <Config.Image> of started container
+sudo docker run --rm -i -t <Config.Image> psql -h <Config.NetworkSettings.IPAddress> -U fhirbase -p 5432
 \dt
 ```
 
