@@ -90,10 +90,13 @@ def perf(args):
     while (offset < total):
         n = batch_size if (total - offset) > batch_size else (total - offset)
 
-        r = psql(db, "SELECT {0}, {1}".format(str(n), str(offset)))
+        r = psql(db, "\\timing\nSELECT performance.insert_patients({0}, {1});".format(str(n), str(offset)))
         print r["stdout"]
 
         offset += n
+
+    r = psql(db, "SELECT count(*) FROM patient;")
+    print r["stdout"]
 
 commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate, perf=perf)
 

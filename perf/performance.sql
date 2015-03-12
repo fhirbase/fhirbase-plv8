@@ -1,7 +1,14 @@
 -- #import ./perf_schema.sql
 
 func! random(a numeric, b numeric) RETURNS numeric
-  SELECT (a + (b - a) * random())::numeric;
+  SELECT ceil(a + (b - a) * random())::numeric;
+
+func! random_date() RETURNS text
+  SELECT this.random(1900, 2010)::text
+           || '-'
+           || lpad(this.random(1, 12)::text, 2, '0')
+           || '-'
+           || lpad(this.random(1, 28)::text, 2, '0');
 
 -- func gen_rand(_a_ text, _b_ text, _mod_ integer) RETURNS text
 --  SELECT lpad(
@@ -13,19 +20,14 @@ func! random(a numeric, b numeric) RETURNS numeric
 --       add more resources (encounter, order etc.)
 func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
   WITH x as (
-    SELECT * from temp.human_names_and_lastnames
+    SELECT * from temp.patient_names
      OFFSET _offset_
      LIMIT _total_count_
   ), names as (
-    select x.name as given_name,
-           x.family as family_name,
+    select x.first_name as given_name,
+           x.last_name as family_name,
            x.sex as gender,
-           this.random(1900, 2010)::text
-           || '-'
-           || lpad(this.random(1, 12)::text, 2, '0')
-           || '-'
-           || lpad(this.random(1, 28)::text, 2, '0')
-          as birthDate
+           this.random_date() as birth_date
     from x
   ), inserted as (
     INSERT into patient (logical_id, version_id, content)
@@ -40,7 +42,7 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
           ),
          'resourceType', 'Patient',
          'gender', gender,
-         'birthDate', birthDate,
+         'birthDate', birth_date,
          'name', ARRAY[
            json_build_object(
             'given', ARRAY[given_name],

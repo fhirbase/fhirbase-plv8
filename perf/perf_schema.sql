@@ -38,10 +38,13 @@ with x as (
   limit ceil(sqrt((:'patients_total_count')::int))
 )
 INSERT into temp.patient_names (sex, first_name, last_name)
-select sex, first_name, last_name from (
-  select xx.first_name, yy.last_name,
-         CASE WHEN xx.sex = 'M' THEN 'male' ELSE 'female' END as sex
-  from x as xx cross join y as yy) _
-where not exists (select * from temp.patient_names);
+SELECT * FROM (
+  select sex, first_name, last_name from (
+    select xx.first_name, yy.last_name,
+           CASE WHEN xx.sex = 'M' THEN 'male' ELSE 'female' END as sex
+    from x as xx cross join y as yy) _
+  where not exists (select * from temp.patient_names)
+) __
+ORDER BY RANDOM();
 
 select fhir.generate_tables('{Patient}');
