@@ -1,9 +1,14 @@
 # Installation guide
 
+For end-users:
+
 - [Docker](#docker)
 - [Vagrant](#vagrant)
 - [Ubuntu](#ubuntu)
 - [Heroku](#heroku)
+
+For developers:
+
 - [Development](#development)
 
 
