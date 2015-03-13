@@ -3,6 +3,7 @@ create schema if not exists temp;
 
 drop table if exists temp.first_names;
 drop table if exists temp.last_names;
+drop table if exists temp.languages;
 
 create table temp.first_names (
   sex text,
@@ -13,12 +14,18 @@ create table temp.last_names (
   last_name text
 );
 
+create table temp.languages (
+  code text,
+  name text
+);
 
 \copy temp.first_names (sex, first_name) from './perf/data/first_names_shuffled.csv';
 \copy temp.last_names (last_name) from './perf/data/last_names_shuffled.csv';
+\copy temp.languages (code, name) from './perf/data/language-codes-iso-639-1-alpha-2.csv' with csv;
 
 select count(*) from temp.first_names;
 select count(*) from temp.last_names;
+select count(*) from temp.languages;
 
 create table if not exists temp.patient_names (
   sex text,
