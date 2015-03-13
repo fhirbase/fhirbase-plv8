@@ -10,10 +10,14 @@ func! random_date() RETURNS text
            || '-'
            || lpad(this.random(1, 28)::text, 2, '0');
 
--- func gen_rand(_a_ text, _b_ text, _mod_ integer) RETURNS text
---  SELECT lpad(
---    (mod(ascii(_a_) +  ascii(_b_), _mod_) + 1)::text, 2, '0'
---  )
+func! random_phone() RETURNS text
+  SELECT '+' || this.random(1, 12)::text ||
+         ' (' || this.random(1, 999)::text || ') ' ||
+         lpad(this.random(1, 999)::text, 3, '0') ||
+         '-' ||
+         lpad(this.random(1, 99)::text, 2, '0') ||
+         '-' ||
+         lpad(this.random(1, 99)::text, 2, '0')
 
 -- TODO: improve generator
 --       improve patient resource (add adress etc.)
@@ -27,7 +31,8 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
     select x.first_name as given_name,
            x.last_name as family_name,
            x.sex as gender,
-           this.random_date() as birth_date
+           this.random_date() as birth_date,
+           this.random_phone() as phone
     from x
   ), inserted as (
     INSERT into patient (logical_id, version_id, content)
@@ -47,6 +52,13 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
            json_build_object(
             'given', ARRAY[given_name],
             'family', ARRAY[family_name]
+           )
+         ],
+         'telecom', ARRAY[
+           json_build_object(
+            'system', 'phone',
+            'value', phone,
+            'use', 'home'
            )
          ]
         )::jsonb as obj
