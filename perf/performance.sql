@@ -30,13 +30,16 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
     SELECT * from temp.patient_names
      OFFSET _offset_
      LIMIT _total_count_
-  ), names as (
+  ), patient_data as (
     select x.first_name as given_name,
            x.last_name as family_name,
            x.sex as gender,
            this.random_date() as birth_date,
-           this.random_phone() as phone
-    from x
+           this.random_phone() as phone,
+           this.random_elem(languages) as language
+    from x, (
+      SELECT array_agg(languages) as languages FROM temp.languages
+    ) __
   ), inserted as (
     INSERT into patient (logical_id, version_id, content)
     SELECT obj->>'id', obj#>>'{meta,versionId}', obj
@@ -63,9 +66,25 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
             'value', phone,
             'use', 'home'
            )
+         ],
+         'communication', ARRAY[
+           json_build_object(
+             'language',
+             json_build_object(
+               'coding', ARRAY[
+                 json_build_object(
+                   'system', 'urn:ietf:bcp:47',
+                   'code', (language).code,
+                   'display', (language).name
+                 )
+               ],
+               'text', (language).name
+             ),
+             'preferred', TRUE
+           )
          ]
         )::jsonb as obj
-        FROM names
+        FROM patient_data
         LIMIT _total_count_
     ) _
     RETURNING logical_id
