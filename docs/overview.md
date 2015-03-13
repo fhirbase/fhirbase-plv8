@@ -1,27 +1,27 @@
-## fhirbase: FHIR persistence in PostgreSQL
+## FHIRbase: FHIR persistence in PostgreSQL
 
-FHIR is specification of semantic resources and API for working with healthcare data.
+FHIR is a specification of semantic resources and API for working with healthcare data.
 Please address the [official specification](http://hl7-fhir.github.io/) for more details.
 
-To implement FHIR server we have to persist & query data in application internal
+To implement FHIR server we have to persist & query data in an application internal
 format or in FHIR format. This article describes how to store FHIR resources
-in relational database (PostgreSQL) and about open source FHIR
-storage implementation - [fhirbase](https://github.com/fhirbase/fhirbase).
+in a relational database (PostgreSQL), and open source FHIR
+storage implementation - [FHIRbase](https://github.com/fhirbase/fhirbase).
 
 
 ## Overview
 
-*fhirbase* is built on top of PostgreSQL and require version higher then 9.4
+*FHIRbase* is built on top of PostgreSQL and requires its version higher than 9.4
 (i.e. [jsonb](http://www.postgresql.org/docs/9.4/static/datatype-json.html) support).
 
-FHIR describes ~ 100 [resources](http://hl7-fhir.github.io/resourcelist.html)
-as base StructureDefinitions, which by themselves are resources in FHIR terms.
+FHIR describes ~100 [resources](http://hl7-fhir.github.io/resourcelist.html)
+as base StructureDefinitions which by themselves are resources in FHIR terms.
 
-To setup fhirbase read [installation guide](installation.md).
+To setup FHIRbase use [Installation Guide](installation.md).
 
-Fhirbase stores each resource in two tables - one for current version
-and second for previous versions of resources. By convention tables are named
-in downcase after resource types: Patient => patient, StructureDefinition => structuredefinition.
+FHIRbase stores each resource in two tables - one for current version
+and second for previous versions of the resource. Following a convention, tables are named
+in a lower case after resource types: Patient => patient, StructureDefinition => structuredefinition.
 
 For example *Patient* resources are stored
 in *patient* and *patient_history* tables:
@@ -58,7 +58,7 @@ Inherits: resource_history
 All resource tables have similar structure and are inherited from *resource* table,
 to allow cross-table queries (for more information see [PostgreSQL inheritance](http://www.postgresql.org/docs/9.4/static/tutorial-inheritance.html)).
 
-Minimal installation of fhirbase consists of only
+Minimal installation of FHIRbase consists of only a
 few tables for "meta" resources:
 
 * StructureDefinition
@@ -67,12 +67,12 @@ few tables for "meta" resources:
 * ValueSet
 * ConceptMap
 
-This tables are filled with resources provided by FHIR distribution.
+These tables are populated with resources provided by FHIR distribution.
 
-Most of API for fhirbase are represented as functions in *fhir* schema,
+Most of API for FHIRbase is represented as functions in *fhir* schema,
 other schemas are used as code library modules.
 
-First helpful function is `fhir.generate_tables(resources text[])`, which generates tables
+First helpful function is `fhir.generate_tables(resources text[])` which generates tables
 for specific resources passed as array.
 For example to generate tables for patient, organization and encounter:
 
@@ -101,7 +101,7 @@ fhirbase=# select fhir.generate_tables();
 ```
 
 When concrete resource type tables are generated,
-column *installed* in profile table for this resource is set to true.
+column *installed* for this resource is set to true in the profile table.
 
 ```sql
 SELECT logical_id, installed from structuredefinition
@@ -112,7 +112,7 @@ WHERE logical_id = 'Patient'
 --  Patient    | true
 ```
 
-Functions representing public API of fhirbase are all located in fhir schema.
+Functions representing public API of FHIRbase are all located in the FHIR schema.
 The first group of functions implements CRUD operations on resources:
 
 * create(resource json)
@@ -217,9 +217,9 @@ SELECT fhir.delete('Patient', 'c6f20b3a...');
 SELECT fhir.is_exists('Patient', 'c6f20b3a...'); => false
 SELECT fhir.is_deleted('Patient', 'c6f20b3a...'); => true
 ```
-When resource is created *logical_id* and *version_id* is generated as uuid.
-On every update resource content updated in *patient* table and old version of resource is copied
-into *patient_history* table.
+When resource is created, *logical_id* and *version_id* are generated as uuids.
+On every update resource content is updated in *patient* table, and old version of the resource is copied
+into the *patient_history* table.
 
 ## Transaction
 
