@@ -140,33 +140,29 @@ psql test
 #> \dt
 ```
 
-Here is asci cast for simplest installation - [https://asciinema.org/a/17236].
+Here is asci cast for the simplest installation - [https://asciinema.org/a/17236].
 
 ### Heroku
 
-Register on [Heroku](https://heroku.com)
+1. Register on [Heroku](https://heroku.com).
+2. Please ensure that you have Ruby installed.
+3. Run this from your terminal:
 
 ```bash
-# Run this from your terminal:
-# Please ensure that you have Ruby installed.
 wget -qO- https://toolbelt.heroku.com/install-ubuntu.sh | sh
 ```
-
-Then login and create app
+4. Then login and create app
 
 ```sh
 heroku login
-heroku apps:create your-app-name
+heroku apps:create <your-app-name>
 ```
-
-Then create PostgreSQL 9.4 database
+5. Create PostgreSQL 9.4 database.
 
 ```sh
 heroku addons:add heroku-postgresql --app your-app-name --version=9.4
 ```
-Find YOUR_DB_NAME at https://postgres.heroku.com/databases
-
-Then restore fhirbase dump and generate tables
+6. Find YOUR_DB_NAME at https://postgres.heroku.com/databases. Then restore fhirbase dump and generate tables.
 
 ```sh
 curl https://raw.githubusercontent.com/fhirbase/fhirbase-build/master/fhirbase.sql \
