@@ -36,10 +36,13 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
            x.sex as gender,
            this.random_date() as birth_date,
            this.random_phone() as phone,
-           this.random_elem(languages) as language
+           this.random_elem(languages) as language,
+           this.random_elem(street_names) as street_name
     from x, (
       SELECT array_agg(languages) as languages FROM temp.languages
-    ) __
+    ) __, (
+      SELECT array_agg(street_name) as street_names FROM temp.street_names
+    ) ___
   ), inserted as (
     INSERT into patient (logical_id, version_id, content)
     SELECT obj->>'id', obj#>>'{meta,versionId}', obj
@@ -65,6 +68,15 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
             'system', 'phone',
             'value', phone,
             'use', 'home'
+           )
+         ],
+         'address', ARRAY[
+           json_build_object(
+             'use', 'home',
+             'line', ARRAY[street_name || ' ' || this.random(0, 100)::text],
+             'city', 'Amsterdam',
+             'postalCode', '1024 RJ',
+             'country', 'NLD'
            )
          ],
          'communication', ARRAY[
