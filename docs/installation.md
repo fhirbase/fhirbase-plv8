@@ -147,23 +147,23 @@ Here is asci cast for the simplest installation - [https://asciinema.org/a/17236
 2. Please ensure that you have Ruby installed.
 3. Run this from your terminal:
 
-```bash
+ ```bash
 wget -qO- https://toolbelt.heroku.com/install-ubuntu.sh | sh
 ```
 4. Then login and create app
 
-```sh
+ ```sh
 heroku login
 heroku apps:create <your-app-name>
 ```
 5. Create PostgreSQL 9.4 database.
 
-```sh
+ ```sh
 heroku addons:add heroku-postgresql --app your-app-name --version=9.4
 ```
 6. Find YOUR_DB_NAME at https://postgres.heroku.com/databases. Then restore fhirbase dump and generate tables.
 
-```sh
+ ```sh
 curl https://raw.githubusercontent.com/fhirbase/fhirbase-build/master/fhirbase.sql \
   | pg:psql --app your-app-name YOUR_DB_NAME
 heroku pg:psql --app your-app-name YOUR_DB_NAME --command 'SELECT fhir.generate_tables()'
