@@ -26,19 +26,19 @@ func! random_phone() RETURNS text
 --       improve patient resource (add adress etc.)
 --       add more resources (encounter, order etc.)
 func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
-  WITH x as (
+  WITH temp_patient_data as (
     SELECT * from temp.patient_names
      OFFSET _offset_
      LIMIT _total_count_
   ), patient_data as (
-    select x.first_name as given_name,
-           x.last_name as family_name,
-           x.sex as gender,
+    select temp_patient_data.first_name as given_name,
+           temp_patient_data.last_name as family_name,
+           temp_patient_data.sex as gender,
            this.random_date() as birth_date,
            this.random_phone() as phone,
            this.random_elem(languages) as language,
            this.random_elem(street_names) as street_name
-    from x, (
+    from temp_patient_data, (
       SELECT array_agg(languages) as languages FROM temp.languages
     ) __, (
       SELECT array_agg(street_name) as street_names FROM temp.street_names

@@ -42,11 +42,11 @@ create table if not exists temp.patient_names (
 
 \set patients_total_count `echo $patients_total_count`
 
-with x as (
+with first_name_source as (
   select sex, first_name
   from temp.first_names
   limit ceil(sqrt((:'patients_total_count')::int))
-), y as (
+), last_name_source as (
   select last_name
   from temp.last_names
   limit ceil(sqrt((:'patients_total_count')::int))
@@ -54,9 +54,10 @@ with x as (
 INSERT into temp.patient_names (sex, first_name, last_name)
 SELECT * FROM (
   select sex, first_name, last_name from (
-    select xx.first_name, yy.last_name,
-           CASE WHEN xx.sex = 'M' THEN 'male' ELSE 'female' END as sex
-    from x as xx cross join y as yy) _
+    select first_names.first_name, last_names.last_name,
+           CASE WHEN first_names.sex = 'M' THEN 'male' ELSE 'female' END as sex
+    from first_name_source as first_names
+    cross join last_name_source as last_names) _
   where not exists (select * from temp.patient_names)
 ) __
 ORDER BY RANDOM();
