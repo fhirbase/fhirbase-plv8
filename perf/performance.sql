@@ -3,6 +3,9 @@
 func! random(a numeric, b numeric) RETURNS numeric
   SELECT ceil(a + (b - a) * random())::numeric;
 
+func random_elem(a anyarray) RETURNS anyelement
+  SELECT a[floor(RANDOM() * array_length(a, 1))];
+
 func! random_date() RETURNS text
   SELECT this.random(1900, 2010)::text
            || '-'
