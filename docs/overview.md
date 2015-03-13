@@ -218,7 +218,7 @@ SELECT fhir.is_exists('Patient', 'c6f20b3a...'); => false
 SELECT fhir.is_deleted('Patient', 'c6f20b3a...'); => true
 ```
 When resource is created, *logical_id* and *version_id* are generated as uuids.
-On every update resource content is updated in *patient* table, and old version of the resource is copied
+On each update resource content is updated in the *patient* table, and old version of the resource is copied
 into the *patient_history* table.
 
 ## Transaction
@@ -227,12 +227,12 @@ into the *patient_history* table.
 ## Search & Indexing
 
 Next part of API is a search API.
-Folowing functions will help you search resources in fhirbase:
+Folowing functions will help you to search resources in FHIRbase:
 
-* fhir.search(resourceType, searchString) returns bundle
-* fhir._search(resourceType, searchString) returns relation
-* fhir.explain_search(resourceType, searchString) show execution plan for search
-* fhir.search_sql(resourceType, searchString) show original sql query behind the search
+* fhir.search(resourceType, searchString) returns a bundle
+* fhir._search(resourceType, searchString) returns a relation
+* fhir.explain_search(resourceType, searchString) shows an execution plan for search
+* fhir.search_sql(resourceType, searchString) shows the original sql query underlying the search
 
 ```sql
 
@@ -269,9 +269,9 @@ select fhir.explain_search('Patient', 'given=david&count=10');
 -- Execution time: 7198.355 ms
 ```
 
-Search works without indexing, but search query would be slow
+Search works without indexing but search query would be slow
 on any reasonable amount of data.
-So fhirbase has group of indexing functions:
+So FHIRbase has a group of indexing functions:
 
 * index_search_param(resourceType, searchParam)
 * drop_index_search_param(resourceType, searchParam)
@@ -281,10 +281,10 @@ So fhirbase has group of indexing functions:
 * drop_all_resource_indexes()
 
 Indexes are not for free - they eat space and slow inserts and updates.
-That is why in fhirbase, indexes are optional and completely under you control.
+That is why indexes are optional and completely under you control in FHIRbase.
 
-Most important function is `fhir.index_search_param`, which
-accept resourceType as first parameter and name of search parameter to index.
+Most important function is `fhir.index_search_param` which
+accepts resourceType as a first parameter, and name of search parameter to index.
 
 ```sql
 
