@@ -220,8 +220,14 @@ func! insert_encounters() RETURNS bigint
     select *,
            this.random_elem(ARRAY['inpatient',
                                   'outpatient',
-                                   'ambulatory',
-                                   'emergency']) as class
+                                  'ambulatory',
+                                  'emergency']) as class,
+           this.random_elem(ARRAY['in-progress',
+                                  'planned',
+                                  'arrived',
+                                  'onleave',
+                                  'cancelled',
+                                  'finished']) as status
     from patients_ids_source
   ), inserted as (
     INSERT into encounter (logical_id, version_id, content)
@@ -231,7 +237,7 @@ func! insert_encounters() RETURNS bigint
         json_build_object(
          'resourceType', 'Encounter',
          'id', gen_random_uuid(),
-         'status', 'in-progress',
+         'status', status,
          'class', class,
          'patient', json_build_object(
            'reference', 'Patient/' || patient_id
