@@ -116,9 +116,6 @@ func! insert_practitioner(_total_count_ integer) RETURNS bigint
   )
   select count(*) from practitioner_data;
 
--- TODO: improve generator
---       improve patient resource (add adress etc.)
---       add more resources (encounter, order etc.)
 func! insert_patients(_total_count_ integer) RETURNS bigint
   with first_names_source as (
     select CASE WHEN sex = 'M' THEN 'male' ELSE 'female' END as sex,
@@ -253,7 +250,7 @@ func! insert_encounters() RETURNS bigint
   with patients_ids_source as (
     (select logical_id as patient_id,
            row_number() over ()
-           from patient)
+     from patient)
 
     UNION ALL
 
@@ -262,6 +259,11 @@ func! insert_encounters() RETURNS bigint
            from patient
     order by random()
     limit (select count(*) from patient) / 3)
+  ), practitioners_source as (
+    select logical_id as practitioner_id,
+           row_number() over ()
+    from practitioner
+    order by random()
   ), encounter_data as (
     select *,
            this.random_elem(ARRAY['inpatient',
@@ -275,6 +277,7 @@ func! insert_encounters() RETURNS bigint
                                   'cancelled',
                                   'finished']) as status
     from patients_ids_source
+    join practitioners_source using (row_number)
   ), inserted as (
     INSERT into encounter (logical_id, version_id, content)
     SELECT obj->>'id', obj#>>'{meta,versionId}', obj
@@ -287,7 +290,14 @@ func! insert_encounters() RETURNS bigint
          'class', class,
          'patient', json_build_object(
            'reference', 'Patient/' || patient_id
-         )
+         ),
+         'participant', ARRAY[
+           json_build_object(
+             'individual', json_build_object(
+               'reference', 'Practitioner/' || practitioner_id
+             )
+           )
+         ]
         )::jsonb as obj
         FROM encounter_data
     ) _
