@@ -236,7 +236,7 @@ Folowing functions will help you to search resources in FHIRbase:
 
 ```sql
 
-select fhir.search('Patient', 'given=john'S)
+select fhir.search('Patient', 'given=john')
 -- returns bundle
 -- {"type": "search", "entry": [...]}
 
