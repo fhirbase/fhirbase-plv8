@@ -121,7 +121,7 @@ func! insert_patients(_total_count_ integer) RETURNS bigint
     select CASE WHEN sex = 'M' THEN 'male' ELSE 'female' END as sex,
            first_name,
            row_number() over ()
-           from temp.first_names
+    from temp.first_names
     cross join generate_series(0, ceil(_total_count_::float
                                        / (select count(*)
                                           from temp.first_names)::float)::integer)
@@ -151,7 +151,7 @@ func! insert_patients(_total_count_ integer) RETURNS bigint
     select code as language_code,
            name as language_name,
            row_number() over ()
-           from temp.languages
+    from temp.languages
     cross join generate_series(0, ceil(_total_count_::float
                                        / (select count(*)
                                           from temp.languages)::float)::integer)
@@ -160,7 +160,7 @@ func! insert_patients(_total_count_ integer) RETURNS bigint
     select logical_id as organization_id,
            content#>>'{name}' as organization_name,
            row_number() over ()
-           from organization
+    from organization
     cross join generate_series(0, ceil(_total_count_::float
                                        / (select count(*)
                                           from organization)::float)::integer)
@@ -255,8 +255,8 @@ func! insert_encounters() RETURNS bigint
     UNION ALL
 
     (select logical_id as patient_id,
-           row_number() over ()
-           from patient
+            row_number() over ()
+     from patient
     order by random()
     limit (select count(*) from patient) / 3)
   ), practitioners_source as (
