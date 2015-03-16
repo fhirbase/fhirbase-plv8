@@ -86,7 +86,7 @@ def perf(args):
     r = psql(db, "\\timing\nSELECT performance.insert_organizations();")
     print r["stdout"]
 
-    r = psql(db, "\\timing\nSELECT performance.insert_practitioner();")
+    r = psql(db, "\\timing\nSELECT performance.insert_practitioner({0});".format('200'))
     print r["stdout"]
 
     r = psql(db, "\\timing\nSELECT performance.insert_patients({0});".format(os.environ['patients_total_count']))

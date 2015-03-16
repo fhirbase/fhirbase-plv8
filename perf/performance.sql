@@ -77,20 +77,20 @@ func! insert_organizations() RETURNS bigint
   )
   select count(*) inserted;
 
-func! insert_practitioner() RETURNS bigint
+func! insert_practitioner(_total_count_ integer) RETURNS bigint
   with first_names_source as (
     select *, row_number() over () from (
       select CASE WHEN sex = 'M' THEN 'male' ELSE 'female' END as sex,
              first_name
       from temp.first_names
       order by random()
-      limit 200) _
+      limit _total_count_) _
   ), last_names_source as (
     select *, row_number() over () from (
       select last_name
       from temp.last_names
       order by random()
-      limit 200) _
+      limit _total_count_) _
   ), practitioner_data as (
     select *
     from first_names_source
