@@ -22,6 +22,57 @@ func! random_phone() RETURNS text
          '-' ||
          lpad(this.random(1, 99)::text, 2, '0')
 
+func make_address(_street_name_ text, _zip_ text, _city_ text, _state_ text) RETURNS jsonb
+  select array_to_json(ARRAY[
+    json_build_object(
+      'use', 'home',
+      'line', ARRAY[_street_name_ || ' ' || this.random(0, 100)::text],
+      'city', _city_,
+      'postalCode', _zip_::text,
+      'state', _state_,
+      'country', 'US'
+    )
+  ])::jsonb;
+
+func! insert_organizations() RETURNS bigint
+  with organizations_source as (
+    select organization_name, row_number() over () from temp.organization_names
+    order by random()
+  ), street_names_source as (
+    select street_name, row_number() over () from temp.street_names
+    order by random()
+  ), cities_source as (
+    select city, zip, state, row_number() over () from temp.cities
+    order by random()
+  ), organization_data as (
+    select *,
+           this.random_phone() as phone
+    from organizations_source
+    join street_names_source using (row_number)
+    join cities_source using (row_number)
+  ), inserted as (
+    INSERT into organization (logical_id, version_id, content)
+    SELECT obj->>'id', obj#>>'{meta,versionId}', obj
+    FROM (
+      SELECT
+        json_build_object(
+         'id', gen_random_uuid(),
+         'name', organization_name,
+         'telecom', ARRAY[
+           json_build_object(
+            'system', 'phone',
+            'value', phone,
+            'use', 'home'
+           )
+         ],
+         'address', this.make_address(street_name, zip, city, state)
+        )::jsonb as obj
+        FROM organization_data
+    ) _
+    RETURNING logical_id
+  )
+  select count(*) inserted;
+
 -- TODO: improve generator
 --       improve patient resource (add adress etc.)
 --       add more resources (encounter, order etc.)
@@ -92,16 +143,7 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
             'use', 'home'
            )
          ],
-         'address', ARRAY[
-           json_build_object(
-             'use', 'home',
-             'line', ARRAY[street_name || ' ' || this.random(0, 100)::text],
-             'city', city,
-             'postalCode', zip::text,
-             'state', state,
-             'country', 'US'
-           )
-         ],
+         'address', this.make_address(street_name, zip, city, state),
          'communication', ARRAY[
            json_build_object(
              'language',
