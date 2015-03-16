@@ -214,7 +214,7 @@ func! insert_encounters() RETURNS bigint
   with patients_ids_source as (
     select logical_id as patient_id,
            row_number() over ()
-           from organization
+           from patient
     order by random()
   ), encounter_data as (
     select *
