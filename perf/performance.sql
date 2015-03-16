@@ -62,7 +62,7 @@ func! insert_organizations() RETURNS bigint
            json_build_object(
             'system', 'phone',
             'value', phone,
-            'use', 'home'
+            'use', 'work'
            )
          ],
          'address', this.make_address(street_name, zip, city, state)
