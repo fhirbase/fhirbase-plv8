@@ -60,6 +60,7 @@ func! insert_organizations() RETURNS bigint
       SELECT
         json_build_object(
          'id', gen_random_uuid(),
+         'resourceType', 'Organization',
          'name', organization_name,
          'telecom', ARRAY[
            json_build_object(
