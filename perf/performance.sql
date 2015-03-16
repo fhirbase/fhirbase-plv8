@@ -59,8 +59,8 @@ func! insert_organizations() RETURNS bigint
     FROM (
       SELECT
         json_build_object(
-         'id', gen_random_uuid(),
          'resourceType', 'Organization',
+         'id', gen_random_uuid(),
          'name', organization_name,
          'telecom', ARRAY[
            json_build_object(
@@ -80,7 +80,7 @@ func! insert_organizations() RETURNS bigint
 -- TODO: improve generator
 --       improve patient resource (add adress etc.)
 --       add more resources (encounter, order etc.)
-func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
+func! insert_patients(_total_count_ integer) RETURNS bigint
   with first_names_source as (
     select CASE WHEN sex = 'M' THEN 'male' ELSE 'female' END as sex,
            first_name,
@@ -146,12 +146,12 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
     FROM (
       SELECT
         json_build_object(
+         'resourceType', 'Patient',
          'id', gen_random_uuid(),
          'meta', json_build_object(
             'versionId', gen_random_uuid(),
             'lastUpdated', CURRENT_TIMESTAMP
           ),
-         'resourceType', 'Patient',
          'gender', sex,
          'birthDate', birth_date,
          'active', TRUE,
@@ -205,6 +205,35 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
         )::jsonb as obj
         FROM patient_data
         LIMIT _total_count_
+    ) _
+    RETURNING logical_id
+  )
+  select count(*) inserted;
+
+func! insert_encounters() RETURNS bigint
+  with patients_ids_source as (
+    select logical_id as patient_id,
+           row_number() over ()
+           from organization
+    order by random()
+  ), encounter_data as (
+    select *
+    from patients_ids_source
+  ), inserted as (
+    INSERT into encounter (logical_id, version_id, content)
+    SELECT obj->>'id', obj#>>'{meta,versionId}', obj
+    FROM (
+      SELECT
+        json_build_object(
+         'resourceType', 'Encounter',
+         'id', gen_random_uuid(),
+         'status', 'in-progress',
+         'class', 'inpatient',
+         'patient', json_build_object(
+           'reference', 'Patient/' || patient_id
+         )
+        )::jsonb as obj
+        FROM encounter_data
     ) _
     RETURNING logical_id
   )
