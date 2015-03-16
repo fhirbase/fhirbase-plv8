@@ -108,19 +108,6 @@ func! insert_practitioner(_total_count_ integer) RETURNS bigint
             'given', ARRAY[first_name],
             'family', ARRAY[last_name]
            )
-         ],
-         'identifier', ARRAY[
-           json_build_object(
-             'use', 'usual',
-             'system', 'urn:oid:2.16.840.1.113883.2.4.6.3',
-             'value', this.random(6000000, 100000000)::text
-           ),
-           json_build_object(
-             'use', 'usual',
-             'system', 'urn:oid:1.2.36.146.595.217.0.1',
-             'value', this.random(6000000, 100000000)::text,
-             'label', 'MRN'
-           )
          ]
         )::jsonb as obj
         FROM practitioner_data
