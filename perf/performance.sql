@@ -3,8 +3,8 @@
 func! random(a numeric, b numeric) RETURNS numeric
   SELECT ceil(a + (b - a) * random())::numeric;
 
-func random_elem(a anyarray) RETURNS anyelement
-  SELECT a[floor(RANDOM() * array_length(a, 1))];
+func! random_elem(a anyarray) RETURNS anyelement
+  SELECT a[1 + floor(RANDOM() * array_length(a, 1))];
 
 func! random_date() RETURNS text
   SELECT this.random(1900, 2010)::text
@@ -217,7 +217,11 @@ func! insert_encounters() RETURNS bigint
            from patient
     order by random()
   ), encounter_data as (
-    select *
+    select *,
+           this.random_elem(ARRAY['inpatient',
+                                  'outpatient',
+                                   'ambulatory',
+                                   'emergency']) as class
     from patients_ids_source
   ), inserted as (
     INSERT into encounter (logical_id, version_id, content)
@@ -228,7 +232,7 @@ func! insert_encounters() RETURNS bigint
          'resourceType', 'Encounter',
          'id', gen_random_uuid(),
          'status', 'in-progress',
-         'class', 'inpatient',
+         'class', class,
          'patient', json_build_object(
            'reference', 'Patient/' || patient_id
          )
