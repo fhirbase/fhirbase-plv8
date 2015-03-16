@@ -77,6 +77,58 @@ func! insert_organizations() RETURNS bigint
   )
   select count(*) inserted;
 
+func! insert_practitioner() RETURNS bigint
+  with first_names_source as (
+    select *, row_number() over () from (
+      select CASE WHEN sex = 'M' THEN 'male' ELSE 'female' END as sex,
+             first_name
+      from temp.first_names
+      order by random()
+      limit 200) _
+  ), last_names_source as (
+    select *, row_number() over () from (
+      select last_name
+      from temp.last_names
+      order by random()
+      limit 200) _
+  ), practitioner_data as (
+    select *
+    from first_names_source
+    join last_names_source using (row_number)
+  ), inserted as (
+    INSERT into practitioner (logical_id, version_id, content)
+    SELECT obj->>'id', obj#>>'{meta,versionId}', obj
+    FROM (
+      SELECT
+        json_build_object(
+         'resourceType', 'Practitioner',
+         'id', gen_random_uuid(),
+         'name', ARRAY[
+           json_build_object(
+            'given', ARRAY[first_name],
+            'family', ARRAY[last_name]
+           )
+         ],
+         'identifier', ARRAY[
+           json_build_object(
+             'use', 'usual',
+             'system', 'urn:oid:2.16.840.1.113883.2.4.6.3',
+             'value', this.random(6000000, 100000000)::text
+           ),
+           json_build_object(
+             'use', 'usual',
+             'system', 'urn:oid:1.2.36.146.595.217.0.1',
+             'value', this.random(6000000, 100000000)::text,
+             'label', 'MRN'
+           )
+         ]
+        )::jsonb as obj
+        FROM practitioner_data
+    ) _
+    RETURNING logical_id
+  )
+  select count(*) from practitioner_data;
+
 -- TODO: improve generator
 --       improve patient resource (add adress etc.)
 --       add more resources (encounter, order etc.)
