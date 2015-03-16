@@ -36,13 +36,16 @@ func make_address(_street_name_ text, _zip_ text, _city_ text, _state_ text) RET
 
 func! insert_organizations() RETURNS bigint
   with organizations_source as (
-    select organization_name, row_number() over () from temp.organization_names
+    select organization_name, row_number() over ()
+    from temp.organization_names
     order by random()
   ), street_names_source as (
-    select street_name, row_number() over () from temp.street_names
+    select street_name, row_number() over ()
+    from temp.street_names
     order by random()
   ), cities_source as (
-    select city, zip, state, row_number() over () from temp.cities
+    select city, zip, state, row_number() over ()
+    from temp.cities
     order by random()
   ), organization_data as (
     select *,
@@ -80,31 +83,50 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
   with first_names_source as (
     select CASE WHEN sex = 'M' THEN 'male' ELSE 'female' END as sex,
            first_name,
-           row_number() over () from temp.first_names
+           row_number() over ()
+           from temp.first_names
     cross join generate_series(0, ceil(_total_count_::float
-                                        / (select count(*) from temp.first_names)::float)::integer)
+                                       / (select count(*)
+                                          from temp.first_names)::float)::integer)
     order by random()
   ), last_names_source as (
-    select last_name, row_number() over () from temp.last_names
+    select last_name, row_number() over ()
+    from temp.last_names
     cross join generate_series(0, ceil(_total_count_::float
-                                        / (select count(*) from temp.last_names)::float)::integer)
+                                       / (select count(*)
+                                          from temp.last_names)::float)::integer)
     order by random()
   ), street_names_source as (
-    select street_name, row_number() over () from temp.street_names
+    select street_name, row_number() over ()
+    from temp.street_names
     cross join generate_series(0, ceil(_total_count_::float
-                                        / (select count(*) from temp.street_names)::float)::integer)
+                                       / (select count(*)
+                                          from temp.street_names)::float)::integer)
     order by random()
   ), cities_source as (
-    select city, zip, state, row_number() over () from temp.cities
+    select city, zip, state, row_number() over ()
+    from temp.cities
     cross join generate_series(0, ceil(_total_count_::float
-                                        / (select count(*) from temp.cities)::float)::integer)
+                                       / (select count(*)
+                                          from temp.cities)::float)::integer)
     order by random()
   ), languages_source as (
     select code as language_code,
            name as language_name,
-           row_number() over () from temp.languages
+           row_number() over ()
+           from temp.languages
     cross join generate_series(0, ceil(_total_count_::float
-                                        / (select count(*) from temp.languages)::float)::integer)
+                                       / (select count(*)
+                                          from temp.languages)::float)::integer)
+    order by random()
+  ), organizations_source as (
+    select logical_id as organization_id,
+           content#>>'{name}' as organization_name,
+           row_number() over ()
+           from organization
+    cross join generate_series(0, ceil(_total_count_::float
+                                       / (select count(*)
+                                          from organization)::float)::integer)
     order by random()
   ), patient_data as (
     select
@@ -116,6 +138,7 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
     join street_names_source using (row_number)
     join cities_source using (row_number)
     join languages_source using (row_number)
+    join organizations_source using (row_number)
   ), inserted as (
     INSERT into patient (logical_id, version_id, content)
     SELECT obj->>'id', obj#>>'{meta,versionId}', obj
@@ -130,6 +153,7 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
          'resourceType', 'Patient',
          'gender', sex,
          'birthDate', birth_date,
+         'active', TRUE,
          'name', ARRAY[
            json_build_object(
             'given', ARRAY[first_name],
@@ -172,7 +196,11 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
              'value', this.random(6000000, 100000000)::text,
              'label', 'MRN'
            )
-         ]
+         ],
+         'managingOrganization', json_build_object(
+           'reference', 'Organization/' || organization_id,
+           'display', organization_name
+         )
         )::jsonb as obj
         FROM patient_data
         LIMIT _total_count_
