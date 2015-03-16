@@ -212,10 +212,17 @@ func! insert_patients(_total_count_ integer) RETURNS bigint
 
 func! insert_encounters() RETURNS bigint
   with patients_ids_source as (
-    select logical_id as patient_id,
+    (select logical_id as patient_id,
+           row_number() over ()
+           from patient)
+
+    UNION ALL
+
+    (select logical_id as patient_id,
            row_number() over ()
            from patient
     order by random()
+    limit (select count(*) from patient) / 3)
   ), encounter_data as (
     select *,
            this.random_elem(ARRAY['inpatient',
