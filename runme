@@ -85,7 +85,7 @@ def perf(args):
 
     offset = 0
     total = int(os.environ['patients_total_count'])
-    batch_size = 1000000
+    batch_size = 50000000
 
     while (offset < total):
         n = batch_size if (total - offset) > batch_size else (total - offset)

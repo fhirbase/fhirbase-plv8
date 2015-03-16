@@ -26,23 +26,45 @@ func! random_phone() RETURNS text
 --       improve patient resource (add adress etc.)
 --       add more resources (encounter, order etc.)
 func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
-  WITH temp_patient_data as (
-    SELECT * from temp.patient_names
-     OFFSET _offset_
-     LIMIT _total_count_
+  with first_names_source as (
+    select CASE WHEN sex = 'M' THEN 'male' ELSE 'female' END as sex,
+           first_name,
+           row_number() over () from temp.first_names
+    cross join generate_series(0, ceil(_total_count_::float
+                                        / (select count(*) from temp.first_names)::float)::integer)
+    order by random()
+  ), last_names_source as (
+    select last_name, row_number() over () from temp.last_names
+    cross join generate_series(0, ceil(_total_count_::float
+                                        / (select count(*) from temp.last_names)::float)::integer)
+    order by random()
+  ), street_names_source as (
+    select street_name, row_number() over () from temp.street_names
+    cross join generate_series(0, ceil(_total_count_::float
+                                        / (select count(*) from temp.street_names)::float)::integer)
+    order by random()
+  ), cities_source as (
+    select city, zip, state, row_number() over () from temp.cities
+    cross join generate_series(0, ceil(_total_count_::float
+                                        / (select count(*) from temp.cities)::float)::integer)
+    order by random()
+  ), languages_source as (
+    select code as language_code,
+           name as language_name,
+           row_number() over () from temp.languages
+    cross join generate_series(0, ceil(_total_count_::float
+                                        / (select count(*) from temp.languages)::float)::integer)
+    order by random()
   ), patient_data as (
-    select temp_patient_data.first_name as given_name,
-           temp_patient_data.last_name as family_name,
-           temp_patient_data.sex as gender,
-           this.random_date() as birth_date,
-           this.random_phone() as phone,
-           this.random_elem(languages) as language,
-           this.random_elem(street_names) as street_name
-    from temp_patient_data, (
-      SELECT array_agg(languages) as languages FROM temp.languages
-    ) __, (
-      SELECT array_agg(street_name) as street_names FROM temp.street_names
-    ) ___
+    select
+      *,
+      this.random_date() as birth_date,
+      this.random_phone() as phone
+    from first_names_source
+    join last_names_source using (row_number)
+    join street_names_source using (row_number)
+    join cities_source using (row_number)
+    join languages_source using (row_number)
   ), inserted as (
     INSERT into patient (logical_id, version_id, content)
     SELECT obj->>'id', obj#>>'{meta,versionId}', obj
@@ -55,12 +77,12 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
             'lastUpdated', CURRENT_TIMESTAMP
           ),
          'resourceType', 'Patient',
-         'gender', gender,
+         'gender', sex,
          'birthDate', birth_date,
          'name', ARRAY[
            json_build_object(
-            'given', ARRAY[given_name],
-            'family', ARRAY[family_name]
+            'given', ARRAY[first_name],
+            'family', ARRAY[last_name]
            )
          ],
          'telecom', ARRAY[
@@ -74,9 +96,10 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
            json_build_object(
              'use', 'home',
              'line', ARRAY[street_name || ' ' || this.random(0, 100)::text],
-             'city', 'Amsterdam',
-             'postalCode', '1024 RJ',
-             'country', 'NLD'
+             'city', city,
+             'postalCode', zip::text,
+             'state', state,
+             'country', 'US'
            )
          ],
          'communication', ARRAY[
@@ -86,13 +109,26 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
                'coding', ARRAY[
                  json_build_object(
                    'system', 'urn:ietf:bcp:47',
-                   'code', (language).code,
-                   'display', (language).name
+                   'code', language_code,
+                   'display', language_name
                  )
                ],
-               'text', (language).name
+               'text', language_name
              ),
              'preferred', TRUE
+           )
+         ],
+         'identifier', ARRAY[
+           json_build_object(
+             'use', 'usual',
+             'system', 'urn:oid:2.16.840.1.113883.2.4.6.3',
+             'value', this.random(6000000, 100000000)::text
+           ),
+           json_build_object(
+             'use', 'usual',
+             'system', 'urn:oid:1.2.36.146.595.217.0.1',
+             'value', this.random(6000000, 100000000)::text,
+             'label', 'MRN'
            )
          ]
         )::jsonb as obj
@@ -110,8 +146,6 @@ func! insert_patients(_total_count_ integer, _offset_ integer) RETURNS bigint
 
 SELECT setseed(:'rand_seed'::float);
 
--- select this.insert_patients((:'batch_size')::int,
---                              (:'batch_number')::int);
 -- select count(*) from patient;
 
 -- SELECT fhir.search('Patient', 'name=John');
