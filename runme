@@ -83,19 +83,16 @@ def perf(args):
         os.environ['patients_total_count'] = '10000'
     if not args: args = glob.glob('./perf/*.sql')
 
-    r = psql(db, "\\timing\nSELECT performance.insert_organizations();")
-    print r["stdout"]
-
-    r = psql(db, "\\timing\nSELECT performance.insert_practitioner({0});".format('200'))
-    print r["stdout"]
-
-    r = psql(db, "\\timing\nSELECT performance.insert_patients({0});".format(os.environ['patients_total_count']))
-    print r["stdout"]
-
-    r = psql(db, "\\timing\nSELECT performance.insert_encounters();")
-    print r["stdout"]
-
-    r = psql(db, "SELECT count(*) FROM patient;")
+    r = psql(db, """\\timing
+                 \set rand_seed `echo ${rand_seed:-0.321}`
+                 SELECT setseed(:'rand_seed'::float);
+                 SELECT performance.insert_organizations();
+                 SELECT performance.insert_practitioner(%(practitioners_count)s);
+                 SELECT performance.insert_patients(%(patients_count)s);
+                 SELECT performance.insert_encounters();
+                 SELECT count(*) FROM patient;""" \
+                 % {'practitioners_count':200,
+                    'patients_count':os.environ['patients_total_count']})
     print r["stdout"]
 
 commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate, perf=perf)

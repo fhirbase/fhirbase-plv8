@@ -305,14 +305,13 @@ func! insert_encounters() RETURNS bigint
   )
   select count(*) inserted;
 
-\timing
-\set batch_size `echo $batch_size`
-\set batch_number `echo $batch_number`
-\set rand_seed `echo ${rand_seed:-0.321}`
+-- SELECT fhir.create(...cfg..., '{name=John}'::json);
 
-SELECT setseed(:'rand_seed'::float);
+-- SELECT fhir.read(...cfg..., ...id...);
 
--- select count(*) from patient;
+-- SELECT fhir.update(...cfg..., ...);
+
+-- SELECT fhir.delete(...cfg..., 'Patient', ...id...);
 
 -- SELECT fhir.search('Patient', 'name=John');
 
