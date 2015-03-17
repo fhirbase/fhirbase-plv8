@@ -37,3 +37,22 @@ Time: 4488.318 ms
 Timing is on.
 INSERT 0 200000
 Time: 8600.216 ms
+
+
+--------------------------------------------------------
+
+50M patients generation took 3.5 hours
+
+Right after insert public.patient = 64 Gb
+After VACUMM FULL size of table on disk remains the same.
+
+Inserting 1000 patients with crud.create() in one SELECT took ~1900 ms
+(approx 1.9 ms per patient).
+Inserting single patient with crud.create() takes ~9.5 ms.
+
+Reading 1000 patients with crud.read() in one SELECT took 1488 ms
+(approx 1.5 ms per patient).
+Reading single patient with crud.read() takes ~8 ms.
+
+Searching with 'name=John' without index takes 8098 ms (fast because
+of default LIMIT)

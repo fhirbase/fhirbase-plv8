@@ -1,4 +1,5 @@
 -- #import ./perf_schema.sql
+-- #import ../src/jsonbext.sql
 
 func! random(a numeric, b numeric) RETURNS numeric
   SELECT ceil(a + (b - a) * random())::numeric;
@@ -305,9 +306,23 @@ func! insert_encounters() RETURNS bigint
   )
   select count(*) inserted;
 
--- SELECT fhir.create(...cfg..., '{name=John}'::json);
+DO language plpgsql $$
+BEGIN
+  RAISE NOTICE 'Create Patient';
+END
+$$;
 
--- SELECT fhir.read(...cfg..., ...id...);
+SELECT count(crud.create('{}'::jsonb, jsonbext.dissoc(patients.content, 'id'))) FROM
+(SELECT content FROM patient LIMIT 1000) patients;
+
+DO language plpgsql $$
+BEGIN
+  RAISE NOTICE 'Read Patient';
+END
+$$;
+
+SELECT count(crud.read('{}'::jsonb, patients.logical_id)) FROM
+(SELECT logical_id FROM patient LIMIT 1) patients;
 
 -- SELECT fhir.update(...cfg..., ...);
 
