@@ -47,3 +47,4 @@ expect 'merge'
   jsonbext.merge('{"a":1, "b":2, "c":3}'::jsonb, '{"d":4,"e":5}'::jsonb)
 => '{"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}'::jsonb
 
+jsonbext.dissoc('{"a":1, "b":2}'::jsonb, 'b') => '{"a":1}'

@@ -80,3 +80,11 @@ func jsonb_primitive_to_text(x jsonb) RETURNS text
 func jsonb_to_array(_jsonb_ jsonb) RETURNS jsonb[]
   SELECT array_agg(j)
   FROM jsonb_array_elements(_jsonb_) j
+
+func dissoc(_jsonb_ jsonb, VARIADIC _keys_to_delete_ TEXT[]) RETURNS jsonb
+  SELECT COALESCE(
+    (SELECT ('{' || string_agg(to_json("key") || ':' || "value", ',') || '}')::jsonb
+     FROM jsonb_each(_jsonb_)
+     WHERE "key" <> ALL (_keys_to_delete_)),
+    '{}'
+  )::jsonb
