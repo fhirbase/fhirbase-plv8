@@ -54,5 +54,9 @@ Reading 1000 patients with crud.read() in one SELECT took 1488 ms
 (approx 1.5 ms per patient).
 Reading single patient with crud.read() takes ~8 ms.
 
+Updateing single patient with crud.update() takes 319 seconds.
+
 Searching with 'name=John' without index takes 8098 ms (fast because
 of default LIMIT)
+
+Searching for non-existent name takes 43 minutes.
