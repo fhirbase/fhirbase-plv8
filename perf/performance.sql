@@ -364,8 +364,6 @@ FROM (SELECT logical_id FROM patient LIMIT 1) patients;
 SELECT count(crud.delete('{}'::jsonb, 'Patient', patients.logical_id))
 FROM (SELECT logical_id FROM patient LIMIT 1000) patients;
 
--- SELECT fhir.delete(...cfg..., 'Patient', ...id...);
-
 -- SELECT fhir.search('Patient', 'name=John');
 
 -- SELECT indexing.index_search_param('Patient','name');
