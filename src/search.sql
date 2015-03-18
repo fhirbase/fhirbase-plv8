@@ -96,7 +96,7 @@ func build_identifier_cond(tbl text, _q query_param) RETURNS text
   SELECT format('%I.logical_id IN (%s)', tbl, string_agg((E'\'' || x || E'\'::uuid'),','))
   FROM unnest(_q.value) x
 
-func build_string_cond(tbl text, _q query_param) RETURNS text
+func build_string_cond_ilike(tbl text, _q query_param) RETURNS text
   -- this function build condition to search string using ilike
   -- expected trigram index on expression
   -- (index_as_string(content, '{name}') ilike '%term%' OR index_as_string(content,'{name}') ilike '%term2')
@@ -104,6 +104,24 @@ func build_string_cond(tbl text, _q query_param) RETURNS text
       format('index_fns.index_as_string(%I.content, %L) ilike %L', tbl, _q.field_path, '%' || x || '%'),
       ' OR ') || ')'
   FROM unnest(_q.value) x
+
+func build_string_cond_exact(tbl text, _q query_param) RETURNS text
+  -- this function build condition to search string using equals
+  -- expected trigram index on expression
+  -- (index_as_string(content, '{name}') ilike 'term')
+  SELECT '(' || string_agg(
+  format('index_fns.index_as_string(%I.content, %L) ilike %L', tbl, _q.field_path, x),
+  ' OR ') || ')'
+  FROM unnest(_q.value) x
+
+func build_string_cond(tbl text, _q query_param) RETURNS text
+  SELECT
+  CASE
+  WHEN _q.operator = 'exact' THEN
+    this.build_string_cond_exact(tbl, _q)
+  ELSE
+    this.build_string_cond_ilike(tbl, _q)
+  END as cnd
 
 func build_token_cond(tbl text, _q query_param) RETURNS text
   -- build condition for token
