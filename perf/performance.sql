@@ -401,3 +401,11 @@ SELECT count(*)
 FROM fhir.search('Patient', 'name=John&_count=50000000');
 
 select admin.admin_disk_usage_top(10);
+
+DO language plpgsql $$
+BEGIN
+  RAISE NOTICE 'Indexing Patient birthDate';
+END
+$$;
+
+SELECT indexing.index_search_param('Patient','birthdate');
