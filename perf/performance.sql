@@ -381,23 +381,23 @@ SELECT count(*) FROM fhir.search('Patient', 'name=John');
 -- SELECT count(*)
 -- FROM fhir.search('Patient', 'name=nonexistentname');
 
-DO language plpgsql $$
-BEGIN
-  RAISE NOTICE 'Search Patient by partial match without index and with only one search candidate';
-END
-$$;
+-- DO language plpgsql $$
+-- BEGIN
+--   RAISE NOTICE 'Search Patient by partial match without index and with only one search candidate';
+-- END
+-- $$;
 
-SELECT count(crud.create('{}'::jsonb,
-             jsonbext.merge(jsonbext.dissoc(patients.content, 'id'),
-                            json_build_object(
-                              'name', ARRAY[
-                                json_build_object(
-                                 'given', ARRAY['foobarbaz']
-                                )
-                              ]
-                            )::jsonb)))
-FROM (SELECT content FROM patient LIMIT 1) patients;
-SELECT count(*) FROM fhir.search('Patient', 'name=foobarbaz&_count=50000000');
+-- SELECT count(crud.create('{}'::jsonb,
+--              jsonbext.merge(jsonbext.dissoc(patients.content, 'id'),
+--                             json_build_object(
+--                               'name', ARRAY[
+--                                 json_build_object(
+--                                  'given', ARRAY['foobarbaz']
+--                                 )
+--                               ]
+--                             )::jsonb)))
+-- FROM (SELECT content FROM patient LIMIT 1) patients;
+-- SELECT count(*) FROM fhir.search('Patient', 'name=foobarbaz&_count=50000000');
 
 select admin.admin_disk_usage_top(10);
 
