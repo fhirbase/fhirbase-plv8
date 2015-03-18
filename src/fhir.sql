@@ -1,6 +1,7 @@
 -- #import ./generate.sql
 -- #import ./conformance.sql
 -- #import ./crud.sql
+-- #import ./transaction.sql
 -- #import ./indexing.sql
 -- #import ./search.sql
 -- #import ./admin.sql
@@ -76,6 +77,11 @@ func! history(_resource_type_ text) RETURNS jsonb
 
 func! history() RETURNS jsonb
   SELECT crud.history('{}'::jsonb)
+
+-- transaction
+
+func! transaction( _bundle_ jsonb) RETURNS jsonb
+  SELECT transaction.transaction('{}'::jsonb, _bundle_)
 
 -- search
 

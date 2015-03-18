@@ -56,6 +56,10 @@ Reading single patient with crud.read() takes ~8 ms.
 
 Updateing single patient with crud.update() takes 319 seconds.
 
+Deleting 1000 patients with crud.delete() in one SELECT took 1665 ms
+(approx 1.7 ms per patient).
+Deleting single patient with crud.delete() takes ~10 ms.
+
 Searching with 'name=John' without index takes 8098 ms (fast because
 of default LIMIT)
 
