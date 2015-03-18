@@ -364,7 +364,22 @@ FROM (SELECT logical_id FROM patient LIMIT 1) patients;
 SELECT count(crud.delete('{}'::jsonb, 'Patient', patients.logical_id))
 FROM (SELECT logical_id FROM patient LIMIT 1000) patients;
 
--- SELECT fhir.search('Patient', 'name=John');
+DO language plpgsql $$
+BEGIN
+  RAISE NOTICE 'Search Patient by partial match';
+END
+$$;
+
+SELECT count(*) FROM fhir.search('Patient', 'name=John');
+
+-- DO language plpgsql $$
+-- BEGIN
+--   RAISE NOTICE 'Search Patient for a nonexistent value';
+-- END
+-- $$;
+
+-- SELECT count(*)
+-- FROM fhir.search('Patient', 'name=foobarbazxyz');
 
 -- SELECT indexing.index_search_param('Patient','name');
 -- SELECT fhir.search('Patient', 'name=John');
