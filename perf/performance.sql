@@ -374,7 +374,7 @@ SELECT count(*) FROM fhir.search('Patient', 'name=John');
 
 -- DO language plpgsql $$
 -- BEGIN
---   RAISE NOTICE 'Search Patient for a nonexistent value without index and with many search candidates';
+--   RAISE NOTICE 'Search Patient for a nonexistent value without index';
 -- END
 -- $$;
 
