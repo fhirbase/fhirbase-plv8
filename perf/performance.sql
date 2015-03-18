@@ -366,7 +366,7 @@ FROM (SELECT logical_id FROM patient LIMIT 1000) patients;
 
 DO language plpgsql $$
 BEGIN
-  RAISE NOTICE 'Search Patient by partial match without index';
+  RAISE NOTICE 'Search Patient by partial match without index and with many search candidates';
 END
 $$;
 
@@ -374,12 +374,30 @@ SELECT count(*) FROM fhir.search('Patient', 'name=John');
 
 -- DO language plpgsql $$
 -- BEGIN
---   RAISE NOTICE 'Search Patient for a nonexistent value without index';
+--   RAISE NOTICE 'Search Patient for a nonexistent value without index and with many search candidates';
 -- END
 -- $$;
 
 -- SELECT count(*)
--- FROM fhir.search('Patient', 'name=foobarbazxyz');
+-- FROM fhir.search('Patient', 'name=nonexistentname');
+
+DO language plpgsql $$
+BEGIN
+  RAISE NOTICE 'Search Patient by partial match without index and with only one search candidate';
+END
+$$;
+
+SELECT count(crud.create('{}'::jsonb,
+             jsonbext.merge(jsonbext.dissoc(patients.content, 'id'),
+                            json_build_object(
+                              'name', ARRAY[
+                                json_build_object(
+                                 'given', ARRAY['foobarbaz']
+                                )
+                              ]
+                            )::jsonb)))
+FROM (SELECT content FROM patient LIMIT 1) patients;
+SELECT count(*) FROM fhir.search('Patient', 'name=foobarbaz&_count=50000000');
 
 select admin.admin_disk_usage_top(10);
 
@@ -393,12 +411,31 @@ SELECT indexing.index_search_param('Patient','name');
 
 DO language plpgsql $$
 BEGIN
-  RAISE NOTICE 'Search Patient by partial match';
+  RAISE NOTICE 'Search Patient by partial match with index and with many search candidates';
 END
 $$;
 
 SELECT count(*)
 FROM fhir.search('Patient', 'name=John&_count=50000000');
+
+DO language plpgsql $$
+BEGIN
+  RAISE NOTICE 'Search Patient by partial match with index and with only one search candidate';
+END
+$$;
+
+SELECT count(crud.create('{}'::jsonb,
+             jsonbext.merge(jsonbext.dissoc(patients.content, 'id'),
+                            json_build_object(
+                              'name', ARRAY[
+                                json_build_object(
+                                 'given', ARRAY['foobarbazwithindex']
+                                )
+                              ]
+                            )::jsonb)))
+FROM (SELECT content FROM patient LIMIT 1) patients;
+SELECT count(*) FROM fhir.search('Patient',
+                                 'name=foobarbazwithindex&_count=50000000');
 
 select admin.admin_disk_usage_top(10);
 
