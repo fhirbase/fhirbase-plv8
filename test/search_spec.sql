@@ -85,3 +85,18 @@ expect
 => 'Device'
 
 ROLLBACK;
+
+BEGIN;
+
+SELECT generate.generate_tables('{Organization}');
+
+setv('cfg', '{"base":"https://test.me"}');
+setv('organization', '{"resourceType": "Organization", "name": "policlinic 6" }');
+
+setv('org', crud.create(getv('cfg'), getv('organization')));
+
+expect
+  fhir_search(getv('cfg'), 'Organization', 'name:exact=policlinic')#>>'{entry,0,resource}'
+=> null
+
+ROLLBACK;
