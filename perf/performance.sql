@@ -381,6 +381,8 @@ SELECT count(*) FROM fhir.search('Patient', 'name=John');
 -- SELECT count(*)
 -- FROM fhir.search('Patient', 'name=foobarbazxyz');
 
+select admin.admin_disk_usage_top(10);
+
 DO language plpgsql $$
 BEGIN
   RAISE NOTICE 'Indexing Patient name';
@@ -398,6 +400,4 @@ $$;
 SELECT count(*)
 FROM fhir.search('Patient', 'name=John&_count=50000000');
 
--- SELECT fhir.search('Patient', 'name=John');
-
--- select admin.admin_disk_usage_top(10);
+select admin.admin_disk_usage_top(10);
