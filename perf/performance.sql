@@ -366,7 +366,7 @@ FROM (SELECT logical_id FROM patient LIMIT 1000) patients;
 
 DO language plpgsql $$
 BEGIN
-  RAISE NOTICE 'Search Patient by partial match';
+  RAISE NOTICE 'Search Patient by partial match without index';
 END
 $$;
 
@@ -374,14 +374,30 @@ SELECT count(*) FROM fhir.search('Patient', 'name=John');
 
 -- DO language plpgsql $$
 -- BEGIN
---   RAISE NOTICE 'Search Patient for a nonexistent value';
+--   RAISE NOTICE 'Search Patient for a nonexistent value without index';
 -- END
 -- $$;
 
 -- SELECT count(*)
 -- FROM fhir.search('Patient', 'name=foobarbazxyz');
 
--- SELECT indexing.index_search_param('Patient','name');
--- SELECT fhir.search('Patient', 'name=John');
+select admin.admin_disk_usage_top(10);
 
--- select admin.admin_disk_usage_top(10);
+DO language plpgsql $$
+BEGIN
+  RAISE NOTICE 'Indexing Patient name';
+END
+$$;
+
+SELECT indexing.index_search_param('Patient','name');
+
+DO language plpgsql $$
+BEGIN
+  RAISE NOTICE 'Search Patient by partial match';
+END
+$$;
+
+SELECT count(*)
+FROM fhir.search('Patient', 'name=John&_count=50000000');
+
+select admin.admin_disk_usage_top(10);

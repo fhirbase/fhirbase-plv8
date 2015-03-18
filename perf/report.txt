@@ -64,3 +64,10 @@ Searching with 'name=John' without index takes 8098 ms (fast because
 of default LIMIT)
 
 Searching for non-existent name takes 43 minutes.
+
+Indexing patient name with indexing.index_search_param()
+takes 3226 seconds (53 minutes).
+
+Index on patient name (patient_name_name_string_idx) takes 2250 MB.
+
+Searching for 'name=John' with fhir.search() using index takes 4.7 s
