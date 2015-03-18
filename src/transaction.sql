@@ -119,6 +119,7 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
     END loop;
 
     RETURN json_build_object(
+       'resourceType', 'Bundle',
        'type', 'transaction-response',
        'entry', coalesce(_result_, '{}'::jsonb[])
     )::jsonb;

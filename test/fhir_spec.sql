@@ -5,7 +5,7 @@ SET search_path TO fhir, vars, public;
 
 BEGIN;
 
-SELECT fhir.generate_tables('{Patient}');
+SELECT generate.generate_tables('{Patient,Alert,Device}');
 
 setv('created',
   fhir.create( '{"resourceType":"Patient", "id":"myid"}'::jsonb)
@@ -131,5 +131,34 @@ fhir.is_exists('Patient', 'myid') => false
 fhir.is_deleted('Patient', 'myid') => true
 
 getv('deleted')#>>'{meta,versionId}' => getv('updated')#>>'{meta,versionId}'
+
+setv('valid-transaction-bundle',
+  json_build_object(
+    'resourceType', 'Bundle',
+    'type', 'transaction',
+    'entry', ARRAY[
+      json_build_object(
+        'transaction', '{"method": "POST", "url": "/Device"}'::json,
+        'resource', '{"resourceType": "Device", "manufacturer": "handmade"}'::json
+      ),
+      json_build_object(
+        'transaction', ('{"method": "PUT", "url": "/Alert/' || (getv('alert')->>'id') || '"}')::json,
+        'resource', jsonbext.assoc(getv('alert'), 'note', '"new-note"'::jsonb)::json
+      ),
+      json_build_object(
+        'transaction', ('{"method": "DELETE", "url": "/Device/' || (getv('device')->>'id') || '"}')::json
+      )
+    ]::json[]
+  )::jsonb
+);
+
+
+setv('valid-trans',
+  fhir.transaction(
+    getv('valid-transaction-bundle')
+  )
+);
+
+getv('valid-trans')->>'resourceType' => 'Bundle'
 
 ROLLBACK;
