@@ -71,3 +71,10 @@ takes 3226 seconds (53 minutes).
 Index on patient name (patient_name_name_string_idx) takes on disk 2250  MB.
 
 Searching for 'name=John' with fhir.search() using index takes 4.7 s
+
+---------------------------------------------------------
+
+10K patients
+
+Indexing patient birthDate with indexing.index_search_param()
+takes 16.7 seconds (50M patients => 23 hours).

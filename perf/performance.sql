@@ -446,3 +446,11 @@ END
 $$;
 
 SELECT indexing.index_search_param('Patient','birthdate');
+
+DO language plpgsql $$
+BEGIN
+  RAISE NOTICE 'Indexing Patient identifier';
+END
+$$;
+
+SELECT indexing.index_search_param('Patient','identifier');
