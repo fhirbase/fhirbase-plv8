@@ -93,7 +93,7 @@ def seed(args):
 
     print r["stdout"]
 
-commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate, perf=perf)
+commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate, seed=seed)
 
 if len(sys.argv) < 2:
   print "Please use command:"
