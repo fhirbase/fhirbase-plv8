@@ -330,21 +330,23 @@ BEGIN
 END
 $$;
 
+drop table if exists temp.patient_data;
+create table temp.patient_data (data jsonb);
+insert into temp.patient_data (data)
+select jsonbext.merge(content,
+                      '{"multipleBirthBoolean": true}'::jsonb)
+from patient limit 1000;
+
+
 SELECT crud.update('{}'::jsonb, temp_patients.data)
-FROM (SELECT data FROM temp.patient_data limit 1) temp_patients;
+FROM
+(SELECT data FROM temp.patient_data limit 1) temp_patients;
 
 -- DO language plpgsql $$
 -- BEGIN
 --   RAISE NOTICE 'Update Patient';
 -- END
 -- $$;
-
--- drop table if exists temp.patient_data;
--- create table temp.patient_data (data jsonb);
--- insert into temp.patient_data (data)
--- select jsonbext.merge(content,
---                       '{"multipleBirthBoolean": true}'::jsonb)
--- from patient limit 1000;
 
 -- select crud.update('{}'::jsonb, temp_patients.data)
 -- from (select data from temp.patient_data) temp_patients;
