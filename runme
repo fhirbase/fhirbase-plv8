@@ -102,8 +102,8 @@ def perf(args):
                  SELECT performance.create_patients(1000);
                  SELECT performance.read_patients(1);
                  SELECT performance.read_patients(1000);
-                 SELECT performance.create_temp_patients_for_update();
-                 SELECT performance.update_patient();
+                 SELECT performance.create_temporary_patients(1000);
+                 SELECT performance.update_patients(1);
                  SELECT performance.delete_patient();
                  SELECT performance.delete_1000_patients();
                  SELECT performance.search_patient_with_many_search_candidates_with_limit_1000();
