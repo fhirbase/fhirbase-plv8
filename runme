@@ -108,10 +108,12 @@ def perf(args):
                  SELECT performance.delete_1000_patients();
                  SELECT performance.search_patient_with_many_search_candidates_with_limit_1000();
                  SELECT admin.admin_disk_usage_top(10);
-                 SELECT performance.index_patient_name();
+                 SELECT indexing.index_search_param('Patient','name');
                  SELECT performance.search_patient_for_a_nonexistent_value();
                  SELECT performance.search_patient_and_with_many_search_candidates();
                  SELECT performance.search_patient_with_only_one_search_candidate();
+                 SELECT performance.history_for_nonexistent_patient();
+                 SELECT performance.history_for_one_patient();
                  """)
 
     print r["stdout"]

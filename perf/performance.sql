@@ -92,11 +92,6 @@ proc! search_patient_with_only_one_search_candidate() RETURNS void
     PERFORM count(*)
             FROM fhir.search('Patient', 'name=foobarbaz&_count=50000000');
 
-proc! index_patient_name() RETURNS void
-  BEGIN
-    RAISE NOTICE 'Indexing Patient name';
-    PERFORM indexing.index_search_param('Patient','name');
-
 proc! search_patient_for_a_nonexistent_value() RETURNS void
   BEGIN
     RAISE NOTICE 'Search Patient for a nonexistent value using index';
@@ -125,47 +120,27 @@ proc! search_patient_with_only_one_search_candidate() RETURNS void
                                   'name=foobarbazwithindex&_count=50000000');
 
 -- -- FIXME: Takes to many time!
--- -- DO language plpgsql $$
--- -- BEGIN
--- --   RAISE NOTICE 'Indexing Patient birthDate';
--- -- END
--- -- $$;
-
--- -- SELECT indexing.index_search_param('Patient','birthdate');
+-- SELECT indexing.index_search_param('Patient','birthdate');
 
 -- -- FIXME: Takes to many time!
--- -- DO language plpgsql $$
--- -- BEGIN
--- --   RAISE NOTICE 'Indexing Patient identifier';
--- -- END
--- -- $$;
+-- SELECT indexing.index_search_param('Patient','identifier');
 
--- -- SELECT indexing.index_search_param('Patient','identifier');
+proc! history_for_nonexistent_patient() RETURNS void
+  BEGIN
+    RAISE NOTICE 'History for nonexistent patient';
+    PERFORM crud.history('{}'::jsonb, 'Patient', 'nonexistentid');
 
--- DO language plpgsql $$
--- BEGIN
---   RAISE NOTICE 'History for nonexistent patient';
--- END
--- $$;
+proc! history_for_one_patient() RETURNS void
+  BEGIN
+    RAISE NOTICE 'History for one patient';
+    PERFORM count(crud.create('{}'::jsonb,
+                              jsonbext.merge(patients.content,
+                                             '{"id": "foo-bar-id"}'::jsonb)))
+            FROM (SELECT content FROM patient LIMIT 1) patients;
+    PERFORM crud.history('{}'::jsonb, 'Patient', 'foo-bar-id');
 
--- SELECT crud.history('{}'::jsonb, 'Patient', 'nonexistentid');
-
--- DO language plpgsql $$
--- BEGIN
---   RAISE NOTICE 'History for one patient';
--- END
--- $$;
-
--- SELECT count(crud.create('{}'::jsonb,
---                          jsonbext.merge(patients.content,
---                                         '{"id": "foo-bar-id"}'::jsonb)))
--- FROM (SELECT content FROM patient LIMIT 1) patients;
--- SELECT crud.history('{}'::jsonb, 'Patient', 'foo-bar-id');
-
--- DO language plpgsql $$
--- BEGIN
---   RAISE NOTICE 'History for all patient';
--- END
--- $$;
-
--- SELECT count(crud.history('{}'::jsonb, 'Patient'));
+-- FIXME: Takes to many time and waste all disk space!
+proc! history_for_all_patient() RETURNS void
+  BEGIN
+    RAISE NOTICE 'History for all patient';
+    PERFORM count(crud.history('{}'::jsonb, 'Patient'));
