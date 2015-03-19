@@ -467,3 +467,19 @@ select admin.admin_disk_usage_top(10);
 -- $$;
 
 -- SELECT indexing.index_search_param('Patient','identifier');
+
+DO language plpgsql $$
+BEGIN
+  RAISE NOTICE 'History for nonexistent patient';
+END
+$$;
+
+SELECT crud.history('{}'::jsonb, 'Patient', 'nonexistentid');
+
+DO language plpgsql $$
+BEGIN
+  RAISE NOTICE 'History for all patient';
+END
+$$;
+
+SELECT crud.history('{}'::jsonb, 'Patient');
