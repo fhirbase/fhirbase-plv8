@@ -88,6 +88,9 @@ History by id for non-existent patient takes ~25 ms.
 
 History by id for one patient takes ~25 ms.
 
+History by all patient carsh after 66 minutes
+with error (no space left on device).
+
 ---------------------------------------------------------
 
 10K patients
