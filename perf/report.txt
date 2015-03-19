@@ -69,7 +69,8 @@ Indexing patient name
 with indexing.index_search_param('Patient', 'name')
 takes 3226 seconds (53 minutes).
 
-Index on patient name (patient_name_name_string_idx) takes on disk 2250  MB.
+Index on patient name (patient_name_name_string_idx)
+takes on disk 2250 MB.
 
 Searching for non-existent name with index takes ~200 ms.
 

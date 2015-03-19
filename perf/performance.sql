@@ -448,18 +448,20 @@ SELECT count(*) FROM fhir.search('Patient',
 
 select admin.admin_disk_usage_top(10);
 
-DO language plpgsql $$
-BEGIN
-  RAISE NOTICE 'Indexing Patient birthDate';
-END
-$$;
+-- FIXME: Take to many time!
+-- DO language plpgsql $$
+-- BEGIN
+--   RAISE NOTICE 'Indexing Patient birthDate';
+-- END
+-- $$;
 
-SELECT indexing.index_search_param('Patient','birthdate');
+-- SELECT indexing.index_search_param('Patient','birthdate');
 
-DO language plpgsql $$
-BEGIN
-  RAISE NOTICE 'Indexing Patient identifier';
-END
-$$;
+-- FIXME: Take to many time!
+-- DO language plpgsql $$
+-- BEGIN
+--   RAISE NOTICE 'Indexing Patient identifier';
+-- END
+-- $$;
 
-SELECT indexing.index_search_param('Patient','identifier');
+-- SELECT indexing.index_search_param('Patient','identifier');
