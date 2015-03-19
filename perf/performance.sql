@@ -27,35 +27,30 @@ proc! read_1000_patients() RETURNS void
     PERFORM count(crud.read('{}'::jsonb, patients.logical_id))
             FROM (SELECT logical_id FROM patient LIMIT 1) patients;
 
--- DO language plpgsql $$
--- BEGIN
---   RAISE NOTICE 'Update Patient';
--- END
--- $$;
+proc! create_temp_patients_for_update() RETURNS void
+  BEGIN
+    RAISE NOTICE 'Create temporary patients';
+    DROP TABLE IF EXISTS temp.patient_data;
+    CREATE TABLE temp.patient_data (data jsonb);
+    INSERT INTO temp.patient_data (data)
+           SELECT jsonbext.merge(content,
+                                  '{"multipleBirthBoolean": true}'::jsonb)
+           FROM patient LIMIT 1000;
 
--- drop table if exists temp.patient_data;
--- create table temp.patient_data (data jsonb);
--- insert into temp.patient_data (data)
--- select jsonbext.merge(content,
---                       '{"multipleBirthBoolean": true}'::jsonb)
--- from patient limit 1000;
+proc! update_patient() RETURNS void
+  BEGIN
+    RAISE NOTICE 'Update patient';
+    PERFORM crud.update('{}'::jsonb, temp_patients.data)
+            FROM
+            (SELECT data FROM temp.patient_data limit 1) temp_patients;
 
-
--- SELECT crud.update('{}'::jsonb, temp_patients.data)
--- FROM
--- (SELECT data FROM temp.patient_data limit 1) temp_patients;
-
--- -- DO language plpgsql $$
--- -- BEGIN
--- --   RAISE NOTICE 'Update Patient';
--- -- END
--- -- $$;
-
--- -- select crud.update('{}'::jsonb, temp_patients.data)
--- -- from (select data from temp.patient_data) temp_patients;
-
--- -- SELECT count(crud.update('{}'::jsonb, jsonbext.assoc('{"resourceType": "Patient", "text": {"status": "generated", "div": "<div>!-- Snipped for Brevity --></div>"}, "extension": [{"url": "http://hl7.org/fhir/StructureDefinition/patient-birthTime", "valueInstant": "2001-05-06T14:35:45-05:00"}], "identifier": [{"use": "usual", "label": "MRN", "system": "urn:oid:1.2.36.146.595.217.0.1", "value": "12345", "period": {"start": "2001-05-06"}, "assigner": {"display": "Acme Healthcare"}}], "name": [{"use": "official", "family": ["Chalmers"], "given": ["Peter", "James"]}, {"use": "usual", "given": ["Jim"]}], "telecom": [{"use": "home"}, {"system": "phone", "value": "(03) 5555 6473", "use": "work"}], "gender": "male", "birthDate": "1974-12-25", "deceasedBoolean": false, "address": [{"use": "home", "line": ["534 Erewhon St"], "city": "PleasantVille", "state": "Vic", "postalCode": "3999"}], "contact": [{"relationship": [{"coding": [{"system": "http://hl7.org/fhir/patient-contact-relationship", "code": "partner"}]}], "name": {"family": ["du", "Marché"], "_family": [{"extension": [{"url": "http://hl7.org/fhir/StructureDefinition/iso21090-EN-qualifier", "valueCode": "VV"}]}, null], "given": ["Bénédicte"]}, "telecom": [{"system": "phone", "value": "+33 (237) 998327"}]}], "active": true}'::jsonb, 'id'::text, patients.content#>'{id}'))) FROM
--- -- (SELECT content FROM patient LIMIT 1000) patients;
+-- FIXME: Take to many time!
+proc! update_1000_patients() RETURNS void
+  BEGIN
+    RAISE NOTICE 'Update 1000 patients';
+    PERFORM count(crud.update('{}'::jsonb,
+                  jsonbext.assoc('{"resourceType": "Patient", "text": {"status": "generated", "div": "<div>!-- Snipped for Brevity --></div>"}, "extension": [{"url": "http://hl7.org/fhir/StructureDefinition/patient-birthTime", "valueInstant": "2001-05-06T14:35:45-05:00"}], "identifier": [{"use": "usual", "label": "MRN", "system": "urn:oid:1.2.36.146.595.217.0.1", "value": "12345", "period": {"start": "2001-05-06"}, "assigner": {"display": "Acme Healthcare"}}], "name": [{"use": "official", "family": ["Chalmers"], "given": ["Peter", "James"]}, {"use": "usual", "given": ["Jim"]}], "telecom": [{"use": "home"}, {"system": "phone", "value": "(03) 5555 6473", "use": "work"}], "gender": "male", "birthDate": "1974-12-25", "deceasedBoolean": false, "address": [{"use": "home", "line": ["534 Erewhon St"], "city": "PleasantVille", "state": "Vic", "postalCode": "3999"}], "contact": [{"relationship": [{"coding": [{"system": "http://hl7.org/fhir/patient-contact-relationship", "code": "partner"}]}], "name": {"family": ["du", "Marché"], "_family": [{"extension": [{"url": "http://hl7.org/fhir/StructureDefinition/iso21090-EN-qualifier", "valueCode": "VV"}]}, null], "given": ["Bénédicte"]}, "telecom": [{"system": "phone", "value": "+33 (237) 998327"}]}], "active": true}'::jsonb, 'id'::text, patients.content#>'{id}')))
+            FROM (SELECT content FROM patient LIMIT 1000) patients;
 
 -- DO language plpgsql $$
 -- BEGIN

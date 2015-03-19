@@ -102,6 +102,8 @@ def perf(args):
                  SELECT performance.create_1000_patients();
                  SELECT performance.read_patient();
                  SELECT performance.read_1000_patients();
+                 SELECT performance.create_temp_patients_for_update();
+                 SELECT performance.update_patient();
                  """)
 
     print r["stdout"]
