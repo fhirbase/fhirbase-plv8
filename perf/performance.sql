@@ -8,17 +8,11 @@ proc! create_patients(_limit_ integer) RETURNS void
                               jsonbext.dissoc(patients.content, 'id')))
             FROM (SELECT content FROM patient LIMIT _limit_) patients;
 
-proc! read_patient() RETURNS void
+proc! read_patients(_limit_ integer) RETURNS void
   BEGIN
-    RAISE NOTICE 'Read patient';
+    RAISE NOTICE 'Read patients';
     PERFORM count(crud.read('{}'::jsonb, patients.logical_id))
-            FROM (SELECT logical_id FROM patient LIMIT 1) patients;
-
-proc! read_1000_patients() RETURNS void
-  BEGIN
-    RAISE NOTICE 'Read 1000 patients';
-    PERFORM count(crud.read('{}'::jsonb, patients.logical_id))
-            FROM (SELECT logical_id FROM patient LIMIT 1) patients;
+            FROM (SELECT logical_id FROM patient LIMIT _limit_) patients;
 
 proc! create_temp_patients_for_update() RETURNS void
   BEGIN
