@@ -248,7 +248,7 @@ func! insert_patients(_total_count_ integer) RETURNS bigint
   select count(*) inserted;
 
 func! insert_encounters() RETURNS bigint
-  with patients_ids_source as (
+  WITH patients_ids_source as (
     (select logical_id as patient_id,
            row_number() over ()
      from patient)
@@ -260,13 +260,13 @@ func! insert_encounters() RETURNS bigint
      from patient
     order by random()
     limit (select count(*) from patient) / 3)
-  ), practitioners_source as (
-    select logical_id as practitioner_id,
-           row_number() over ()
-    from practitioner
-    order by random()
+  ), practitioners_source AS (
+    SELECT logical_id as practitioner_id,
+           row_number() OVER ()
+    FROM practitioner
+    ORDER by random()
   ), encounter_data as (
-    select *,
+    SELECT *,
            this.random_elem(ARRAY['inpatient',
                                   'outpatient',
                                   'ambulatory',
@@ -277,8 +277,8 @@ func! insert_encounters() RETURNS bigint
                                   'onleave',
                                   'cancelled',
                                   'finished']) as status
-    from patients_ids_source
-    join practitioners_source using (row_number)
+    FROM patients_ids_source
+    JOIN practitioners_source using (row_number)
   ), inserted as (
     INSERT into encounter (logical_id, version_id, content)
     SELECT obj->>'id', obj#>>'{meta,versionId}', obj
@@ -304,4 +304,15 @@ func! insert_encounters() RETURNS bigint
     ) _
     RETURNING logical_id
   )
-  select count(*) inserted;
+  SELECT COUNT(*) inserted;
+
+proc! generate(_number_of_patients_ integer, _rand_seed_ float) RETURNS bigint
+  BEGIN
+    RAISE NOTICE 'Generating % patients with rand_seed=%', _number_of_patients_, _rand_seed_;
+
+    PERFORM setseed(_rand_seed_);
+    PERFORM this.insert_organizations();
+    PERFORM this.insert_practitioner(200);
+    PERFORM this.insert_patients(_number_of_patients_);
+    PERFORM this.insert_encounters();
+    RETURN (SELECT count(*) FROM patient);
