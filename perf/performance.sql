@@ -15,14 +15,17 @@ proc! create_1000_patients() RETURNS void
                               jsonbext.dissoc(patients.content, 'id')))
             FROM (SELECT content FROM patient LIMIT 1000) patients;
 
--- DO language plpgsql $$
--- BEGIN
---   RAISE NOTICE 'Read Patient';
--- END
--- $$;
+proc! read_patient() RETURNS void
+  BEGIN
+    RAISE NOTICE 'Read patient';
+    PERFORM count(crud.read('{}'::jsonb, patients.logical_id))
+            FROM (SELECT logical_id FROM patient LIMIT 1) patients;
 
--- SELECT count(crud.read('{}'::jsonb, patients.logical_id)) FROM
--- (SELECT logical_id FROM patient LIMIT 1) patients;
+proc! read_1000_patients() RETURNS void
+  BEGIN
+    RAISE NOTICE 'Read 1000 patients';
+    PERFORM count(crud.read('{}'::jsonb, patients.logical_id))
+            FROM (SELECT logical_id FROM patient LIMIT 1) patients;
 
 -- DO language plpgsql $$
 -- BEGIN

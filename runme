@@ -100,6 +100,8 @@ def perf(args):
     r = psql(db, """\\timing
                  SELECT performance.create_patient();
                  SELECT performance.create_1000_patients();
+                 SELECT performance.read_patient();
+                 SELECT performance.read_1000_patients();
                  """)
 
     print r["stdout"]
