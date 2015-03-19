@@ -93,7 +93,18 @@ def seed(args):
 
     print r["stdout"]
 
-commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate, seed=seed)
+def perf(args):
+    perf_files = glob.glob('./perf/*.sql')
+    reload(perf_files)
+
+    r = psql(db, """\\timing
+                 SELECT performance.create_patient();
+                 SELECT performance.create_1000_patients();
+                 """)
+
+    print r["stdout"]
+
+commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate, seed=seed, perf=perf)
 
 if len(sys.argv) < 2:
   print "Please use command:"

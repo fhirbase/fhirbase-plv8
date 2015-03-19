@@ -1,14 +1,19 @@
 -- #import ./load_data.sql
 -- #import ../src/jsonbext.sql
 
--- DO language plpgsql $$
--- BEGIN
---   RAISE NOTICE 'Create Patient';
--- END
--- $$;
+proc! create_patient() RETURNS void
+  BEGIN
+    RAISE NOTICE 'Create patient';
+    PERFORM count(crud.create('{}'::jsonb,
+                              jsonbext.dissoc(patients.content, 'id')))
+            FROM (SELECT content FROM patient LIMIT 1) patients;
 
--- SELECT count(crud.create('{}'::jsonb, jsonbext.dissoc(patients.content, 'id'))) FROM
--- (SELECT content FROM patient LIMIT 1000) patients;
+proc! create_1000_patients() RETURNS void
+  BEGIN
+    RAISE NOTICE 'Create 1000 patients';
+    PERFORM count(crud.create('{}'::jsonb,
+                              jsonbext.dissoc(patients.content, 'id')))
+            FROM (SELECT content FROM patient LIMIT 1000) patients;
 
 -- DO language plpgsql $$
 -- BEGIN
