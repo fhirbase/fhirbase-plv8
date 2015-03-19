@@ -478,6 +478,18 @@ SELECT crud.history('{}'::jsonb, 'Patient', 'nonexistentid');
 
 DO language plpgsql $$
 BEGIN
+  RAISE NOTICE 'History for one patient';
+END
+$$;
+
+SELECT count(crud.create('{}'::jsonb,
+                         jsonbext.merge(patients.content,
+                                        '{"id": "foo-bar-id"}'::jsonb)))
+FROM (SELECT content FROM patient LIMIT 1) patients;
+SELECT crud.history('{}'::jsonb, 'Patient', 'foo-bar-id');
+
+DO language plpgsql $$
+BEGIN
   RAISE NOTICE 'History for all patient';
 END
 $$;
