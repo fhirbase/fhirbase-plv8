@@ -63,7 +63,7 @@ Deleting single patient with crud.delete() takes ~10 ms.
 Searching with 'name=John' without index takes 8098 ms (fast because
 of default LIMIT)
 
-Searching for non-existent name takes 43 minutes.
+Searching for non-existent name without index takes 43 minutes.
 
 Indexing patient name
 with indexing.index_search_param('Patient', 'name')
@@ -71,7 +71,13 @@ takes 3226 seconds (53 minutes).
 
 Index on patient name (patient_name_name_string_idx) takes on disk 2250  MB.
 
-Searching for 'name=John' with fhir.search() using index takes 4.7 s
+Searching for non-existent name with index takes ~200 ms.
+
+Searching by partial match for 'name=John' with fhir.search() using index
+and with many search candidates takes 4.7 s
+
+Searching patient by partial match for 'name=John' with fhir.search()
+using index and with only one search candidate takes ~198 ms.
 
 Indexing patient identifier
 indexing.index_search_param('Patient','identifier')

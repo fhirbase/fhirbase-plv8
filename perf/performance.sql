@@ -411,7 +411,16 @@ SELECT indexing.index_search_param('Patient','name');
 
 DO language plpgsql $$
 BEGIN
-  RAISE NOTICE 'Search Patient by partial match with index and with many search candidates';
+  RAISE NOTICE 'Search Patient for a nonexistent value using index';
+END
+$$;
+
+SELECT count(*)
+FROM fhir.search('Patient', 'name=nonexistentname');
+
+DO language plpgsql $$
+BEGIN
+  RAISE NOTICE 'Search Patient by partial match using index and with many search candidates';
 END
 $$;
 
@@ -420,7 +429,7 @@ FROM fhir.search('Patient', 'name=John&_count=50000000');
 
 DO language plpgsql $$
 BEGIN
-  RAISE NOTICE 'Search Patient by partial match with index and with only one search candidate';
+  RAISE NOTICE 'Search Patient by partial match using index and with only one search candidate';
 END
 $$;
 
