@@ -52,17 +52,17 @@ proc! update_1000_patients() RETURNS void
                   jsonbext.assoc('{"resourceType": "Patient", "text": {"status": "generated", "div": "<div>!-- Snipped for Brevity --></div>"}, "extension": [{"url": "http://hl7.org/fhir/StructureDefinition/patient-birthTime", "valueInstant": "2001-05-06T14:35:45-05:00"}], "identifier": [{"use": "usual", "label": "MRN", "system": "urn:oid:1.2.36.146.595.217.0.1", "value": "12345", "period": {"start": "2001-05-06"}, "assigner": {"display": "Acme Healthcare"}}], "name": [{"use": "official", "family": ["Chalmers"], "given": ["Peter", "James"]}, {"use": "usual", "given": ["Jim"]}], "telecom": [{"use": "home"}, {"system": "phone", "value": "(03) 5555 6473", "use": "work"}], "gender": "male", "birthDate": "1974-12-25", "deceasedBoolean": false, "address": [{"use": "home", "line": ["534 Erewhon St"], "city": "PleasantVille", "state": "Vic", "postalCode": "3999"}], "contact": [{"relationship": [{"coding": [{"system": "http://hl7.org/fhir/patient-contact-relationship", "code": "partner"}]}], "name": {"family": ["du", "Marché"], "_family": [{"extension": [{"url": "http://hl7.org/fhir/StructureDefinition/iso21090-EN-qualifier", "valueCode": "VV"}]}, null], "given": ["Bénédicte"]}, "telecom": [{"system": "phone", "value": "+33 (237) 998327"}]}], "active": true}'::jsonb, 'id'::text, patients.content#>'{id}')))
             FROM (SELECT content FROM patient LIMIT 1000) patients;
 
--- DO language plpgsql $$
--- BEGIN
---   RAISE NOTICE 'Delete Patient';
--- END
--- $$;
+proc! delete_patient() RETURNS void
+  BEGIN
+    RAISE NOTICE 'Delete patient';
+    PERFORM count(crud.delete('{}'::jsonb, 'Patient', patients.logical_id))
+            FROM (SELECT logical_id FROM patient LIMIT 1) patients;
 
--- SELECT count(crud.delete('{}'::jsonb, 'Patient', patients.logical_id))
--- FROM (SELECT logical_id FROM patient LIMIT 1) patients;
-
--- SELECT count(crud.delete('{}'::jsonb, 'Patient', patients.logical_id))
--- FROM (SELECT logical_id FROM patient LIMIT 1000) patients;
+proc! delete_1000_patients() RETURNS void
+  BEGIN
+    RAISE NOTICE 'Delete 1000 patients';
+    PERFORM count(crud.delete('{}'::jsonb, 'Patient', patients.logical_id))
+            FROM (SELECT logical_id FROM patient LIMIT 1000) patients;
 
 -- DO language plpgsql $$
 -- BEGIN
