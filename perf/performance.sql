@@ -1,19 +1,12 @@
 -- #import ./load_data.sql
 -- #import ../src/jsonbext.sql
 
-proc! create_patient() RETURNS void
+proc! create_patients(_limit_ integer) RETURNS void
   BEGIN
-    RAISE NOTICE 'Create patient';
+    RAISE NOTICE 'Create patients';
     PERFORM count(crud.create('{}'::jsonb,
                               jsonbext.dissoc(patients.content, 'id')))
-            FROM (SELECT content FROM patient LIMIT 1) patients;
-
-proc! create_1000_patients() RETURNS void
-  BEGIN
-    RAISE NOTICE 'Create 1000 patients';
-    PERFORM count(crud.create('{}'::jsonb,
-                              jsonbext.dissoc(patients.content, 'id')))
-            FROM (SELECT content FROM patient LIMIT 1000) patients;
+            FROM (SELECT content FROM patient LIMIT _limit_) patients;
 
 proc! read_patient() RETURNS void
   BEGIN

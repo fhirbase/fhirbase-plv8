@@ -98,8 +98,8 @@ def perf(args):
     reload(perf_files)
 
     r = psql(db, """\\timing
-                 SELECT performance.create_patient();
-                 SELECT performance.create_1000_patients();
+                 SELECT performance.create_patients(1);
+                 SELECT performance.create_patients(1000);
                  SELECT performance.read_patient();
                  SELECT performance.read_1000_patients();
                  SELECT performance.create_temp_patients_for_update();
