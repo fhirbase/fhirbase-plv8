@@ -106,6 +106,12 @@ def perf(args):
                  SELECT performance.update_patient();
                  SELECT performance.delete_patient();
                  SELECT performance.delete_1000_patients();
+                 SELECT performance.search_patient_with_many_search_candidates_with_limit_1000();
+                 SELECT admin.admin_disk_usage_top(10);
+                 SELECT performance.index_patient_name();
+                 SELECT performance.search_patient_for_a_nonexistent_value();
+                 SELECT performance.search_patient_and_with_many_search_candidates();
+                 SELECT performance.search_patient_with_only_one_search_candidate();
                  """)
 
     print r["stdout"]
