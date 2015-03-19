@@ -494,4 +494,4 @@ BEGIN
 END
 $$;
 
-SELECT crud.history('{}'::jsonb, 'Patient');
+SELECT count(crud.history('{}'::jsonb, 'Patient'));
