@@ -98,6 +98,7 @@ def perf(args):
     reload(perf_files)
 
     r = psql(db, """\\timing
+                 SELECT admin.admin_disk_usage_top(10);
                  SELECT performance.create_patients(1);
                  SELECT performance.create_patients(1000);
                  SELECT performance.read_patients(1);
@@ -106,12 +107,14 @@ def perf(args):
                  SELECT performance.update_patients(1);
                  SELECT performance.delete_patients(1);
                  SELECT performance.delete_patients(1000);
-                 SELECT performance.search_patient_with_many_search_candidates_with_limit_1000();
-                 SELECT admin.admin_disk_usage_top(10);
-                 SELECT indexing.index_search_param('Patient','name');
-                 SELECT performance.search_patient_for_a_nonexistent_value();
-                 SELECT performance.search_patient_and_with_many_search_candidates();
+                 SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname');
                  SELECT performance.search_patient_with_only_one_search_candidate();
+                 SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000');
+                 SELECT indexing.index_search_param('Patient','name');
+                 SELECT admin.admin_disk_usage_top(10);
+                 SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname');
+                 SELECT performance.search_patient_with_only_one_search_candidate();
+                 SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000');
                  SELECT performance.history_for_nonexistent_patient();
                  SELECT performance.history_for_one_patient();
                  """)

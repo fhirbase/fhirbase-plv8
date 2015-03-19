@@ -37,21 +37,12 @@ proc! delete_patients(_limit_ integer) RETURNS void
     PERFORM count(crud.delete('{}'::jsonb, 'Patient', patients.logical_id))
             FROM (SELECT logical_id FROM patient LIMIT _limit_) patients;
 
-proc! search_patient_with_many_search_candidates_with_limit_1000() RETURNS void
-  BEGIN
-    RAISE NOTICE 'Search patient by partial match without index and with many search candidates with limit 1000';
-    PERFORM count(*) FROM fhir.search('Patient', 'name=John&_count=1000');
+-- -- FIXME: Takes to many time!
+-- SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname');
 
--- FIXME: Takes to many time!
-proc! search_patient_for_a_nonexistent_value() RETURNS void
-  BEGIN
-    RAISE NOTICE 'Search Patient for a nonexistent value without index';
-    PERFORM count(*) FROM fhir.search('Patient', 'name=nonexistentname');
-
--- FIXME: Takes to many time!
 proc! search_patient_with_only_one_search_candidate() RETURNS void
   BEGIN
-    RAISE NOTICE 'Search Patient by partial match without index and with only one search candidate';
+    RAISE NOTICE 'Search Patient by partial match and with only one search candidate';
     PERFORM count(crud.create('{}'::jsonb,
                   jsonbext.merge(jsonbext.dissoc(patients.content, 'id'),
                                  json_build_object(
@@ -64,33 +55,6 @@ proc! search_patient_with_only_one_search_candidate() RETURNS void
             FROM (SELECT content FROM patient LIMIT 1) patients;
     PERFORM count(*)
             FROM fhir.search('Patient', 'name=foobarbaz&_count=50000000');
-
-proc! search_patient_for_a_nonexistent_value() RETURNS void
-  BEGIN
-    RAISE NOTICE 'Search Patient for a nonexistent value using index';
-    PERFORM count(*) FROM fhir.search('Patient', 'name=nonexistentname');
-
-proc! search_patient_and_with_many_search_candidates() RETURNS void
-  BEGIN
-    RAISE NOTICE 'Search Patient by partial match using index and with many search candidates';
-    PERFORM count(*)
-            FROM fhir.search('Patient', 'name=John&_count=50000000');
-
-proc! search_patient_with_only_one_search_candidate() RETURNS void
-  BEGIN
-    RAISE NOTICE 'Search Patient by partial match using index and with only one search candidate';
-    PERFORM count(crud.create('{}'::jsonb,
-                  jsonbext.merge(jsonbext.dissoc(patients.content, 'id'),
-                                 json_build_object(
-                                   'name', ARRAY[
-                                     json_build_object(
-                                      'given', ARRAY['foobarbazwithindex']
-                                     )
-                                   ]
-                                 )::jsonb)))
-            FROM (SELECT content FROM patient LIMIT 1) patients;
-    PERFORM count(*) FROM fhir.search('Patient',
-                                  'name=foobarbazwithindex&_count=50000000');
 
 -- -- FIXME: Takes to many time!
 -- SELECT indexing.index_search_param('Patient','birthdate');
