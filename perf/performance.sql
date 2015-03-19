@@ -31,17 +31,11 @@ proc! update_patients(_limit_ integer) RETURNS void
             FROM
             (SELECT data FROM temp.patient_data LIMIT _limit_) temp_patients;
 
-proc! delete_patient() RETURNS void
+proc! delete_patients(_limit_ integer) RETURNS void
   BEGIN
-    RAISE NOTICE 'Delete patient';
+    RAISE NOTICE 'Delete patients';
     PERFORM count(crud.delete('{}'::jsonb, 'Patient', patients.logical_id))
-            FROM (SELECT logical_id FROM patient LIMIT 1) patients;
-
-proc! delete_1000_patients() RETURNS void
-  BEGIN
-    RAISE NOTICE 'Delete 1000 patients';
-    PERFORM count(crud.delete('{}'::jsonb, 'Patient', patients.logical_id))
-            FROM (SELECT logical_id FROM patient LIMIT 1000) patients;
+            FROM (SELECT logical_id FROM patient LIMIT _limit_) patients;
 
 proc! search_patient_with_many_search_candidates_with_limit_1000() RETURNS void
   BEGIN
