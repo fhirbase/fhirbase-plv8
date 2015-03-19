@@ -115,7 +115,7 @@ def perf(args):
                  SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname');
                  SELECT performance.search_patient_with_only_one_search_candidate();
                  SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000');
-                 SELECT performance.history_for_nonexistent_patient();
+                 SELECT SELECT crud.history('{}'::jsonb, 'Patient', 'nonexistentid');
                  SELECT performance.history_for_one_patient();
                  """)
 

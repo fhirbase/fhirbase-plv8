@@ -62,11 +62,6 @@ proc! search_patient_with_only_one_search_candidate() RETURNS void
 -- -- FIXME: Takes to many time!
 -- SELECT indexing.index_search_param('Patient','identifier');
 
-proc! history_for_nonexistent_patient() RETURNS void
-  BEGIN
-    RAISE NOTICE 'History for nonexistent patient';
-    PERFORM crud.history('{}'::jsonb, 'Patient', 'nonexistentid');
-
 proc! history_for_one_patient() RETURNS void
   BEGIN
     RAISE NOTICE 'History for one patient';
@@ -76,8 +71,5 @@ proc! history_for_one_patient() RETURNS void
             FROM (SELECT content FROM patient LIMIT 1) patients;
     PERFORM crud.history('{}'::jsonb, 'Patient', 'foo-bar-id');
 
--- FIXME: Takes to many time and waste all disk space!
-proc! history_for_all_patient() RETURNS void
-  BEGIN
-    RAISE NOTICE 'History for all patient';
-    PERFORM count(crud.history('{}'::jsonb, 'Patient'));
+-- -- FIXME: Takes to many time and waste all disk space!
+-- SELECT count(crud.history('{}'::jsonb, 'Patient'));
