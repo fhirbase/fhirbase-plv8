@@ -37,9 +37,6 @@ proc! delete_patients(_limit_ integer) RETURNS void
     PERFORM count(crud.delete('{}'::jsonb, 'Patient', patients.logical_id))
             FROM (SELECT logical_id FROM patient LIMIT _limit_) patients;
 
--- -- FIXME: Takes to many time!
--- SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname');
-
 proc! search_patient_with_only_one_search_candidate() RETURNS void
   BEGIN
     RAISE NOTICE 'Search Patient by partial match and with only one search candidate';
