@@ -110,14 +110,15 @@ def perf(args):
                  SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname');
                  SELECT performance.search_patient_with_only_one_search_candidate();
                  SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000');
-                 SELECT indexing.drop_resource_indexes('Patient');
-                 SELECT indexing.index_search_param('Patient','name');
+                 SELECT performance.index_search_param('Patient','name');
                  SELECT admin.admin_disk_usage_top(10);
                  SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname');
                  SELECT performance.search_patient_with_only_one_search_candidate();
                  SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000');
+                 SELECT performance.index_search_param('Patient','gender');
                  SELECT crud.history('{}'::jsonb, 'Patient', 'nonexistentid');
-                 SELECT performance.history_for_one_patient();
+                 SELECT performance.create_patient_with_id('foo-bar-id');
+                 SELECT crud.history('{}'::jsonb, 'Patient', 'foo-bar-id');
                  """)
 
     print r["stdout"]
