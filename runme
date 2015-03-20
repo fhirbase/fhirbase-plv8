@@ -99,23 +99,35 @@ def perf(args):
 
     r = psql(db, """\\timing
                  SELECT admin.admin_disk_usage_top(10);
+
                  SELECT performance.create_patients(1);
                  SELECT performance.create_patients(1000);
+
                  SELECT performance.read_patients(1);
                  SELECT performance.read_patients(1000);
+
                  SELECT performance.create_temporary_patients(1000);
+
                  SELECT performance.update_patients(1);
+
                  SELECT performance.delete_patients(1);
                  SELECT performance.delete_patients(1000);
+
                  SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname');
                  SELECT performance.search_patient_with_only_one_search_candidate();
                  SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000');
+
                  SELECT performance.index_search_param('Patient','name');
                  SELECT admin.admin_disk_usage_top(10);
                  SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname');
                  SELECT performance.search_patient_with_only_one_search_candidate();
                  SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000');
+
                  SELECT performance.index_search_param('Patient','gender');
+                 SELECT count(*) FROM fhir.search('Patient', 'gender=female&_count=50000000');
+
+                 SELECT performance.index_search_param('Patient','telecom');
+
                  SELECT crud.history('{}'::jsonb, 'Patient', 'nonexistentid');
                  SELECT performance.create_patient_with_id('foo-bar-id');
                  SELECT crud.history('{}'::jsonb, 'Patient', 'foo-bar-id');
