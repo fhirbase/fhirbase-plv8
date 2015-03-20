@@ -116,6 +116,7 @@ def perf(args):
                  SELECT performance.search_patient_with_only_one_search_candidate();
                  SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000');
                  SELECT performance.index_search_param('Patient','gender');
+                 SELECT count(*) FROM fhir.search('Patient', 'gender=female&_count=50000000');
                  SELECT performance.index_search_param('Patient','telecom');
                  SELECT crud.history('{}'::jsonb, 'Patient', 'nonexistentid');
                  SELECT performance.create_patient_with_id('foo-bar-id');

@@ -88,6 +88,9 @@ Indexing patient gender
 indexing.index_search_param('Patient','gender')
 takes ~42 minutes.
 
+Searching for 'gender=female&_count=50000000'
+with fhir.search() using index takes ~9 s
+
 Indexing patient telecom
 indexing.index_search_param('Patient','telecom')
 takes ~65 minutes.
