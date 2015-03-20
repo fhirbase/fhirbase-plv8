@@ -88,6 +88,10 @@ Indexing patient gender
 indexing.index_search_param('Patient','gender')
 takes ~42 minutes.
 
+Indexing patient telecom
+indexing.index_search_param('Patient','telecom')
+takes ~65 minutes.
+
 History by id for non-existent patient takes ~25 ms.
 
 History by id for one patient takes ~25 ms.
