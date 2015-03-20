@@ -84,6 +84,10 @@ Indexing patient identifier
 indexing.index_search_param('Patient','identifier')
 takes ~5.2 hours.
 
+Indexing patient gender
+indexing.index_search_param('Patient','gender')
+takes ~42 minutes.
+
 History by id for non-existent patient takes ~25 ms.
 
 History by id for one patient takes ~25 ms.
