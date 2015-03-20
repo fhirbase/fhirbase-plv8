@@ -64,7 +64,7 @@ proc! search_patient_with_only_one_search_candidate() RETURNS void
 
 proc! index_search_param(_resource_type_ text, _name_ text) RETURNS void
   BEGIN
-    RAISE NOTICE 'Search Patient by partial match and with only one search candidate';
+    RAISE NOTICE 'Index patient search parameter';
     PERFORM indexing.drop_index_search_param(_resource_type_, _name_);
     PERFORM indexing.index_search_param(_resource_type_, _name_);
 
