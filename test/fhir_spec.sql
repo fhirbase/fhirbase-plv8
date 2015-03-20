@@ -8,7 +8,7 @@ BEGIN;
 SELECT generate.generate_tables('{Patient,Alert,Device}');
 
 setv('created',
-  fhir.create( '{"resourceType":"Patient", "id":"myid"}'::jsonb)
+  fhir.update( '{"resourceType":"Patient", "id":"myid"}'::jsonb)
 );
 
 fhir.read('Patient', 'myid') => getv('created')
@@ -53,8 +53,8 @@ expect 'patient created'
   WHERE logical_id = getv('without-id')->>'id'
 => 1::bigint
 
-expect_raise 'id and meta.versionId are required'
-  SELECT fhir.update( '{"resourceType":"Patient", "id":"myid"}'::jsonb)
+expect_raise 'id is required'
+  SELECT fhir.update( '{"resourceType":"Patient"}'::jsonb)
 
 expect_raise 'expected last versionId'
   SELECT fhir.update( '{"resourceType":"Patient", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)
@@ -64,11 +64,15 @@ expect 'updated'
   WHERE logical_id = 'myid'
 => 0::bigint
 
+SELECT pg_sleep(1);
+
 setv('updated',
   fhir.update(
     jsonbext.assoc(getv('created'),'name','{"text":"Updated name"}')
   )
 );
+
+--SELECT tests._debug(fhir.history('Patient', 'myid'));
 
 expect 'updated'
   SELECT count(*) FROM patient_history

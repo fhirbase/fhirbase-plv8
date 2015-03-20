@@ -8,7 +8,7 @@ BEGIN;
 SELECT fhir.generate_tables('{Order}');
 
 setv('created',
-  fhir.create( '{"resourceType":"Order", "id":"myid"}'::jsonb)
+  fhir.update( '{"resourceType":"Order", "id":"myid"}'::jsonb)
 );
 
 fhir.read('Order', 'myid') => getv('created')
@@ -53,7 +53,7 @@ expect 'order created'
   WHERE logical_id = getv('without-id')->>'id'
 => 1::bigint
 
-expect_raise 'id and meta.versionId are required'
+expect_raise 'expected last versionId'
   SELECT fhir.update( '{"resourceType":"Order", "id":"myid"}'::jsonb)
 
 expect_raise 'expected last versionId'

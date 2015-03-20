@@ -33,8 +33,17 @@ BEGIN;
 
 SELECT generate.generate_tables('{Patient}');
 
+expect_raise 'resource id should be empty'
+  SELECT crud.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
+
+ROLLBACK;
+
+BEGIN;
+
+SELECT generate.generate_tables('{Patient}');
+
 setv('created',
-  crud.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
+  crud.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
 );
 
 crud.read('{}'::jsonb, 'myid') => getv('created')
@@ -78,9 +87,6 @@ expect 'patient created'
   SELECT count(*) FROM patient
   WHERE logical_id = getv('without-id')->>'id'
 => 1::bigint
-
-expect_raise 'id and meta.versionId are required'
-  SELECT crud.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
 
 expect_raise 'expected last versionId'
   SELECT crud.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)

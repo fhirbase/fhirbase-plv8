@@ -65,10 +65,12 @@ proc! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
     _id_ := _resource_->>'id';
     _vid_ := this.gen_version_id(_resource_);
 
-    IF _id_ is NULL THEN
-      _id_ := _vid_;
-      _resource_ := jsonbext.assoc(_resource_, 'id', ('"' || _id_ || '"')::jsonb);
+    IF _id_ IS NOT NULL THEN
+      RAISE EXCEPTION 'resource id should be empty';
     END IF;
+
+    _id_ := _vid_;
+    _resource_ := jsonbext.assoc(_resource_, 'id', ('"' || _id_ || '"')::jsonb);
 
     _meta_ := jsonbext.merge(
       COALESCE(_resource_->'meta','{}'::jsonb),
@@ -95,36 +97,37 @@ proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
   _old_vid_ text;
   _new_vid_ text;
   _vid_check_ text;
-  _updated_ timestamptz;
+  _updated_ timestamptz :=  CURRENT_TIMESTAMP;
   _resource_type_ text;
   BEGIN
     _id_ := _resource_->>'id';
     _old_vid_ := _resource_#>>'{meta,versionId}';
+    _new_vid_ := this.gen_version_id(_resource_);
     _resource_type_ := _resource_->>'resourceType';
 
-    IF _old_vid_ IS NULL OR _id_ IS NULL THEN
-      RAISE EXCEPTION 'id and meta.versionId are required';
+    IF _id_ IS NULL THEN
+      RAISE EXCEPTION 'resource id is required';
     END IF;
 
     SELECT version_id INTO _vid_check_ FROM resource
-       WHERE logical_id = _id_ AND resource_type = _resource_type_;
+    WHERE logical_id = _id_ AND resource_type = _resource_type_;
 
-    IF _vid_check_ <> _old_vid_ OR _vid_check_ IS NULL THEN
+    IF coalesce(_vid_check_, '') <> coalesce(_old_vid_, '') THEN
       RAISE EXCEPTION 'expected last versionId %, but got %', _vid_check_, _old_vid_;
     END IF;
 
-    EXECUTE
+    IF _old_vid_ IS NOT NULL THEN
+      EXECUTE
       gen._tpl($SQL$
         INSERT INTO "{{tbl}}_history"
           (logical_id, version_id, published, updated, content, category)
           SELECT
           logical_id, version_id, published, updated, content, category
           FROM "{{tbl}}" WHERE version_id = $1 LIMIT 1
-      $SQL$, 'tbl', lower(_resource_type_))
-    USING _old_vid_;
+        $SQL$, 'tbl', lower(_resource_type_))
+      USING _old_vid_;
+    END IF;
 
-    _updated_ := current_timestamp + interval '1 microseconds';
-    _new_vid_ := this.gen_version_id(_resource_);
     _resource_ := jsonbext.assoc(_resource_, 'meta',
       jsonbext.merge(_resource_->'meta',
         json_build_object(
@@ -134,7 +137,12 @@ proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
       )
     );
 
-    EXECUTE
+    IF _old_vid_ IS NULL THEN
+      EXECUTE
+        format('INSERT INTO %I (logical_id, version_id, published, updated, content) VALUES ($1, $2, $3, $4, $5)', lower(_resource_type_))
+      USING _id_, _new_vid_, _updated_, _updated_, _resource_;
+    ELSE
+      EXECUTE
       gen._tpl($SQL$
         UPDATE "{{tbl}}" SET
         version_id = $2,
@@ -142,7 +150,8 @@ proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
         updated = $4
         WHERE version_id = $1
       $SQL$, 'tbl', lower(_resource_type_))
-    USING _old_vid_, _new_vid_, _resource_, _updated_;
+      USING _old_vid_, _new_vid_, _resource_, _updated_;
+    END IF;
 
     RETURN this.read(_cfg_, _id_);
 
@@ -216,7 +225,7 @@ func! history(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS jsonb
         SELECT * FROM resource
          WHERE resource_type = _resource_type_
            AND logical_id = this._extract_id(_id_)
-        UNION
+        UNION ALL
         SELECT * FROM resource_history
          WHERE resource_type = _resource_type_
            AND logical_id = this._extract_id(_id_)
@@ -232,7 +241,7 @@ func! history(_cfg_ jsonb, _resource_type_ text) RETURNS jsonb
       FROM (
         SELECT * FROM resource
          WHERE resource_type = _resource_type_
-        UNION
+        UNION ALL
         SELECT * FROM resource_history
          WHERE resource_type = _resource_type_
       ) r ORDER BY r.updated desc
@@ -245,7 +254,7 @@ func! history(_cfg_ jsonb) RETURNS jsonb
     SELECT json_build_object('resource', r.content)::jsonb as entry
       FROM (
         SELECT * FROM resource
-        UNION
+        UNION ALL
         SELECT * FROM resource_history
       ) r ORDER BY r.updated desc
   )
