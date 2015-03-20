@@ -51,5 +51,3 @@ select count(*) from temp.languages;
 select count(*) from temp.street_names;
 select count(*) from temp.cities;
 select count(*) from temp.organization_names;
-
-select fhir.generate_tables('{Patient,Organization,Encounter,Practitioner}');

@@ -311,6 +311,7 @@ proc! generate(_number_of_patients_ integer, _rand_seed_ float) RETURNS bigint
     RAISE NOTICE 'Generating % patients with rand_seed=%', _number_of_patients_, _rand_seed_;
 
     PERFORM setseed(_rand_seed_);
+    PERFORM fhir.generate_tables('{Patient,Organization,Encounter,Practitioner}');
     PERFORM this.insert_organizations();
     PERFORM this.insert_practitioner(200);
     PERFORM this.insert_patients(_number_of_patients_);
