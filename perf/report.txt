@@ -92,6 +92,10 @@ Indexing patient address
 indexing.index_search_param('Patient','address')
 takes ~103 minutes.
 
+Indexing patient active
+indexing.index_search_param('Patient','active')
+takes ~41 minutes.
+
 Searching for 'gender=female&_count=50000000'
 with fhir.search() using index takes ~9 s
 
