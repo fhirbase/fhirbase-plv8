@@ -7,6 +7,7 @@ import ql.migrate
 from ql.pg import psql
 import sys
 import glob
+import re
 
 if 'DB' in os.environ:
     db = os.environ['DB']
@@ -76,20 +77,25 @@ def migrate(args):
     ql.migrate.migrate(db)
 
 def seed(args):
+    if not 'PATIENTS_COUNT' in os.environ:
+        print "Please set required PATIENTS_COUNT environment variable"
+        exit(1)
+
+    if not 'RAND_SEED' in os.environ:
+        os.environ['RAND_SEED'] = '0.21'
+
+    r = psql(db, """\\conninfo
+                    SELECT fhir.generate_tables('{Patient,Organization,Encounter,Practitioner}');
+""")
+
     perf_files = glob.glob('./perf/*.sql')
     reload(perf_files)
-
-    if not 'patients_count' in os.environ:
-        os.environ['patients_count'] = '10000'
-
-    if not 'rand_seed' in os.environ:
-        os.environ['rand_seed'] = '0.21'
 
     r = psql(db, """\\timing
                  SELECT generator.generate(%(patients_count)s, %(rand_seed)s)
                  """ \
-                 % {'patients_count': os.environ['patients_count'],
-                    'rand_seed': os.environ['rand_seed']})
+                 % {'patients_count': os.environ['PATIENTS_COUNT'],
+                    'rand_seed': os.environ['RAND_SEED']})
 
     print r["stdout"]
 
@@ -97,54 +103,91 @@ def perf(args):
     perf_files = glob.glob('./perf/*.sql')
     reload(perf_files)
 
-    r = psql(db, """\\timing
-                 SELECT admin.admin_disk_usage_top(10);
+    benchmarks = [
+        ["disk usage right after generation of seed data",
+         "SELECT admin.admin_disk_usage_top(10)"],
 
-                 SELECT performance.create_patients(1);
-                 SELECT performance.create_patients(1000);
+        ["fhir.create called just one time",
+         "SELECT performance.create_patients(1)"],
 
-                 SELECT performance.read_patients(1);
-                 SELECT performance.read_patients(1000);
+        ["fhir.create called 1000 times in batch",
+         "SELECT performance.create_patients(1000)"],
 
-                 SELECT performance.create_temporary_patients(1000);
+        ["fhir.read called just one time",
+         "SELECT performance.read_patients(1)"],
 
-                 SELECT performance.update_patients(1);
+        ["fhir.read called 1000 times in batch",
+         "SELECT performance.read_patients(1000)"],
 
-                 SELECT performance.delete_patients(1);
-                 SELECT performance.delete_patients(1000);
+        ["Updating single patient with fhir.update()",
+         "SELECT performance.create_temporary_patients(1000);\nSELECT performance.update_patients(1)"],
 
-                 SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname');
-                 SELECT performance.search_patient_with_only_one_search_candidate();
-                 SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000');
+        ["fhir.delete called one time",
+         "SELECT performance.delete_patients(1)"],
 
-                 SELECT performance.index_search_param('Patient','name');
-                 SELECT admin.admin_disk_usage_top(10);
-                 SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname');
-                 SELECT performance.search_patient_with_only_one_search_candidate();
-                 SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000');
+        ["fhir.delete called 1000 times in batch",
+         "SELECT performance.delete_patients(1000)"],
 
-                 SELECT performance.index_search_param('Patient','gender');
-                 SELECT count(*) FROM fhir.search('Patient', 'gender=female&_count=50000000');
+        ["searching for non-existent name without index",
+         "SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname')"],
 
-                 SELECT performance.index_search_param('Patient','address');
-                 SELECT count(*) FROM fhir.search('Patient', 'address=us&_count=50000000');
+        ["building Patient.name index",
+         "SELECT performance.index_search_param('Patient','gender')"],
 
-                 SELECT performance.index_search_param('Patient','telecom');
-                 SELECT count(*) FROM fhir.search('Patient', 'telecom=+1&_count=50000000');
+        ["searching for patient with unique name",
+         "SELECT performance.search_patient_with_only_one_search_candidate()"],
 
-                 SELECT crud.history('{}'::jsonb, 'Patient', 'nonexistentid');
-                 SELECT performance.create_patient_with_id('foo-bar-id');
-                 SELECT crud.history('{}'::jsonb, 'Patient', 'foo-bar-id');
-                 """)
+        ["searching for all Johns in database",
+         "SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000')"],
 
-    print r["stdout"]
+        ["building Patient.gender index",
+         "SELECT performance.index_search_param('Patient','gender')"],
+
+        ["building Patient.address index",
+         "SELECT performance.index_search_param('Patient','address')"],
+
+        ["building Patient.telecom index",
+         "SELECT performance.index_search_param('Patient','telecom')"],
+
+        ["building Participant.name index",
+         "SELECT performance.index_search_param('Participant','name')"],
+
+        ["building Organization.name index",
+         "SELECT performance.index_search_param('Organization','name')"],
+
+        ["building Organization.address index",
+         "SELECT performance.index_search_param('Organization','address')"]
+    ]
+
+    results = []
+
+    for test in benchmarks:
+        desc = test[0]
+        sql = test[1]
+
+        print desc
+        r = psql(db, "\\timing\n%s;" % sql)
+        print r["stdout"]
+
+        m = re.search("Time: ([0-9.]+) ms", r["stdout"])
+        time = m.groups()[0]
+
+        results.append([desc, time])
+
+        print "-" * 50
+
+    maxlength = max([len(x[0]) for x in results]) + 5
+
+    print "\nRESULTS:"
+    for r in results:
+        print "{0: <{maxlength}} {1: >10} ms".format(r[0], r[1], maxlength=maxlength)
 
 commands = dict(test=run_tests, compile=compile, load=load, reload=reload, integrate=integrate, build=build, migrate=migrate, seed=seed, perf=perf)
 
 if len(sys.argv) < 2:
-  print "Please use command:"
-  print commands.keys()
-  exit(1)
+    print "Please use command:"
+    print commands.keys()
+    exit(1)
 
 cmd = sys.argv[1]
 

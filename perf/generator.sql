@@ -1,6 +1,7 @@
 -- #import ./load_data.sql
 -- #import ../src/jsonbext.sql
 
+
 func! random(a numeric, b numeric) RETURNS numeric
   SELECT ceil(a + (b - a) * random())::numeric;
 
@@ -249,21 +250,23 @@ func! insert_patients(_total_count_ integer) RETURNS bigint
 
 func! insert_encounters() RETURNS bigint
   WITH patients_ids_source as (
-    (select logical_id as patient_id,
+    SELECT logical_id as patient_id,
            row_number() over ()
-     from patient)
+      FROM patient
 
     UNION ALL
 
-    (select logical_id as patient_id,
-            row_number() over ()
-     from patient
-    order by random()
-    limit (select count(*) from patient) / 3)
+    SELECT patient_id, row_number() over ()
+    FROM (SELECT logical_id as patient_id
+          FROM patient order by random()
+          LIMIT (select count(*) from patient) / 2) _
   ), practitioners_source AS (
     SELECT logical_id as practitioner_id,
            row_number() OVER ()
     FROM practitioner
+    CROSS JOIN generate_series(0, ceil((select count(*) from patients_ids_source)::float
+                                       / (select count(*)
+                                          from practitioner)::float)::integer)
     ORDER by random()
   ), encounter_data as (
     SELECT *,
@@ -311,7 +314,8 @@ proc! generate(_number_of_patients_ integer, _rand_seed_ float) RETURNS bigint
     RAISE NOTICE 'Generating % patients with rand_seed=%', _number_of_patients_, _rand_seed_;
 
     PERFORM setseed(_rand_seed_);
-    PERFORM fhir.generate_tables('{Patient,Organization,Encounter,Practitioner}');
+    TRUNCATE TABLE patient, patient_history, organization, organization_history,
+                   practitioner, practitioner_history, encounter, encounter_history;
     PERFORM this.insert_organizations();
     PERFORM this.insert_practitioner(200);
     PERFORM this.insert_patients(_number_of_patients_);

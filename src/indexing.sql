@@ -104,4 +104,4 @@ func drop_resource_indexes(_resource text) RETURNS bigint
 
 func drop_all_resource_indexes() RETURNS bigint
   SELECT count(gen._eval(this.drop_index_search_param_exp(ROW(x.*))))
-  from searchparameter x
+  FROM searchparameter x

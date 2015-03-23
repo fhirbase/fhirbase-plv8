@@ -7,8 +7,9 @@ def psql(db, sql):
     pr.stdin.close()
     pr.wait()
     returncode = pr.returncode
-    err = pr.stderr and  pr.stderr.read()
+    err = pr.stderr and pr.stderr.read()
     out = pr.stdout and pr.stdout.read()
+
     if err and pr.returncode != 0:
         print '\x1b[31m%s\x1b[0m' % err
         raise Exception('sql error')

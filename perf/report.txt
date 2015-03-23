@@ -117,3 +117,27 @@ with error (no space left on device).
 Indexing patient birthDate
 with indexing.index_search_param('Patient', 'birthdate')
 takes 16.7 seconds (50M patients => 23 hours).
+
+---------------------------------------------------------
+
+1M patients (on MacBook Air):
+
+RESULTS:
+disk usage right after generation of seed data          26.595 ms
+fhir.create called just one time                        27.051 ms
+fhir.create called 1000 times in batch                1591.578 ms
+fhir.read called just one time                           7.824 ms
+fhir.read called 1000 times in batch                   435.025 ms
+Updating single patient with fhir.update()             258.653 ms
+fhir.delete called one time                             15.570 ms
+fhir.delete called 1000 times in batch                 989.709 ms
+searching for non-existent name without index       122102.599 ms
+building Patient.name index                         140005.687 ms
+searching for patient with unique name              152653.670 ms
+searching for all Johns in database                 132861.008 ms
+building Patient.gender index                       145063.105 ms
+building Patient.address index                      308881.264 ms
+building Patient.telecom index                      211705.395 ms
+building Participant.name index                          7.685 ms
+building Organization.name index                        72.135 ms
+building Organization.address index                      7.429 ms
