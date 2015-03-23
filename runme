@@ -149,9 +149,6 @@ def perf(args):
         ["building Organization.name index",
          "SELECT performance.index_search_param('Organization','name')"],
 
-        ["building Organization.address index",
-         "SELECT performance.index_search_param('Organization','address')"],
-
         ["building Encounter.status index",
          "SELECT performance.index_search_param('Encounter','status')"],
 
