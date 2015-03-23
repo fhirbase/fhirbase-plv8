@@ -44,3 +44,5 @@ create table temp.organization_names (
 \copy temp.street_names (street_name) from './perf/data/street_names.csv';
 \copy temp.cities (zip, state, city, latitude, longitude) from './perf/data/cities.csv' with csv;
 \copy temp.organization_names (organization_name) from './perf/data/organization_names.csv';
+
+SELECT 1;

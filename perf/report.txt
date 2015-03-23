@@ -123,26 +123,37 @@ takes 16.7 seconds (50M patients => 23 hours).
 1M patients (on MacBook Air):
 
 RESULTS:
-disk usage right after generation of seed data          11.251 ms
-fhir.create called just one time                        12.384 ms
-fhir.create called 1000 times in batch                1295.850 ms
-fhir.read called just one time                           8.305 ms
-fhir.read called 1000 times in batch                   395.329 ms
-Updating single patient with fhir.update()             257.148 ms
-fhir.delete called one time                              9.765 ms
-fhir.delete called 1000 times in batch                1004.257 ms
-searching for non-existent name without index        96971.049 ms
-building Patient.name index                         126951.682 ms
-building Patient.gender index                        98073.680 ms
-building Patient.address index                      242512.825 ms
-building Patient.telecom index                      154885.039 ms
-building Participant.name index                          5.678 ms
-building Organization.name index                        55.567 ms
-building Organization.address index                      5.769 ms
-building Encounter.status                           144310.344 ms
-running VACUUM ANALYZE on patient table              35217.234 ms
-running VACUUM ANALYZE on encounter table             7590.392 ms
-running VACUUM ANALYZE on organization table            70.176 ms
-running VACUUM ANALYZE on practitioner table            16.749 ms
-searching for patient with unique name                  60.877 ms
-searching for all Johns in database                    202.657 ms
+disk usage right after generation of seed data                                                                               21.885 ms
+fhir.create called just one time                                                                                             25.243 ms
+fhir.create called 1000 times in batch                                                                                     1209.033 ms
+fhir.read called just one time                                                                                                6.694 ms
+fhir.read called 1000 times in batch                                                                                        356.768 ms
+Updating single patient with fhir.update()                                                                                  218.599 ms
+fhir.delete called one time                                                                                                  13.135 ms
+fhir.delete called 1000 times in batch                                                                                     1182.448 ms
+searching for non-existent name without index                                                                             97010.424 ms
+building Patient.name index                                                                                              143934.523 ms
+building Patient.gender index                                                                                            106689.734 ms
+building Patient.address index                                                                                           249214.413 ms
+building Patient.telecom index                                                                                           151158.313 ms
+building Participant.name index                                                                                               5.616 ms
+building Organization.name index                                                                                             64.074 ms
+building Organization.address index                                                                                           6.180 ms
+building Encounter.status index                                                                                          125611.808 ms
+building Encounter.patient index                                                                                         249651.823 ms
+building Encounter.patient index                                                                                              8.256 ms
+building Encounter.practitioner index                                                                                         7.585 ms
+building Patient.organization index                                                                                      105702.273 ms
+running VACUUM ANALYZE on patient table                                                                                   41941.426 ms
+running VACUUM ANALYZE on encounter table                                                                                 10796.692 ms
+running VACUUM ANALYZE on organization table                                                                                 89.839 ms
+running VACUUM ANALYZE on practitioner table                                                                                 17.554 ms
+searching for patient with unique name                                                                                       51.238 ms
+searching for all Johns in database                                                                                         220.397 ms
+searching Patient with name=John&gender=female&_count=100 (should have no matches at all)                                   172.586 ms
+searching Patient with name=John&gender=male&_count=100                                                                      80.154 ms
+searching Patient with name=John&gender=male&active=true&address=YALUMBA&_count=100                                          31.600 ms
+searching Patient with name=John&gender=male&_count=100&_sort=name                                                          234.077 ms
+searching Patient with name=John&gender=male&_count=100&_sort=active                                                        209.552 ms
+searching Encounter with patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex         34834.579 ms
+searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis         373.777 ms
