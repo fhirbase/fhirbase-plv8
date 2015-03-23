@@ -155,6 +155,18 @@ def perf(args):
         ["building Encounter.status index",
          "SELECT performance.index_search_param('Encounter','status')"],
 
+        ["building Encounter.patient index",
+         "SELECT performance.index_search_param('Encounter','patient')"],
+
+        ["building Encounter.patient index",
+         "SELECT performance.index_search_param('Encounter','participant')"],
+
+        ["building Encounter.practitioner index",
+         "SELECT performance.index_search_param('Encounter','practitioner')"],
+
+        ["building Patient.organization index",
+         "SELECT performance.index_search_param('Patient','organization')"],
+
         ["running VACUUM ANALYZE on patient table",
          "VACUUM ANALYZE patient"],
 
@@ -171,7 +183,26 @@ def perf(args):
          "SELECT performance.search_patient_with_only_one_search_candidate()"],
 
         ["searching for all Johns in database",
-         "SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000')"]
+         "SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000')"],
+
+        ["searching Patient with name=John&gender=female&_count=100 (should have no matches at all)",
+         "SELECT count(*) FROM fhir.search('Patient', 'name=John&gender=female&_count=100')"],
+        ["searching Patient with name=John&gender=male&_count=100",
+         "SELECT count(*) FROM fhir.search('Patient', 'name=John&gender=male&_count=100')"],
+        ["searching Patient with name=John&gender=male&active=true&address=YALUMBA&_count=100",
+         "SELECT count(*) FROM fhir.search('Patient', 'name=John&gender=male&active=true&address=YALUMBA&_count=100')"],
+
+        ["searching Patient with name=John&gender=male&_count=100&_sort=name",
+         "SELECT count(*) FROM fhir.search('Patient', 'name=John&gender=male&_count=100&_sort=name')"],
+
+        ["searching Patient with name=John&gender=male&_count=100&_sort=active",
+         "SELECT count(*) FROM fhir.search('Patient', 'name=John&gender=male&_count=100&_sort=active')"],
+
+        ["searching Encounter with patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex",
+         "SELECT count(*) FROM fhir.search('Encounter', 'patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex')"],
+
+        ["searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis",
+         "SELECT count(*) FROM fhir.search('Encounter', 'patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis')"]
     ]
 
     results = []

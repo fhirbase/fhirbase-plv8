@@ -64,15 +64,5 @@ proc! search_patient_with_only_one_search_candidate() RETURNS void
 
 proc! index_search_param(_resource_type_ text, _name_ text) RETURNS void
   BEGIN
-    RAISE NOTICE 'Index patient search parameter';
     PERFORM indexing.drop_index_search_param(_resource_type_, _name_);
     PERFORM indexing.index_search_param(_resource_type_, _name_);
-
--- -- FIXME: Takes to many time!
--- SELECT indexing.index_search_param('Patient','birthdate');
-
--- -- FIXME: Takes to many time!
--- SELECT indexing.index_search_param('Patient','identifier');
-
--- -- FIXME: Takes to many time and waste all disk space!
--- SELECT count(crud.history('{}'::jsonb, 'Patient'));

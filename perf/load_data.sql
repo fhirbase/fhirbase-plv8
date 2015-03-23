@@ -44,10 +44,3 @@ create table temp.organization_names (
 \copy temp.street_names (street_name) from './perf/data/street_names.csv';
 \copy temp.cities (zip, state, city, latitude, longitude) from './perf/data/cities.csv' with csv;
 \copy temp.organization_names (organization_name) from './perf/data/organization_names.csv';
-
-select count(*) from temp.first_names;
-select count(*) from temp.last_names;
-select count(*) from temp.languages;
-select count(*) from temp.street_names;
-select count(*) from temp.cities;
-select count(*) from temp.organization_names;
