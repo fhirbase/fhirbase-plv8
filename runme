@@ -152,20 +152,20 @@ def perf(args):
         ["building Organization.address index",
          "SELECT performance.index_search_param('Organization','address')"],
 
-        ["building Encounter.status",
+        ["building Encounter.status index",
          "SELECT performance.index_search_param('Encounter','status')"],
 
-        ["running VACUUM ANALYZE on patient table"
+        ["running VACUUM ANALYZE on patient table",
          "VACUUM ANALYZE patient"],
 
-        ["running VACUUM ANALYZE on encounter table"
+        ["running VACUUM ANALYZE on encounter table",
          "VACUUM ANALYZE encounter"],
 
-        ["running VACUUM ANALYZE on organization table"
+        ["running VACUUM ANALYZE on organization table",
          "VACUUM ANALYZE organization"],
 
-        ["running VACUUM ANALYZE on participant table"
-         "VACUUM ANALYZE participant"],
+        ["running VACUUM ANALYZE on practitioner table",
+         "VACUUM ANALYZE practitioner"],
 
         ["searching for patient with unique name",
          "SELECT performance.search_patient_with_only_one_search_candidate()"],

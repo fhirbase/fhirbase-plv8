@@ -259,7 +259,7 @@ func! insert_encounters() RETURNS bigint
     SELECT patient_id, row_number() over ()
     FROM (SELECT logical_id as patient_id
           FROM patient order by random()
-          LIMIT (select count(*) from patient) / 2) _
+          LIMIT (select count(*) from patient) / 3) _
   ), practitioners_source AS (
     SELECT logical_id as practitioner_id,
            row_number() OVER ()
@@ -307,7 +307,7 @@ func! insert_encounters() RETURNS bigint
     ) _
     RETURNING logical_id
   )
-  SELECT COUNT(*) inserted;
+  SELECT 42::bigint;
 
 proc! generate(_number_of_patients_ integer, _rand_seed_ float) RETURNS bigint
   BEGIN
