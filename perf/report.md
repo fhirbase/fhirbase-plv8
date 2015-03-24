@@ -125,7 +125,7 @@ searching Encounter with patient:Patient.name=John&_count=100&status=finished&pr
 searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis         142,356 ms
 ```
 
-# Amazon RDS (db.t2.micro)
+# Amazon RDS - db.t2.micro (1M patients)
 
 ## Hardware
 
