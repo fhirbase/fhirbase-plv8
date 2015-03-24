@@ -21,7 +21,7 @@ building Organization.name index                                                
 building Organization.address index                                                                                           6.180 ms
 building Encounter.status index                                                                                          125611.808 ms
 building Encounter.patient index                                                                                         249651.823 ms
-building Encounter.patient index                                                                                              8.256 ms
+building Encounter.participant index                                                                                              8.256 ms
 building Encounter.practitioner index                                                                                         7.585 ms
 building Patient.organization index                                                                                      105702.273 ms
 running VACUUM ANALYZE on patient table                                                                                   41941.426 ms
@@ -107,7 +107,7 @@ building Participant.name index                                                 
 building Organization.name index                                                                                             36,529 ms
 building Encounter.status index                                                                                           61057,663 ms
 building Encounter.patient index                                                                                          85315,345 ms
-building Encounter.patient index                                                                                              5,581 ms
+building Encounter.participant index                                                                                              5,581 ms
 building Encounter.practitioner index                                                                                         3,898 ms
 building Patient.organization index                                                                                       42034,921 ms
 running VACUUM ANALYZE on patient table                                                                                   17620,688 ms
@@ -123,6 +123,98 @@ searching Patient with name=John&gender=male&_count=100&_sort=name              
 searching Patient with name=John&gender=male&_count=100&_sort=active                                                         84,282 ms
 searching Encounter with patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex         11784,941 ms
 searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis         142,356 ms
+```
+
+# Amazon RDS (db.t2.micro)
+
+## Hardware
+
+* Class: db.t2.micro
+* Storage Type: General Purpose (SSD)
+* Storage: 5 GB
+* Engine: postgres
+* Engine Version: 9.4.1
+* Encrypted: No
+* Endpoint: fhirbase.cpjjbgbfyeng.us-west-1.rds.amazonaws.com:5432
+
+## Raw
+
+```
+PGHOST=fhirbase.cpjjbgbfyeng.us-west-1.rds.amazonaws.com PGPORT=5432 PGDATABASE=fhirbase PGUSER=fhirbase PGPASSWORD=fhirbase DB=fhirbase ./runme build
+
+PGHOST=fhirbase.cpjjbgbfyeng.us-west-1.rds.amazonaws.com PGPORT=5432 PGDATABASE=fhirbase PGUSER=fhirbase PGPASSWORD=fhirbase DB=fhirbase PATIENTS_COUNT=1000000 ./runme seed
+
+Timing is on.
+ generate 
+----------
+  1000000
+(1 row)
+
+Time: 403425,397 ms
+
+PGHOST=fhirbase.cpjjbgbfyeng.us-west-1.rds.amazonaws.com PGPORT=5432 PGDATABASE=fhirbase PGUSER=fhirbase PGPASSWORD=fhirbase DB=fhirbase ./runme perf
+```
+
+## Size
+
+```
+disk usage right after generation of seed data
+Timing is on.
+              admin_disk_usage_top               
+-------------------------------------------------
+ (public.patient,"1302 MB")
+ (public.encounter,"548 MB")
+ (public.encounter_pkey,"98 MB")
+ (public.patient_pkey,"73 MB")
+ (temp.last_names,"3360 kB")
+ (temp.first_names,"1936 kB")
+ (temp.cities,"1920 kB")
+ (pg_toast.pg_toast_16503,"1472 kB")
+ (public.structuredefinition_elements,"1048 kB")
+ (public.valueset,"968 kB")
+(10 rows)
+
+Time: 225,285 ms
+```
+
+## Performance
+
+```
+disk usage right after generation of seed data                                                                              225,285 ms
+fhir.create called just one time                                                                                            275,062 ms
+fhir.create called 1000 times in batch                                                                                     1487,994 ms
+fhir.read called just one time                                                                                              205,522 ms
+fhir.read called 1000 times in batch                                                                                        794,516 ms
+Updating single patient with fhir.update()                                                                                  522,262 ms
+fhir.delete called one time                                                                                                 260,549 ms
+fhir.delete called 1000 times in batch                                                                                     1691,040 ms
+searching for non-existent name without index                                                                             73965,293 ms
+building Patient.name index                                                                                               91126,739 ms
+building Patient.gender index                                                                                             73233,964 ms
+building Patient.address index                                                                                           167526,909 ms
+building Patient.telecom index                                                                                           109897,848 ms
+building Participant.name index                                                                                             211,297 ms
+building Organization.name index                                                                                            249,692 ms
+building Encounter.status index                                                                                           99244,819 ms
+building Encounter.patient index                                                                                         111530,729 ms
+building Encounter.participant index                                                                                            219,066 ms
+building Encounter.practitioner index                                                                                       204,985 ms
+building Patient.organization index                                                                                       58602,119 ms
+running VACUUM ANALYZE on patient table                                                                                   95621,509 ms
+running VACUUM ANALYZE on encounter table                                                                                 33805,179 ms
+running VACUUM ANALYZE on organization table                                                                                264,316 ms
+running VACUUM ANALYZE on practitioner table                                                                                228,069 ms
+searching for patient with unique name                                                                                      340,173 ms
+searching for all Johns in database                                                                                        1122,438 ms
+searching Patient with name=John&gender=female&_count=100 (should have no matches at all)                                   290,577 ms
+searching Patient with name=John&gender=male&_count=100                                                                     243,546 ms
+searching Patient with name=John&gender=male&active=true&address=YALUMBA&_count=100                                         228,047 ms
+searching Patient with name=John&gender=male&_count=100&_sort=name                                                          338,938 ms
+searching Patient with name=John&gender=male&_count=100&_sort=active                                                        332,615 ms
+searching Encounter with patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex         15867,754 ms
+searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis         416,509 ms
+
+
 ```
 
 # TODO
