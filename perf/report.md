@@ -1,6 +1,6 @@
 # MacBook Air (1M patients)
 
-## Results
+## Performance
 
 ```
 disk usage right after generation of seed data                                                                               21.885 ms
@@ -47,7 +47,7 @@ searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.or
 * Memory: 16GB
 * Disk: ATA INTEL SSDSC2CT12
 
-## Process
+## Raw
 
 ```
 DB=fhirbase PATIENTS_COUNT=1000000 ./runme seed
@@ -66,7 +66,29 @@ sudo du -hs /var/lib/postgresql/9.4/main
 2,2G	/var/lib/postgresql/9.4/main
 ```
 
-## Results
+## Size
+
+```
+disk usage right after generation of seed data
+Timing is on.
+              admin_disk_usage_top               
+-------------------------------------------------
+ (public.patient,"1302 MB")
+ (public.encounter,"548 MB")
+ (public.encounter_pkey,"98 MB")
+ (public.patient_pkey,"73 MB")
+ (temp.last_names,"3360 kB")
+ (temp.first_names,"1936 kB")
+ (temp.cities,"1920 kB")
+ (pg_toast.pg_toast_111888,"1472 kB")
+ (public.structuredefinition_elements,"1048 kB")
+ (public.valueset,"968 kB")
+(10 rows)
+
+Time: 8,492 ms
+```
+
+## Performance
 ```
 disk usage right after generation of seed data                                                                                8,492 ms
 fhir.create called just one time                                                                                             12,664 ms
