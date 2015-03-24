@@ -155,7 +155,7 @@ def perf(args):
         ["building Encounter.patient index",
          "SELECT performance.index_search_param('Encounter','patient')"],
 
-        ["building Encounter.patient index",
+        ["building Encounter.participant index",
          "SELECT performance.index_search_param('Encounter','participant')"],
 
         ["building Encounter.practitioner index",
