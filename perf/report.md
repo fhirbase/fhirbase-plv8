@@ -1,3 +1,4 @@
+```
 1000  - Time: 1365.644 ms
 
 Timing is on.
@@ -119,10 +120,13 @@ with indexing.index_search_param('Patient', 'birthdate')
 takes 16.7 seconds (50M patients => 23 hours).
 
 ---------------------------------------------------------
+```
 
-1M patients (on MacBook Air):
+# MacBook Air (1M patients)
 
-RESULTS:
+## Results
+
+```
 disk usage right after generation of seed data                                                                               21.885 ms
 fhir.create called just one time                                                                                             25.243 ms
 fhir.create called 1000 times in batch                                                                                     1209.033 ms
@@ -157,18 +161,19 @@ searching Patient with name=John&gender=male&_count=100&_sort=name              
 searching Patient with name=John&gender=male&_count=100&_sort=active                                                        209.552 ms
 searching Encounter with patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex         34834.579 ms
 searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis         373.777 ms
+```
 
+# Desktop (1M patients)
 
-
-1M patients:
-on Hardware:
+## Hardware
 
 * Processor: 8x Intel(R) Core(TM) i7-3770 CPU @ 3.40GHz
 * Memory: 16GB
 * Disk: ATA INTEL SSDSC2CT12
 
-Process:
+## Process
 
+```
 DB=fhirbase PATIENTS_COUNT=1000000 ./runme seed
 
 NOTICE:  Generating 1000000 patients with rand_seed=0.21
@@ -183,9 +188,10 @@ Time: 223766,968 ms
 
 sudo du -hs /var/lib/postgresql/9.4/main
 2,2G	/var/lib/postgresql/9.4/main
-
 ```
-RESULTS:
+
+## Results
+```
 disk usage right after generation of seed data                                                                                8,492 ms
 fhir.create called just one time                                                                                             12,664 ms
 fhir.create called 1000 times in batch                                                                                      555,482 ms
