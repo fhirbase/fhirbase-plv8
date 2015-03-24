@@ -212,7 +212,7 @@ def perf(args):
         r = psql(db, "\\timing\n%s;" % sql)
         print r["stdout"]
 
-        m = re.search("Time: ([0-9.]+) ms", r["stdout"])
+        m = re.search("Time: ([0-9.,]+) ms", r["stdout"])
         time = m.groups()[0]
 
         results.append([desc, time])
