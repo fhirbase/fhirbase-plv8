@@ -184,6 +184,7 @@ Time: 223766,968 ms
 sudo du -hs /var/lib/postgresql/9.4/main
 2,2G	/var/lib/postgresql/9.4/main
 
+```
 RESULTS:
 disk usage right after generation of seed data                                                                                8,492 ms
 fhir.create called just one time                                                                                             12,664 ms
@@ -218,3 +219,4 @@ searching Patient with name=John&gender=male&_count=100&_sort=name              
 searching Patient with name=John&gender=male&_count=100&_sort=active                                                         84,282 ms
 searching Encounter with patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex         11784,941 ms
 searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis         142,356 ms
+```
