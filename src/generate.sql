@@ -17,6 +17,8 @@ func! generate_tables(_resources_ text[]) returns text
         ALTER COLUMN content SET NOT NULL,
         ALTER COLUMN resource_type SET DEFAULT '{{resource_type}}';
 
+      CREATE UNIQUE INDEX {{tbl_name}}_version_id_idx ON "{{tbl_name}}" (version_id);
+
       -- this index speedup search joins (cause uuid are casted to texts)
       --CREATE UNIQUE INDEX {{tbl_name}}_logical_id_as_text_idx
       --ON "{{tbl_name}}" (logical_id);
