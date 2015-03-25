@@ -36,7 +36,7 @@ proc! create_temporary_patients(_limit_ integer) RETURNS void
 proc! update_patients(_limit_ integer) RETURNS void
   BEGIN
     RAISE NOTICE 'Update patients';
-    PERFORM crud.update('{}'::jsonb, temp_patients.data)
+    PERFORM count(crud.update('{}'::jsonb, temp_patients.data))
             FROM
             (SELECT data FROM temp.patient_data LIMIT _limit_) temp_patients;
 
