@@ -33,12 +33,12 @@ func _parse_param(_params_ text) RETURNS table (key text[], operator text, value
 
   WITH initial AS (
     -- split params by & and then split by = return (key, val) relation
-    SELECT searh_params.url_decode(split_part(x,'=',1)) as key,
-           searh_params.url_decode(split_part(x, '=', 2)) as val
+    SELECT this.url_decode(split_part(x,'=',1)) as key,
+           this.url_decode(split_part(x, '=', 2)) as val
       FROM regexp_split_to_table(_params_,'&') x
   ), with_op_mod AS (
-    SELECT  searh_params._get_key(key) as key, -- normalize key (remove modifiers)
-            searh_params._get_modifier(key) as mod, -- extract modifier
+    SELECT  this._get_key(key) as key, -- normalize key (remove modifiers)
+            this._get_modifier(key) as mod, -- extract modifier
             CASE WHEN val ~ E'^(>=|<=|<|>|~).*' THEN
               regexp_replace(val, E'^(>=|<=|<|>|~).*','\1') -- extract operator
             ELSE

@@ -5,7 +5,7 @@
 -- #import ./index_date.sql
 -- #import ./index_fns.sql
 -- #import ./indexing.sql
--- #import ./searh_params.sql
+-- #import ./search_params.sql
 
 -- TODO: split into pure functions and search impl
 
@@ -52,7 +52,7 @@ func _expand_search_params(_resource_type text, _query text) RETURNS setof query
            key as key,
            operator as operator,
            value as value
-    FROM searh_params._parse_param(_query)
+    FROM search_params._parse_param(_query)
     WHERE key[1] NOT IN ('_tag', '_security', '_profile', '_sort', '_count', '_page')
 
     UNION
@@ -184,7 +184,7 @@ func build_sorting(_resource_type text, _query text) RETURNS text
             then 'DESC'
             else 'ASC'
             end as direction
-      FROM searh_params._parse_param(_query) q
+      FROM search_params._parse_param(_query) q
      WHERE key[1] = '_sort'
   ), with_meta AS (
     SELECT *
@@ -226,7 +226,7 @@ func build_search_query(_resource_type text, _query text) RETURNS text
       ORDER by chain
   ), special_params AS (
     SELECT key[1] as key, value[1] as value
-    FROM searh_params._parse_param(_query)
+    FROM search_params._parse_param(_query)
     where key[1] ilike '_%'
   )
 

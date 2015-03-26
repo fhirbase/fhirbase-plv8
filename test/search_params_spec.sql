@@ -1,7 +1,7 @@
 -- #import ../src/tests.sql
--- #import ../src/searh_params.sql
+-- #import ../src/search_params.sql
 
-SET search_path TO searh_params;
+SET search_path TO search_params;
 
 
 _get_modifier('subject:Patient.organization:Organization.identifier:text'::text) => 'text'
