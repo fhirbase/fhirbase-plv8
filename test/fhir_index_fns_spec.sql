@@ -1,9 +1,9 @@
 -- #import ../src/tests.sql
--- #import ../src/index_fns.sql
+-- #import ../src/fhirbase_idx_fns.sql
 
 BEGIN;
 
-SET search_path TO index_fns, vars, public;
+SET search_path TO fhirbase_idx_fns, vars, public;
 
 _unaccent_string('Jóe Ácme') => 'Joe Acme'
 

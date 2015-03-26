@@ -1,12 +1,12 @@
 -- #import ./fhirbase_coll.sql
 -- #import ./fhirbase_gen.sql
--- #import ./index_fns.sql
--- #import ./index_date.sql
+-- #import ./fhirbase_idx_fns.sql
+-- #import ./fhirbase_date_idx.sql
 
 CREATE EXTENSION IF NOT EXISTS btree_gist ;
 
 func _token_index_fn(dtype text, is_primitive boolean) RETURNS text
-  SELECT  'index_fns.index_'
+  SELECT  'fhirbase_idx_fns.index_'
   || CASE WHEN is_primitive THEN 'primitive'
           WHEN dtype IS NOT NULL THEN lower(dtype::text)
           ELSE 'ups' END
@@ -28,7 +28,7 @@ func index_token_exp(_meta searchparameter) RETURNS text
 func index_reference_exp(_meta searchparameter) RETURNS text
   SELECT
     format(
-      'CREATE INDEX %I ON %I USING GIN (index_fns.index_as_reference(content,%L))'
+      'CREATE INDEX %I ON %I USING GIN (fhirbase_idx_fns.index_as_reference(content,%L))'
       ,this._index_name(_meta)
       ,lower(_meta.base)
       ,fhirbase_coll._rest(_meta.path)::text
@@ -37,7 +37,7 @@ func index_reference_exp(_meta searchparameter) RETURNS text
 func index_string_exp(_meta searchparameter) RETURNS text
   SELECT
     format(
-       'CREATE INDEX %I ON %I USING GIN (index_fns.index_as_string(content,%L::text[]) gin_trgm_ops)'
+       'CREATE INDEX %I ON %I USING GIN (fhirbase_idx_fns.index_as_string(content,%L::text[]) gin_trgm_ops)'
       ,this._index_name(_meta)
       ,lower(_meta.base)
       ,fhirbase_coll._rest(_meta.path)::text
@@ -46,7 +46,7 @@ func index_string_exp(_meta searchparameter) RETURNS text
 func index_date_exp(_meta searchparameter) RETURNS text
   SELECT
     format(
-       'CREATE INDEX %I ON %I USING GIST (index_date.index_as_date(content,%L::text[], %L) range_ops)'
+       'CREATE INDEX %I ON %I USING GIST (fhirbase_date_idx.index_as_date(content,%L::text[], %L) range_ops)'
       ,this._index_name(_meta)
       ,lower(_meta.base)
       ,fhirbase_coll._rest(_meta.path)::text

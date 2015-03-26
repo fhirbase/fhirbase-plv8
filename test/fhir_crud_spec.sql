@@ -31,7 +31,7 @@ _extract_vid('http://ups/rid/_history/vid') => 'vid'
 
 BEGIN;
 
-SELECT generate.generate_tables('{Patient}');
+SELECT fhirbase_generate.generate_tables('{Patient}');
 
 expect_raise 'resource id should be empty'
   SELECT fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
@@ -40,7 +40,7 @@ ROLLBACK;
 
 BEGIN;
 
-SELECT generate.generate_tables('{Patient}');
+SELECT fhirbase_generate.generate_tables('{Patient}');
 
 setv('created',
   fhirbase_crud.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)

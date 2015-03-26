@@ -1,7 +1,7 @@
 -- #import ../src/tests.sql
--- #import ../src/search_params.sql
+-- #import ../src/fhirbase_params.sql
 
-SET search_path TO search_params;
+SET search_path TO fhirbase_params;
 
 
 _get_modifier('subject:Patient.organization:Organization.identifier:text'::text) => 'text'

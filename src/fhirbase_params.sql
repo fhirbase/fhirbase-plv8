@@ -1,5 +1,5 @@
 -- #import ./fhirbase_coll.sql
--- #import ./index_fns.sql
+-- #import ./fhirbase_idx_fns.sql
 
 proc url_decode(input text) RETURNS text
   -- copy/pasted url decode function
@@ -51,5 +51,5 @@ func _parse_param(_params_ text) RETURNS table (key text[], operator text, value
   SELECT
     regexp_split_to_array(key, '\.') as key,
     COALESCE(op,mod,'=') as operator,
-    regexp_split_to_array(index_fns._unaccent_string(val), ',') as value
+    regexp_split_to_array(fhirbase_idx_fns._unaccent_string(val), ',') as value
   FROM with_op_mod;

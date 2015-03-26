@@ -1,6 +1,6 @@
 -- #import ../src/tests.sql
--- #import ../src/lex.sql
-SET search_path TO lex;
+-- #import ../src/fhirbase_lex.sql
+SET search_path TO fhirbase_lex;
 
 BEGIN;
 lexit('abc') => 'abc'

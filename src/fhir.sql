@@ -1,9 +1,9 @@
--- #import ./generate.sql
+-- #import ./fhirbase_generate.sql
 -- #import ./fhirbase_conformance.sql
 -- #import ./fhirbase_crud.sql
--- #import ./transaction.sql
--- #import ./indexing.sql
--- #import ./search.sql
+-- #import ./fhirbase_transaction.sql
+-- #import ./fhirbase_indexing.sql
+-- #import ./fhirbase_search.sql
 -- #import ./fhirbase_admin.sql
 
 -- AIP facade
@@ -11,30 +11,30 @@
 -- generation
 
 func! generate_tables(_resources_ text[]) returns text
-  select generate.generate_tables(_resources_)
+  select fhirbase_generate.generate_tables(_resources_)
 
 func! generate_tables() returns text
-   SELECT generate.generate_tables()
+   SELECT fhirbase_generate.generate_tables()
 
 
 --- indexing
 func! index_search_param(_resource_type text, _name_ text) RETURNS text
-  SELECT  indexing.index_search_param(_resource_type , _name_ )
+  SELECT  fhirbase_indexing.index_search_param(_resource_type , _name_ )
 
 func! drop_index_search_param(_resource_type text, _name_ text) RETURNS bigint
- SELECT  indexing.drop_index_search_param(_resource_type , _name_ )
+ SELECT  fhirbase_indexing.drop_index_search_param(_resource_type , _name_ )
 
 func! index_resource(_resource text) RETURNS table (idx text)
- SELECT  indexing.index_resource(_resource)
+ SELECT  fhirbase_indexing.index_resource(_resource)
 
 func! drop_resource_indexes(_resource text) RETURNS bigint
- SELECT  indexing.drop_resource_indexes(_resource)
+ SELECT  fhirbase_indexing.drop_resource_indexes(_resource)
 
 func! index_all_resources() RETURNS table (idx text)
- SELECT  indexing.index_all_resources()
+ SELECT  fhirbase_indexing.index_all_resources()
 
 func! drop_all_resource_indexes() RETURNS bigint
- SELECT  indexing.drop_all_resource_indexes()
+ SELECT  fhirbase_indexing.drop_all_resource_indexes()
 
 -- conformance
 func conformance(_cfg_ jsonb) RETURNS jsonb
@@ -81,21 +81,21 @@ func! history() RETURNS jsonb
 -- transaction
 
 func! transaction( _bundle_ jsonb) RETURNS jsonb
-  SELECT transaction.transaction('{}'::jsonb, _bundle_)
+  SELECT fhirbase_transaction.transaction('{}'::jsonb, _bundle_)
 
 -- search
 
 func search( _type_ text, _params_ text) RETURNS jsonb
-  SELECT search.fhir_search('{}'::jsonb , _type_ , _params_ )
+  SELECT fhirbase_search.fhir_search('{}'::jsonb , _type_ , _params_ )
 
 func! explain_search(_resource_type text, query text) RETURNS table( "plan" text)
-  SELECT search.explain_search(_resource_type, query)
+  SELECT fhirbase_search.explain_search(_resource_type, query)
 
 func! _search(_resource_type text, query text) RETURNS SETOF resource
-  SELECT search.search(_resource_type, query)
+  SELECT fhirbase_search.search(_resource_type, query)
 
 func! search_sql(_resource_type_ text, _query_ text) RETURNS table( "plan" text)
-  SELECT search.build_search_query(_resource_type_, _query_)
+  SELECT fhirbase_search.build_search_query(_resource_type_, _query_)
 
 -- admin functions
 func! admin_disk_usage_top(_limit_ integer) RETURNS  jsonb

@@ -64,5 +64,5 @@ proc! search_patient_with_only_one_search_candidate() RETURNS void
 
 proc! index_search_param(_resource_type_ text, _name_ text) RETURNS void
   BEGIN
-    PERFORM indexing.drop_index_search_param(_resource_type_, _name_);
-    PERFORM indexing.index_search_param(_resource_type_, _name_);
+    PERFORM fhirbase_indexing.drop_index_search_param(_resource_type_, _name_);
+    PERFORM fhirbase_indexing.index_search_param(_resource_type_, _name_);

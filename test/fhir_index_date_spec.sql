@@ -1,8 +1,8 @@
 -- #import ../src/tests.sql
--- #import ../src/index_date.sql
+-- #import ../src/fhirbase_date_idx.sql
 
 set timezone='UTC';
-SET search_path TO index_date;
+SET search_path TO fhirbase_date_idx;
 
 index_as_date('{}', '{birthDate}','dateTime') => null
 

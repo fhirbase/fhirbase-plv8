@@ -2,10 +2,10 @@
 -- #import ./fhirbase_gen.sql
 -- #import ./fhirbase_json.sql
 -- #import ./fhirbase_crud.sql
--- #import ./index_date.sql
--- #import ./index_fns.sql
--- #import ./indexing.sql
--- #import ./search_params.sql
+-- #import ./fhirbase_date_idx.sql
+-- #import ./fhirbase_idx_fns.sql
+-- #import ./fhirbase_indexing.sql
+-- #import ./fhirbase_params.sql
 
 -- TODO: split into pure functions and search impl
 
@@ -52,7 +52,7 @@ func _expand_search_params(_resource_type text, _query text) RETURNS setof query
            key as key,
            operator as operator,
            value as value
-    FROM search_params._parse_param(_query)
+    FROM fhirbase_params._parse_param(_query)
     WHERE key[1] NOT IN ('_tag', '_security', '_profile', '_sort', '_count', '_page')
 
     UNION
@@ -101,7 +101,7 @@ func build_string_cond_ilike(tbl text, _q query_param) RETURNS text
   -- expected trigram index on expression
   -- (index_as_string(content, '{name}') ilike '%term%' OR index_as_string(content,'{name}') ilike '%term2')
   SELECT '(' || string_agg(
-      format('index_fns.index_as_string(%I.content, %L) ilike %L', tbl, _q.field_path, '%' || x || '%'),
+      format('fhirbase_idx_fns.index_as_string(%I.content, %L) ilike %L', tbl, _q.field_path, '%' || x || '%'),
       ' OR ') || ')'
   FROM unnest(_q.value) x
 
@@ -110,7 +110,7 @@ func build_string_cond_exact(tbl text, _q query_param) RETURNS text
   -- expected trigram index on expression
   -- (index_as_string(content, '{name}') ilike 'term')
   SELECT '(' || string_agg(
-  format('index_fns.index_as_string(%I.content, %L) ilike %L', tbl, _q.field_path, x),
+  format('fhirbase_idx_fns.index_as_string(%I.content, %L) ilike %L', tbl, _q.field_path, x),
   ' OR ') || ')'
   FROM unnest(_q.value) x
 
@@ -128,7 +128,7 @@ func build_token_cond(tbl text, _q query_param) RETURNS text
   -- (index_codeableconcept_as_token(content, '{name}') &&  '{term,term2}'varachr[])
   SELECT
     format('%s(%I.content, %L) && %L::text[]',
-      indexing._token_index_fn(_q.type, _q.is_primitive),
+      fhirbase_indexing._token_index_fn(_q.type, _q.is_primitive),
       tbl,
       _q.field_path,
       _q.value)
@@ -137,17 +137,17 @@ func build_date_cond(tbl text, _q query_param) RETURNS text
   SELECT
   '(' ||
   string_agg(
-    format('index_date.index_as_date(content, %L::text[], %L::text) && %L',
+    format('fhirbase_date_idx.index_as_date(content, %L::text[], %L::text) && %L',
       _q.field_path,
       _q.type,
       (
         case
         when _q.operator = '=' then
-          index_date._datetime_to_tstzrange(v, v)
+          fhirbase_date_idx._datetime_to_tstzrange(v, v)
         when _q.operator = '>' then
-          index_date._datetime_to_tstzrange(v, NULL)
+          fhirbase_date_idx._datetime_to_tstzrange(v, NULL)
         when _q.operator = '<' then
-          ('(,' || index_date._date_parse_to_upper(v) || ']' )::tstzrange
+          ('(,' || fhirbase_date_idx._date_parse_to_upper(v) || ']' )::tstzrange
         end
       )
     )
@@ -159,7 +159,7 @@ func build_reference_cond(tbl text, _q query_param) RETURNS text
   -- build condition for reference
   -- (index_as_reference(content, '{name}') &&  '{term,term2}'varachr[])
   -- TODO: respect modifier provider:Organization=id => 'Organization/id'
- SELECT format('index_fns.index_as_reference(content, %L) && %L::text[]', _q.field_path, _q.value)
+ SELECT format('fhirbase_idx_fns.index_as_reference(content, %L) && %L::text[]', _q.field_path, _q.value)
 
 func build_cond(tbl text, _q query_param) RETURNS text
   SELECT
@@ -184,7 +184,7 @@ func build_sorting(_resource_type text, _query text) RETURNS text
             then 'DESC'
             else 'ASC'
             end as direction
-      FROM search_params._parse_param(_query) q
+      FROM fhirbase_params._parse_param(_query) q
      WHERE key[1] = '_sort'
   ), with_meta AS (
     SELECT *
@@ -214,7 +214,7 @@ func build_search_query(_resource_type text, _query text) RETURNS text
     FROM  this._expand_search_params(_resource_type, _query) x
   ), joins AS ( --TODO: what if no middle join present ie we have a.b.c.attr = x and no a.b.attr condition
     SELECT
-      format(E'JOIN %I ON index_fns.index_as_reference(%I.content, %L) && ARRAY[%I.logical_id]::text[] AND \n %s',
+      format(E'JOIN %I ON fhirbase_idx_fns.index_as_reference(%I.content, %L) && ARRAY[%I.logical_id]::text[] AND \n %s',
         lower(resource_type),
         lower(parent_resource),
         link_path,
@@ -226,7 +226,7 @@ func build_search_query(_resource_type text, _query text) RETURNS text
       ORDER by chain
   ), special_params AS (
     SELECT key[1] as key, value[1] as value
-    FROM search_params._parse_param(_query)
+    FROM fhirbase_params._parse_param(_query)
     where key[1] ilike '_%'
   )
 

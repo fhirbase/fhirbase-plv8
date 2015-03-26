@@ -2,7 +2,7 @@
 -- #import ./fhirbase_gen.sql
 -- #import ./fhirbase_coll.sql
 -- #import ./fhirbase_util.sql
--- #import ./generate.sql
+-- #import ./fhirbase_generate.sql
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm; -- for ilike optimisation in search

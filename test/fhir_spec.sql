@@ -5,7 +5,7 @@ SET search_path TO fhir, vars, public;
 
 BEGIN;
 
-SELECT generate.generate_tables('{Patient,Alert,Device}');
+SELECT fhirbase_generate.generate_tables('{Patient,Alert,Device}');
 
 setv('created',
   fhir.update( '{"resourceType":"Patient", "id":"myid"}'::jsonb)

@@ -1,9 +1,9 @@
 -- #import ../src/tests.sql
--- #import ../src/search.sql
--- #import ../src/generate.sql
+-- #import ../src/fhirbase_search.sql
+-- #import ../src/fhirbase_generate.sql
 -- #import ../src/fhirbase_crud.sql
 
-SET search_path TO search, vars, public;
+SET search_path TO fhirbase_search, vars, public;
 
 build_sorting('Patient', '_sort=given') =>  E'\n ORDER BY (fhirbase_json.json_get_in(patient.content, \'{name,given}\'))[1]::text ASC'
 
@@ -13,7 +13,7 @@ SELECT count(*) FROM search('SearchParameter', 'base=Patient') => 15::bigint
 BEGIN;
 
 
-SELECT generate.generate_tables('{Patient}');
+SELECT fhirbase_generate.generate_tables('{Patient}');
 
 SELECT fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1973"}'::jsonb);
 SELECT fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1983"}'::jsonb);
@@ -28,7 +28,7 @@ ROLLBACK;
 
 BEGIN;
 
-SELECT generate.generate_tables('{Patient}');
+SELECT fhirbase_generate.generate_tables('{Patient}');
 
 setv('cfg','{"base":"https://test.me"}'::jsonb);
 
@@ -59,7 +59,7 @@ ROLLBACK;
 
 BEGIN;
 
-SELECT generate.generate_tables('{Device}');
+SELECT fhirbase_generate.generate_tables('{Device}');
 
 setv('cfg', '{"base":"https://test.me"}');
 setv('device', '{"resourceType": "Device", "model": "Jóe", "manufacturer": "Acme" }');
@@ -88,7 +88,7 @@ ROLLBACK;
 
 BEGIN;
 
-SELECT generate.generate_tables('{Organization}');
+SELECT fhirbase_generate.generate_tables('{Organization}');
 
 setv('cfg', '{"base":"https://test.me"}');
 setv('organization', '{"resourceType": "Organization", "name": "policlinic 6" }');

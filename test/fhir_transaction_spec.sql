@@ -1,51 +1,51 @@
 -- #import ../src/fhirbase_gen.sql
 -- #import ../src/fhirbase_crud.sql
--- #import ../src/generate.sql
--- #import ../src/transaction.sql
+-- #import ../src/fhirbase_generate.sql
+-- #import ../src/fhirbase_transaction.sql
 
 expect
-  transaction._url_to_crud_action('/Device'::text, 'POST'::text)
+  fhirbase_transaction._url_to_crud_action('/Device'::text, 'POST'::text)
 => ARRAY['create', 'Device']::text[]
 
 expect
-  transaction._url_to_crud_action('/Patient/patient-id'::text, 'PUT'::text)
+  fhirbase_transaction._url_to_crud_action('/Patient/patient-id'::text, 'PUT'::text)
 => ARRAY['update', 'Patient', 'patient-id']::text[]
 
 expect
-  transaction._url_to_crud_action('/Patient/patient-id'::text, 'DELETE'::text)
+  fhirbase_transaction._url_to_crud_action('/Patient/patient-id'::text, 'DELETE'::text)
 => ARRAY['delete', 'Patient', 'patient-id']::text[]
 
 expect
-  transaction._url_to_crud_action('/Patient'::text, 'GET'::text)
+  fhirbase_transaction._url_to_crud_action('/Patient'::text, 'GET'::text)
 => ARRAY['search', 'Patient']::text[]
 
 expect
-  transaction._url_to_crud_action('/Patient/pid/_history/vid'::text, 'GET'::text)
+  fhirbase_transaction._url_to_crud_action('/Patient/pid/_history/vid'::text, 'GET'::text)
 => ARRAY['vread', 'Patient', 'pid', 'vid']::text[]
 
 expect
-  transaction._url_to_crud_action('/Patient/pid'::text, 'GET'::text)
+  fhirbase_transaction._url_to_crud_action('/Patient/pid'::text, 'GET'::text)
 => ARRAY['read', 'Patient', 'pid']::text[]
 
 expect
-  transaction._url_to_crud_action('/Patient/_search'::text, 'POST'::text)
+  fhirbase_transaction._url_to_crud_action('/Patient/_search'::text, 'POST'::text)
 => ARRAY['search', 'Patient']::text[]
 
 expect_raise 'Wrong URL'
-  SELECT transaction._url_to_crud_action('/Patient'::text, 'PUT'::text);
+  SELECT fhirbase_transaction._url_to_crud_action('/Patient'::text, 'PUT'::text);
 
 expect_raise 'Wrong URL'
-  SELECT transaction._url_to_crud_action(''::text, 'POST'::text);
+  SELECT fhirbase_transaction._url_to_crud_action(''::text, 'POST'::text);
 
 expect_raise 'Wrong URL'
-  SELECT transaction._url_to_crud_action('/Patient/foobar/asd'::text, 'POST'::text);
+  SELECT fhirbase_transaction._url_to_crud_action('/Patient/foobar/asd'::text, 'POST'::text);
 
 ------------------------------------------------------------
 
 BEGIN;
 SET search_path TO vars, public;
 
-SELECT generate.generate_tables('{Patient,Alert,Device}');
+SELECT fhirbase_generate.generate_tables('{Patient,Alert,Device}');
 setv('cfg', '{"base":"https://test.me"}');
 
 setv('alert-json','{"resourceType": "Alert", "note": "old-note" }');
@@ -76,7 +76,7 @@ setv('valid-transaction-bundle',
 
 
 setv('valid-trans',
-  transaction.transaction(
+  fhirbase_transaction.transaction(
     getv('cfg'),
     getv('valid-transaction-bundle')
   )
@@ -136,7 +136,7 @@ setv('invalid-transaction-bundle',
 );
 
 expect_raise 'resource with id="nonexistentids" does not exist'
-  SELECT transaction.transaction(
+  SELECT fhirbase_transaction.transaction(
     getv('cfg'),
     getv('invalid-transaction-bundle')
   );
@@ -168,7 +168,7 @@ setv('crossreferenced-transaction-bundle',
 );
 
 setv('crossreferenced-transaction-response',
-  transaction.transaction(
+  fhirbase_transaction.transaction(
     getv('cfg'),
     getv('crossreferenced-transaction-bundle')
   )
@@ -212,7 +212,7 @@ setv('crossreferenced-with-update-transaction-bundle',
 );
 
 setv('crossreferenced-with-update-transaction-response',
-  transaction.transaction(
+  fhirbase_transaction.transaction(
     getv('cfg'),
     getv('crossreferenced-with-update-transaction-bundle')
   )
