@@ -4,6 +4,7 @@ import sha
 import subprocess
 from . import prepr
 from ql.pg import psql, silent_psql
+import glob
 
 def getin(d, ks):
     for p in ks:
@@ -101,6 +102,13 @@ def load_to_pg(db, fl, content, force=False):
         if res['stderr'] and res['returncode'] != 0:
             raise Exception(res['stderr'])
 
+def each_file(fls,cb):
+    for fl in sorted(fls):
+        if os.path.isfile(fl):
+            cb(fl)
+        else:
+            print 'Could not fild file %s' % fl
+
 def reload(db, fl, force=False):
     idx = dict(files=dict(),deps=dict())
     read_imports(fl, idx)
@@ -109,6 +117,10 @@ def reload(db, fl, force=False):
     print 'Load %s' % fl
     for f in deps:
         load_to_pg(db, f, idx['files'][f], force)
+
+def reload_files(db, files):
+    def run(fl): reload(db, fl)
+    each_file(files,run)
 
 def reload_test(db, fl, force=False):
     idx = dict(files=dict(),deps=dict())
