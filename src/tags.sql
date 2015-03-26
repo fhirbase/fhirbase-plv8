@@ -1,4 +1,4 @@
--- #import ./gen.sql
+-- #import ./fhirbase_gen.sql
 -- #import ./generate.sql
 
 func! fhir_tags(_cfg jsonb) RETURNS jsonb
@@ -51,7 +51,7 @@ proc! fhir_affix_tags(_cfg jsonb, _res_type text, _id_ text, _tags jsonb) RETURN
   res jsonb;
   BEGIN
     EXECUTE
-      gen._tpl($SQL$
+      fhirbase_gen._tpl($SQL$
         UPDATE "{{tbl}}"
         SET category = _merge_tags(category, $2)
         WHERE logical_id = $1
@@ -64,7 +64,7 @@ proc! fhir_affix_tags(_cfg jsonb, _res_type text, _id_ text, _vid_ text, _tags j
   res jsonb;
   BEGIN
     EXECUTE
-      gen._tpl($SQL$
+      fhirbase_gen._tpl($SQL$
         WITH res AS (
           UPDATE "{{tbl}}"
           SET category = _merge_tags(category, $2)
@@ -89,7 +89,7 @@ proc! fhir_remove_tags(_cfg jsonb, _res_type text, _id_ text) RETURNS bigint
   res jsonb;
   BEGIN
     EXECUTE
-      gen._tpl($SQL$
+      fhirbase_gen._tpl($SQL$
         UPDATE "{{tbl}}"
         SET category = '[]'::jsonb
         WHERE logical_id = $1
@@ -103,7 +103,7 @@ proc! fhir_remove_tags(_cfg jsonb, _res_type text, _id_ text, _vid_ text) RETURN
   res jsonb;
   BEGIN
     EXECUTE
-      gen._tpl($SQL$
+      fhirbase_gen._tpl($SQL$
         WITH res AS (
           UPDATE "{{tbl}}"
           SET category = '[]'::jsonb

@@ -1,4 +1,4 @@
--- #import ../src/gen.sql
+-- #import ../src/fhirbase_gen.sql
 -- #import ../src/crud.sql
 -- #import ../src/generate.sql
 -- #import ../src/transaction.sql

@@ -1,5 +1,5 @@
 -- #import ./coll.sql
--- #import ./gen.sql
+-- #import ./fhirbase_gen.sql
 -- #import ./jsonbext.sql
 -- #import ./crud.sql
 -- #import ./index_date.sql
@@ -231,7 +231,7 @@ func build_search_query(_resource_type text, _query text) RETURNS text
   )
 
   SELECT
-  gen._tpl('SELECT {{r}}.version_id, {{r}}.logical_id, {{r}}.resource_type, {{r}}.updated, {{r}}.published, {{r}}.category, {{r}}.content FROM {{r}}', 'r',  quote_ident(lower(_resource_type)))
+  fhirbase_gen._tpl('SELECT {{r}}.version_id, {{r}}.logical_id, {{r}}.resource_type, {{r}}.updated, {{r}}.published, {{r}}.category, {{r}}.content FROM {{r}}', 'r',  quote_ident(lower(_resource_type)))
   || E'\n' || COALESCE((SELECT string_agg(sql, E'\n')::text FROM joins), ' ')
   || E'\nWHERE '
   || COALESCE((SELECT string_agg(cond, ' AND ')

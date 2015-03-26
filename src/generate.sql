@@ -1,11 +1,11 @@
--- #import ./gen.sql
+-- #import ./fhirbase_gen.sql
 
 func! generate_tables(_resources_ text[]) returns text
   --genarate all tables
   SELECT
   count(
-  gen._eval(
-    gen._tpl($SQL$
+  fhirbase_gen._eval(
+    fhirbase_gen._tpl($SQL$
       CREATE TABLE "{{tbl_name}}" () INHERITS (resource);
 
       ALTER TABLE "{{tbl_name}}"

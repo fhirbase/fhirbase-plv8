@@ -1,5 +1,5 @@
 -- #import ./coll.sql
--- #import ./gen.sql
+-- #import ./fhirbase_gen.sql
 -- #import ./index_fns.sql
 -- #import ./index_date.sql
 
@@ -64,7 +64,7 @@ func index_search_param_exp(x searchparameter) RETURNS text
  END
 
 func index_search_param(_resource_type text, _name_ text) RETURNS text
-  SELECT count(gen._eval(this.index_search_param_exp(ROW(x.*))))::text
+  SELECT count(fhirbase_gen._eval(this.index_search_param_exp(ROW(x.*))))::text
   FROM searchparameter x
   WHERE base = _resource_type
   AND  name = _name_
@@ -74,7 +74,7 @@ func drop_index_search_param_exp(_meta searchparameter) RETURNS text
 
 -- TODO: implement for symmetric api
 func drop_index_search_param(_resource_type text, _name_ text) RETURNS bigint
-  SELECT count(gen._eval(this.drop_index_search_param_exp(ROW(x.*))))
+  SELECT count(fhirbase_gen._eval(this.drop_index_search_param_exp(ROW(x.*))))
   FROM searchparameter x
   WHERE base = _resource_type
   AND  name = _name_
@@ -82,14 +82,14 @@ func drop_index_search_param(_resource_type text, _name_ text) RETURNS bigint
 -- index token
 func index_resource(_resource text) RETURNS table (idx text)
   SELECT
-  gen._eval(this.index_search_param_exp(ROW(x.*)))
+  fhirbase_gen._eval(this.index_search_param_exp(ROW(x.*)))
   from searchparameter x
   where search_type IN ('token', 'reference', 'string', 'date')
   and base = _resource
 
 func index_all_resources() RETURNS table (idx text)
   SELECT
-    gen._eval(this.index_search_param_exp(ROW(x.*)))
+    fhirbase_gen._eval(this.index_search_param_exp(ROW(x.*)))
   from searchparameter x
   join structuredefinition p ON p.name = x.base AND p.installed = true
   where search_type IN ('token', 'reference', 'string', 'date')
@@ -98,10 +98,10 @@ func index_all_resources() RETURNS table (idx text)
 -- TODO: show unsupported indexes
 
 func drop_resource_indexes(_resource text) RETURNS bigint
-  SELECT count(gen._eval(this.drop_index_search_param_exp(ROW(x.*))))
+  SELECT count(fhirbase_gen._eval(this.drop_index_search_param_exp(ROW(x.*))))
   from searchparameter x
   where base = _resource
 
 func drop_all_resource_indexes() RETURNS bigint
-  SELECT count(gen._eval(this.drop_index_search_param_exp(ROW(x.*))))
+  SELECT count(fhirbase_gen._eval(this.drop_index_search_param_exp(ROW(x.*))))
   FROM searchparameter x

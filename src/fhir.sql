@@ -4,7 +4,7 @@
 -- #import ./transaction.sql
 -- #import ./indexing.sql
 -- #import ./search.sql
--- #import ./admin.sql
+-- #import ./fhirbase_admin.sql
 
 -- AIP facade
 
@@ -99,5 +99,5 @@ func! search_sql(_resource_type_ text, _query_ text) RETURNS table( "plan" text)
 
 -- admin functions
 func! admin_disk_usage_top(_limit_ integer) RETURNS  jsonb
-  SELECT json_agg(x.*)::jsonb FROM admin.admin_disk_usage_top(_limit_) x
+  SELECT json_agg(x.*)::jsonb FROM fhirbase_admin.admin_disk_usage_top(_limit_) x
 

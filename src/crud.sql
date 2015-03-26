@@ -1,5 +1,5 @@
 -- #import ./jsonbext.sql
--- #import ./gen.sql
+-- #import ./fhirbase_gen.sql
 -- #import ./coll.sql
 -- #import ./util.sql
 -- #import ./generate.sql
@@ -118,7 +118,7 @@ proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
 
     IF _old_vid_ IS NOT NULL THEN
       EXECUTE
-      gen._tpl($SQL$
+      fhirbase_gen._tpl($SQL$
         INSERT INTO "{{tbl}}_history"
           (logical_id, version_id, published, updated, content, category)
           SELECT
@@ -143,7 +143,7 @@ proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
       USING _id_, _new_vid_, _updated_, _updated_, _resource_;
     ELSE
       EXECUTE
-      gen._tpl($SQL$
+      fhirbase_gen._tpl($SQL$
         UPDATE "{{tbl}}" SET
         version_id = $2,
         content = $3,
@@ -171,7 +171,7 @@ proc! delete(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS jsonb
     END IF;
 
     EXECUTE
-      gen._tpl($SQL$
+      fhirbase_gen._tpl($SQL$
         INSERT INTO "{{tbl}}_history"
             (logical_id, version_id, published, updated, content)
           SELECT
