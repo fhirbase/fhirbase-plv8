@@ -1,5 +1,5 @@
 -- #import ./load_data.sql
--- #import ../src/jsonbext.sql
+-- #import ../src/fhirbase_json.sql
 
 
 func! random(a numeric, b numeric) RETURNS numeric

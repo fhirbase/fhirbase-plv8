@@ -1,7 +1,7 @@
--- #import ./coll.sql
+-- #import ./fhirbase_coll.sql
 -- #import ./fhirbase_gen.sql
--- #import ./jsonbext.sql
--- #import ./crud.sql
+-- #import ./fhirbase_json.sql
+-- #import ./fhirbase_crud.sql
 -- #import ./index_date.sql
 -- #import ./index_fns.sql
 -- #import ./indexing.sql
@@ -58,10 +58,10 @@ func _expand_search_params(_resource_type text, _query text) RETURNS setof query
     UNION
 
     SELECT res as parent_resource, -- move res to parent_resource
-           coll._rest(ri.path) as link_path,
+           fhirbase_coll._rest(ri.path) as link_path,
            this.get_reference_type(x.key[1], re.ref_type) as res, -- set next res in chain
            x.chain AS chain, -- save search path
-           coll._rest(x.key) AS key, -- remove first item from key untill only one key left
+           fhirbase_coll._rest(x.key) AS key, -- remove first item from key untill only one key left
            x.operator,
            x.value
      FROM  params x
@@ -76,11 +76,11 @@ func _expand_search_params(_resource_type text, _query text) RETURNS setof query
     parent_resource as parent_resource,
     link_path as link_path,
     res as resource_type,
-    coll._butlast(p.chain) as chain,
+    fhirbase_coll._butlast(p.chain) as chain,
     ri.search_type,
     ri.is_primitive,
     ri.type,
-    coll._rest(ri.path)::text[] as field_path,
+    fhirbase_coll._rest(ri.path)::text[] as field_path,
     key[1] as key,
     operator,
     value
@@ -196,7 +196,7 @@ func build_sorting(_resource_type text, _query text) RETURNS text
   )
   SELECT k.column1
   || string_agg(
-    format(E'(jsonbext.json_get_in(%I.content, \'%s\'))[1]::text %s', lower(_resource_type), coll._rest(y.path)::text, y.direction)
+    format(E'(fhirbase_json.json_get_in(%I.content, \'%s\'))[1]::text %s', lower(_resource_type), fhirbase_coll._rest(y.path)::text, y.direction)
     ,E', ')
   FROM with_meta y, (VALUES(E'\n ORDER BY ')) k -- we join for manadic effect, if no sorting parmas return null
   GROUP BY k.column1

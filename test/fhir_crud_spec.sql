@@ -1,6 +1,6 @@
 -- #import ../src/tests.sql
--- #import ../src/crud.sql
-SET search_path TO crud, vars, public;
+-- #import ../src/fhirbase_crud.sql
+SET search_path TO fhirbase_crud, vars, public;
 
 _build_url('{"base":"base"}', 'a','b','c') => 'base/a/b/c'
 
@@ -34,7 +34,7 @@ BEGIN;
 SELECT generate.generate_tables('{Patient}');
 
 expect_raise 'resource id should be empty'
-  SELECT crud.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
+  SELECT fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
 
 ROLLBACK;
 
@@ -43,11 +43,11 @@ BEGIN;
 SELECT generate.generate_tables('{Patient}');
 
 setv('created',
-  crud.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
+  fhirbase_crud.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
 );
 
-crud.read('{}'::jsonb, 'myid') => getv('created')
-crud.read('{}'::jsonb, 'Patient/myid') => getv('created')
+fhirbase_crud.read('{}'::jsonb, 'myid') => getv('created')
+fhirbase_crud.read('{}'::jsonb, 'Patient/myid') => getv('created')
 
 expect 'id is myid'
   getv('created')->>'id'
@@ -71,7 +71,7 @@ expect 'meta info'
 => 'string'
 
 setv('without-id',
-  crud.create('{}'::jsonb, '{"resourceType":"Patient", "name":{"text":"Goga"}}'::jsonb)
+  fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient", "name":{"text":"Goga"}}'::jsonb)
 );
 
 expect 'id was set'
@@ -80,7 +80,7 @@ expect 'id was set'
 
 
 expect 'meta respected in create'
-  crud.create('{}'::jsonb, '{"resourceType":"Patient", "meta":{"tags":[1]}}'::jsonb)#>'{meta,tags}'
+  fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient", "meta":{"tags":[1]}}'::jsonb)#>'{meta,tags}'
 => '[1]'::jsonb
 
 expect 'patient created'
@@ -89,7 +89,7 @@ expect 'patient created'
 => 1::bigint
 
 expect_raise 'expected last versionId'
-  SELECT crud.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)
+  SELECT fhirbase_crud.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)
 
 expect 'updated'
   SELECT count(*) FROM patient_history
@@ -97,8 +97,8 @@ expect 'updated'
 => 0::bigint
 
 setv('updated',
-  crud.update('{}'::jsonb,
-    jsonbext.assoc(getv('created'),'name','{"text":"Updated name"}')
+  fhirbase_crud.update('{}'::jsonb,
+    fhirbase_json.assoc(getv('created'),'name','{"text":"Updated name"}')
   )
 );
 
@@ -107,60 +107,60 @@ expect 'updated'
   WHERE logical_id = 'myid'
 => 1::bigint
 
-crud.read('{}'::jsonb, 'myid')#>>'{name,text}' => 'Updated name'
+fhirbase_crud.read('{}'::jsonb, 'myid')#>>'{name,text}' => 'Updated name'
 
-crud.vread('{}'::jsonb, getv('created')#>>'{meta,versionId}') => getv('created')
+fhirbase_crud.vread('{}'::jsonb, getv('created')#>>'{meta,versionId}') => getv('created')
 
 expect "latest"
-  crud.is_latest('{}'::jsonb, 'Patient', 'myid',
+  fhirbase_crud.is_latest('{}'::jsonb, 'Patient', 'myid',
     getv('updated')#>>'{meta,versionId}')
 => true
 
 expect "not latest"
-  crud.is_latest('{}'::jsonb, 'Patient', 'myid',
+  fhirbase_crud.is_latest('{}'::jsonb, 'Patient', 'myid',
     getv('created')#>>'{meta,versionId}')
 => false
 
-crud.history('{}'::jsonb, 'Patient', 'myid')#>'{entry,0,resource}' => getv('updated')
-crud.history('{}'::jsonb, 'Patient', 'myid')#>'{entry,1,resource}' => getv('created')
+fhirbase_crud.history('{}'::jsonb, 'Patient', 'myid')#>'{entry,0,resource}' => getv('updated')
+fhirbase_crud.history('{}'::jsonb, 'Patient', 'myid')#>'{entry,1,resource}' => getv('created')
 
 expect '2 items for resource history'
   jsonb_array_length(
-    crud.history('{}'::jsonb, 'Patient', 'myid')->'entry'
+    fhirbase_crud.history('{}'::jsonb, 'Patient', 'myid')->'entry'
   )
 => 2
 
 expect '4 items for resource type history'
   jsonb_array_length(
-    crud.history('{}'::jsonb, 'Patient')->'entry'
+    fhirbase_crud.history('{}'::jsonb, 'Patient')->'entry'
   )
 => 4
 
 expect 'more then 4 items for all history'
   jsonb_array_length(
-    crud.history('{}'::jsonb)->'entry'
+    fhirbase_crud.history('{}'::jsonb)->'entry'
   ) > 4
 => true
 
 -- DELETE
 
-crud.is_exists('{}'::jsonb, 'Patient', 'myid') => true
-crud.is_deleted('{}'::jsonb, 'Patient', 'myid') => false
+fhirbase_crud.is_exists('{}'::jsonb, 'Patient', 'myid') => true
+fhirbase_crud.is_deleted('{}'::jsonb, 'Patient', 'myid') => false
 
 setv('deleted',
-  crud.delete('{}'::jsonb, 'Patient', 'myid')
+  fhirbase_crud.delete('{}'::jsonb, 'Patient', 'myid')
 );
 
 expect_raise 'already deleted'
-  SELECT crud.delete('{}'::jsonb, 'Patient', 'myid')
+  SELECT fhirbase_crud.delete('{}'::jsonb, 'Patient', 'myid')
 
 expect_raise 'does not exist'
-  SELECT crud.delete('{}'::jsonb, 'Patient', 'nonexisting')
+  SELECT fhirbase_crud.delete('{}'::jsonb, 'Patient', 'nonexisting')
 
-crud.read('{}'::jsonb, 'myid') => null
+fhirbase_crud.read('{}'::jsonb, 'myid') => null
 
-crud.is_exists('{}'::jsonb, 'Patient', 'myid') => false
-crud.is_deleted('{}'::jsonb, 'Patient', 'myid') => true
+fhirbase_crud.is_exists('{}'::jsonb, 'Patient', 'myid') => false
+fhirbase_crud.is_deleted('{}'::jsonb, 'Patient', 'myid') => true
 
 getv('deleted')#>>'{meta,versionId}' => getv('updated')#>>'{meta,versionId}'
 

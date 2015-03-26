@@ -1,5 +1,5 @@
 -- #import ../src/fhirbase_gen.sql
--- #import ../src/crud.sql
+-- #import ../src/fhirbase_crud.sql
 -- #import ../src/generate.sql
 -- #import ../src/transaction.sql
 
@@ -51,8 +51,8 @@ setv('cfg', '{"base":"https://test.me"}');
 setv('alert-json','{"resourceType": "Alert", "note": "old-note" }');
 setv('device-json', '{"resourceType": "Device", "manufacturer": "Acme" }');
 
-setv('alert',  crud.create(getv('cfg'), getv('alert-json')));
-setv('device', crud.create(getv('cfg'), getv('device-json')));
+setv('alert',  fhirbase_crud.create(getv('cfg'), getv('alert-json')));
+setv('device', fhirbase_crud.create(getv('cfg'), getv('device-json')));
 
 setv('valid-transaction-bundle',
   json_build_object(
@@ -65,7 +65,7 @@ setv('valid-transaction-bundle',
       ),
       json_build_object(
         'transaction', ('{"method": "PUT", "url": "/Alert/' || (getv('alert')->>'id') || '"}')::json,
-        'resource', jsonbext.assoc(getv('alert'), 'note', '"new-note"'::jsonb)::json
+        'resource', fhirbase_json.assoc(getv('alert'), 'note', '"new-note"'::jsonb)::json
       ),
       json_build_object(
         'transaction', ('{"method": "DELETE", "url": "/Device/' || (getv('device')->>'id') || '"}')::json
@@ -84,7 +84,7 @@ setv('valid-trans',
 
 getv('valid-trans')->>'type' => 'transaction-response'
 
---select tests._debug(jsonbext.jsonb_to_array(getv('valid-transaction-bundle')->'entry'));
+--select tests._debug(fhirbase_json.jsonb_to_array(getv('valid-transaction-bundle')->'entry'));
 
 expect
   jsonb_array_length(
@@ -93,19 +93,19 @@ expect
 => 3
 
 expect
-  crud.read(
+  fhirbase_crud.read(
      getv('cfg'), getv('valid-trans')#>>'{entry,0,resource,id}'
   )#>>'{manufacturer}'
 => 'handmade'
 
 expect
-  crud.read(
+  fhirbase_crud.read(
      getv('cfg'), getv('valid-trans')#>>'{entry,1,resource,id}'
   )#>>'{note}'
 => 'new-note'
 
 expect
-  crud.is_deleted(
+  fhirbase_crud.is_deleted(
     getv('cfg'),
     'Device',
     getv('valid-trans')#>>'{entry,2,resource,id}'
@@ -179,7 +179,7 @@ expect
 => ('Patient/' || (getv('crossreferenced-transaction-response')#>>'{entry,1,resource,id}'))
 
 expect
-  crud.read(
+  fhirbase_crud.read(
     getv('cfg'),
     getv('crossreferenced-transaction-response')#>>'{entry,0,resource,id}'
   )#>>'{patient,reference}'
@@ -202,7 +202,7 @@ setv('crossreferenced-with-update-transaction-bundle',
         'transaction',
         ('{"method": "PUT", "url": "/Device/' || (getv('crossreferenced-transaction-response')#>>'{entry,0,resource,id}') || '"}')::json,
         'base', 'urn:uuid:',
-        'resource', jsonbext.merge(
+        'resource', fhirbase_json.merge(
           (getv('crossreferenced-transaction-response')#>'{entry,0,resource}'),
           '{"patient": {"reference": "archi"}}'
         )

@@ -1,7 +1,7 @@
 -- #import ../src/tests.sql
 -- #import ../src/search.sql
 -- #import ../src/generate.sql
--- #import ../src/crud.sql
+-- #import ../src/fhirbase_crud.sql
 -- #import ../src/tags.sql
 
 -- TODO: fixit

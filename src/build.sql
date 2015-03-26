@@ -1,4 +1,4 @@
--- #import ./crud.sql
+-- #import ./fhirbase_crud.sql
 -- #import ./valuesets.sql
 -- #import ./search.sql
 

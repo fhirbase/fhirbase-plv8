@@ -68,7 +68,7 @@ SELECT pg_sleep(1);
 
 setv('updated',
   fhir.update(
-    jsonbext.assoc(getv('created'),'name','{"text":"Updated name"}')
+    fhirbase_json.assoc(getv('created'),'name','{"text":"Updated name"}')
   )
 );
 
@@ -147,7 +147,7 @@ setv('valid-transaction-bundle',
       ),
       json_build_object(
         'transaction', ('{"method": "PUT", "url": "/Alert/' || (getv('alert')->>'id') || '"}')::json,
-        'resource', jsonbext.assoc(getv('alert'), 'note', '"new-note"'::jsonb)::json
+        'resource', fhirbase_json.assoc(getv('alert'), 'note', '"new-note"'::jsonb)::json
       ),
       json_build_object(
         'transaction', ('{"method": "DELETE", "url": "/Device/' || (getv('device')->>'id') || '"}')::json

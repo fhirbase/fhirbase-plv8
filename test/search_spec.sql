@@ -1,11 +1,11 @@
 -- #import ../src/tests.sql
 -- #import ../src/search.sql
 -- #import ../src/generate.sql
--- #import ../src/crud.sql
+-- #import ../src/fhirbase_crud.sql
 
 SET search_path TO search, vars, public;
 
-build_sorting('Patient', '_sort=given') =>  E'\n ORDER BY (jsonbext.json_get_in(patient.content, \'{name,given}\'))[1]::text ASC'
+build_sorting('Patient', '_sort=given') =>  E'\n ORDER BY (fhirbase_json.json_get_in(patient.content, \'{name,given}\'))[1]::text ASC'
 
 SELECT logical_id FROM search('StructureDefinition', 'name=Patient&_count=1') => 'Patient'
 SELECT count(*) FROM search('SearchParameter', 'base=Patient') => 15::bigint
@@ -15,9 +15,9 @@ BEGIN;
 
 SELECT generate.generate_tables('{Patient}');
 
-SELECT crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1973"}'::jsonb);
-SELECT crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1983"}'::jsonb);
-SELECT crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1993"}'::jsonb);
+SELECT fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1973"}'::jsonb);
+SELECT fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1983"}'::jsonb);
+SELECT fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1993"}'::jsonb);
 
 SELECT count(*) FROM search('Patient', 'birthdate=>1970') => 3::bigint
 SELECT count(*) FROM search('Patient', 'birthdate=>1980') => 2::bigint
@@ -34,10 +34,10 @@ setv('cfg','{"base":"https://test.me"}'::jsonb);
 
 setv('pt-tpl', '{"resourceType":"Patient", "gender":"%s", "birthDate":"%s"}');
 
-SELECT crud.create(getv('cfg'), format(getv('pt-tpl')::text, 'mail', '1970')::jsonb);
-SELECT crud.create(getv('cfg'), format(getv('pt-tpl')::text, 'mail', '1980')::jsonb);
-SELECT crud.create(getv('cfg'), format(getv('pt-tpl')::text, 'femail', '1985')::jsonb);
-SELECT crud.create(getv('cfg'), format(getv('pt-tpl')::text, 'femail', '1990')::jsonb);
+SELECT fhirbase_crud.create(getv('cfg'), format(getv('pt-tpl')::text, 'mail', '1970')::jsonb);
+SELECT fhirbase_crud.create(getv('cfg'), format(getv('pt-tpl')::text, 'mail', '1980')::jsonb);
+SELECT fhirbase_crud.create(getv('cfg'), format(getv('pt-tpl')::text, 'femail', '1985')::jsonb);
+SELECT fhirbase_crud.create(getv('cfg'), format(getv('pt-tpl')::text, 'femail', '1990')::jsonb);
 
 SELECT build_search_query('Patient', '_count=50&_page=3');
 
@@ -65,7 +65,7 @@ setv('cfg', '{"base":"https://test.me"}');
 setv('device', '{"resourceType": "Device", "model": "Jóe", "manufacturer": "Acme" }');
 
 setv('dev',
-  crud.create(getv('cfg'), getv('device'))
+  fhirbase_crud.create(getv('cfg'), getv('device'))
 );
 
 expect
@@ -93,7 +93,7 @@ SELECT generate.generate_tables('{Organization}');
 setv('cfg', '{"base":"https://test.me"}');
 setv('organization', '{"resourceType": "Organization", "name": "policlinic 6" }');
 
-setv('org', crud.create(getv('cfg'), getv('organization')));
+setv('org', fhirbase_crud.create(getv('cfg'), getv('organization')));
 
 expect
   fhir_search(getv('cfg'), 'Organization', 'name:exact=policlinic')#>>'{entry,0,resource}'

@@ -2,18 +2,18 @@
 -- TOKEN INDEX
 -- TODO: create facade fn like date
 
--- #import ./jsonbext.sql
--- #import ./coll.sql
+-- #import ./fhirbase_json.sql
+-- #import ./fhirbase_coll.sql
 
 func index_primitive_as_token( content jsonb, path text[]) RETURNS text[]
   SELECT
-  array_agg(jsonbext.jsonb_primitive_to_text(unnest::jsonb))::text[]
-  FROM unnest(jsonbext.json_get_in(content, path))
+  array_agg(fhirbase_json.jsonb_primitive_to_text(unnest::jsonb))::text[]
+  FROM unnest(fhirbase_json.json_get_in(content, path))
 
 func index_coding_as_token( content jsonb, path text[]) RETURNS text[]
   WITH codings AS (
     SELECT unnest as cd
-    FROM unnest(jsonbext.json_get_in(content, path))
+    FROM unnest(fhirbase_json.json_get_in(content, path))
   )
   SELECT array_agg(x)::text[] FROM (
     SELECT cd->>'code' as x
@@ -26,7 +26,7 @@ func index_coding_as_token( content jsonb, path text[]) RETURNS text[]
 func index_contactpoint_as_token( content jsonb, path text[]) RETURNS text[]
   WITH codings AS (
     SELECT unnest as cd
-    FROM unnest(jsonbext.json_get_in(content, path))
+    FROM unnest(fhirbase_json.json_get_in(content, path))
   )
   SELECT array_agg(x)::text[] FROM (
     SELECT cd->>'system' as x
@@ -42,7 +42,7 @@ func index_codeableconcept_as_token( content jsonb, path text[]) RETURNS text[]
 func index_identifier_as_token(content jsonb, path text[]) RETURNS text[]
   WITH idents AS (
     SELECT unnest as cd
-    FROM unnest(jsonbext.json_get_in(content, path))
+    FROM unnest(fhirbase_json.json_get_in(content, path))
   )
   SELECT array_agg(x)::text[] FROM (
     SELECT cd->>'value' as x
@@ -55,13 +55,13 @@ func index_identifier_as_token(content jsonb, path text[]) RETURNS text[]
 func index_as_reference(content jsonb, path text[]) RETURNS text[]
   WITH idents AS (
     SELECT unnest as cd
-    FROM unnest(jsonbext.json_get_in(content, path))
+    FROM unnest(fhirbase_json.json_get_in(content, path))
   )
   SELECT array_agg(x)::text[] FROM (
     SELECT cd->>'reference' as x
     from idents
     UNION
-    SELECT coll._last(regexp_split_to_array(cd->>'reference', '\/')) as x
+    SELECT fhirbase_coll._last(regexp_split_to_array(cd->>'reference', '\/')) as x
     from idents
   ) _
 
@@ -83,7 +83,7 @@ func index_as_string( content jsonb, path text[]) RETURNS text
   regexp_replace(
     this._to_string(
       this._unaccent_string(
-        jsonbext.json_get_in(content, path)::text
+        fhirbase_json.json_get_in(content, path)::text
        )
     )::text,
     E'\\s+', ' ', 'g'

@@ -66,7 +66,7 @@ expect 'updated'
 
 setv('updated',
   fhir.update(
-    jsonbext.assoc(getv('created'),'name','{"text":"Updated name"}')
+    fhirbase_json.assoc(getv('created'),'name','{"text":"Updated name"}')
   )
 );
 

@@ -1,4 +1,4 @@
--- #import ./coll.sql
+-- #import ./fhirbase_coll.sql
 -- #import ./tests.sql
 
 func _is_array(_json jsonb) RETURNS boolean
@@ -35,7 +35,7 @@ proc json_get_in(_json_ jsonb, path varchar[]) RETURNS jsonb[]
       END LOOP;
       RETURN acc;
     ELSIF this._is_object(_json_) THEN
-      RETURN this.json_get_in(_json_->path[1], coll._rest(path));
+      RETURN this.json_get_in(_json_->path[1], fhirbase_coll._rest(path));
     ELSE
       RETURN array[]::jsonb[];
     END IF;

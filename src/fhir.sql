@@ -1,6 +1,6 @@
 -- #import ./generate.sql
--- #import ./conformance.sql
--- #import ./crud.sql
+-- #import ./fhirbase_conformance.sql
+-- #import ./fhirbase_crud.sql
 -- #import ./transaction.sql
 -- #import ./indexing.sql
 -- #import ./search.sql
@@ -38,45 +38,45 @@ func! drop_all_resource_indexes() RETURNS bigint
 
 -- conformance
 func conformance(_cfg_ jsonb) RETURNS jsonb
-   SELECT conformance.conformance(_cfg_ )
+   SELECT fhirbase_conformance.conformance(_cfg_ )
 
 func structuredefinition(_cfg_ jsonb, _resource_name_ text) RETURNS jsonb
-  SELECT conformance.structuredefinition(_cfg_ , _resource_name_)
+  SELECT fhirbase_conformance.structuredefinition(_cfg_ , _resource_name_)
 
 -- crud
 
 func! read(_resource_type_ text, _id_ text) RETURNS jsonb
-  SELECT crud.read('{}'::jsonb , _id_ )
+  SELECT fhirbase_crud.read('{}'::jsonb , _id_ )
 
 func! vread(_resource_type_ text, _id_ text) RETURNS jsonb
-  SELECT crud.vread('{}'::jsonb , _id_ )
+  SELECT fhirbase_crud.vread('{}'::jsonb , _id_ )
 
 func! create(_resource_ jsonb) RETURNS jsonb
-  SELECT crud.create('{}'::jsonb, _resource_)
+  SELECT fhirbase_crud.create('{}'::jsonb, _resource_)
 
 func! update(_resource_ jsonb) RETURNS jsonb
-  SELECT crud.update('{}'::jsonb , _resource_ )
+  SELECT fhirbase_crud.update('{}'::jsonb , _resource_ )
 
 func! delete(_resource_type_ text, _id_ text) RETURNS jsonb
-  SELECT crud.delete('{}'::jsonb , _resource_type_ , _id_)
+  SELECT fhirbase_crud.delete('{}'::jsonb , _resource_type_ , _id_)
 
 func! is_deleted(_resource_type_ text, _id_ text) RETURNS boolean
-  SELECT crud.is_deleted('{}'::jsonb , _resource_type_ , _id_ )
+  SELECT fhirbase_crud.is_deleted('{}'::jsonb , _resource_type_ , _id_ )
 
 func! is_latest( _resource_type_ text, _id_ text, _vid_ text) RETURNS boolean
-  SELECT crud.is_latest('{}'::jsonb , _resource_type_ , _id_ , _vid_ )
+  SELECT fhirbase_crud.is_latest('{}'::jsonb , _resource_type_ , _id_ , _vid_ )
 
 func! is_exists(_resource_type_ text, _id_ text) RETURNS boolean
-  SELECT crud.is_exists('{}'::jsonb , _resource_type_ , _id_ )
+  SELECT fhirbase_crud.is_exists('{}'::jsonb , _resource_type_ , _id_ )
 
 func! history(_resource_type_ text, _id_ text) RETURNS jsonb
-  SELECT crud.history('{}'::jsonb , _resource_type_ , _id_ )
+  SELECT fhirbase_crud.history('{}'::jsonb , _resource_type_ , _id_ )
 
 func! history(_resource_type_ text) RETURNS jsonb
-  SELECT crud.history('{}'::jsonb , _resource_type_ )
+  SELECT fhirbase_crud.history('{}'::jsonb , _resource_type_ )
 
 func! history() RETURNS jsonb
-  SELECT crud.history('{}'::jsonb)
+  SELECT fhirbase_crud.history('{}'::jsonb)
 
 -- transaction
 

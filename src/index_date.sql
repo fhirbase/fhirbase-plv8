@@ -1,4 +1,4 @@
--- #import ./jsonbext.sql
+-- #import ./fhirbase_json.sql
 
 func _date_parse_to_lower(_date text) RETURNS timestamptz
   -- index date
@@ -60,13 +60,13 @@ func _datetime_to_tstzrange(_min text, _max text) RETURNS tstzrange
 func index_as_date(content jsonb, path text[], type text) RETURNS tstzrange
   WITH dates AS (
     SELECT x
-    FROM unnest(jsonbext.json_get_in(content, path)) x
+    FROM unnest(fhirbase_json.json_get_in(content, path)) x
     WHERE x is not null
   )
   SELECT
   CASE
   WHEN type = 'dateTime' OR type = 'date' OR type = 'instant' then
-    (SELECT this._datetime_to_tstzrange(min(jsonbext.jsonb_primitive_to_text(x)),max(jsonbext.jsonb_primitive_to_text(x)::text)) FROM dates x)
+    (SELECT this._datetime_to_tstzrange(min(fhirbase_json.jsonb_primitive_to_text(x)),max(fhirbase_json.jsonb_primitive_to_text(x)::text)) FROM dates x)
   WHEN type = 'Period' then
     (SELECT this._datetime_to_tstzrange(min(x->>'start'), max(x->>'end')) FROM dates x)
   WHEN type = 'Schedule' then

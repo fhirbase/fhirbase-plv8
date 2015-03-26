@@ -1,4 +1,4 @@
--- #import ./coll.sql
+-- #import ./fhirbase_coll.sql
 -- #import ./index_fns.sql
 
 proc url_decode(input text) RETURNS text
@@ -18,12 +18,12 @@ proc url_decode(input text) RETURNS text
 func _get_modifier(_key_ text) RETURNS text
   -- function extract modifier from last param in chain
   -- Example: a.b.c:mod => mod
-  SELECT nullif(split_part(coll._last(regexp_split_to_array(_key_,'\.')), ':',2), '');
+  SELECT nullif(split_part(fhirbase_coll._last(regexp_split_to_array(_key_,'\.')), ':',2), '');
 
 func _get_key(_key_ text) RETURNS text
   -- function remove modifier from key and get last in chain x.y.z (i.e. z)
   -- Example: a.b.c:mod => c
-  SELECT array_to_string(coll._butlast(a) || split_part(coll._last(a), ':', 1), '.')
+  SELECT array_to_string(fhirbase_coll._butlast(a) || split_part(fhirbase_coll._last(a), ':', 1), '.')
     FROM regexp_split_to_array(_key_, '\.') a;
 
 func _parse_param(_params_ text) RETURNS table (key text[], operator text, value text[])

@@ -1,12 +1,12 @@
 -- #import ../src/tests.sql
--- #import ../src/conformance.sql
+-- #import ../src/fhirbase_conformance.sql
 
 BEGIN;
-conformance.conformance('{"version":"0.1"}')->>'version' => '0.1'
+fhirbase_conformance.conformance('{"version":"0.1"}')->>'version' => '0.1'
 
 expect 'structuredefinition & search params unless installed'
   jsonb_array_length(
-    conformance.conformance('{"version":"0.1"}')#>'{rest,0,resource}'
+    fhirbase_conformance.conformance('{"version":"0.1"}')#>'{rest,0,resource}'
   )
 => 6
 
@@ -18,13 +18,13 @@ UPDATE structuredefinition
 
 expect 'no resources unless generated'
   jsonb_array_length(
-    conformance.conformance('{"version":"0.1"}')#>'{rest,0,resource}'
+    fhirbase_conformance.conformance('{"version":"0.1"}')#>'{rest,0,resource}'
   )
 => 8
 
 
 expect 'patient'
-  conformance.structuredefinition(null::jsonb, 'Patient')->>'id'
+  fhirbase_conformance.structuredefinition(null::jsonb, 'Patient')->>'id'
 => 'Patient'
 
 ROLLBACK;

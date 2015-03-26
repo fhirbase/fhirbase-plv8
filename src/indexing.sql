@@ -1,4 +1,4 @@
--- #import ./coll.sql
+-- #import ./fhirbase_coll.sql
 -- #import ./fhirbase_gen.sql
 -- #import ./index_fns.sql
 -- #import ./index_date.sql
@@ -13,7 +13,7 @@ func _token_index_fn(dtype text, is_primitive boolean) RETURNS text
   || '_as_token'
 
 func _index_name(_meta searchparameter) RETURNS text
-  SELECT replace(lower(_meta.base || '_' || _meta.name || '_' ||  coll._last(_meta.path) || '_' || _meta.search_type || '_idx')::text,'-','_')
+  SELECT replace(lower(_meta.base || '_' || _meta.name || '_' ||  fhirbase_coll._last(_meta.path) || '_' || _meta.search_type || '_idx')::text,'-','_')
 
 func index_token_exp(_meta searchparameter) RETURNS text
   SELECT
@@ -22,7 +22,7 @@ func index_token_exp(_meta searchparameter) RETURNS text
     , this._index_name(_meta)
     , lower(_meta.base)
     , this._token_index_fn(_meta.type, _meta.is_primitive)
-    , coll._rest(_meta.path)::text
+    , fhirbase_coll._rest(_meta.path)::text
    )
 
 func index_reference_exp(_meta searchparameter) RETURNS text
@@ -31,7 +31,7 @@ func index_reference_exp(_meta searchparameter) RETURNS text
       'CREATE INDEX %I ON %I USING GIN (index_fns.index_as_reference(content,%L))'
       ,this._index_name(_meta)
       ,lower(_meta.base)
-      ,coll._rest(_meta.path)::text
+      ,fhirbase_coll._rest(_meta.path)::text
     )
 
 func index_string_exp(_meta searchparameter) RETURNS text
@@ -40,7 +40,7 @@ func index_string_exp(_meta searchparameter) RETURNS text
        'CREATE INDEX %I ON %I USING GIN (index_fns.index_as_string(content,%L::text[]) gin_trgm_ops)'
       ,this._index_name(_meta)
       ,lower(_meta.base)
-      ,coll._rest(_meta.path)::text
+      ,fhirbase_coll._rest(_meta.path)::text
     )
 
 func index_date_exp(_meta searchparameter) RETURNS text
@@ -49,7 +49,7 @@ func index_date_exp(_meta searchparameter) RETURNS text
        'CREATE INDEX %I ON %I USING GIST (index_date.index_as_date(content,%L::text[], %L) range_ops)'
       ,this._index_name(_meta)
       ,lower(_meta.base)
-      ,coll._rest(_meta.path)::text
+      ,fhirbase_coll._rest(_meta.path)::text
       ,_meta.type
     )
 

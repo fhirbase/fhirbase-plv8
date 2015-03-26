@@ -1,5 +1,5 @@
--- #import ./crud.sql
--- #import ./coll.sql
+-- #import ./fhirbase_crud.sql
+-- #import ./fhirbase_coll.sql
 -- #import ./tests.sql
 
 
@@ -13,7 +13,7 @@ func _replace_references(_resource_ jsonb, _references_ jsonb[]) RETURNS jsonb
          ('"reference": "' || (_references_[1]->>'local') || '"'),
          '"reference": "' || (_references_[1]->>'created') || '"'
        )::jsonb,
-       coll._rest(_references_))
+       fhirbase_coll._rest(_references_))
    ELSE _resource_
    END
 
@@ -83,18 +83,18 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
   BEGIN
     -- POST step
     _process := this._process_entries(_cfg_, _bundle_, 'POST');
-    _created_entries := jsonbext.jsonb_to_array(_process->'entry');
-    _ids_table := jsonbext.jsonb_to_array(_process->'ids');
+    _created_entries := fhirbase_json.jsonb_to_array(_process->'entry');
+    _ids_table := fhirbase_json.jsonb_to_array(_process->'ids');
 
     FOREACH _entry_ IN ARRAY _created_entries LOOP
       _entry_with_replaced_ids_ := this._replace_references(_entry_, _ids_table);
 
       IF _entry_with_replaced_ids_ != _entry_ THEN
         _result_ := _result_ || ARRAY[
-          jsonbext.assoc(
+          fhirbase_json.assoc(
             _entry_with_replaced_ids_,
             'resource',
-            crud.update(_cfg_, (_entry_with_replaced_ids_->'resource'))
+            fhirbase_crud.update(_cfg_, (_entry_with_replaced_ids_->'resource'))
           )
         ];
       ELSE
@@ -104,7 +104,7 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
 
     -- Replace IDs in PUT entries in source Bundle
     _updated_entries_ = ARRAY[]::jsonb[];
-    FOREACH _entry_ IN ARRAY jsonbext.jsonb_to_array(_bundle_->'entry') LOOP
+    FOREACH _entry_ IN ARRAY fhirbase_json.jsonb_to_array(_bundle_->'entry') LOOP
       IF _entry_#>>'{transaction,method}' = 'PUT' THEN
         _updated_entries_ := _updated_entries_ || this._replace_references(_entry_, _ids_table);
       ELSE
@@ -112,10 +112,10 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
       END IF;
     END LOOP;
 
-    _bundle_ := jsonbext.assoc(_bundle_, 'entry', array_to_json(_updated_entries_)::jsonb);
+    _bundle_ := fhirbase_json.assoc(_bundle_, 'entry', array_to_json(_updated_entries_)::jsonb);
 
     FOREACH _method IN ARRAY '{PUT,DELETE,GET}'::text[] LOOP
-      _result_ := _result_ || jsonbext.jsonb_to_array(this._process_entries(_cfg_, _bundle_, _method)->'entry');
+      _result_ := _result_ || fhirbase_json.jsonb_to_array(this._process_entries(_cfg_, _bundle_, _method)->'entry');
     END loop;
 
     RETURN json_build_object(
@@ -140,7 +140,7 @@ proc! _process_entries(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
         _params := this._url_to_crud_action(_item_#>>'{transaction,url}', _item_#>>'{transaction,method}');
         IF _params[1] = 'create' THEN
           _local_id_ := _item_#>>'{resource,id}';
-          _resource_ := crud.create(_cfg_, jsonbext.assoc(_item_->'resource', 'id', 'null'::jsonb));
+          _resource_ := fhirbase_crud.create(_cfg_, fhirbase_json.assoc(_item_->'resource', 'id', 'null'::jsonb));
           _created_id_ := (_resource_->>'resourceType') || '/' || (_resource_->>'id');
 
           IF _local_id_ IS NOT NULL THEN
@@ -150,22 +150,22 @@ proc! _process_entries(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
           END IF;
 
           _entry_ := _entry_ || ARRAY[
-            jsonbext.assoc(_item_, 'resource', _resource_)
+            fhirbase_json.assoc(_item_, 'resource', _resource_)
           ]::jsonb[];
         ELSIF _params[1] = 'update' THEN
           _entry_ := _entry_ || ARRAY[
-            jsonbext.assoc(
+            fhirbase_json.assoc(
               _item_,
               'resource',
-              crud.update(_cfg_, _item_->'resource')
+              fhirbase_crud.update(_cfg_, _item_->'resource')
             )
           ]::jsonb[];
         ELSIF _params[1] = 'delete' THEN
           _entry_ := _entry_ || ARRAY[
-            jsonbext.assoc(
+            fhirbase_json.assoc(
               _item_,
               'resource',
-              crud.delete(_cfg_, _params[2], _params[3])
+              fhirbase_crud.delete(_cfg_, _params[2], _params[3])
             )
           ]::jsonb[];
         END IF;
@@ -193,12 +193,12 @@ proc! _process_entries(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
 /*   ), create_resources AS ( */
 /*     SELECT i.* */
 /*     FROM items i */
-/*     LEFT JOIN resource r on r.logical_id = crud._extract_id(i.id) */
+/*     LEFT JOIN resource r on r.logical_id = fhirbase_crud._extract_id(i.id) */
 /*     WHERE i.deleted is null and r.logical_id is null */
 /*   ), created_resources AS ( */
 /*     SELECT */
 /*       r.id as alternative, */
-/*       crud.create(_cfg, r.content::jsonb)#>'{entry,0}' as entry */
+/*       fhirbase_crud.create(_cfg, r.content::jsonb)#>'{entry,0}' as entry */
 /*     FROM create_resources r */
 /*   ), reference AS ( */
 /*     SELECT array( */
@@ -207,19 +207,19 @@ proc! _process_entries(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
 /*   ), update_resources AS ( */
 /*     SELECT i.* */
 /*     FROM items i */
-/*     LEFT JOIN resource r on r.logical_id = crud._extract_id(i.id) */
+/*     LEFT JOIN resource r on r.logical_id = fhirbase_crud._extract_id(i.id) */
 /*     WHERE i.deleted is null and r.logical_id is not null */
 /*   ), updated_resources AS ( */
 /*     SELECT */
 /*       r.id as alternative, */
-/*       crud.update(_cfg, this._replace_references(r.content::text, rf.refs)::jsonb) as entry */
+/*       fhirbase_crud.update(_cfg, this._replace_references(r.content::text, rf.refs)::jsonb) as entry */
 /*     FROM create_resources r */
 /*     JOIN created_resources cr on cr.alternative = r.id */
 /*     JOIN reference rf on 1=1 */
 /*     UNION ALL */
 /*     SELECT */
 /*       r.id as alternative, */
-/*       crud.update(_cfg, this._replace_references(r.content::text, rf.refs)::jsonb) as entry */
+/*       fhirbase_crud.update(_cfg, this._replace_references(r.content::text, rf.refs)::jsonb) as entry */
 /*     FROM update_resources r, reference rf */
 /*   ), delete_resources AS ( */
 /*     SELECT i.* */
@@ -231,9 +231,9 @@ proc! _process_entries(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
 /*       SELECT */
 /*         r.id as alternative, */
 /*         ('{"id": "' || r.id || '"}')::jsonb as entry, */
-/*         crud.delete(_cfg, rs.resource_type, r.id) as deleted */
+/*         fhirbase_crud.delete(_cfg, rs.resource_type, r.id) as deleted */
 /*       FROM delete_resources r */
-/*       JOIN resource rs on rs.logical_id::text = crud._extract_id(r.id) */
+/*       JOIN resource rs on rs.logical_id::text = fhirbase_crud._extract_id(r.id) */
 /*     ) d */
 /*   ), created AS ( */
 /*     SELECT */
@@ -252,5 +252,5 @@ proc! _process_entries(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
 /*       FROM deleted_resources */
 /*     ) r */
 /*   ) */
-/*   SELECT crud._build_bundle('Transaction results', count(r.*)::integer, COALESCE(json_agg(r.*), '[]'::json)) as json */
+/*   SELECT fhirbase_crud._build_bundle('Transaction results', count(r.*)::integer, COALESCE(json_agg(r.*), '[]'::json)) as json */
 /*   FROM created r */

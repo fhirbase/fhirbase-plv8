@@ -1,7 +1,7 @@
--- #import ./jsonbext.sql
+-- #import ./fhirbase_json.sql
 -- #import ./fhirbase_gen.sql
--- #import ./coll.sql
--- #import ./util.sql
+-- #import ./fhirbase_coll.sql
+-- #import ./fhirbase_util.sql
 -- #import ./generate.sql
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -12,12 +12,12 @@ func _sha1(x text) RETURNS text
 
 func gen_version_id(_res_ jsonb) RETURNS text
   -- remove meta
-  SELECT --this._sha1(jsonbext.assoc(_res_, 'meta', '[]')::text)
+  SELECT --this._sha1(fhirbase_json.assoc(_res_, 'meta', '[]')::text)
     gen_random_uuid()::text
 
 func gen_logical_id(_res_ jsonb) RETURNS text
   -- remove meta
-  SELECT --this._sha1(jsonbext.assoc(_res_, 'meta', '[]')::text)
+  SELECT --this._sha1(fhirbase_json.assoc(_res_, 'meta', '[]')::text)
     gen_random_uuid()::text
 
 -- TODO: rename
@@ -35,11 +35,11 @@ func _build_id(_cfg_ jsonb, _type_ text, _id_ text) RETURNS text
   SELECT this._build_url(_cfg_, _type_, _id_::text)
 
 func _extract_id(_id_ text) RETURNS text
-  SELECT coll._last(regexp_split_to_array((regexp_split_to_array(_id_, '/_history/')::text[])[1], '/'));
+  SELECT fhirbase_coll._last(regexp_split_to_array((regexp_split_to_array(_id_, '/_history/')::text[])[1], '/'));
 
 func _extract_vid(_id_ text) RETURNS text
   -- TODO: raise if not valid url
-  SELECT coll._last(regexp_split_to_array(_id_, '/_history/'));
+  SELECT fhirbase_coll._last(regexp_split_to_array(_id_, '/_history/'));
 
 --- NEW API
 --- NEW API
@@ -70,9 +70,9 @@ proc! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
     END IF;
 
     _id_ := _vid_;
-    _resource_ := jsonbext.assoc(_resource_, 'id', ('"' || _id_ || '"')::jsonb);
+    _resource_ := fhirbase_json.assoc(_resource_, 'id', ('"' || _id_ || '"')::jsonb);
 
-    _meta_ := jsonbext.merge(
+    _meta_ := fhirbase_json.merge(
       COALESCE(_resource_->'meta','{}'::jsonb),
       json_build_object(
        'versionId', _vid_,
@@ -80,7 +80,7 @@ proc! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
       )::jsonb
     );
 
-    _resource_ := jsonbext.assoc(_resource_, 'meta', _meta_);
+    _resource_ := fhirbase_json.assoc(_resource_, 'meta', _meta_);
 
     EXECUTE
       format('INSERT INTO %I (logical_id, version_id, published, updated, content) VALUES ($1, $2, $3, $4, $5)', lower(_type_))
@@ -128,8 +128,8 @@ proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
       USING _old_vid_;
     END IF;
 
-    _resource_ := jsonbext.assoc(_resource_, 'meta',
-      jsonbext.merge(_resource_->'meta',
+    _resource_ := fhirbase_json.assoc(_resource_, 'meta',
+      fhirbase_json.merge(_resource_->'meta',
         json_build_object(
           'versionId', _new_vid_,
           'lastUpdated', _updated_
