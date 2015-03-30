@@ -1,6 +1,7 @@
 -- #import ./fhirbase_generate.sql
 -- #import ./fhirbase_conformance.sql
 -- #import ./fhirbase_crud.sql
+-- #import ./fhirbase_history.sql
 -- #import ./fhirbase_transaction.sql
 -- #import ./fhirbase_indexing.sql
 -- #import ./fhirbase_search.sql
@@ -72,13 +73,13 @@ func! is_exists(_resource_type_ text, _id_ text) RETURNS boolean
   SELECT fhirbase_crud.is_exists('{}'::jsonb , _resource_type_ , _id_ )
 
 func! history(_resource_type_ text, _id_ text) RETURNS jsonb
-  SELECT fhirbase_crud.history('{}'::jsonb , _resource_type_ , _id_ )
+  SELECT fhirbase_history.history('{}'::jsonb , _resource_type_ , _id_ )
 
 func! history(_resource_type_ text) RETURNS jsonb
-  SELECT fhirbase_crud.history('{}'::jsonb , _resource_type_ )
+  SELECT fhirbase_history.history('{}'::jsonb , _resource_type_ )
 
 func! history() RETURNS jsonb
-  SELECT fhirbase_crud.history('{}'::jsonb)
+  SELECT fhirbase_history.history('{}'::jsonb)
 
 -- transaction
 

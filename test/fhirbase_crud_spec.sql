@@ -121,27 +121,6 @@ expect "not latest"
     getv('created')#>>'{meta,versionId}')
 => false
 
-fhirbase_crud.history('{}'::jsonb, 'Patient', 'myid')#>'{entry,0,resource}' => getv('updated')
-fhirbase_crud.history('{}'::jsonb, 'Patient', 'myid')#>'{entry,1,resource}' => getv('created')
-
-expect '2 items for resource history'
-  jsonb_array_length(
-    fhirbase_crud.history('{}'::jsonb, 'Patient', 'myid')->'entry'
-  )
-=> 2
-
-expect '4 items for resource type history'
-  jsonb_array_length(
-    fhirbase_crud.history('{}'::jsonb, 'Patient')->'entry'
-  )
-=> 4
-
-expect 'more then 4 items for all history'
-  jsonb_array_length(
-    fhirbase_crud.history('{}'::jsonb)->'entry'
-  ) > 4
-=> true
-
 -- DELETE
 
 fhirbase_crud.is_exists('{}'::jsonb, 'Patient', 'myid') => true
