@@ -18,6 +18,9 @@ RUN chmod +x /usr/bin/fb-generate
 
 RUN chown -R postgres /fhirbase
 
+RUN mkdir -p /home/postgres
+RUN chown -R postgres /home/postgres
+
 USER postgres
 RUN pg_ctl -w start && cd /fhirbase && psql -d postgres -c "create database $PGDATABASE" && env DB=$PGDATABASE ./runme integrate && pg_ctl -w stop
 RUN pg_ctl -w start && createuser -s fhirbase && psql -c "alter user fhirbase with password 'fhirbase'; select fhir.generate_tables(); select fhir.index_all_resources()" && pg_ctl -w stop
