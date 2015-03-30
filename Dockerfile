@@ -13,7 +13,7 @@ RUN echo 'postgres ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
 ENV PGDATABASE fhirbase
 ADD . /fhirbase
-RUN cp ./docker/fb-generate /usr/bin
+RUN cp ./fhirbase/docker/fb-generate /usr/bin
 RUN chmod +x /usr/bin/fb-generate
 
 RUN chown -R postgres /fhirbase
