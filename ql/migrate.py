@@ -21,7 +21,7 @@ def migrate(db):
         if res['returncode'] == 0 and res['stdout'].find('ok') < 0:
             print '> migate %s' % f
             mod = os.path.basename(f)
-            sql = ql.prepr.process('m' + mod,slurp(f))
+            sql = ql.prepr.process('fhirbase_migration_' + mod,slurp(f))
             res = psql(db, sql)
             if res['returncode'] == 0:
                 print res['stdout']
