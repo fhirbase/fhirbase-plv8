@@ -13,6 +13,8 @@ RUN echo 'postgres ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
 ENV PGDATABASE fhirbase
 ADD . /fhirbase
+RUN cp ./docker/fb-generate /usr/bin
+RUN chmod +x /usr/bin/fb-generate
 
 RUN chown -R postgres /fhirbase
 
@@ -24,9 +26,4 @@ RUN echo "host all  all    0.0.0.0/0  md5" >> $PGDATA/pg_hba.conf
 RUN echo "listen_addresses='*'" >> $PGDATA/postgresql.conf
 
 EXPOSE 5432
-CMD if [ "$GENERATE_SAMPLE_PATIENTS" ]; then \
-      pg_ctl -w start && cd /fhirbase && \
-        env DB=$PGDATABASE patients_count=$GENERATE_SAMPLE_PATIENTS rand_seed=0.665 \
-          ./runme seed && pg_ctl -w stop; \
-    fi && \
-    postgres
+CMD fb-generate && postgres
