@@ -48,5 +48,23 @@ func! generate_tables(_resources_ text[]) returns text
   WHERE kind = 'resource' AND installed = false
     AND (_resources_ IS NULL OR _resources_ @> ARRAY[logical_id]);
 
+func! drop_tables(_resources_ text[]) returns text
+  --genarate all tables
+  SELECT
+  count(
+  fhirbase_gen._eval(
+    fhirbase_gen._tpl($SQL$
+      DROP TABLE IF EXISTS "{{tbl_name}}" CASCADE;
+      DROP TABLE IF EXISTS "{{tbl_name}}_history" CASCADE;
+      UPDATE structuredefinition SET installed = false
+        WHERE lower(logical_id) = '{{tbl_name}}';
+    $SQL$,
+    'ns', 'TODO',
+    'tbl_name', lower(logical_id),
+    'resource_type', logical_id)))::text
+  FROM structuredefinition
+  WHERE kind = 'resource' AND installed = true
+    AND _resources_ @> ARRAY[logical_id]
+
 func! generate_tables() returns text
    SELECT this.generate_tables(null)

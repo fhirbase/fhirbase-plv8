@@ -15,6 +15,10 @@ expect 'meta information updated'
 
 SELECT installed FROM structuredefinition WHERE logical_id = 'Patient' LIMIT 1 => true
 
+SELECT fhirbase_generate.drop_tables('{Patient}');
+
+SELECT installed FROM structuredefinition WHERE logical_id = 'Patient' LIMIT 1 => false
+
 SELECT fhirbase_generate.generate_tables();
 
 ROLLBACK;

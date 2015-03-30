@@ -16,6 +16,8 @@ func! generate_tables(_resources_ text[]) returns text
 func! generate_tables() returns text
    SELECT fhirbase_generate.generate_tables()
 
+func! drop_tables(_resources_ text[]) returns text
+  select fhirbase_generate.drop_tables(_resources_)
 
 --- indexing
 func! index_search_param(_resource_type text, _name_ text) RETURNS text
