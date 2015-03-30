@@ -48,7 +48,7 @@ func _expand_search_params(_resource_type text, _query text) RETURNS setof query
     SELECT null::text as parent_resource, -- we start with empty parent resoure
            '{}'::text[] as link_path, -- path of reference attribute to join
            _resource_type::text as res, -- this is resource to apply condition
-           ARRAY[_resource_type]::text[] || key as chain,
+           ARRAY[_resource_type]::text[] || key as chain, -- initial chain
            key as key,
            operator as operator,
            value as value
@@ -58,7 +58,7 @@ func _expand_search_params(_resource_type text, _query text) RETURNS setof query
     UNION
 
     SELECT res as parent_resource, -- move res to parent_resource
-           fhirbase_coll._rest(ri.path) as link_path,
+           fhirbase_coll._rest(ri.path) as link_path, -- remove first element
            this.get_reference_type(x.key[1], re.ref_type) as res, -- set next res in chain
            x.chain AS chain, -- save search path
            fhirbase_coll._rest(x.key) AS key, -- remove first item from key untill only one key left
@@ -81,7 +81,7 @@ func _expand_search_params(_resource_type text, _query text) RETURNS setof query
     ri.is_primitive,
     ri.type,
     fhirbase_coll._rest(ri.path)::text[] as field_path,
-    key[1] as key,
+    fhirbase_coll._last(key) as key,
     operator,
     value
   FROM params p
@@ -93,7 +93,7 @@ func _expand_search_params(_resource_type text, _query text) RETURNS setof query
 
 func build_identifier_cond(tbl text, _q query_param) RETURNS text
   -- this function build condition to search by identifier
-  SELECT format('%I.logical_id IN (%s)', tbl, string_agg((E'\'' || x || E'\'::uuid'),','))
+  SELECT format('%I.logical_id IN (%s)', tbl, string_agg((E'\'' || x || E'\''),','))
   FROM unnest(_q.value) x
 
 func build_string_cond_ilike(tbl text, _q query_param) RETURNS text

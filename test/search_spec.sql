@@ -13,7 +13,7 @@ SELECT count(*) FROM search('SearchParameter', 'base=Patient') => 15::bigint
 BEGIN;
 
 
-SELECT fhirbase_generate.generate_tables('{Patient}');
+SELECT fhirbase_generate.generate_tables('{Patient, Encounter}');
 
 SELECT fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1973"}'::jsonb);
 SELECT fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient","birthDate":"1983"}'::jsonb);
@@ -23,6 +23,21 @@ SELECT count(*) FROM search('Patient', 'birthdate=>1970') => 3::bigint
 SELECT count(*) FROM search('Patient', 'birthdate=>1980') => 2::bigint
 SELECT count(*) FROM search('Patient', 'birthdate=>1990') => 1::bigint
 
+expect 'search by _id'
+  SELECT count(*) FROM search(
+    'Patient',
+    '_id=' || (SELECT logical_id FROM search('Patient', 'birthdate=>1990') LIMIT 1)
+  )
+=> 1::bigint
+
+expect '_id condition'
+  SELECT fhir.search_sql('Patient', '_id=1') ilike '%.logical_id IN (%'
+=> true
+
+--TODO: test chained params
+--expect 'chained _id condition'
+--SELECT fhir.search_sql('Encounter', 'patient._id=1') /*ilike 'patient.logical_id IN (%'*/
+--=> 'ups'
 
 ROLLBACK;
 
