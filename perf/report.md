@@ -702,3 +702,41 @@ takes 16.7 seconds (50M patients => 23 hours).
 
 ---------------------------------------------------------
 ```
+
+```
+10M Patients (mlapshin workstation)
+
+disk usage right after generation of seed data                                                                               11,830 ms
+fhir.create called just one time                                                                                             18,905 ms
+fhir.create called 1000 times in batch                                                                                     1861,735 ms
+fhir.read called just one time                                                                                                6,360 ms
+fhir.read called 1000 times in batch                                                                                        590,863 ms
+Updating single patient with fhir.update()                                                                                  165,430 ms
+fhir.delete called one time                                                                                                   7,976 ms
+fhir.delete called 1000 times in batch                                                                                      842,368 ms
+searching for non-existent name without index                                                                            559095,524 ms
+building Patient.name index                                                                                              630598,769 ms
+building Patient.gender index                                                                                            488680,672 ms
+building Patient.address index                                                                                           1221804,100 ms
+building Patient.telecom index                                                                                           776166,156 ms
+building Participant.name index                                                                                              22,269 ms
+building Organization.name index                                                                                             57,735 ms
+building Encounter.status index                                                                                          652347,112 ms
+building Encounter.patient index                                                                                         1578718,725 ms
+building Encounter.participant index                                                                                         23,583 ms
+building Encounter.practitioner index                                                                                         4,510 ms
+building Patient.organization index                                                                                      456730,511 ms
+running VACUUM ANALYZE on patient table                                                                                  117220,769 ms
+running VACUUM ANALYZE on encounter table                                                                                 48796,100 ms
+running VACUUM ANALYZE on organization table                                                                                 48,803 ms
+running VACUUM ANALYZE on practitioner table                                                                                 10,479 ms
+searching for patient with unique name                                                                                       54,644 ms
+searching for all Johns in database                                                                                        1379,931 ms
+searching Patient with name=John&gender=female&_count=100 (should have no matches at all)                                   108,387 ms
+searching Patient with name=John&gender=male&_count=100                                                                      63,641 ms
+searching Patient with name=John&gender=male&active=true&address=YALUMBA&_count=100                                          33,443 ms
+searching Patient with name=John&gender=male&_count=100&_sort=name                                                          921,170 ms
+searching Patient with name=John&gender=male&_count=100&_sort=active                                                        810,976 ms
+searching Encounter with patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex        35509215,810 ms
+searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis      519593,454 ms
+```
