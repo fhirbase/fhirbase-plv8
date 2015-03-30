@@ -72,14 +72,23 @@ func! is_latest( _resource_type_ text, _id_ text, _vid_ text) RETURNS boolean
 func! is_exists(_resource_type_ text, _id_ text) RETURNS boolean
   SELECT fhirbase_crud.is_exists('{}'::jsonb , _resource_type_ , _id_ )
 
-func! history(_resource_type_ text, _id_ text) RETURNS jsonb
-  SELECT fhirbase_history.history('{}'::jsonb , _resource_type_ , _id_ )
+func! history(_resource_type_ text, _id_ text, _parmas_ text) RETURNS jsonb
+  SELECT fhirbase_history.history('{}'::jsonb , _resource_type_ , _id_ , _parmas_)
 
-func! history(_resource_type_ text) RETURNS jsonb
-  SELECT fhirbase_history.history('{}'::jsonb , _resource_type_ )
+func! history_sql(_resource_type_ text, _id_ text, _parmas_ text) RETURNS text
+  SELECT fhirbase_history.history_sql('{}'::jsonb , _resource_type_ , _id_ , _parmas_)
 
-func! history() RETURNS jsonb
-  SELECT fhirbase_history.history('{}'::jsonb)
+func! history(_resource_type_ text, _parmas_ text) RETURNS jsonb
+  SELECT fhirbase_history.history('{}'::jsonb , _resource_type_ , _parmas_)
+
+func! history_sql(_resource_type_ text, _parmas_ text) RETURNS text
+  SELECT fhirbase_history.history_sql('{}'::jsonb , _resource_type_ , _parmas_)
+
+func! history(_parmas_ text) RETURNS jsonb
+  SELECT fhirbase_history.history('{}'::jsonb, _parmas_)
+
+func! history_sql(_parmas_ text) RETURNS text
+  SELECT fhirbase_history.history_sql('{}'::jsonb, _parmas_)
 
 -- transaction
 

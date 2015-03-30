@@ -93,24 +93,24 @@ expect "not latest"
     getv('created')#>>'{meta,versionId}')
 => false
 
-fhir.history( 'Patient', 'myid')#>'{entry,0,resource}' => getv('updated')
-fhir.history( 'Patient', 'myid')#>'{entry,1,resource}' => getv('created')
+fhir.history( 'Patient', 'myid', '')#>'{entry,0,resource}' => getv('updated')
+fhir.history( 'Patient', 'myid', '')#>'{entry,1,resource}' => getv('created')
 
 expect '2 items for resource history'
   jsonb_array_length(
-    fhir.history( 'Patient', 'myid')->'entry'
+    fhir.history( 'Patient', 'myid', '')->'entry'
   )
 => 2
 
 expect '4 items for resource type history'
   jsonb_array_length(
-    fhir.history( 'Patient')->'entry'
+    fhir.history( 'Patient', '')->'entry'
   )
 => 4
 
 expect 'more then 4 items for all history'
   jsonb_array_length(
-    fhir.history()->'entry'
+    fhir.history('')->'entry'
   ) > 4
 => true
 
