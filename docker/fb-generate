@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ "$FB_GENERATE_SAMPLE_PATIENTS" ]; then
+  pg_ctl -w start
+  cd /fhirbase
+  DB=$PGDATABASE patients_count=$FB_GENERATE_SAMPLE_PATIENTS RAND_SEED=0.665 ./runme seed
+  pg_ctl -w stop
+fi
