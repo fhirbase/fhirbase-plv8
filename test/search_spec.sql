@@ -8,7 +8,7 @@ SET search_path TO fhirbase_search, vars, public;
 build_sorting('Patient', '_sort=given') =>  E'\n ORDER BY (fhirbase_json.json_get_in(patient.content, \'{name,given}\'))[1]::text ASC'
 
 SELECT logical_id FROM search('StructureDefinition', 'name=Patient&_count=1') => 'Patient'
-SELECT count(*) FROM search('SearchParameter', 'base=Patient') => 15::bigint
+SELECT count(*) FROM search('SearchParameter', 'base=Patient') => 17::bigint
 
 BEGIN;
 

@@ -45,13 +45,13 @@ expect_raise 'Wrong URL'
 BEGIN;
 SET search_path TO vars, public;
 
-SELECT fhirbase_generate.generate_tables('{Patient,Alert,Device}');
+SELECT fhirbase_generate.generate_tables('{Patient,Flag,Device}');
 setv('cfg', '{"base":"https://test.me"}');
 
-setv('alert-json','{"resourceType": "Alert", "note": "old-note" }');
+setv('flag-json','{"resourceType": "Flag", "note": "old-note" }');
 setv('device-json', '{"resourceType": "Device", "manufacturer": "Acme" }');
 
-setv('alert',  fhirbase_crud.create(getv('cfg'), getv('alert-json')));
+setv('flag',  fhirbase_crud.create(getv('cfg'), getv('flag-json')));
 setv('device', fhirbase_crud.create(getv('cfg'), getv('device-json')));
 
 setv('valid-transaction-bundle',
@@ -64,8 +64,8 @@ setv('valid-transaction-bundle',
         'resource', '{"resourceType": "Device", "manufacturer": "handmade"}'::json
       ),
       json_build_object(
-        'transaction', ('{"method": "PUT", "url": "/Alert/' || (getv('alert')->>'id') || '"}')::json,
-        'resource', fhirbase_json.assoc(getv('alert'), 'note', '"new-note"'::jsonb)::json
+        'transaction', ('{"method": "PUT", "url": "/Flag/' || (getv('flag')->>'id') || '"}')::json,
+        'resource', fhirbase_json.assoc(getv('flag'), 'note', '"new-note"'::jsonb)::json
       ),
       json_build_object(
         'transaction', ('{"method": "DELETE", "url": "/Device/' || (getv('device')->>'id') || '"}')::json
@@ -114,22 +114,22 @@ expect
 
 -----------------------------------------------------------------
 
-SELECT COUNT(*)::integer FROM ALERT => 1::integer
+SELECT COUNT(*)::integer FROM flag => 1::integer
 
 setv('invalid-transaction-bundle',
   json_build_object(
     'resourceType', 'Bundle',
     'entry', ARRAY[
       json_build_object(
-        'transaction', '{"method": "POST", "url": "/Alert"}'::json,
-        'resource', '{"resourceType": "Alert", "note": "another alert"}'::json
+        'transaction', '{"method": "POST", "url": "/Flag"}'::json,
+        'resource', '{"resourceType": "Flag", "note": "another flag"}'::json
       ),
       json_build_object(
         'transaction', ('{"method": "DELETE", "url": "/Device/nonexistentid"}')::json
       ),
       json_build_object(
-        'transaction', '{"method": "POST", "url": "/Alert"}'::json,
-        'resource', '{"resourceType": "Alert", "note": "another alert 2"}'::json
+        'transaction', '{"method": "POST", "url": "/Flag"}'::json,
+        'resource', '{"resourceType": "Flag", "note": "another flag 2"}'::json
       )
     ]::json[]
   )::jsonb
@@ -142,7 +142,7 @@ expect_raise 'resource with id="nonexistentids" does not exist'
   );
 
 expect
-  SELECT COUNT(*)::integer FROM alert
+  SELECT COUNT(*)::integer FROM flag
 => 1::integer
 
 ------------------------------------------------------------

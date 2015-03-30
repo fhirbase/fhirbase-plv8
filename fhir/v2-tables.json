@@ -2,7 +2,7 @@
   "resourceType": "Bundle",
   "id": "v2-valuesets",
   "meta": {
-    "lastUpdated": "2015-03-03T06:55:36.900+00:00"
+    "lastUpdated": "2015-03-30T02:41:08.174+00:00"
   },
   "type": "collection",
   "base": "http://hl7.org/fhir",
@@ -13,7 +13,7 @@
         "id": "v2-0001",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -112,7 +112,7 @@
         "id": "v2-0002",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -311,7 +311,7 @@
         "id": "v2-0003",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -3939,7 +3939,7 @@
         "id": "v2-0004",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -4043,7 +4043,7 @@
         "id": "v2-2.1-0006",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -4118,7 +4118,7 @@
         "id": "v2-2.4-0006",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -4489,7 +4489,7 @@
         "id": "v2-0007",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -4556,7 +4556,7 @@
         "id": "v2-0027",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -4615,7 +4615,7 @@
         "id": "v2-0038",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -4690,7 +4690,7 @@
         "id": "v2-0048",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -5109,7 +5109,7 @@
         "id": "v2-0052",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -5160,7 +5160,7 @@
         "id": "v2-0061",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -5219,7 +5219,7 @@
         "id": "v2-0063",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -5386,7 +5386,7 @@
         "id": "v2-0065",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -5463,7 +5463,7 @@
         "id": "v2-0074",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -5698,7 +5698,7 @@
         "id": "v2-0076",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -6401,7 +6401,7 @@
         "id": "v2-0078",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -6560,7 +6560,7 @@
         "id": "v2-0100",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -6619,7 +6619,7 @@
         "id": "v2-0102",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -6678,7 +6678,7 @@
         "id": "v2-0103",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -6729,7 +6729,7 @@
         "id": "v2-0104",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -6822,7 +6822,7 @@
         "id": "v2-0105",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -6873,7 +6873,7 @@
         "id": "v2-0106",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -6942,7 +6942,7 @@
         "id": "v2-0107",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -7001,7 +7001,7 @@
         "id": "v2-0108",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -7080,7 +7080,7 @@
         "id": "v2-0109",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -7139,7 +7139,7 @@
         "id": "v2-0119",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -7392,7 +7392,7 @@
         "id": "v2-0121",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -7451,7 +7451,7 @@
         "id": "v2-0122",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -7522,7 +7522,7 @@
         "id": "v2-2.2--0123",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -7601,7 +7601,7 @@
         "id": "v2-2.3-0123",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -7684,7 +7684,7 @@
         "id": "v2-0124",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -7739,7 +7739,7 @@
         "id": "v2-0126",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -7798,7 +7798,7 @@
         "id": "v2-0136",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -7845,7 +7845,7 @@
         "id": "v2-0148",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -7892,7 +7892,7 @@
         "id": "v2-0153",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -8485,7 +8485,7 @@
         "id": "v2-0155",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -8540,7 +8540,7 @@
         "id": "v2-0156",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -8649,7 +8649,7 @@
         "id": "v2-0157",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -8748,7 +8748,7 @@
         "id": "v2-0158",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -8827,7 +8827,7 @@
         "id": "v2-0159",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -8878,7 +8878,7 @@
         "id": "v2-0160",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -8937,7 +8937,7 @@
         "id": "v2-0161",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -8988,7 +8988,7 @@
         "id": "v2-0162",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -9215,7 +9215,7 @@
         "id": "v2-0163",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -9490,7 +9490,7 @@
         "id": "v2-0164",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -9565,7 +9565,7 @@
         "id": "v2-0165",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -9664,7 +9664,7 @@
         "id": "v2-0166",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -9711,7 +9711,7 @@
         "id": "v2-0167",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -9794,7 +9794,7 @@
         "id": "v2-0168",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -9861,7 +9861,7 @@
         "id": "v2-0169",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -9908,7 +9908,7 @@
         "id": "v2-0170",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -9959,7 +9959,7 @@
         "id": "v2-0174",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -10018,7 +10018,7 @@
         "id": "v2-0175",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -10209,7 +10209,7 @@
         "id": "v2-0178",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -10256,7 +10256,7 @@
         "id": "v2-0179",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -10311,7 +10311,7 @@
         "id": "v2-0180",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -10370,7 +10370,7 @@
         "id": "v2-0183",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -10417,7 +10417,7 @@
         "id": "v2-0185",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -10490,7 +10490,7 @@
         "id": "v2-0187",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -10537,7 +10537,7 @@
         "id": "v2-0190",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -10648,7 +10648,7 @@
         "id": "v2-0191",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -10767,7 +10767,7 @@
         "id": "v2-0200",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -10900,7 +10900,7 @@
         "id": "v2-0201",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -10975,7 +10975,7 @@
         "id": "v2-0202",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -11054,7 +11054,7 @@
         "id": "v2-0203",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -11525,7 +11525,7 @@
         "id": "v2-0205",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -11592,7 +11592,7 @@
         "id": "v2-0206",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -11647,7 +11647,7 @@
         "id": "v2-0207",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -11746,7 +11746,7 @@
         "id": "v2-0210",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -11792,7 +11792,7 @@
         "id": "v2-0211",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -11943,7 +11943,7 @@
         "id": "v2-0227",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12202,7 +12202,7 @@
         "id": "v2-0234",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12281,7 +12281,7 @@
         "id": "v2-0235",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12360,7 +12360,7 @@
         "id": "v2-0236",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12415,7 +12415,7 @@
         "id": "v2-0237",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12486,7 +12486,7 @@
         "id": "v2-0238",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12537,7 +12537,7 @@
         "id": "v2-0239",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12588,7 +12588,7 @@
         "id": "v2-0240",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12663,7 +12663,7 @@
         "id": "v2-0241",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12730,7 +12730,7 @@
         "id": "v2-0242",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12797,7 +12797,7 @@
         "id": "v2-0243",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12848,7 +12848,7 @@
         "id": "v2-0247",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12935,7 +12935,7 @@
         "id": "v2-0248",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -12990,7 +12990,7 @@
         "id": "v2-0250",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -13049,7 +13049,7 @@
         "id": "v2-0251",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -13112,7 +13112,7 @@
         "id": "v2-0252",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -13195,7 +13195,7 @@
         "id": "v2-0254",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -13642,7 +13642,7 @@
         "id": "v2-0256",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -13857,7 +13857,7 @@
         "id": "v2-0267",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -13924,7 +13924,7 @@
         "id": "v2-0271",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14011,7 +14011,7 @@
         "id": "v2-0272",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14122,7 +14122,7 @@
         "id": "v2-0273",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14177,7 +14177,7 @@
         "id": "v2-0274",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14236,7 +14236,7 @@
         "id": "v2-0275",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14291,7 +14291,7 @@
         "id": "v2-0276",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14350,7 +14350,7 @@
         "id": "v2-0279",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14445,7 +14445,7 @@
         "id": "v2-0280",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14496,7 +14496,7 @@
         "id": "v2-0281",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14619,7 +14619,7 @@
         "id": "v2-0282",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14674,7 +14674,7 @@
         "id": "v2-0283",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14729,7 +14729,7 @@
         "id": "v2-0284",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14784,7 +14784,7 @@
         "id": "v2-0286",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14839,7 +14839,7 @@
         "id": "v2-0287",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -14906,7 +14906,7 @@
         "id": "v2-0290",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -15595,7 +15595,7 @@
         "id": "v2-0291",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -15792,7 +15792,7 @@
         "id": "v2-0292",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -16327,7 +16327,7 @@
         "id": "v2-0298",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -16374,7 +16374,7 @@
         "id": "v2-0299",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -16425,7 +16425,7 @@
         "id": "v2-0316",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -16492,7 +16492,7 @@
         "id": "v2-0347",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -16565,7 +16565,7 @@
         "id": "v2-0348",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -16694,7 +16694,7 @@
         "id": "v2-0349",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -16793,7 +16793,7 @@
         "id": "v2-0350",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -17286,7 +17286,7 @@
         "id": "v2-0351",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -17446,10 +17446,69 @@
     {
       "resource": {
         "resourceType": "ValueSet",
+        "id": "v2-0353",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
+          ]
+        },
+        "text": {
+          "status": "additional",
+          "div": "<div><p>CWE statuses</p>\r\n<table class=\"grid\"><tr><td><b>Code</b></td><td><b>Description</b></td><td><b>Version</b></td></tr><tr><td>NA<a name=\"NA\"> </a></td><td>Not applicable</td><td>added v2.3.1</td></tr><tr><td>NASK<a name=\"NASK\"> </a></td><td>Not asked</td><td>added v2.3.1</td></tr><tr><td>NAV<a name=\"NAV\"> </a></td><td>Not available</td><td>added v2.3.1</td></tr><tr><td>U<a name=\"U\"> </a></td><td>Unknown</td><td>added v2.3.1</td></tr><tr><td>UASK<a name=\"UASK\"> </a></td><td>Asked but Unknown</td><td>added v2.3.1</td></tr></table>\r\n</div>"
+        },
+        "url": "http://hl7.org/fhir/v2/vs/0353",
+        "version": "2.7",
+        "name": "v2 CWE statuses",
+        "publisher": "HL7, Inc",
+        "contact": [
+          {
+            "telecom": [
+              {
+                "system": "url",
+                "value": "http://hl7.org"
+              }
+            ]
+          }
+        ],
+        "description": "FHIR Value set/code system definition for HL7 v2 table 0353 ( CWE statuses)",
+        "status": "active",
+        "experimental": true,
+        "date": "2011-01-28",
+        "define": {
+          "system": "http://hl7.org/fhir/v2/0353",
+          "caseSensitive": true,
+          "concept": [
+            {
+              "code": "NA",
+              "display": "Not applicable"
+            },
+            {
+              "code": "NASK",
+              "display": "Not asked"
+            },
+            {
+              "code": "NAV",
+              "display": "Not available"
+            },
+            {
+              "code": "U",
+              "display": "Unknown"
+            },
+            {
+              "code": "UASK",
+              "display": "Asked but Unknown"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ValueSet",
         "id": "v2-0354",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -18879,7 +18938,7 @@
         "id": "v2-0371",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -19146,7 +19205,7 @@
         "id": "v2-0373",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -19217,7 +19276,7 @@
         "id": "v2-0411",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -19570,7 +19629,7 @@
         "id": "v2-0445",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -19625,7 +19684,7 @@
         "id": "v2-0487",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -20768,7 +20827,7 @@
         "id": "v2-0488",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -20975,7 +21034,7 @@
         "id": "v2-0489",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -21058,7 +21117,7 @@
         "id": "v2-0490",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -21153,7 +21212,7 @@
         "id": "v2-0491",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -21208,7 +21267,7 @@
         "id": "v2-0492",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -21263,7 +21322,7 @@
         "id": "v2-0493",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -21338,7 +21397,7 @@
         "id": "v2-0494",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -21389,7 +21448,7 @@
         "id": "v2-0495",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -21492,7 +21551,7 @@
         "id": "v2-0496",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22079,7 +22138,7 @@
         "id": "v2-0497",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22130,7 +22189,7 @@
         "id": "v2-0498",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22193,7 +22252,7 @@
         "id": "v2-0499",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22240,7 +22299,7 @@
         "id": "v2-0500",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22291,7 +22350,7 @@
         "id": "v2-0501",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22342,7 +22401,7 @@
         "id": "v2-0502",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22393,7 +22452,7 @@
         "id": "v2-0503",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22444,7 +22503,7 @@
         "id": "v2-0504",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22499,7 +22558,7 @@
         "id": "v2-0505",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22546,7 +22605,7 @@
         "id": "v2-0506",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22605,7 +22664,7 @@
         "id": "v2-0507",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22652,7 +22711,7 @@
         "id": "v2-0508",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22735,7 +22794,7 @@
         "id": "v2-0510",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22818,7 +22877,7 @@
         "id": "v2-0511",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22881,7 +22940,7 @@
         "id": "v2-0513",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -22940,7 +22999,7 @@
         "id": "v2-0514",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23055,7 +23114,7 @@
         "id": "v2-0516",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23110,7 +23169,7 @@
         "id": "v2-0517",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23165,7 +23224,7 @@
         "id": "v2-0518",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23216,7 +23275,7 @@
         "id": "v2-0520",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23267,7 +23326,7 @@
         "id": "v2-0634",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23310,7 +23369,7 @@
         "id": "v2-0728",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23369,7 +23428,7 @@
         "id": "v2-0731",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23428,7 +23487,7 @@
         "id": "v2-0734",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23507,7 +23566,7 @@
         "id": "v2-0739",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23558,7 +23617,7 @@
         "id": "v2-0742",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23625,7 +23684,7 @@
         "id": "v2-0749",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23680,7 +23739,7 @@
         "id": "v2-0755",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23731,7 +23790,7 @@
         "id": "v2-0757",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23782,7 +23841,7 @@
         "id": "v2-0759",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23837,7 +23896,7 @@
         "id": "v2-0761",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23896,7 +23955,7 @@
         "id": "v2-0763",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23947,7 +24006,7 @@
         "id": "v2-0776",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -23998,7 +24057,7 @@
         "id": "v2-0778",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24057,7 +24116,7 @@
         "id": "v2-0790",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24104,7 +24163,7 @@
         "id": "v2-0793",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24147,7 +24206,7 @@
         "id": "v2-0806",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24198,7 +24257,7 @@
         "id": "v2-0818",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24253,7 +24312,7 @@
         "id": "v2-0868",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24312,7 +24371,7 @@
         "id": "v2-0871",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24379,7 +24438,7 @@
         "id": "v2-0881",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24430,7 +24489,7 @@
         "id": "v2-0882",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24477,7 +24536,7 @@
         "id": "v2-0894",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24524,7 +24583,7 @@
         "id": "v2-0895",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24583,7 +24642,7 @@
         "id": "v2-0904",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24634,7 +24693,7 @@
         "id": "v2-0905",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24697,7 +24756,7 @@
         "id": "v2-0906",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24796,7 +24855,7 @@
         "id": "v2-0907",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24891,7 +24950,7 @@
         "id": "v2-0909",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24954,7 +25013,7 @@
         "id": "v2-0910",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {
@@ -24997,7 +25056,7 @@
         "id": "v2-0912",
         "meta": {
           "profile": [
-            "http://hl7.org/fhir/Profile/valueset-shareable-definition"
+            "http://hl7.org/fhir/StructureDefinition/valueset-shareable-definition"
           ]
         },
         "text": {

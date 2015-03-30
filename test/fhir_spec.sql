@@ -5,7 +5,7 @@ SET search_path TO fhir, vars, public;
 
 BEGIN;
 
-SELECT fhirbase_generate.generate_tables('{Patient,Alert,Device}');
+SELECT fhirbase_generate.generate_tables('{Patient,Flag,Device}');
 
 setv('created',
   fhir.update( '{"resourceType":"Patient", "id":"myid"}'::jsonb)
@@ -146,8 +146,8 @@ setv('valid-transaction-bundle',
         'resource', '{"resourceType": "Device", "manufacturer": "handmade"}'::json
       ),
       json_build_object(
-        'transaction', ('{"method": "PUT", "url": "/Alert/' || (getv('alert')->>'id') || '"}')::json,
-        'resource', fhirbase_json.assoc(getv('alert'), 'note', '"new-note"'::jsonb)::json
+        'transaction', ('{"method": "PUT", "url": "/Flag/' || (getv('flag')->>'id') || '"}')::json,
+        'resource', fhirbase_json.assoc(getv('flag'), 'note', '"new-note"'::jsonb)::json
       ),
       json_build_object(
         'transaction', ('{"method": "DELETE", "url": "/Device/' || (getv('device')->>'id') || '"}')::json
