@@ -10,4 +10,4 @@ export SOURCE_DIR=$BUILD_DIR/src
 export PG_BIN=$BUILD_DIR/bin
 export PG_CONFIG=$BUILD_DIR
 
-export PATH=$PATH:$PG_BIN
+export PATH=$PG_BIN:$PATH
