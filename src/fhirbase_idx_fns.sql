@@ -69,11 +69,15 @@ func index_as_reference(content jsonb, path text[]) RETURNS text[]
 --TODO: this is KISS implementation
 -- the simplest way is to collect only values
 -- so we need collect values function
+CREATE extension IF NOT EXISTS unaccent;
+
 func _unaccent_string(_text text) RETURNS text
-  SELECT translate(_text,
-    'âãäåāăąÁÂÃÄÅĀĂĄèééêëēĕėęěĒĔĖĘĚìíîïìĩīĭÌÍÎÏÌĨĪĬóôõöōŏőÒÓÔÕÖŌŎŐùúûüũūŭůÙÚÛÜŨŪŬŮ',
-    'aaaaaaaAAAAAAAAeeeeeeeeeeEEEEEiiiiiiiiIIIIIIIIoooooooOOOOOOOOuuuuuuuuUUUUUUUU'
-  )
+  -- TODO: detect extension availability
+  --SELECT translate(_text,
+  --  'âãäåāăąÁÂÃÄÅĀĂĄèééêëēĕėęěĒĔĖĘĚìíîïìĩīĭÌÍÎÏÌĨĪĬóôõöōŏőÒÓÔÕÖŌŎŐùúûüũūŭůÙÚÛÜŨŪŬŮ',
+  --  'aaaaaaaAAAAAAAAeeeeeeeeeeEEEEEiiiiiiiiIIIIIIIIoooooooOOOOOOOOuuuuuuuuUUUUUUUU'
+  --)
+  SELECT unaccent(_text)::text
 
 func _to_string(_text text) RETURNS text
   SELECT translate(_text, '"[]{}\\:,', '        ');
