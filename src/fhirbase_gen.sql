@@ -13,3 +13,11 @@ proc! _eval(_str_ text) RETURNS text
   BEGIN
     EXECUTE _str_;
     RETURN _str_;
+
+proc! _eval_if(cond boolean, _str_ text) RETURNS text
+  -- eval string
+  BEGIN
+    IF cond THEN
+      EXECUTE _str_;
+    END IF;
+    RETURN _str_;

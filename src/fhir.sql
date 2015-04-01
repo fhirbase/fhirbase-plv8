@@ -39,6 +39,17 @@ func! index_all_resources() RETURNS table (idx text)
 func! drop_all_resource_indexes() RETURNS bigint
  SELECT  fhirbase_indexing.drop_all_resource_indexes()
 
+-- index stats
+
+func indexes_summary() RETURNS table (tablename text, rows_in_bytes text, num_rows real, number_of_indexes bigint, "unique" text, single_column bigint, multi_column bigint)
+ SELECT  fhirbase_indexing.indexes_summary()
+
+func indexes_usage() RETURNS table (tablename text, indexname text, num_rows real, table_size text, index_size text, "unique" text, number_of_scans bigint, tuples_read bigint, tuples_fetched bigint)
+ SELECT  fhirbase_indexing.indexes_usage()
+
+func duplicate_indexes() returns table("size" text, idx1 text,idx2 text,idx3 text,idx4  text)
+ SELECT  fhirbase_indexing.duplicate_indexes()
+
 -- conformance
 func conformance(_cfg_ jsonb) RETURNS jsonb
    SELECT fhirbase_conformance.conformance(_cfg_ )
