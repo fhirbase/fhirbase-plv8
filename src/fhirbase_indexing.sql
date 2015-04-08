@@ -85,6 +85,8 @@ func index_search_param(_resource_type text, _name_ text) RETURNS text
   FROM searchparameter x
   WHERE base = _resource_type
   AND  name = _name_
+  AND path is not null
+  AND type is not null
 
 func index_resource(_resource text) RETURNS table (idx text)
   SELECT
@@ -95,6 +97,7 @@ func index_resource(_resource text) RETURNS table (idx text)
   from searchparameter x
   where search_type IN ('token', 'reference', 'string', 'date')
   and base = _resource
+  and path is not null
 
 func index_all_resources() RETURNS table (idx text)
   SELECT
@@ -117,15 +120,21 @@ func drop_index_search_param(_resource_type text, _name_ text) RETURNS bigint
   FROM searchparameter x
   WHERE base = _resource_type
   AND  name = _name_
+  and path is not null
+  and type is not null
 
 func drop_resource_indexes(_resource text) RETURNS bigint
   SELECT count(fhirbase_gen._eval(this.drop_index_search_param_exp(ROW(x.*))))
   from searchparameter x
   where base = _resource
+  and path is not null
+  and type is not null
 
 func drop_all_resource_indexes() RETURNS bigint
   SELECT count(fhirbase_gen._eval(this.drop_index_search_param_exp(ROW(x.*))))
   FROM searchparameter x
+  WHERE x.path is not null
+    and x.type is not null
 
 -- maintaince functions
 -- from https://wiki.postgresql.org/wiki/Index_Maintenance
