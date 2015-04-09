@@ -26,6 +26,17 @@ func _get_key(_key_ text) RETURNS text
   SELECT array_to_string(fhirbase_coll._butlast(a) || split_part(fhirbase_coll._last(a), ':', 1), '.')
     FROM regexp_split_to_array(_key_, '\.') a;
 
+-- TODO: create const preprocessor to share regexp
+func _get_operator(val text) RETURNS text
+  SELECT CASE WHEN val ~ E'^(>=|<=|!=|<|>|~).*' THEN
+    regexp_replace(val, E'^(>=|<=|!=|<|>|~).*','\1') -- extract operator
+  ELSE
+    NULL
+  END
+
+func _string_after(_str_ text, _sep_ text) RETURNS text
+  select substring(_str_ from position(_sep_ in _str_) + 1)
+
 func _parse_param(_params_ text) RETURNS table (key text[], operator text, value text[])
   -- this function accept parmas in query string form
   -- and return jsonb array {param: '', op: '', value: ''}
@@ -34,17 +45,13 @@ func _parse_param(_params_ text) RETURNS table (key text[], operator text, value
   WITH initial AS (
     -- split params by & and then split by = return (key, val) relation
     SELECT this.url_decode(split_part(x,'=',1)) as key,
-           this.url_decode(split_part(x, '=', 2)) as val
+           this.url_decode(this._string_after(x, '=')) as val
       FROM regexp_split_to_table(_params_,'&') x
   ), with_op_mod AS (
     SELECT  this._get_key(key) as key, -- normalize key (remove modifiers)
             this._get_modifier(key) as mod, -- extract modifier
-            CASE WHEN val ~ E'^(>=|<=|<|>|~).*' THEN
-              regexp_replace(val, E'^(>=|<=|<|>|~).*','\1') -- extract operator
-            ELSE
-              NULL
-            END as op,
-            regexp_replace(val, E'^(>|<|<=|>=|~)(.*)','\2') as val
+            this._get_operator(val) as op,
+            regexp_replace(val, E'^(>|<|<=|>=|!=|~)(.*)','\2') as val
       FROM  initial
   )
   -- build resulting array

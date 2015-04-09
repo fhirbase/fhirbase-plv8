@@ -12,6 +12,8 @@ _get_key('subject:Patient.organization:Organization.identifier:text'::text) => '
 
 _get_key('subject:Patient.organization:Organization.identifier'::text) => 'subject:Patient.organization:Organization.identifier'
 
+_string_after('aaa==bbb=', '=') => '=bbb='
+
 -- number
 SELECT row(x.*)::text FROM _parse_param('param=num') x => '({param},=,{num})'
 
@@ -27,6 +29,9 @@ SELECT row(x.*)::text FROM _parse_param('param=>num') x => '({param},>,{num})'
 SELECT row(x.*)::text FROM _parse_param('param=>%3Dnum') x => '({param},>=,{num})'
 SELECT row(x.*)::text FROM _parse_param('param:missing=true') x => '({param},missing,{true})'
 SELECT row(x.*)::text FROM _parse_param('param:missing=false') x => '({param},missing,{false})'
+SELECT row(x.*)::text FROM _parse_param('param=>=num') x => '({param},>=,{num})'
+SELECT row(x.*)::text FROM _parse_param('param=!=num') x => '({param},!=,{num})'
+SELECT row(x.*)::text FROM _parse_param('birthdate=>=1980') x => '({birthdate},>=,{1980})'
 
 /* -- date */
 

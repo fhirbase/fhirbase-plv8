@@ -133,11 +133,20 @@ func build_token_cond(tbl text, _q query_param) RETURNS text
       _q.field_path,
       _q.value)
 
+-- TODO: create tests
 func build_date_cond(tbl text, _q query_param) RETURNS text
   SELECT
   '(' ||
   string_agg(
-    format('fhirbase_date_idx.index_as_date(content, %L::text[], %L::text) && %L',
+    format('%s (fhirbase_date_idx.index_as_date(content, %L::text[], %L::text) && %L)',
+      (
+        case
+        when _q.operator = '!=' then
+          'not '
+        else
+          ''
+        end
+      ),
       _q.field_path,
       _q.type,
       (
@@ -148,6 +157,10 @@ func build_date_cond(tbl text, _q query_param) RETURNS text
           fhirbase_date_idx._datetime_to_tstzrange(v, NULL)
         when _q.operator = '<' then
           ('(,' || fhirbase_date_idx._date_parse_to_upper(v) || ']' )::tstzrange
+        when _q.operator = '<=' then
+          ('[,' || fhirbase_date_idx._date_parse_to_upper(v) || ']' )::tstzrange
+        when _q.operator = '>=' then
+          ('[' || fhirbase_date_idx._date_parse_to_lower(v) || ',)' )::tstzrange
         end
       )
     )
@@ -160,6 +173,11 @@ func build_reference_cond(tbl text, _q query_param) RETURNS text
   -- (index_as_reference(content, '{name}') &&  '{term,term2}'varachr[])
   -- TODO: respect modifier provider:Organization=id => 'Organization/id'
  SELECT format('fhirbase_idx_fns.index_as_reference(content, %L) && %L::text[]', _q.field_path, _q.value)
+
+proc! _raise(_msg_ text) RETURNS text
+  BEGIN
+    EXECUTE
+      format('RAISE EXCEPTION %L', _msg_);
 
 func build_cond(tbl text, _q query_param) RETURNS text
   SELECT
@@ -174,6 +192,8 @@ func build_cond(tbl text, _q query_param) RETURNS text
     this.build_date_cond(tbl, _q)
   WHEN _q.search_type = 'reference' THEN
     this.build_reference_cond(tbl, _q)
+  ELSE
+    this._raise('Search by type ' || _q.search_type || ' is not yet implemented')
   END as cnd
 
 func build_sorting(_resource_type text, _query text) RETURNS text
