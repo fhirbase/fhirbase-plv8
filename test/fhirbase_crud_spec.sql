@@ -33,9 +33,23 @@ BEGIN;
 
 SELECT fhirbase_generate.generate_tables('{Patient}');
 
-expect_raise 'resource id should be empty'
-  SELECT fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
+setv('createOutcome',
+  fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
+);
 
+getv('createOutcome')->>'resourceType' => 'OperationOutcome'
+
+getv('createOutcome')#>>'{issue,0,code,coding,1,code}' => '400'
+
+setv('createUnexisting',
+  fhirbase_crud.create('{}'::jsonb, '{"resourceType":"Unexisitng"}'::jsonb)
+);
+
+getv('createUnexisting')->>'resourceType' => 'OperationOutcome'
+
+getv('createUnexisting')#>>'{issue,0,code,coding,1,code}' => '404'
+
+---getv('createUnexisting') => '{}'::jsonb
 ROLLBACK;
 
 BEGIN;

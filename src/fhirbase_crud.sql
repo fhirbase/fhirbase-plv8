@@ -54,9 +54,39 @@ func! vread(_cfg_ jsonb, _id_ text) RETURNS jsonb
      SELECT content FROM resource_history WHERE version_id = this._extract_vid(_id_)
   ) _ LIMIT 1
 
+
+func _simple_outcome(_severity_ text, _code_ text, _display_ text, _details_ text) RETURNS jsonb
+   SELECT json_build_object(
+     'resourceType', 'OperationOutcome',
+     'issue', ARRAY[
+        json_build_object(
+          'severity', _severity_,
+          'details', _details_,
+          'code', json_build_object(
+            'coding', ARRAY[
+               '{"system": "http://hl7.org/fhir/issue-type","code": "invalid", "display": "Invalid Content" }'::json,
+               json_build_object(
+                'system', 'http://hl7.org/fhir/http-code',
+                'display', _display_,
+                'code', _code_
+               )
+            ]
+          )
+        )
+     ])::jsonb
+
+func! _resource_type_installed(_type_ text) RETURNS boolean
+  SELECT COALESCE(
+    (SELECT installed
+      FROM structuredefinition
+      where name = _type_
+      AND installed = true LIMIT 1),
+  false)
+
 proc! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
   _id_ text;
   _published_ timestamptz :=  CURRENT_TIMESTAMP;
+  _flag_ boolean;
   _type_ text;
   _vid_ text;
   _meta_ jsonb;
@@ -65,8 +95,18 @@ proc! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
     _id_ := _resource_->>'id';
     _vid_ := this.gen_version_id(_resource_);
 
+    IF  NOT this._resource_type_installed(_resource_->>'resourceType') THEN
+      RETURN this._simple_outcome('error',
+        '404', 'Not Found',
+        'resource type ' || _type_  || ' not supported, or not a FHIR end point'
+      );
+    END IF;
+
     IF _id_ IS NOT NULL THEN
-      RAISE EXCEPTION 'resource id should be empty';
+      RETURN this._simple_outcome('error',
+        '400', 'Bad Request',
+        'The request body SHALL be a FHIR Resource without an id element.  If the client wishes to have control over the id of a newly submitted resource, it should use the update interaction instead.  See: http://hl7-fhir.github.io/http.html#2.1.0.13'
+      );
     END IF;
 
     _id_ := _vid_;
