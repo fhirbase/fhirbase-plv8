@@ -53,11 +53,18 @@ expect 'patient created'
   WHERE logical_id = getv('without-id')->>'id'
 => 1::bigint
 
-expect_raise 'id is required'
-  SELECT fhir.update( '{"resourceType":"Patient"}'::jsonb)
+setv('updateWithoutId',
+  fhir.update('{"resourceType":"Patient"}')
+);
 
-expect_raise 'expected last versionId'
-  SELECT fhir.update( '{"resourceType":"Patient", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)
+getv('updateWithoutId')->>'resourceType' => 'OperationOutcome'
+getv('updateWithoutId')#>>'{issue,0,code,coding,1,code}' => '422'
+
+expect 'outcome with wrong version id'
+  fhirbase_crud.update( '{}'::jsonb,
+    '{"resourceType":"Patient", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb
+  )#>>'{issue,0,code,coding,1,code}'
+=> '422'
 
 expect 'updated'
   SELECT count(*) FROM patient_history
@@ -123,13 +130,10 @@ setv('deleted',
   fhir.delete( 'Patient', 'myid')
 );
 
-expect_raise 'already deleted'
-  SELECT fhir.delete( 'Patient', 'myid')
+fhir.delete('Patient', 'myid')#>>'{issue,0,code,coding,1,code}' => '410'
+fhir.delete('Patient', 'nonexisting')#>>'{issue,0,code,coding,1,code}' => '404'
 
-expect_raise 'does not exist'
-  SELECT fhir.delete( 'Patient', 'nonexisting')
-
-fhir.read('Patient', 'myid') => null
+fhir.read('Patient','myid')#>>'{issue,0,code,coding,1,code}' => '410'
 
 fhir.is_exists('Patient', 'myid') => false
 fhir.is_deleted('Patient', 'myid') => true

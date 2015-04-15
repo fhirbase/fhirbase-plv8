@@ -70,8 +70,6 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
   --Update, create or delete a set of resources as a single transaction\nReturns bundle with entries
   _result_ jsonb[];
   _updated_entries_ jsonb[];
-  i integer;
-
   _entry_ jsonb;
   _entry_with_replaced_ids_ jsonb;
 
@@ -79,6 +77,7 @@ proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
   _process jsonb;
   _created_entries jsonb[];
   _ids_table jsonb[];
+  _outcomes_ jsonb[];
 
   BEGIN
     -- POST step
@@ -129,10 +128,10 @@ proc! _process_entries(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
   _ids_ jsonb[];
   _item_ jsonb;
   _params text[];
-  _tmp text;
   _local_id_ text;
+  _result_ jsonb;
   _created_id_ text;
-  _resource_ jsonb;
+  _outcomes_ jsonb[] = '{}'::jsonb[];
   BEGIN
     FOR _item_ IN SELECT jsonb_array_elements(_bundle_->'entry')
     LOOP
@@ -140,42 +139,38 @@ proc! _process_entries(_cfg_ jsonb, _bundle_ jsonb, _method_ text) RETURNS jsonb
         _params := this._url_to_crud_action(_item_#>>'{transaction,url}', _item_#>>'{transaction,method}');
         IF _params[1] = 'create' THEN
           _local_id_ := _item_#>>'{resource,id}';
-          _resource_ := fhirbase_crud.create(_cfg_, fhirbase_json.assoc(_item_->'resource', 'id', 'null'::jsonb));
-          _created_id_ := (_resource_->>'resourceType') || '/' || (_resource_->>'id');
+          _result_ := fhirbase_crud.create(_cfg_, fhirbase_json.assoc(_item_->'resource', 'id', 'null'::jsonb));
+          _created_id_ := (_result_->>'resourceType') || '/' || (_result_->>'id');
 
           IF _local_id_ IS NOT NULL THEN
              _ids_ := _ids_ || ARRAY[
                json_build_object('local', _local_id_, 'created', _created_id_)
              ]::jsonb[];
           END IF;
-
-          _entry_ := _entry_ || ARRAY[
-            fhirbase_json.assoc(_item_, 'resource', _resource_)
-          ]::jsonb[];
         ELSIF _params[1] = 'update' THEN
-          _entry_ := _entry_ || ARRAY[
-            fhirbase_json.assoc(
-              _item_,
-              'resource',
-              fhirbase_crud.update(_cfg_, _item_->'resource')
-            )
-          ]::jsonb[];
+          _result_ := fhirbase_crud.update(_cfg_, _item_->'resource');
         ELSIF _params[1] = 'delete' THEN
-          _entry_ := _entry_ || ARRAY[
-            fhirbase_json.assoc(
-              _item_,
-              'resource',
-              fhirbase_crud.delete(_cfg_, _params[2], _params[3])
-            )
-          ]::jsonb[];
+          _result_ := fhirbase_crud.delete(_cfg_, _params[2], _params[3]);
+        END IF;
+        IF _result_->>'resourceType' = 'OperationOutcome' THEN
+          _outcomes_ := _outcomes_ || ARRAY[_result_#>'{item,0}']::jsonb[];
+        ELSE
+          _entry_ := _entry_ || ARRAY[fhirbase_json.assoc(_item_, 'resource', _result_)];
         END IF;
       END IF;
     END LOOP;
 
-    RETURN json_build_object(
-       'ids', coalesce(_ids_, '{}'::jsonb[]),
-       'entry', coalesce(_entry_, '{}'::jsonb[])
-    )::jsonb;
+    IF array_length(_outcomes_, 1) > 0 THEN
+      RETURN json_build_object(
+        'resourceType', 'OperationOutcome',
+        'item', _outcomes_::json[]
+      )::jsonb;
+    ELSE
+      RETURN json_build_object(
+        'ids',   coalesce(_ids_, '{}'::jsonb[]),
+        'entry', coalesce(_entry_, '{}'::jsonb[])
+      )::jsonb;
+    END IF;
 
 /* func! fhir_transaction(_cfg jsonb, _bundle_ jsonb) RETURNS jsonb */
 /*   --Update, create or delete a set of resources as a single transaction\nReturns bundle with entries */

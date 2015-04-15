@@ -53,11 +53,8 @@ expect 'order created'
   WHERE logical_id = getv('without-id')->>'id'
 => 1::bigint
 
-expect_raise 'expected last versionId'
-  SELECT fhir.update( '{"resourceType":"Order", "id":"myid"}'::jsonb)
 
-expect_raise 'expected last versionId'
-  SELECT fhir.update( '{"resourceType":"Order", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)
+fhir.update('{"resourceType":"Order", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)#>>'{issue,0,code,coding,1,code}' => '422'
 
 expect 'updated'
   SELECT count(*) FROM "order_history"
@@ -127,13 +124,10 @@ setv('deleted',
   fhir.delete( 'Order', 'myid')
 );
 
-expect_raise 'already deleted'
-  SELECT fhir.delete( 'Order', 'myid')
+fhir.delete( 'Order', 'myid')#>>'{issue,0,code,coding,1,code}' => '410'
+fhir.delete( 'Order', 'nonexisting')#>>'{issue,0,code,coding,1,code}' => '404'
 
-expect_raise 'does not exist'
-  SELECT fhir.delete( 'Order', 'nonexisting')
-
-fhir.read('Order', 'myid') => null
+fhir.read('Order', 'myid')#>>'{issue,0,code,coding,1,code}' => '410'
 
 fhir.is_exists( 'Order', 'myid') => false
 fhir.is_deleted( 'Order', 'myid') => true

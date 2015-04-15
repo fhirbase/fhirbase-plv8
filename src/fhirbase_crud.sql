@@ -41,20 +41,6 @@ func _extract_vid(_id_ text) RETURNS text
   -- TODO: raise if not valid url
   SELECT fhirbase_coll._last(regexp_split_to_array(_id_, '/_history/'));
 
---- NEW API
---- NEW API
-
-func! read(_cfg_ jsonb, _id_ text) RETURNS jsonb
-   SELECT content FROM resource WHERE logical_id = this._extract_id(_id_) limit 1
-
-func! vread(_cfg_ jsonb, _id_ text) RETURNS jsonb
-   SELECT content FROM (
-     SELECT content FROM resource WHERE version_id = this._extract_vid(_id_)
-     UNION
-     SELECT content FROM resource_history WHERE version_id = this._extract_vid(_id_)
-  ) _ LIMIT 1
-
-
 func _simple_outcome(_severity_ text, _code_ text, _display_ text, _details_ text) RETURNS jsonb
    SELECT json_build_object(
      'resourceType', 'OperationOutcome',
@@ -83,6 +69,32 @@ func! _resource_type_installed(_type_ text) RETURNS boolean
       AND installed = true LIMIT 1),
   false)
 
+--- NEW API
+--- NEW API
+
+func! read(_cfg_ jsonb, _id_ text) RETURNS jsonb
+   SELECT COALESCE(
+     (SELECT content FROM resource WHERE logical_id = this._extract_id(_id_) limit 1),
+     COALESCE(
+       (SELECT this._simple_outcome('error', '410', 'Gone', format('Resource with id = %s was removed', _id_))
+          FROM resource_history WHERE logical_id = this._extract_id(_id_) limit 1),
+       this._simple_outcome('error', '404', 'Not Found', format('Resource with id = %s not found', _id_))
+     )
+   )
+
+func! vread(_cfg_ jsonb, _id_ text) RETURNS jsonb
+  SELECT COALESCE(
+    (
+     SELECT content FROM (
+       SELECT content FROM resource WHERE version_id = this._extract_vid(_id_)
+       UNION
+       SELECT content FROM resource_history WHERE version_id = this._extract_vid(_id_)
+     ) _ LIMIT 1
+    ),
+    this._simple_outcome('error', '404', 'Not Found', format('Resource with versionId = %s not found', _id_))
+  )
+
+
 proc! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
   _id_ text;
   _published_ timestamptz :=  CURRENT_TIMESTAMP;
@@ -98,7 +110,7 @@ proc! create(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
     IF  NOT this._resource_type_installed(_resource_->>'resourceType') THEN
       RETURN this._simple_outcome('error',
         '404', 'Not Found',
-        'resource type ' || _type_  || ' not supported, or not a FHIR end point'
+        'resource type ' || (_resource_->>'resourceType')  || ' not supported, or not a FHIR end point'
       );
     END IF;
 
@@ -145,15 +157,28 @@ proc! update(_cfg_ jsonb, _resource_ jsonb) RETURNS jsonb
     _new_vid_ := this.gen_version_id(_resource_);
     _resource_type_ := _resource_->>'resourceType';
 
+    IF  NOT this._resource_type_installed(_resource_->>'resourceType') THEN
+      RETURN this._simple_outcome('error',
+        '404', 'Not Found',
+        'resource type ' || (_resource_->>'resourceType')  || ' not supported, or not a FHIR end point'
+      );
+    END IF;
+
     IF _id_ IS NULL THEN
-      RAISE EXCEPTION 'resource id is required';
+      RETURN this._simple_outcome('error',
+        '422', 'Unprocessable Entity',
+        'The request body SHALL be a Resource with an id element'
+      );
     END IF;
 
     SELECT version_id INTO _vid_check_ FROM resource
     WHERE logical_id = _id_ AND resource_type = _resource_type_;
 
     IF coalesce(_vid_check_, '') <> coalesce(_old_vid_, '') THEN
-      RAISE EXCEPTION 'expected last versionId %, but got %', _vid_check_, _old_vid_;
+      RETURN this._simple_outcome('error',
+        '422', 'Unprocessable Entity',
+        format('If you pass meta.versionId we go against FHIR spec and check for version conflicts. Expected last versionId %s, but got %s', _vid_check_, _old_vid_)
+      );
     END IF;
 
     IF _old_vid_ IS NOT NULL THEN
@@ -202,12 +227,8 @@ proc! delete(_cfg_ jsonb, _resource_type_ text, _id_ text) RETURNS jsonb
     -- TODO: move old one to history, update existing
     _resource_ := this.read(_cfg_, _id_);
 
-    IF _resource_ IS NULL THEN
-      IF this.is_deleted(_cfg_, _resource_type_, _id_) THEN
-        RAISE EXCEPTION 'resource with id="%s" already deleted', _id_;
-      ELSE
-        RAISE EXCEPTION 'resource with id="%s" does not exist', _id_;
-      END IF;
+    IF _resource_->>'resourceType' = 'OperationOutcome' THEN
+      RETURN _resource_;
     END IF;
 
     EXECUTE

@@ -56,12 +56,24 @@ BEGIN;
 
 SELECT fhirbase_generate.generate_tables('{Patient}');
 
+
+setv('updateWithoutId',
+  fhirbase_crud.update('{}'::jsonb, '{"resourceType":"Patient"}'::jsonb)
+);
+
+getv('updateWithoutId')->>'resourceType' => 'OperationOutcome'
+
+getv('updateWithoutId')#>>'{issue,0,code,coding,1,code}' => '422'
+
+
 setv('created',
   fhirbase_crud.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid"}'::jsonb)
 );
 
 fhirbase_crud.read('{}'::jsonb, 'myid') => getv('created')
 fhirbase_crud.read('{}'::jsonb, 'Patient/myid') => getv('created')
+
+fhirbase_crud.read('{}'::jsonb, 'unexisting')#>>'{issue,0,code,coding,1,code}' => '404'
 
 expect 'id is myid'
   getv('created')->>'id'
@@ -102,8 +114,13 @@ expect 'patient created'
   WHERE logical_id = getv('without-id')->>'id'
 => 1::bigint
 
-expect_raise 'expected last versionId'
-  SELECT fhirbase_crud.update('{}'::jsonb, '{"resourceType":"Patient", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb)
+setv('updateWithWrongVersionId',
+  fhirbase_crud.update( '{}'::jsonb,
+    '{"resourceType":"Patient", "id":"myid", "meta":{"versionId":"wrong"}}'::jsonb
+  )
+);
+
+getv('updateWithWrongVersionId')#>>'{issue,0,code,coding,1,code}' => '422'
 
 expect 'updated'
   SELECT count(*) FROM patient_history
@@ -125,6 +142,8 @@ fhirbase_crud.read('{}'::jsonb, 'myid')#>>'{name,text}' => 'Updated name'
 
 fhirbase_crud.vread('{}'::jsonb, getv('created')#>>'{meta,versionId}') => getv('created')
 
+fhirbase_crud.vread('{}'::jsonb, 'unexisting')#>>'{issue,0,code,coding,1,code}' => '404'
+
 expect "latest"
   fhirbase_crud.is_latest('{}'::jsonb, 'Patient', 'myid',
     getv('updated')#>>'{meta,versionId}')
@@ -144,13 +163,12 @@ setv('deleted',
   fhirbase_crud.delete('{}'::jsonb, 'Patient', 'myid')
 );
 
-expect_raise 'already deleted'
-  SELECT fhirbase_crud.delete('{}'::jsonb, 'Patient', 'myid')
+fhirbase_crud.read('{}'::jsonb, 'myid')#>>'{issue,0,code,coding,1,code}' => '410'
 
-expect_raise 'does not exist'
-  SELECT fhirbase_crud.delete('{}'::jsonb, 'Patient', 'nonexisting')
+fhirbase_crud.delete('{}'::jsonb, 'Patient', 'myid')#>>'{issue,0,code,coding,1,code}' => '410'
 
-fhirbase_crud.read('{}'::jsonb, 'myid') => null
+fhirbase_crud.delete('{}'::jsonb, 'Patient', 'nonexisting')#>>'{issue,0,code,coding,1,code}' => '404'
+
 
 fhirbase_crud.is_exists('{}'::jsonb, 'Patient', 'myid') => false
 fhirbase_crud.is_deleted('{}'::jsonb, 'Patient', 'myid') => true
