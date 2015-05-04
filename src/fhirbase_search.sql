@@ -293,3 +293,17 @@ func fhir_search(_cfg_ jsonb, _type_ text, _params_ text) RETURNS jsonb
   SELECT this._search_bundle(
     _cfg_, (SELECT COALESCE(json_agg(entry),'[]'::json)::jsonb FROM entry)
   )
+
+--select key[1] from fhirbase_params._parse_param('_strict=true&organization:Organization.name=x&name=x');
+--select  *
+--from fhirbase_search.
+--_expand_search_params('Patient'
+--,'_strict=true&organization:Organization.name=x&name=x'
+--);
+
+proc fhir_strict_search(_cfg_ jsonb, _type_ text, _params_ text) RETURNS jsonb
+  BEGIN
+    IF (select TRUE from fhirbase_params._parse_param(_params_) x where x.key[1] = '_strict') THEN
+      RETURN '"strict"'::jsonb;
+    END IF;
+    RETURN '2'::jsonb;

@@ -66,6 +66,37 @@ proc _url_to_crud_action(_url_ text, _method_ text) RETURNS text[]
       END IF;
     END CASE;
 
+-- TODO: new concept convert all creates into updates with id
+proc! _create_to_update(_bundle_ jsonb) RETURNS jsonb[]
+  _meta jsonb;
+  _item_ jsonb;
+  _resource jsonb;
+  _result jsonb[] = '{}'::jsonb[];
+  _entry jsonb;
+  _local_id_ text;
+  _params text[];
+  BEGIN
+    FOR _item_ IN SELECT jsonb_array_elements(_bundle_->'entry')
+    LOOP
+      IF _item_#>>'{transaction,method}' = 'POST' THEN
+        _params := this._url_to_crud_action(_item_#>>'{transaction,url}', _item_#>>'{transaction,method}');
+        IF _params[1] = 'create' and (_item_#>>'{resource,id}') IS NOT NULL THEN
+          _local_id_ := _item_#>>'{resource,id}';
+          _meta := COALESCE(_item_#>'{resource,meta}', '{}'::jsonb);
+          _meta := fhirbase_json.merge(_meta, json_build_object('_originalId',_local_id_)::jsonb);
+          _resource := _item_#>'{resource}';
+          _resource := fhirbase_json.merge(
+            _resource,
+             json_build_object(
+              'id',gen_random_uuid()::text,
+              'meta',_meta
+             )::jsonb);
+          _result := _result || ARRAY[_resource];
+        END IF;
+      END IF;
+    END LOOP;
+    RETURN _result;
+
 proc! transaction(_cfg_ jsonb, _bundle_ jsonb) RETURNS jsonb
   --Update, create or delete a set of resources as a single transaction\nReturns bundle with entries
   _result_ jsonb[];
