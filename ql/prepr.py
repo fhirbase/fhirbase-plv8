@@ -13,6 +13,11 @@ def open_fn(res,fn):
   res.append(fn)
   res.append("LANGUAGE sql AS $$")
 
+def open_jsfn(res,fn):
+  res.append("CREATE OR REPLACE")
+  res.append(fn)
+  res.append("LANGUAGE plv8 AS $$")
+
 def open_proc(res,fn):
   res.append("CREATE OR REPLACE")
   res.append(fn)
@@ -56,6 +61,8 @@ def close_stmt(res,st, line):
     close_proc(res,'IMMUTABLE')
   elif st=='pr!':
     close_proc(res,'')
+  elif st=='jsfn':
+    close_proc(res,'')
   elif st=='assert':
     close_assert(res,line)
   elif st=='expect_raise':
@@ -87,6 +94,9 @@ def process(nm, content):
       elif state == 'start' and line.find("func") == 0:
         open_fn(res,line.replace('func ', 'function %s.' % ns))
         state = 'fn'
+      elif state == 'start' and line.find("jsfn") == 0:
+        open_jsfn(res,line.replace('jsfn ', 'function %s.' % ns))
+        state = 'jsfn'
       elif state == 'start' and line.find("expect_raise") == 0:
         open_expect_raise(res,nm, idx, line)
         state = 'expect_raise'
@@ -105,6 +115,8 @@ def process(nm, content):
       elif line != '\n':
         if line.find('\\') == 0 or line.find('$SQL') > -1:
             res.append(macroexpand(nm, ns, idx, line))
+        elif state == 'jsfn':
+            res.append("%s // %s:%s" % (macroexpand(nm, ns, idx, line.rstrip()), ns, idx))
         else:
             res.append("%s -- %s:%s" % (macroexpand(nm, ns, idx, line.rstrip()), ns, idx))
 
