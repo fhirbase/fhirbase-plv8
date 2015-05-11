@@ -6,7 +6,7 @@ before_script:
   - sudo apt-get remove postgresql postgresql-9.1 -qq --purge
   - sudo apt-get remove postgresql postgresql-9.2 -qq --purge
   - sudo apt-get remove postgresql postgresql-9.3 -qq --purge
-#- sudo su $USER -c "source ./cfg/travis_cfg.sh && ./install-postgres"
+  - sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
 
 script: sudo su $USER -c "env PGUSER=postgres DB=test ./runme integrate"
 after_success: ./build/release.sh
