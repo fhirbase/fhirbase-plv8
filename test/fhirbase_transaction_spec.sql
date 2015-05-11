@@ -1,7 +1,4 @@
--- #import ../src/fhirbase_gen.sql
--- #import ../src/fhirbase_crud.sql
--- #import ../src/fhirbase_generate.sql
--- #import ../src/fhirbase_transaction.sql
+-- #import ../src/fhirbase_terminology.sql
 
 expect
   fhirbase_transaction._url_to_crud_action('/Device'::text, 'POST'::text)
