@@ -163,6 +163,8 @@ setv('crossreferenced-transaction-bundle',
   )::jsonb
 );
 
+-- fhirbase_transaction._create_to_update(getv('crossreferenced-transaction-bundle')) => '{}'::jsonb[]
+
 setv('crossreferenced-transaction-response',
   fhirbase_transaction.transaction(
     getv('cfg'),

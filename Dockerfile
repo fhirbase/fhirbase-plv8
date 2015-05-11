@@ -1,32 +1,41 @@
-FROM postgres:9.4.1
+FROM ubuntu:14.10
+MAINTAINER Nicola <niquola@gmail.com>
 
-MAINTAINER Nikolay Ryzhikov <niquola@gmail.com>, Mike Lapshin <mikhail.a.lapshin@gmail.com>, Maksym Bodnarchuk <bodnarchuk@gmail.com>
-RUN apt-get -qq update
+RUN apt-get update && apt-get -y -q install git python-software-properties software-properties-common
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && locale-gen
-RUN apt-get -qqy install python sudo
+ENV LANGUAGE "en_US.UTF-8"
+RUN apt-get -y -q install postgresql-9.4 postgresql-client-9.4 postgresql-contrib-9.4 postgresql-9.4-plv8
 
-ENV PGDATA /data
-RUN mkdir -p $PGDATA && chown postgres -R $PGDATA
-RUN gosu postgres initdb -D $PGDATA -E utf8
-
-RUN echo 'postgres ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
-
-ENV PGDATABASE fhirbase
 ADD . /fhirbase
-RUN cp ./fhirbase/docker/fb-generate /usr/bin
-RUN chmod +x /usr/bin/fb-generate
-
 RUN chown -R postgres /fhirbase
 
-RUN mkdir -p /home/postgres
-RUN chown -R postgres /home/postgres
+USER postgres
+
+RUN /etc/init.d/postgresql start \
+    && psql --command "CREATE USER fhirbase WITH SUPERUSER PASSWORD 'fhirbase';" \
+    && createdb -O fhirbase pgdb
+
+RUN /etc/init.d/postgresql start && cd /fhirbase && DB=fhirbase ./runme integrate
+
+USER root
+
+# Adjust PostgreSQL configuration so that remote connections to the
+# database are possible.
+RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/9.4/main/pg_hba.conf
+
+# And add ``listen_addresses`` to ``/etc/postgresql/9.4/main/postgresql.conf``
+RUN echo "listen_addresses='*'" >> /etc/postgresql/9.4/main/postgresql.conf
+RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/9.4/main/pg_hba.conf
+
+# Expose the PostgreSQL port
+EXPOSE 5432
+
+RUN mkdir -p /var/run/postgresql && chown -R postgres /var/run/postgresql
+
+# Add VOLUMEs to allow backup of config, logs, socket and databases
+VOLUME  ["/etc/postgresql", "/var/log/postgresql", "/var/lib/postgresql", "/var/run/postgresql"]
+
 
 USER postgres
-RUN pg_ctl -w start && cd /fhirbase && psql -d postgres -c "create database $PGDATABASE" && env DB=$PGDATABASE ./runme integrate && pg_ctl -w stop
-RUN pg_ctl -w start && createuser -s fhirbase && psql -c "alter user fhirbase with password 'fhirbase'; select fhir.generate_tables(); select fhir.index_all_resources()" && pg_ctl -w stop
-
-RUN echo "host all  all    0.0.0.0/0  md5" >> $PGDATA/pg_hba.conf
-RUN echo "listen_addresses='*'" >> $PGDATA/postgresql.conf
-
-EXPOSE 5432
-CMD fb-generate && postgres
+# Set the default command to run when starting the container
+CMD ["/usr/lib/postgresql/9.4/bin/postgres", "-D", "/var/lib/postgresql/9.4/main", "-c", "config_file=/etc/postgresql/9.4/main/postgresql.conf"]
