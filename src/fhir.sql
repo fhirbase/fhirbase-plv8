@@ -126,5 +126,5 @@ func! admin_disk_usage_top(_limit_ integer) RETURNS  jsonb
   SELECT json_agg(x.*)::jsonb FROM fhirbase_admin.admin_disk_usage_top(_limit_) x
 
 func! expand_valueset(_vs_id_ text, _filter_ text) RETURNS jsonb
-  SELECT fhirbase_terminology.expand(_vs_id_, _filter_)
+  SELECT fhirbase_terminology.expand(_vs_id_, _filter_)::jsonb
 

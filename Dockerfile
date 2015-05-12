@@ -2,8 +2,10 @@ FROM ubuntu:14.10
 MAINTAINER Nicola <niquola@gmail.com>
 
 RUN apt-get update && apt-get -y -q install git python-software-properties software-properties-common
-RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && locale-gen
-ENV LANGUAGE "en_US.UTF-8"
+
+RUN locale-gen en_US.UTF-8
+RUN update-locale LANG=en_US.UTF-8
+
 RUN apt-get -y -q install postgresql-9.4 postgresql-client-9.4 postgresql-contrib-9.4 postgresql-9.4-plv8
 
 ADD . /fhirbase
