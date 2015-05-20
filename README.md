@@ -7,6 +7,8 @@ FHIRbase is an open source relational storage for
 
 [![Build Status](https://travis-ci.org/fhirbase/fhirbase.png?branch=master)](https://travis-ci.org/fhirbase/fhirbase)
 
+[![Docker Repository on Quay.io](https://quay.io/repository/fhirbase/fhirbase/status "Docker Repository on Quay.io")](https://quay.io/repository/fhirbase/fhirbase)
+
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/fhirbase/fhirbase?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 ## Motivation
