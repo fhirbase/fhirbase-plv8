@@ -37,12 +37,6 @@ RUN mkdir -p /var/run/postgresql && chown -R postgres /var/run/postgresql
 # Add VOLUMEs to allow backup of config, logs, socket and databases
 VOLUME  ["/etc/postgresql", "/var/log/postgresql", "/var/lib/postgresql", "/var/run/postgresql"]
 
-RUN mkdir /etc/ssl/private-copy \
-    && mv /etc/ssl/private/* /etc/ssl/private-copy/ \
-    && rm -r /etc/ssl/private \
-    && mv /etc/ssl/private-copy /etc/ssl/private \
-    && chmod -R 0751 /etc/ssl/private \
-    && chown -R postgres /etc/ssl/private
 
 USER postgres
 # Set the default command to run when starting the container

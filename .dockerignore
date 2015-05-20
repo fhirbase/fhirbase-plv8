@@ -1,4 +1,1 @@
-build
-docs
-perfDockerfile
-.git
+Dockerfile
