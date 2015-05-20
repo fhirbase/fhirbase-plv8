@@ -48,8 +48,6 @@ CREATE OR REPLACE FUNCTION plv8_test(content json, path text[])
 RETURNS json AS $$
   var result = []
   function walk(obj, path){
-    //plv8.elog(WARNING, JSON.stringify(path));
-    //plv8.elog(WARNING, JSON.stringify(obj));
     if(path.length < 1){
       result.push(obj);
       return;
