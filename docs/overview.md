@@ -162,7 +162,7 @@ SELECT fhir.read('Patient', 'c6f20b3a...');
 --(1 row)
 
 SELECT fhir.update(
-   jsonbext.merge(
+   fhirbase_json.merge(
      fhir.read('Patient', 'c6f20b3a...'),
      '{"name":[{"given":"Bruno"}]}'
    )
