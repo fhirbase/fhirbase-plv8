@@ -1,0 +1,27 @@
+{
+  "name": "fhirbase",
+  "description": "fhirbase",
+  "version": "0.0.1",
+  "author": "niquola",
+  "dependencies": {
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/niquola/fhirbase"
+  },
+  "devDependencies": {
+    "coffee": "latest",
+    "jasmine-node": "latest",
+    "pg-native":"latest"
+  },
+  "dev": {
+    "plpl": "latest"
+  },
+  "engines": { "node": ">=0.12" },
+  "homepage": "https://github.com/niquola/plpl",
+  "files": ["bin", "lib", "src", "migrations"],
+  "scripts": {
+    "publish": "coffee -o lib/ -c src/ && npm publish",
+    "test": "node_modules/jasmine-node/bin/jasmine-node spec --coffee"
+  }
+}
