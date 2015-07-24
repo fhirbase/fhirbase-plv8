@@ -138,7 +138,7 @@ func build_date_cond(tbl text, _q query_param) RETURNS text
   SELECT
   '(' ||
   string_agg(
-    format('%s (fhirbase_date_idx.index_as_date(content, %L::text[], %L::text) && %L)',
+    format('%s (fhirbase_date_idx.index_as_date(%I.content, %L::text[], %L::text) && %L)',
       (
         case
         when _q.operator = '!=' then
@@ -147,6 +147,7 @@ func build_date_cond(tbl text, _q query_param) RETURNS text
           ''
         end
       ),
+      tbl,
       _q.field_path,
       _q.type,
       (
