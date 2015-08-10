@@ -1,6 +1,6 @@
 # fhirbase-plv8
 
-This is *rewrite* of fhirbase, i.e. fhirbase-2.
+This is attempt *rework* of fhirbase, i.e. fhirbase-2.
 
 
 # Why?
@@ -9,23 +9,23 @@ There are couple of reasons to rewrite and redesign fhirbase:
 
 ### Switch primary language to JavaScript
 
-fhirbase was written mostly in sql & pgpsql, but development using
-this langs is quite cryptic and there are no so much developers ready to contribute.
+fhirbase was written mostly in sql & pl/pgsql, but development using
+this langs is quite cryptic and there are not so much developers ready to contribute.
 
 We hope, that by switching essential part of code base to more pop-language like JavaScript (Coffee script)
 make threshold lower and bring more developers to fhirbase.
 
 Most utils around fhirbase like tests, migrations, maintenance tasks could be written using JS (node) stack
-and unify development.
+and that unify development. Also we can ruse existing node/js infrastructure and libraries like npm.
 
-Another reason for JS: that we could develop pure js library for FHIR Resources Profile validation and reuse
+Another reason for JS: that we could develop pure js library for FHIR Resources Profile Validation and other FHIR stuff and reuse
 it in database, in browser and on the servers side (node or embeded js).
 
 ### Separation of concerns
 
 Redesign fhirbase in a way, that we could separate
 fhirbase meta-layer (basic CRUD, search, tables, history),
-which do not require FHIR meta-information and then build FHIR operations
+which does not require FHIR meta-information and then build FHIR operations
 on top of it.
 
 This is good, because  FHIR meta data is changing actively, so we should
