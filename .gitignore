@@ -14,3 +14,4 @@ old/*
 .tmp
 *.pyc
 dist
+coffee/node_modules

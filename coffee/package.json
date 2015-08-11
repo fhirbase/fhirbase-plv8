@@ -1,0 +1,9 @@
+{
+  "name": "fhirbase",
+  "version": "0.0.0",
+  "dependencies": {
+    "coffee-script": "latest",
+    "jasmine-node": "latest",
+    "jsondiffpatch": "latest"
+  }
+}
