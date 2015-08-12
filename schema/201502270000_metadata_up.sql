@@ -36,7 +36,7 @@ func! load_elements(_prof_ jsonb) returns text
       x->>'comments',
       x->>'isSummary' = 'true',
       (
-        SELECT array_agg(this.structuredefinition_to_resource_type(y->>'structuredefinition'))
+        SELECT array_agg(this.structuredefinition_to_resource_type(y->>'profile'))
          FROM jsonb_array_elements(x->'type') y
          WHERE y->>'code' = 'Reference'
       )
