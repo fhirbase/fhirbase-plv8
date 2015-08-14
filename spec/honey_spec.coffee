@@ -23,8 +23,7 @@ qjoin =
       [['encounter', 'e']
        [':=',':e.name',':p.name']]
       [['another', 'a']
-       [':=',':a.name',':e.name']]
-    ]
+       [':=',':a.name',':e.name']]]
     where: [':and'
       [':=',':p.name',4]
       [':=',':a.name',4]
