@@ -92,3 +92,15 @@ func index_as_string( content jsonb, path text[]) RETURNS text
     )::text,
     E'\\s+', ' ', 'g'
   )
+
+func index_as_string( content jsonb, path text[]) RETURNS text
+  SELECT
+  regexp_replace(
+    this._to_string(
+        this._unaccent_string(
+            fhirbase_json.json_get_in(content, path)::text
+    )
+  )::text,
+  E'\\s+', ' ', 'g'
+  )
+

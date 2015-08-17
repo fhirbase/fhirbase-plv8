@@ -2,6 +2,7 @@
   "name": "fhirbase",
   "version": "0.0.0",
   "dependencies": {
+    "pg-native": "latest",
     "coffee-script": "latest",
     "jasmine-node": "latest",
     "jsondiffpatch": "latest"
