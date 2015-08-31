@@ -44,7 +44,7 @@ SAMPLES = [
   [['date', 'lt'],
    {table_name: "patient", type: 'Date', value: ['2011'], path: ['birthDate' ]},
    "(fhirbase_date_idx.index_as_date(\"patient\".content, ARRAY['birthDate'], 'Date'::text) && fhirbase_date_idx._datetime_to_tstzrange('2011', NULL))"]
-   '(fhirbase_date_idx.index_as_date(\"patient\".content, ARRAY['birthDate'], 'Date'::text) && ('(,' || fhirbase_date_idx._date_parse_to_upper('2011') || ']' )::tstzrange)' to equal '(fhirbase_date_idx.index_as_date(\"patient\".content, ARRAY['birthDate'], 'Date'::text) && fhirbase_date_idx._datetime_to_tstzrange('2011', NULL))'.
+
   ]
 
 get_in = (obj, pth)->
