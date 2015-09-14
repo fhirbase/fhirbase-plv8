@@ -169,8 +169,8 @@ SELECT fhir.update(
 );
 -- returns update version
 
-SELECT count() FROM patient; => 1
-SELECT count() FROM patient_history; => 1
+SELECT count(*) FROM patient; -- 1
+SELECT count(*) FROM patient_history; -- 1
 
 -- read previous version of resource
 SELECT fhir.vread('Patient', /*old_version_id*/ 'c6f20b3a...');
