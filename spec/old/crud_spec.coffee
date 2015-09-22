@@ -1,4 +1,4 @@
-plv8 = require('../lib/plv8')
+plv8 = require('../plpl/src/plv8')
 crud = require('../src/crud')
 schema = require('../src/schema')
 
@@ -48,9 +48,3 @@ describe "CRUD", ()->
     # outcome = crud.read(plv8, 'Patient', id)
     # expect(outcome.resourceType).toEqual('OperationOutcome')
     # expect(outcome.issue[0])
-
-  it "read in db", ()->
-    np = require('../lib/node2pl')
-    np.scan('../src/crud')
-
-    res = plv8.execute("select fhir.read('StructureDefinition', 'Patient') as read")[0]['read']

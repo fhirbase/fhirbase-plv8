@@ -110,17 +110,29 @@ _inherits = (q)->
 _create = (q)->
   [
     _create_table(q)
-    "("
-    _columns_ddl(q)
-    ")"
+    "(", _columns_ddl(q), ")"
     _inherits(q)
   ].join(' ')
 
+_create_extension = (q)->
+  "CREATE EXTENSION IF NOT EXISTS #{q.name}"
+
+_create_schema = (q)->
+  "CREATE SCHEMA IF NOT EXISTS #{q.name}"
+
 sql = (q)->
   res = if q.create
-    _create(q)
+    switch q.create
+      when 'table' then _create(q)
+      when 'extension' then _create_extension(q)
+      when 'schema' then _create_schema(q)
+  else if q.drop
+    "DROP #{q.drop} #{_qlit(q.name)}"
   else if q.select
     _select(q)
   _normalize(res)
 
 module.exports = sql
+
+sql.TZ = "TIMESTAMP WITH TIME ZONE"
+sql.JSONB = "jsonb"
