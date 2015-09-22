@@ -6,8 +6,10 @@ isArray = (value ) ->
   typeof value.splice is 'function' and
   not ( value.propertyIsEnumerable 'length' )
 
+isString = (x)-> typeof x == 'string'
+
 isKeyword = (x)->
-  x.indexOf && x.indexOf(':') == 0
+  isString(x) && x.indexOf && x.indexOf(':') == 0
 
 isNumber = (x)->
   not isNaN(parseFloat(x)) && isFinite(x)
@@ -87,8 +89,11 @@ _qlit = (x)->
 _lit = (x)->
   "\"#{x}\""
 
+_to_table_name = (x)->
+  if isArray(x) then x.map(_qlit).join('.') else _qlit(x)
+
 _create_table = (q)->
-  "CREATE TABLE #{_qlit(q.name)}"
+  "CREATE TABLE #{_to_table_name(q.name)}"
 
 _to_array = (x)->
   if isArray(x)
@@ -121,16 +126,19 @@ _create_schema = (q)->
   "CREATE SCHEMA IF NOT EXISTS #{q.name}"
 
 sql = (q)->
+  #console.log("HQL:", q)
   res = if q.create
     switch q.create
       when 'table' then _create(q)
       when 'extension' then _create_extension(q)
       when 'schema' then _create_schema(q)
   else if q.drop
-    "DROP #{q.drop} #{_qlit(q.name)}"
+    "DROP #{q.drop} #{q.safe and 'IF EXISTS'} #{_to_table_name(q.name)}"
   else if q.select
     _select(q)
-  _normalize(res)
+  res = _normalize(res)
+  #console.log("SQL:", res)
+  res
 
 module.exports = sql
 

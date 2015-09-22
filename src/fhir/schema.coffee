@@ -2,11 +2,20 @@ sql =  require('../honey')
 namings = require('./namings')
 
 table_exists = (plv8, table_name)->
-  q =  sql(
-    select: [true]
+  parts = table_name.split('.')
+
+  if parts.length > 1
+    schema_name = parts[0]
+    table_name = parts[1]
+  else
+    schema_name = 'public'
+    table_name = table_name
+
+  q =  sql
+    select: ['ok']
     from: ['information_schema.tables']
-    where: [':=', ':table_name', table_name]
-  )
+    where: [':and', [':=', ':table_name', table_name],
+                    [':=', ':table_schema', schema_name]]
   result = plv8.execute(q)
   result.length > 0
 
@@ -18,7 +27,7 @@ exports.create_table = (plv8, resource_type)->
     {status: 'error', message: "Table #{nm} already exists"}
   else
     plv8.execute sql(create: "table", name: nm, inherits: ['resource'])
-    plv8.execute sql(create: "table", name: "history.#{nm}", inherits: ['resource'])
+    plv8.execute sql(create: "table", name: ['history', nm],  inherits:  ['history.resource'])
     {status: 'ok', message: "Table #{nm} was created"}
 
 exports.drop_table = (plv8, nm)->
@@ -26,8 +35,8 @@ exports.drop_table = (plv8, nm)->
   unless table_exists(plv8, nm)
     {status: 'error', message: "Table #{nm} not exists"}
   else
-    q = sql(drop: "table", name: nm)
-    res = plv8.execute(q)
+    res = plv8.execute sql(drop: "table", name: nm, safe: true)
+    res = plv8.execute sql(drop: "table", name: ['history',nm], safe: true)
     {status: 'ok', message: "Table #{nm} was dropped", result: res}
 
 exports.describe_table = (plv8, resource_type)->
