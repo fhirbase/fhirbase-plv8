@@ -1,0 +1,15 @@
+# .travis.yml
+language: node_js
+node_js:
+    - "0.12"
+addons:
+  postgresql: "9.4"
+notifications:
+  slack: healthsamurai:711fu4qu2Pz0uWrc8JMQ6Bz7
+
+before_script:
+  - sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
+  - npm install && cd plpl && npm install
+  - npm install -g jasmine-node
+
+script: sudo su $USER -c "jasmine-node spec --coffee"
