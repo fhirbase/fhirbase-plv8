@@ -1,5 +1,7 @@
 # fhirbase-plv8
 
+[![Build Status](https://travis-ci.org/fhirbase/fhirbase-plv8.svg)](https://travis-ci.org/fhirbase/fhirbase-plv8)
+
 This is attempt *rework* of fhirbase, i.e. fhirbase-2.
 
 
