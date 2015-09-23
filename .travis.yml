@@ -10,6 +10,5 @@ notifications:
 before_script:
   - sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
   - npm install && cd plpl && npm install
-  - npm install -g jasmine-node
 
-script: sudo su $USER -c "jasmine-node spec --coffee"
+script: sudo su $USER -c "node_modules/jasmine-node/bin/jasmine-node spec --coffee"
