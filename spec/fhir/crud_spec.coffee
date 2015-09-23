@@ -2,14 +2,42 @@ plv8 = require('../../plpl/src/plv8')
 crud = require('../../src/fhir/crud')
 schema = require('../../src/fhir/schema')
 
+copy = (x)-> JSON.parse(JSON.stringify(x))
+
 describe "CRUD", ()->
   beforeEach ()->
-    console.log "before"
-    plv8.execute schema.create_table(plv8, 'Users')
+    schema.create_table(plv8, 'Users')
 
   afterEach ()->
-    console.log "after"
-    plv8.execute schema.drop_table(plv8, 'Users')
+    schema.drop_table(plv8, 'Users')
 
-  it "read", ()->
-    console.log "Here"
+  it "simple", ()->
+    created = crud.create(plv8, {resourceType: 'Users', name: 'admin'})
+    expect(created.id).not.toBeFalsy()
+    expect(created.id).not.toBeFalsy()
+    expect(created.meta.versionId).not.toBe(undefined)
+    expect(created.name).toEqual('admin')
+
+    read = crud.read(plv8, {id: created.id, resourceType: 'Users'})
+    expect(read.id).toEqual(created.id)
+
+    vread = crud.vread(plv8, read)
+    expect(read.id).toEqual(vread.id)
+    expect(read.meta.versionId).toEqual(vread.meta.versionId)
+
+    to_update = copy(read)
+    to_update.name = 'changed'
+
+    updated = crud.update(plv8, to_update)
+    expect(updated.name).toEqual(to_update.name)
+    expect(updated.meta.versionId).not.toBeFalsy()
+    expect(updated.meta.versionId).not.toEqual(read.meta.versionId)
+
+    read_updated = crud.read(plv8, updated)
+    expect(read_updated.name).toEqual(to_update.name)
+
+    hx  = crud.history(plv8, {id: read.id, resourceType: 'Users'})
+    expect(hx.total).toEqual(2)
+    expect(hx.entry.length).toEqual(2)
+
+    console.log(JSON.stringify(hx))

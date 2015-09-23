@@ -1,0 +1,21 @@
+sql =  require('../honey')
+
+table_exists = (plv8, table_name)->
+  parts = table_name.split('.')
+
+  if parts.length > 1
+    schema_name = parts[0]
+    table_name = parts[1]
+  else
+    schema_name = 'public'
+    table_name = table_name
+
+  q =  sql
+    select: ['ok']
+    from: ['information_schema.tables']
+    where: [':and', [':=', ':table_name', table_name],
+                    [':=', ':table_schema', schema_name]]
+  result = plv8.execute(q)
+  result.length > 0
+
+exports.table_exists = table_exists

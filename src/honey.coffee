@@ -39,9 +39,11 @@ _table = (y)->
   if isArray(y) then "#{y[0]} #{y[1]}" else y
 
 _tables = (x)->
-  return unless x
-  throw new Exception('from: [array] expected)') unless isArray(x)
-  x = x.map(_table)
+  unless x
+    throw new Exception('from: [tables] expected')
+  unless isArray(x)
+    throw new Exception('from: [array] expected)')
+
   list = x.map(_table).join(', ')
   "FROM #{list}"
 

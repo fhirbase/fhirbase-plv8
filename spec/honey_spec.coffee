@@ -40,7 +40,28 @@ ddl =
        logical_id: ["text"]
        published: ["timestamp with time zone"]}
 
-tests = [q1, q2, qjoin, ddl]
+ddl2 =
+  res: 'CREATE EXTENSION IF NOT EXISTS plv8'
+  exp:
+     create: "extension"
+     name: "plv8"
+     safe: true
+
+insert =
+  res: ['insert into users (a,b,c) values ($1,$2,CURRENT_TIMESTAMP)', 1, 'string']
+  exp:
+     insert: ['history','users']
+     values:  {a: 1, b: 'string', c: '^CURRENT_TIMESTAMP'}
+     returning: ['id']
+
+insert =
+  res: ['insert into users (a,b,c) values ($1,$2,CURRENT_TIMESTAMP)', 1, 'string']
+  exp:
+     insert: 'users'
+     values:  [{a: 1, b: 'string', c: '^CURRENT_TIMESTAMP'}]
+     returning: ['id']
+
+tests = [q1, q2, qjoin, ddl, ddl2]
 
 strcmp = (x,y)->
   unless x and y
