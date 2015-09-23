@@ -41,3 +41,10 @@ describe "CRUD", ()->
     expect(hx.entry.length).toEqual(2)
 
     console.log(JSON.stringify(hx))
+
+    deleted = crud.delete(plv8, {id: read.id, resourceType: 'Users'})
+    expect(deleted.meta.request.method).toEqual('DELETE')
+
+    hx_deleted  = crud.history(plv8, {id: read.id, resourceType: 'Users'})
+    expect(hx_deleted.total).toEqual(3)
+    expect(hx_deleted.entry.length).toEqual(3)

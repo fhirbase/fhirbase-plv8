@@ -141,6 +141,50 @@ exports.update = (plv8, resource)->
 
 exports.update.plv8_signature = ['jsonb', 'jsonb']
 
+exports.delete = (plv8, resource)->
+  id = resource.id
+  assert(id, 'resource.id')
+  assert(resource.resourceType, 'resource.resourceType')
+
+  table_name = namings.table_name(plv8, resource.resourceType)
+  unless pg_meta.table_exists(plv8, table_name)
+    return {status: "Error", message: "Table for #{resource.resourceType} not exists"}
+
+  old_version = exports.read(plv8, resource)
+
+  unless old_version
+    return {status: "Error", message: "Resource #{resource.resourceType}/#{id} not exists"}
+
+  resource = utils.copy(old_version)
+
+  version_id = utils.uuid(plv8)
+  resource.meta ||= {}
+  resource.meta.versionId = version_id
+  resource.meta.lastUpdated = new Date()
+  resource.meta.request = {
+    method: 'DELETE'
+    url: resource.resourceType
+  }
+
+  plv8.execute "DELETE FROM #{table_name} WHERE id = $1", [id]
+
+  plv8.execute """
+    UPDATE history.#{table_name}
+    SET valid_to = CURRENT_TIMESTAMP
+    WHERE id = $1 and version_id = $2
+    """, [id, old_version.meta.versionId]
+
+  plv8.execute """
+    INSERT INTO history.#{table_name}
+    (id, version_id, resource, valid_from, valid_to)
+    VALUES ($1,$2,$3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    """, [id, version_id, JSON.stringify(resource)]
+
+  resource
+
+
+exports.delete.plv8_signature = ['jsonb', 'jsonb']
+
 exports.history = (plv8, query)->
   id = query.id
   assert(id, 'query.id')

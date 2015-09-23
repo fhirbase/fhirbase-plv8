@@ -5,7 +5,7 @@ node_js:
 addons:
   postgresql: "9.4"
 notifications:
-  slack: healthsamurai:711fu4qu2Pz0uWrc8JMQ6Bz7
+    slack: healthsamurai:lKl1jXV360NHMSzV2nwndkOv
 
 before_script:
   - sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
