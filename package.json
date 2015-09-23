@@ -12,7 +12,8 @@
   "devDependencies": {
     "coffee": "latest",
     "jasmine-node": "latest",
-    "pg-native":"latest"
+    "pg-native":"latest",
+    "js-yaml": "latest"
   },
   "dev": {
     "plpl": "latest"

@@ -6,10 +6,8 @@ copy = (x)-> JSON.parse(JSON.stringify(x))
 
 describe "CRUD", ()->
   beforeEach ()->
-    schema.create_table(plv8, 'Users')
-
-  afterEach ()->
     schema.drop_table(plv8, 'Users')
+    schema.create_table(plv8, 'Users')
 
   it "simple", ()->
     created = crud.create(plv8, {resourceType: 'Users', name: 'admin'})
@@ -33,14 +31,14 @@ describe "CRUD", ()->
     expect(updated.meta.versionId).not.toBeFalsy()
     expect(updated.meta.versionId).not.toEqual(read.meta.versionId)
 
+
     read_updated = crud.read(plv8, updated)
     expect(read_updated.name).toEqual(to_update.name)
+    expect(read_updated.meta.request.method).toEqual('PUT')
 
     hx  = crud.history(plv8, {id: read.id, resourceType: 'Users'})
     expect(hx.total).toEqual(2)
     expect(hx.entry.length).toEqual(2)
-
-    console.log(JSON.stringify(hx))
 
     deleted = crud.delete(plv8, {id: read.id, resourceType: 'Users'})
     expect(deleted.meta.request.method).toEqual('DELETE')
