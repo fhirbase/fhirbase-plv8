@@ -1,4 +1,4 @@
-sql =  require('../honey')
+utils =  require('./utils')
 
 table_exists = (plv8, table_name)->
   parts = table_name.split('.')
@@ -10,12 +10,11 @@ table_exists = (plv8, table_name)->
     schema_name = 'public'
     table_name = table_name
 
-  q =  sql
+  result = utils.exec plv8,
     select: ['ok']
     from: ['information_schema.tables']
     where: [':and', [':=', ':table_name', table_name],
                     [':=', ':table_schema', schema_name]]
-  result = plv8.execute(q)
   result.length > 0
 
 exports.table_exists = table_exists

@@ -127,18 +127,46 @@ _create_extension = (q)->
 _create_schema = (q)->
   "CREATE SCHEMA IF NOT EXISTS #{q.name}"
 
+_parens = (x)-> "(#{x})"
+
+_insert = (q)->
+  table = q.insert
+  names = []
+  values = []
+  params = []
+  cnt = 1
+  for k,v of q.values
+    names.push(k)
+    if isString(v) && v.match(/^\^/)
+      values.push(v.replace(/^\^/,''))
+    else
+      values.push("$#{cnt}")
+      params.push(v)
+      cnt = cnt + 1
+
+  res = ["INSERT", "INTO", table]
+  res.push(_parens(names.join(', ')))
+  res.push("VALUES")
+  res.push(_parens(values.join(", ")))
+  sql = res.join(" ")
+  [sql].concat(params)
+
+#console.log(_insert(insert: "users", values: {a: 1, b: '^current_timestamp'}))
+
 sql = (q)->
   #console.log("HQL:", q)
   res = if q.create
     switch q.create
-      when 'table' then _create(q)
-      when 'extension' then _create_extension(q)
-      when 'schema' then _create_schema(q)
+      when 'table' then [_create(q)]
+      when 'extension' then [_create_extension(q)]
+      when 'schema' then [_create_schema(q)]
+  else if q.insert
+    _insert(q)
   else if q.drop
-    "DROP #{q.drop} #{q.safe and 'IF EXISTS'} #{_to_table_name(q.name)}"
+    ["DROP #{q.drop} #{q.safe and 'IF EXISTS'} #{_to_table_name(q.name)}"]
   else if q.select
-    _select(q)
-  res = _normalize(res)
+    [_normalize(_select(q))]
+
   #console.log("SQL:", res)
   res
 

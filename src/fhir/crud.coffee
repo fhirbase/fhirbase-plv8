@@ -14,6 +14,12 @@ assert = (pred, msg)->
   unless pred
     throw new Error("Asserted: #{msg}")
 
+ensure_meta = (resource, props)->
+  resource.meta ||= {}
+  for k,v of props
+    resource.meta[k] = v
+  resource
+
 exports.create = (plv8, resource)->
   errors = validate_create_resource(resource)
   if errors then return errors
@@ -25,13 +31,13 @@ exports.create = (plv8, resource)->
   resource.id = id
   version_id = (resource.meta && resource.meta.versionId) ||  utils.uuid(plv8)
 
-  resource.meta ||= {}
-  resource.meta.versionId = version_id
-  resource.meta.lastUpdated = new Date()
-  resource.meta.request = {
-    method: 'POST'
-    url: resource.resourceType
-  }
+  ensure_meta(resource,
+    versionId: version_id
+    lastUpdated: new Date()
+    request:
+      method: 'POST'
+      url: resource.resourceType
+  )
 
   plv8.execute """
     INSERT INTO #{table_name}
@@ -58,7 +64,7 @@ exports.read = (plv8, query)->
   unless pg_meta.table_exists(plv8, table_name)
     return {status: "Error", message: "Table for #{query.resourceType} not exists"}
 
-  res = plv8.execute(sql( select: [':*'], from: [table_name], where: [':=', ':id',query.id]))
+  res = utils.exec(plv8, select: [':*'], from: [table_name], where: [':=', ':id',query.id])
   row = res[0]
   unless row
     return {status: "Error", message: "Not found"}
@@ -77,13 +83,13 @@ exports.vread = (plv8, query)->
   unless pg_meta.table_exists(plv8, table_name)
     return {status: "Error", message: "Table for #{query.resourceType} not exists"}
 
-  q = sql
-      select: [':*']
-      from: ["history.#{table_name}"]
-      where: [':and', [':=', ':id',query.id],
-                      [':=', ':version_id', version_id]]
+  q =
+    select: [':*']
+    from: ["history.#{table_name}"]
+    where: [':and', [':=', ':id',query.id],
+                    [':=', ':version_id', version_id]]
 
-  res = plv8.execute(q)
+  res = utils.exec(plv8,q)
   row = res[0]
   unless row
     return {status: "Error", message: "Not found"}
@@ -194,10 +200,10 @@ exports.history = (plv8, query)->
   unless pg_meta.table_exists(plv8, table_name)
     return {status: "Error", message: "Table for #{query.resourceType} not exists"}
 
-  q = sql
-      select: [':*']
-      from: ["history.#{table_name}"]
-      where: [':=', ':id',query.id]
+  q =
+    select: [':*']
+    from: ["history.#{table_name}"]
+    where: [':=', ':id',query.id]
 
-  resources = plv8.execute(q).map((x)-> JSON.parse(x.resource))
+  resources = utils.exec(plv8,q).map((x)-> JSON.parse(x.resource))
   bundle.history_bundle(resources)

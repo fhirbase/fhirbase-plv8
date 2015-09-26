@@ -6,7 +6,7 @@ search = require('../../src/fhir/search')
 yaml = require('js-yaml')
 fs   = require('fs')
 
-specs = yaml.safeLoad(fs.readFileSync('./search_spec.yml', 'utf8'))
+specs = yaml.safeLoad(fs.readFileSync("#{__dirname}/search_spec.yml", 'utf8'))
 
 
 describe "CRUD", ()->
