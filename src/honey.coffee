@@ -1,4 +1,4 @@
-isArray = (value ) ->
+isArray = (value)->
   value and
   typeof value is 'object' and
   value instanceof Array and
@@ -6,7 +6,24 @@ isArray = (value ) ->
   typeof value.splice is 'function' and
   not ( value.propertyIsEnumerable 'length' )
 
+assertArray = (x)->
+  unless isArray(x)
+    throw new Error('from: [array] expected)')
+
+assert = (x, msg)-> throw new Error(x) unless x
+
+interpose = (sep, col)->
+  col.reduce(((acc, x)-> acc.push(x); acc.push(sep); acc),[])[0..-2]
+
 isString = (x)-> typeof x == 'string'
+
+push = (acc, x)->
+  acc.result.push(x)
+  acc
+
+concat = (acc, xs)->
+  acc.result = acc.result.concat(xs)
+  acc
 
 isKeyword = (x)->
   isString(x) && x.indexOf && x.indexOf(':') == 0
@@ -18,84 +35,127 @@ name = (x)->
   if isKeyword(x)
     x.replace(/^:/,'')
 
+RAW_SQL_REGEX = /^\^/
+
+isRawSql = (x)->
+  x && isString(x) && x.match(RAW_SQL_REGEX)
+
+rawToSql = (x)->
+  x.replace(RAW_SQL_REGEX,'')
+
 _toLiteral = (x)->
   if isKeyword(x)
     name(x)
+  else if isRawSql(x)
+    rawToSql(x)
   else if isNumber(x)
     x
   else
     "'#{x}'"
 
-_columns = (x)->
-  return unless x
-  list = x.map (x)->
+quote_litteral = (x)-> "'#{x}'"
+
+quote_ident = (x)->
+  x.split('.').map((x)-> "\"#{x}\"").join('.')
+
+
+emit_param = (acc, v)->
+  if isRawSql(v)
+    push(acc,rawToSql(v))
+  else if isKeyword(v)
+    push(acc,name(v))
+  else
+    push(acc,"$#{acc.cnt}")
+    acc.cnt = acc.cnt + 1
+    acc.params.push(v)
+  acc
+
+surround = (acc, parens, proc)->
+  push(acc,parens[0])
+  acc = proc(acc)
+  push(acc,parens[1])
+  acc
+
+surround_parens = (acc, proc)->
+  surround acc, ['(',')'], proc
+
+emit_delimit = (acc, delim, xs, next)->
+  unless isArray(xs) # means object
+    xs = ([k,v] for k,v of xs)
+  for x in xs[0..-2]
+    acc = next(acc, x)
+    push(acc,delim)
+  acc = next(acc, xs[(xs.length - 1)])
+  acc
+
+emit_columns = (acc, xs)->
+  emit_delimit acc, ",", xs, (acc,x)->
     if isKeyword(x)
-      name(x)
+      push(acc,name(x))
+    else if isRawSql(x)
+      push(acc,rawToSql(x))
     else
-      "'#{x}'"
-  "SELECT #{list.join(', ')}"
-
-_table = (y)->
-  if isArray(y) then "#{y[0]} #{y[1]}" else y
-
-_tables = (x)->
-  unless x
-    throw new Exception('from: [tables] expected')
-  unless isArray(x)
-    throw new Exception('from: [array] expected)')
-
-  list = x.map(_table).join(', ')
-  "FROM #{list}"
-
-_expression = (x)->
-  return _toLiteral(x) if not isArray(x)
-  which = x[0]
-  switch which
-    when ':and'
-      "(" + x[1..].map(_expression).join(' AND ') + ")"
-    when ':or'
-      "(" + x[1..].map(_expression).join(' OR ') + ")"
-    else
-      [_expression(x[1]), _toLiteral(x[0]), _expression(x[2])].join(" ")
+      acc = emit_param(acc, x)
+    acc
 
 
-_where = (x)->
-  return unless x
-  cond =  _expression(x)
-  "WHERE #{cond}"
+emit_table_name = (acc, y)->
+  if isArray(y)
+    push(acc, "#{quote_ident(y[0])} #{y[1]}")
+  else
+    push(acc, quote_ident(y))
 
-_joins = (x)->
-  return unless x
-  x.map((y)->
-   "JOIN #{_table(y[0])} ON #{_expression(y[1])}"
-  ).join(" ")
+emit_tables = (acc, x)->
+  assert(x, 'from: [tables] expected')
+  assertArray(x)
+  push(acc,"FROM")
+  emit_delimit(acc, ",", x, emit_table_name)
 
+emit_expression = (acc, xs)->
+  unless isArray(xs)
+    push(acc,_toLiteral(xs))
+  else
+    which = xs[0]
+    switch which
+      when ':and'
+        surround_parens acc, (acc)->
+          emit_delimit(acc, "AND", xs[1..], emit_expression)
+      when ':or'
+        surround_parens acc, (acc)->
+          emit_delimit(acc, "OR", xs[1..], emit_expression)
+      else
+        acc = emit_expression(acc,xs[1])
+        acc = emit_expression(acc,xs[0])
+        acc = emit_param(acc, xs[2])
+  acc
 
-_normalize = (x)->
-  x.replace(/ +/g,' ')
+emit_where = (acc,x)->
+  return acc unless x
+  push(acc,"WHERE")
+  emit_expression(acc, x)
 
-_select = (query)->
-  [
-    _columns(query.select)
-    _tables(query.from)
-    _joins(query.joins)
-    _where(query.where)
-  ].join(' ')
+emit_join = (acc, xs)->
+  return acc unless xs
+  for x in xs
+    push(acc,"JOIN")
+    emit_table_name(acc, x[0])
+    push(acc,"ON")
+    emit_expression(acc, x[1])
+  acc
 
+emit_select = (acc,query)->
+  push(acc,"SELECT")
+  emit_columns(acc, query.select)
+  emit_tables(acc, query.from)
+  emit_join(acc, query.join) if query.join
+  emit_where(acc, query.where)
+  acc
 
 # DDL
 
-_qlit = (x)->
-  x.split('.').map((x)-> "\"#{x}\"").join('.')
-
-_lit = (x)->
-  "\"#{x}\""
-
 _to_table_name = (x)->
-  if isArray(x) then x.map(_qlit).join('.') else _qlit(x)
+  if isArray(x) then x.map(quote_ident).join('.') else quote_ident(x)
 
-_create_table = (q)->
-  "CREATE TABLE #{_to_table_name(q.name)}"
 
 _to_array = (x)->
   if isArray(x)
@@ -105,72 +165,113 @@ _to_array = (x)->
   else
     []
 
-_columns_ddl = (q)->
-  cols = (k for k,_ of q.columns).sort()
-  cols = for c in cols
-    "#{_lit(c)} #{_to_array(q.columns[c]).join(' ')}"
-  cols.join(', ')
+keys = (obj)-> (k for k,_ of obj)
 
-_inherits = (q)->
-  "INHERITS (#{q.inherits.map(_qlit).join(',')})" if q.inherits
+emit_columns_ddl = (acc, q)->
+  cols = keys(q.columns).sort()
+  emit_delimit acc, ",", cols, (acc, c)->
+    push(acc, quote_ident(c))
+    push(acc, _to_array(q.columns[c]).join(' '))
 
-_create = (q)->
-  [
-    _create_table(q)
-    "(", _columns_ddl(q), ")"
-    _inherits(q)
-  ].join(' ')
+emit_create_table = (acc, q)->
+  push(acc,"CREATE TABLE")
+  emit_table_name(acc, q.name)
+  surround_parens acc, (acc)->
+    emit_columns_ddl(acc, q)
 
-_create_extension = (q)->
-  "CREATE EXTENSION IF NOT EXISTS #{q.name}"
+  if q.inherits
+    push(acc,"INHERITS")
+    surround_parens acc, (acc)->
+      emit_delimit acc, ",", q.inherits, emit_table_name
+  acc
 
-_create_schema = (q)->
-  "CREATE SCHEMA IF NOT EXISTS #{q.name}"
+emit_create_extension = (acc, q)->
+  push(acc, "CREATE EXTENSION IF NOT EXISTS")
+  push(acc, q.name)
 
-_parens = (x)-> "(#{x})"
+emit_create_schema = (acc, q)->
+  push(acc, "CREATE SCHEMA IF NOT EXISTS")
+  push(acc, q.name)
 
-_insert = (q)->
-  table = q.insert
+emit_insert = (acc,q)->
+  push(acc, "INSERT")
+  push(acc, "INTO")
+  push(acc, q.insert)
   names = []
   values = []
   params = []
-  cnt = 1
   for k,v of q.values
     names.push(k)
-    if isString(v) && v.match(/^\^/)
-      values.push(v.replace(/^\^/,''))
+    if isRawSql(v)
+      values.push(rawToSql(v))
     else
-      values.push("$#{cnt}")
-      params.push(v)
-      cnt = cnt + 1
+      values.push("$#{acc.cnt}")
+      acc.params.push(v)
+      acc.cnt = acc.cnt + 1
 
-  res = ["INSERT", "INTO", table]
-  res.push(_parens(names.join(', ')))
-  res.push("VALUES")
-  res.push(_parens(values.join(", ")))
-  sql = res.join(" ")
-  [sql].concat(params)
+  surround_parens acc, (acc)->
+    emit_delimit acc, ',', names, (acc, nm)->
+      push(acc, nm)
 
-#console.log(_insert(insert: "users", values: {a: 1, b: '^current_timestamp'}))
+  push(acc, "VALUES")
+
+  surround_parens acc, (acc)->
+    emit_delimit acc, ',', values, (acc, v)->
+      push(acc, v)
+  acc
+
+emit_update = (acc, q)->
+  push(acc, "UPDATE")
+  push(acc, q.update)
+  acc = emit_delimit acc, ",", q.values, (acc, [k,v])->
+    push(acc, "#{k} = ")
+    emit_param(acc, v)
+  acc = emit_where(acc, q.where)
+
+emit_create = (acc, q)->
+  switch q.create
+    when 'table' then emit_create_table(acc, q)
+    when 'extension' then emit_create_extension(acc, q)
+    when 'schema' then emit_create_schema(acc, q)
+
+emit_drop = (acc, q)->
+ push(acc, "DROP")
+ push(acc, q.drop)
+ push(acc, "IF EXISTS") if q.safe
+ push(acc, _to_table_name(q.name))
+
 
 sql = (q)->
   #console.log("HQL:", q)
-  res = if q.create
-    switch q.create
-      when 'table' then [_create(q)]
-      when 'extension' then [_create_extension(q)]
-      when 'schema' then [_create_schema(q)]
+  acc = { cnt: 1, result: [], params: [] }
+  acc = if q.create
+    emit_create(acc, q)
   else if q.insert
-    _insert(q)
+    emit_insert(acc, q)
+  else if q.update
+    emit_update(acc, q)
   else if q.drop
-    ["DROP #{q.drop} #{q.safe and 'IF EXISTS'} #{_to_table_name(q.name)}"]
+    emit_drop(acc,q)
   else if q.select
-    [_normalize(_select(q))]
+    emit_select(acc, q)
 
-  #console.log("SQL:", res)
-  res
+  [acc.result.join(" ")].concat(acc.params)
 
 module.exports = sql
 
 sql.TZ = "TIMESTAMP WITH TIME ZONE"
 sql.JSONB = "jsonb"
+
+comment = ->
+  console.log sql(
+     select: [":a","^b",'c'],
+     from: ['users','roles'],
+     joins: [['roles', [':=', '^r.user_id', '^users.id']]]
+     where: [':and', [':=', ':id', 5],[':=', ':name', 'x']]
+  )
+
+  console.log sql(
+    update: "users",
+    values: {a: 1, b: '^current_timestamp'},
+    where: [':=', ':id', 5]
+  )

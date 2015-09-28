@@ -2,7 +2,6 @@ namings = require('./namings')
 pg_meta = require('./pg_meta')
 utils = require('./utils')
 bundle = require('./bundle')
-sql = require('../honey')
 
 exports.plv8_schema = 'fhir'
 
@@ -39,18 +38,23 @@ exports.create = (plv8, resource)->
       url: resource.resourceType
   )
 
-  plv8.execute """
-    INSERT INTO #{table_name}
-    (id, version_id, resource, created_at, updated_at)
-    VALUES ($1,$2,$3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    RETURNING id,version_id, resource, created_at, updated_at
-    """, [id, version_id, JSON.stringify(resource)]
+  utils.exec plv8,
+    insert: table_name
+    values:
+      id: id
+      version_id: version_id
+      resource: JSON.stringify(resourece)
+      created_at: '^CURRENT_TIMESTAMP'
+      updated_at: '^CURRENT_TIMESTAMP'
 
-  plv8.execute """
-    INSERT INTO history.#{table_name}
-    (id, version_id, resource, valid_from, valid_to)
-    VALUES ($1,$2,$3, CURRENT_TIMESTAMP, 'infinity')
-    """, [id, version_id, JSON.stringify(resource)]
+  utils.exec plv8,
+    insert: "history.#{table_name}"
+    values:
+      id: id
+      version_id: version_id
+      resource: JSON.stringify(resourece)
+      valid_from: '^CURRENT_TIMESTAMP'
+      valid_to: '^CURRENT_TIMESTAMP'
 
   resource
 
@@ -136,11 +140,14 @@ exports.update = (plv8, resource)->
     WHERE id = $1 and version_id = $2
     """, [id, old_version.meta.versionId]
 
-  plv8.execute """
-    INSERT INTO history.#{table_name}
-    (id, version_id, resource, valid_from, valid_to)
-    VALUES ($1,$2,$3, CURRENT_TIMESTAMP, 'infinity')
-    """, [id, version_id, JSON.stringify(resource)]
+  utils.exec plv8,
+    insert: "history.#{table_name}"
+    values:
+      id: id
+      version_id: version_id
+      resource: JSON.stringify(resourece)
+      valid_from: '^CURRENT_TIMESTAMP'
+      valid_to: '^infinity'
 
   resource
 
@@ -180,11 +187,14 @@ exports.delete = (plv8, resource)->
     WHERE id = $1 and version_id = $2
     """, [id, old_version.meta.versionId]
 
-  plv8.execute """
-    INSERT INTO history.#{table_name}
-    (id, version_id, resource, valid_from, valid_to)
-    VALUES ($1,$2,$3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    """, [id, version_id, JSON.stringify(resource)]
+  utils.exec plv8,
+    insert: "history.#{table_name}"
+    values:
+      id: id
+      version_id: version_id
+      resource: JSON.stringify(resourece)
+      valid_from: '^CURRENT_TIMESTAMP'
+      valid_to: '^CURRENT_TIMESTAMP'
 
   resource
 

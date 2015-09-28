@@ -1,25 +1,25 @@
 sql = require('../src/honey')
 
 q1 =
- res: ["SELECT 'Patient', logical_id FROM patient WHERE logical_id = 1"]
+ res: ['SELECT $1 , logical_id FROM "patient" WHERE logical_id = $2', 'Patient', 1]
  exp:
   select: ['Patient',':logical_id'],
-  from: ['patient'],
+  from: ['patient']
   where: [':=',':logical_id', 1]
 
 q2 =
-  res: ["SELECT * FROM patient p, users u WHERE (logical_id = 'x' AND version_id = 'y')"]
+  res: ['SELECT * FROM "patient" p , "users" u WHERE ( logical_id = $1 AND version_id = $2 )','x','y']
   exp:
    select: [':*']
    from: [['patient', 'p'], ['users', 'u']],
    where: [':and',[':=',':logical_id', 'x'], [':=', ':version_id', 'y']]
 
 qjoin =
-   res: ["SELECT * FROM patient p JOIN encounter e ON e.name = p.name JOIN another a ON a.name = e.name WHERE (p.name = 4 AND a.name = 4 AND e.name = 4)"]
+   res: ['SELECT * FROM "patient" p JOIN "encounter" e ON e.name = p.name JOIN "another" a ON a.name = e.name WHERE ( p.name = $1 AND a.name = $2 AND e.name = $3 )', 4 ,4 ,4]
    exp:
     select: [':*']
     from: [['patient', 'p']]
-    joins: [
+    join: [
       [['encounter', 'e']
        [':=',':e.name',':p.name']]
       [['another', 'a']
@@ -30,7 +30,7 @@ qjoin =
       [':=',':e.name',4]]
 
 ddl =
-  res: ["CREATE TABLE \"resource\" ( \"content\" jsonb PK, \"logical_id\" text, \"published\" timestamp with time zone ) INHERITS (\"parent\")"]
+  res: ["CREATE TABLE \"resource\" ( \"content\" jsonb PK , \"logical_id\" text , \"published\" timestamp with time zone ) INHERITS ( \"parent\" )"]
   exp: {
      create: "table"
      name: "resource"
@@ -48,14 +48,14 @@ ddl2 =
      safe: true
 
 insert =
-  res: ['INSERT INTO history.users (a, b, c) VALUES ($1, $2, CURRENT_TIMESTAMP)', 1, 'string']
+  res: ['INSERT INTO history.users ( a , b , c ) VALUES ( $1 , $2 , CURRENT_TIMESTAMP )', 1, 'string']
   exp:
      insert: 'history.users'
      values:  {a: 1, b: 'string', c: '^CURRENT_TIMESTAMP'}
      returning: ['id']
 
 insert2 =
-  res: ['INSERT INTO users (a, b, c) VALUES ($1, $2, CURRENT_TIMESTAMP)', 1, 'string']
+  res: ['INSERT INTO users ( a , b , c) VALUES ( $1 , $2 , CURRENT_TIMESTAMP )', 1, 'string']
   exp:
      insert: 'users'
      values:  [{a: 1, b: 'string', c: '^CURRENT_TIMESTAMP'}]
