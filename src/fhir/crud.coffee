@@ -9,9 +9,7 @@ validate_create_resource = (resource)->
   unless resource.resourceType
     {status: "Error", message: "resource should have type element"}
 
-assert = (pred, msg)->
-  unless pred
-    throw new Error("Asserted: #{msg}")
+assert = (pred, msg)-> throw new Error("Asserted: #{msg}") unless pred
 
 ensure_meta = (resource, props)->
   resource.meta ||= {}
@@ -19,40 +17,44 @@ ensure_meta = (resource, props)->
     resource.meta[k] = v
   resource
 
+ensure_table = (plv8, resourceType)->
+  table_name = namings.table_name(plv8, resourceType)
+  unless pg_meta.table_exists(plv8, table_name)
+    return [null, {status: "Error", message: "Table #{table_name} for #{resourceType} not exists"}]
+  else
+    [table_name, null]
+
 exports.create = (plv8, resource)->
   errors = validate_create_resource(resource)
-  if errors then return errors
-  table_name = namings.table_name(plv8, resource.resourceType)
-  unless pg_meta.table_exists(plv8, table_name)
-    return {status: "Error", message: "Table for #{resource.resourceType} not exists"}
+  return errors if errors
+
+  [table_name, errors] = ensure_table(plv8, resource.resourceType)
+  return errors if errors
 
   id = resource.id || utils.uuid(plv8)
   resource.id = id
   version_id = (resource.meta && resource.meta.versionId) ||  utils.uuid(plv8)
 
-  ensure_meta(resource,
+  ensure_meta resource,
     versionId: version_id
     lastUpdated: new Date()
-    request:
-      method: 'POST'
-      url: resource.resourceType
-  )
+    request: { method: 'POST', url: resource.resourceType }
 
   utils.exec plv8,
     insert: table_name
     values:
       id: id
       version_id: version_id
-      resource: JSON.stringify(resourece)
+      resource: resource
       created_at: '^CURRENT_TIMESTAMP'
       updated_at: '^CURRENT_TIMESTAMP'
 
   utils.exec plv8,
-    insert: "history.#{table_name}"
+    insert: ['history',table_name]
     values:
       id: id
       version_id: version_id
-      resource: JSON.stringify(resourece)
+      resource: resource
       valid_from: '^CURRENT_TIMESTAMP'
       valid_to: '^CURRENT_TIMESTAMP'
 
@@ -64,11 +66,10 @@ exports.read = (plv8, query)->
   assert(query.id, 'query.id')
   assert(query.resourceType, 'query.resourceType')
 
-  table_name = namings.table_name(plv8, query.resourceType)
-  unless pg_meta.table_exists(plv8, table_name)
-    return {status: "Error", message: "Table for #{query.resourceType} not exists"}
+  [table_name, errors] = ensure_table(plv8, query.resourceType)
+  return errors if errors
 
-  res = utils.exec(plv8, select: [':*'], from: [table_name], where: [':=', ':id',query.id])
+  res = utils.exec(plv8, select: [':*'], from: [table_name], where: { id: query.id })
   row = res[0]
   unless row
     return {status: "Error", message: "Not found"}
@@ -83,15 +84,13 @@ exports.vread = (plv8, query)->
   assert(version_id, 'query.versionId or query.meta.versionId')
   assert(query.resourceType, 'query.resourceType')
 
-  table_name = namings.table_name(plv8, query.resourceType)
-  unless pg_meta.table_exists(plv8, table_name)
-    return {status: "Error", message: "Table for #{query.resourceType} not exists"}
+  [table_name, errors] = ensure_table(plv8, query.resourceType)
+  return errors if errors
 
   q =
     select: [':*']
     from: ["history.#{table_name}"]
-    where: [':and', [':=', ':id',query.id],
-                    [':=', ':version_id', version_id]]
+    where: {id: query.id, version_id: version_id}
 
   res = utils.exec(plv8,q)
   row = res[0]
@@ -107,9 +106,8 @@ exports.update = (plv8, resource)->
   assert(id, 'resource.id')
   assert(resource.resourceType, 'resource.resourceType')
 
-  table_name = namings.table_name(plv8, resource.resourceType)
-  unless pg_meta.table_exists(plv8, table_name)
-    return {status: "Error", message: "Table for #{resource.resourceType} not exists"}
+  [table_name, errors] = ensure_table(plv8, resource.resourceType)
+  return errors if errors
 
   old_version = exports.read(plv8, resource)
 
@@ -117,37 +115,35 @@ exports.update = (plv8, resource)->
     return {status: "Error", message: "Resource #{resource.resourceType}/#{id} not exists"}
 
   version_id = utils.uuid(plv8)
-  #TODO: should it merge meta of prev version
-  resource.meta ||= {}
-  resource.meta.versionId = version_id
-  resource.meta.lastUpdated = new Date()
-  resource.meta.request = {
-    method: 'PUT'
-    url: resource.resourceType
-  }
 
-  plv8.execute """
-    UPDATE #{table_name}
-    SET version_id = $2
-        ,resource = $3
-        ,updated_at = CURRENT_TIMESTAMP
-    WHERE id = $1
-    """, [id, version_id, JSON.stringify(resource)]
-
-  plv8.execute """
-    UPDATE history.#{table_name}
-    SET valid_to = CURRENT_TIMESTAMP
-    WHERE id = $1 and version_id = $2
-    """, [id, old_version.meta.versionId]
+  ensure_meta resource,
+    versionId: version_id
+    lastUpdated: new Date()
+    request:
+      method: 'PUT'
+      url: resource.resourceType
 
   utils.exec plv8,
-    insert: "history.#{table_name}"
+    update: table_name
+    where: {id: id}
+    values:
+      version_id: version_id
+      resource: resource
+      updated_at: '^CURRENT_TIMESTAMP'
+
+  utils.exec plv8,
+    update: ['history', table_name]
+    where: {id: id, version_id: old_version.meta.versionId}
+    values: {valid_to: '^CURRENT_TIMESTAMP'}
+
+  utils.exec plv8,
+    insert: ['history',table_name]
     values:
       id: id
       version_id: version_id
-      resource: JSON.stringify(resourece)
+      resource: resource
       valid_from: '^CURRENT_TIMESTAMP'
-      valid_to: '^infinity'
+      valid_to: "^'infinity'"
 
   resource
 
@@ -159,9 +155,8 @@ exports.delete = (plv8, resource)->
   assert(id, 'resource.id')
   assert(resource.resourceType, 'resource.resourceType')
 
-  table_name = namings.table_name(plv8, resource.resourceType)
-  unless pg_meta.table_exists(plv8, table_name)
-    return {status: "Error", message: "Table for #{resource.resourceType} not exists"}
+  [table_name, errors] = ensure_table(plv8, resource.resourceType)
+  return errors if errors
 
   old_version = exports.read(plv8, resource)
 
@@ -171,28 +166,27 @@ exports.delete = (plv8, resource)->
   resource = utils.copy(old_version)
 
   version_id = utils.uuid(plv8)
-  resource.meta ||= {}
-  resource.meta.versionId = version_id
-  resource.meta.lastUpdated = new Date()
-  resource.meta.request = {
-    method: 'DELETE'
-    url: resource.resourceType
-  }
+
+  ensure_meta resource,
+    versionId: version_id
+    lastUpdated: new Date()
+    request:
+      method: 'DELETE'
+      url: resource.resourceType
 
   plv8.execute "DELETE FROM #{table_name} WHERE id = $1", [id]
 
-  plv8.execute """
-    UPDATE history.#{table_name}
-    SET valid_to = CURRENT_TIMESTAMP
-    WHERE id = $1 and version_id = $2
-    """, [id, old_version.meta.versionId]
+  utils.exec plv8,
+    update: ['history', table_name]
+    where: {id: id, version_id: old_version.meta.versionId}
+    values: {valid_to: '^CURRENT_TIMESTAMP'}
 
   utils.exec plv8,
-    insert: "history.#{table_name}"
+    insert: ['history', table_name]
     values:
       id: id
       version_id: version_id
-      resource: JSON.stringify(resourece)
+      resource: resource
       valid_from: '^CURRENT_TIMESTAMP'
       valid_to: '^CURRENT_TIMESTAMP'
 
@@ -206,14 +200,13 @@ exports.history = (plv8, query)->
   assert(id, 'query.id')
   assert(query.resourceType, 'query.resourceType')
 
-  table_name = namings.table_name(plv8, query.resourceType)
-  unless pg_meta.table_exists(plv8, table_name)
-    return {status: "Error", message: "Table for #{query.resourceType} not exists"}
+  [table_name, errors] = ensure_table(plv8, query.resourceType)
+  return errors if errors
 
-  q =
+  resources = utils.exec( plv8,
     select: [':*']
-    from: ["history.#{table_name}"]
-    where: [':=', ':id',query.id]
+    from:   ["history.#{table_name}"]
+    where:  {id: query.id}
+  ).map((x)-> JSON.parse(x.resource))
 
-  resources = utils.exec(plv8,q).map((x)-> JSON.parse(x.resource))
   bundle.history_bundle(resources)

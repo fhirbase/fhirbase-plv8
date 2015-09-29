@@ -40,6 +40,7 @@ ddl =
        logical_id: ["text"]
        published: ["timestamp with time zone"]}
 
+
 ddl2 =
   res: ['CREATE EXTENSION IF NOT EXISTS plv8']
   exp:
@@ -47,11 +48,39 @@ ddl2 =
      name: "plv8"
      safe: true
 
+ddl3 =
+  res: ["CREATE TABLE \"resource\" ( ) INHERITS ( \"parent\" )"]
+  exp:
+    create: "table"
+    name: "resource"
+    inherits: ["parent"]
+
+ddl4 =
+  res: ["CREATE TABLE \"history\".\"resource\" ( ) INHERITS ( \"parent\" )"]
+  exp:
+    create: "table"
+    name: ["history","resource"]
+    inherits: ["parent"]
+
 insert =
-  res: ['INSERT INTO history.users ( a , b , c ) VALUES ( $1 , $2 , CURRENT_TIMESTAMP )', 1, 'string']
+  res: ['INSERT INTO "history"."users" ( a , b , c ) VALUES ( $1 , $2 , CURRENT_TIMESTAMP )', 1, 'string']
   exp:
      insert: 'history.users'
      values:  {a: 1, b: 'string', c: '^CURRENT_TIMESTAMP'}
+     returning: ['id']
+
+insert_ns =
+  res: ['INSERT INTO "history"."users" ( a , b , c ) VALUES ( $1 , $2 , CURRENT_TIMESTAMP )', 1, 'string']
+  exp:
+     insert: ['history','users']
+     values:  {a: 1, b: 'string', c: '^CURRENT_TIMESTAMP'}
+     returning: ['id']
+
+insert_obj =
+  res: ['INSERT INTO "history"."users" ( obj ) VALUES ( $1 )', '{"a":1}']
+  exp:
+     insert: 'history.users'
+     values:  {obj: {a: 1}}
      returning: ['id']
 
 insert2 =
@@ -61,7 +90,21 @@ insert2 =
      values:  [{a: 1, b: 'string', c: '^CURRENT_TIMESTAMP'}]
      returning: ['id']
 
-tests = [q1, q2, qjoin, ddl, ddl2, insert]
+update =
+  res: ['UPDATE "users" SET a = $1 , b = CURRENT_TIMESTAMP WHERE id = $2', 1, 2]
+  exp:
+    update: 'users'
+    values:  {a: 1, b: '^CURRENT_TIMESTAMP'}
+    where: [':=', ':id', 2]
+
+update_simple_where =
+  res: ['UPDATE "users" SET a = $1 , b = CURRENT_TIMESTAMP WHERE ( id = $2 AND version_id = $3 )', 1, 2, 3]
+  exp:
+    update: 'users'
+    values:  {a: 1, b: '^CURRENT_TIMESTAMP'}
+    where: {id: 2, version_id: 3}
+
+tests = [q1, q2, qjoin, ddl, ddl2, ddl3, ddl4, insert, insert_ns, insert_obj, update, update_simple_where]
 
 strcmp = (x,y)->
   unless x and y

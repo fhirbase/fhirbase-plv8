@@ -6,6 +6,19 @@ isArray = (value)->
   typeof value.splice is 'function' and
   not ( value.propertyIsEnumerable 'length' )
 
+isObject = (x)->
+  x != null and typeof x == 'object'
+
+isKeyword = (x)->
+  isString(x) && x.indexOf && x.indexOf(':') == 0
+
+isNumber = (x)->
+  not isNaN(parseFloat(x)) && isFinite(x)
+
+name = (x)->
+  if isKeyword(x)
+    x.replace(/^:/,'')
+
 assertArray = (x)->
   unless isArray(x)
     throw new Error('from: [array] expected)')
@@ -25,15 +38,6 @@ concat = (acc, xs)->
   acc.result = acc.result.concat(xs)
   acc
 
-isKeyword = (x)->
-  isString(x) && x.indexOf && x.indexOf(':') == 0
-
-isNumber = (x)->
-  not isNaN(parseFloat(x)) && isFinite(x)
-
-name = (x)->
-  if isKeyword(x)
-    x.replace(/^:/,'')
 
 RAW_SQL_REGEX = /^\^/
 
@@ -50,6 +54,8 @@ _toLiteral = (x)->
     rawToSql(x)
   else if isNumber(x)
     x
+  else if isObject(x)
+    JSON.stringify(x)
   else
     "'#{x}'"
 
@@ -58,6 +64,11 @@ quote_litteral = (x)-> "'#{x}'"
 quote_ident = (x)->
   x.split('.').map((x)-> "\"#{x}\"").join('.')
 
+coerce_param = (x)->
+  if isObject(x)
+    JSON.stringify(x)
+  else
+    x
 
 emit_param = (acc, v)->
   if isRawSql(v)
@@ -67,7 +78,7 @@ emit_param = (acc, v)->
   else
     push(acc,"$#{acc.cnt}")
     acc.cnt = acc.cnt + 1
-    acc.params.push(v)
+    acc.params.push(coerce_param(v))
   acc
 
 surround = (acc, parens, proc)->
@@ -98,6 +109,11 @@ emit_columns = (acc, xs)->
       acc = emit_param(acc, x)
     acc
 
+emit_qualified_name = (acc, y)->
+  if isArray(y)
+    push(acc, y.map(quote_ident).join('.'))
+  else
+    push(acc, quote_ident(y))
 
 emit_table_name = (acc, y)->
   if isArray(y)
@@ -129,10 +145,23 @@ emit_expression = (acc, xs)->
         acc = emit_param(acc, xs[2])
   acc
 
+emit_expression_by_sample = (acc, obj)->
+  surround_parens acc, (acc)->
+    emit_delimit acc, 'AND', obj, (acc, [k,v])->
+      push(acc, k)
+      push(acc, "=")
+      emit_param(acc, v)
+    acc
+
 emit_where = (acc,x)->
   return acc unless x
-  push(acc,"WHERE")
-  emit_expression(acc, x)
+  push(acc, "WHERE")
+  if isArray(x)
+    emit_expression(acc, x)
+  else if isObject(x)
+    emit_expression_by_sample(acc, x)
+  else
+    throw new Error('unexpected where section')
 
 emit_join = (acc, xs)->
   return acc unless xs
@@ -168,6 +197,7 @@ _to_array = (x)->
 keys = (obj)-> (k for k,_ of obj)
 
 emit_columns_ddl = (acc, q)->
+  return acc unless q.columns
   cols = keys(q.columns).sort()
   emit_delimit acc, ",", cols, (acc, c)->
     push(acc, quote_ident(c))
@@ -175,14 +205,15 @@ emit_columns_ddl = (acc, q)->
 
 emit_create_table = (acc, q)->
   push(acc,"CREATE TABLE")
-  emit_table_name(acc, q.name)
+  emit_qualified_name(acc, q.name)
+
   surround_parens acc, (acc)->
     emit_columns_ddl(acc, q)
 
   if q.inherits
     push(acc,"INHERITS")
     surround_parens acc, (acc)->
-      emit_delimit acc, ",", q.inherits, emit_table_name
+      emit_delimit acc, ",", q.inherits, emit_qualified_name
   acc
 
 emit_create_extension = (acc, q)->
@@ -196,7 +227,7 @@ emit_create_schema = (acc, q)->
 emit_insert = (acc,q)->
   push(acc, "INSERT")
   push(acc, "INTO")
-  push(acc, q.insert)
+  emit_qualified_name(acc, q.insert)
   names = []
   values = []
   params = []
@@ -206,7 +237,7 @@ emit_insert = (acc,q)->
       values.push(rawToSql(v))
     else
       values.push("$#{acc.cnt}")
-      acc.params.push(v)
+      acc.params.push(coerce_param(v))
       acc.cnt = acc.cnt + 1
 
   surround_parens acc, (acc)->
@@ -222,9 +253,10 @@ emit_insert = (acc,q)->
 
 emit_update = (acc, q)->
   push(acc, "UPDATE")
-  push(acc, q.update)
+  emit_qualified_name(acc, q.update)
+  push(acc, "SET")
   acc = emit_delimit acc, ",", q.values, (acc, [k,v])->
-    push(acc, "#{k} = ")
+    push(acc, "#{k} =")
     emit_param(acc, v)
   acc = emit_where(acc, q.where)
 
@@ -255,7 +287,9 @@ sql = (q)->
   else if q.select
     emit_select(acc, q)
 
-  [acc.result.join(" ")].concat(acc.params)
+  res = [acc.result.join(" ")].concat(acc.params)
+  # console.log(res)
+  res
 
 module.exports = sql
 
