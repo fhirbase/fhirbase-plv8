@@ -104,7 +104,13 @@ update_simple_where =
     values:  {a: 1, b: '^CURRENT_TIMESTAMP'}
     where: {id: 2, version_id: 3}
 
-tests = [q1, q2, qjoin, ddl, ddl2, ddl3, ddl4, insert, insert_ns, insert_obj, update, update_simple_where]
+delete_from =
+  res: ['DELETE FROM "users" WHERE ( id = $1 )', 1]
+  exp:
+    delete: 'users'
+    where: {id: 1}
+
+tests = [q1, q2, qjoin, ddl, ddl2, ddl3, ddl4, insert, insert_ns, insert_obj, update, update_simple_where, delete_from]
 
 strcmp = (x,y)->
   unless x and y

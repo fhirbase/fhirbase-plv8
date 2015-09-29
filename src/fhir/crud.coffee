@@ -174,7 +174,9 @@ exports.delete = (plv8, resource)->
       method: 'DELETE'
       url: resource.resourceType
 
-  plv8.execute "DELETE FROM #{table_name} WHERE id = $1", [id]
+  utils.exec plv8,
+    delete: table_name
+    where: { id: id }
 
   utils.exec plv8,
     update: ['history', table_name]

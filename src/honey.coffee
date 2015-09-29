@@ -258,7 +258,7 @@ emit_update = (acc, q)->
   acc = emit_delimit acc, ",", q.values, (acc, [k,v])->
     push(acc, "#{k} =")
     emit_param(acc, v)
-  acc = emit_where(acc, q.where)
+  emit_where(acc, q.where)
 
 emit_create = (acc, q)->
   switch q.create
@@ -272,6 +272,10 @@ emit_drop = (acc, q)->
  push(acc, "IF EXISTS") if q.safe
  push(acc, _to_table_name(q.name))
 
+emit_delete = (acc,q)->
+  push(acc, "DELETE FROM")
+  emit_qualified_name(acc, q.delete)
+  emit_where(acc, q.where)
 
 sql = (q)->
   #console.log("HQL:", q)
@@ -284,6 +288,8 @@ sql = (q)->
     emit_update(acc, q)
   else if q.drop
     emit_drop(acc,q)
+  else if q.delete
+    emit_delete(acc,q)
   else if q.select
     emit_select(acc, q)
 
