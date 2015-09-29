@@ -1,83 +1,67 @@
 namings = require('./namings')
 bundle = require('./bundle')
+sql = require('../honey')
+utils = require('./utils')
 
-parentize = (x)-> "( #{x} )"
 
 selector = (path)->
-  if path.match(/^\./)
-    " #{path.replace(/^\./,'')} "
+  path
+  if path.match(/^\.\./)
+    path.replace(/^\.\./,'')
+  else if path.match(/^\./)
+    "resource#>>'{#{path.replace(/^\./,'').replace(/\./g,',')}}'"
   else
-    " resource#>>'{#{path}}' "
-
+    throw new Error('unexpected selector .elem or ..elem')
 
 table =
-  and: (clouses...)->
-    parentize(clouses.map(emit).join(' AND '))
+  contains: (v)-> [':ilike',"%#{v}%" ]
+  startWith: (v)-> [':ilike',"#{v}%" ]
+  endWith: (v)-> [':ilike',"%#{v}" ]
+  in: (v)-> [':in', v]
+  between: (v)-> [':between', v]
 
-  or: (clouses...)->
-    parentize(clouses.map(emit).join(' OR '))
+isArray = (value)->
+  value and
+  typeof value is 'object' and
+  value instanceof Array and
+  typeof value.length is 'number' and
+  typeof value.splice is 'function' and
+  not ( value.propertyIsEnumerable 'length' )
 
-  contains: (path, value)->
-    " #{selector(path)} ilike '%#{value}%' "
-
-  startWith: (path, value)->
-    " #{selector(path)} ilike '#{value}%' "
-
-  endWith: (path, value)->
-    " #{selector(path)} ilike '%#{value}' "
-
-  in: (path, values...)->
-    sql_str = values.map((x)-> "'#{x}'").join(',')
-    " #{selector(path)} in (#{sql_str}) "
-  between: (path, upper, lower)->
-    " #{selector(path)} between '#{upper}' and '#{lower}' "
-
-  '=': (path, value)->
-    " #{selector(path)} = '#{value}' "
-
-  '!=': (path, value)->
-    " #{selector(path)} <> '#{value}' "
-
-  '>': (path, value)->
-    " #{selector(path)} > '#{value}' "
-
-  '>=': (path, value)->
-    " #{selector(path)} >= '#{value}' "
-
-  '<': (path, value)->
-    " #{selector(path)} < '#{value}' "
-
-  '<=': (path, value)->
-    " #{selector(path)} <= '#{value}' "
-
-
-emit = (expr)->
-  return null unless expr
-  op = expr[0]
-  handler = table[op]
-  unless handler
-    throw new Error("Operator #{op} not recognised")
-  handler.apply(null, expr[1..-1])
+mk_where = (expr)->
+  if isArray(expr)
+    if expr[0].toLowerCase() == 'and' || expr[0].toLowerCase() == 'or'
+      [":#{expr[0].toLowerCase()}"].concat(expr[1..].map(mk_where))
+    else
+      path = selector(expr[0])
+      op = expr[1]
+      v = expr[2..]
+      special_handler = table[op]
+      if special_handler
+        [op, v] = special_handler(v)
+      else
+        op = ":#{op}"
+        v = v[0]
+      [op, "^#{path}", v]
+  else
+    expr
 
 identity = (x)-> x
 
 exports.search_sql = (plv8, query)->
   table_name = namings.table_name(plv8, query.resourceType)
-  expr = ["SELECT * FROM #{table_name}"]
-  where = emit(query.query)
-  where = "WHERE #{where}" if where
-  expr.push(where)
-  if query.limit
-    expr.push("LIMIT #{query.limit}")
-  if query.offset
-    expr.push("OFFSET #{query.offset}")
-  expr.filter(identity).join("\n")
+  q = { select: [':*'], from: [table_name] }
+  q.where = mk_where(query.query)
+  q.limit = query.limit if query.limit
+  q.offset = query.offset if query.offset
+  q
 
 exports.search = (plv8, query)->
-  sql = exports.search_sql(plv8, query)
-  console.log("SQL: ", sql)
-  res = plv8.execute(sql)
-  bundle.search_bundle(query, res.map((x)-> JSON.parse(x.resource)))
+  q = exports.search_sql(plv8, query)
+  res = utils.exec(plv8, q)
+  # console.log("RESULT", res)
+  res = res.map((x)-> JSON.parse(x.resource))
+  bundle.search_bundle(query, res)
 
 comment = ->
   q =
@@ -88,7 +72,8 @@ comment = ->
     resourceType: 'Something'
     limit: 100
     offset: 5
-    query: ['and', ['contains', 'name', 'som'],
-                   ['=', 'name', 'something']]
+    query: ['and', ['.name','contains', 'som'],
+                   ['.contact.0.address', '=', 'something']]
 
   console.log exports.search_sql(null, q)
+

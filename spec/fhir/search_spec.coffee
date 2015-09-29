@@ -9,7 +9,7 @@ fs   = require('fs')
 specs = yaml.safeLoad(fs.readFileSync("#{__dirname}/search_spec.yml", 'utf8'))
 
 
-describe "CRUD", ()->
+describe "SEARCH", ()->
   beforeEach ()->
     schema.drop_table(plv8, 'Something')
     schema.create_table(plv8, 'Something')

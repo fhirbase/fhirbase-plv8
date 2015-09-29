@@ -127,6 +127,21 @@ emit_tables = (acc, x)->
   push(acc,"FROM")
   emit_delimit(acc, ",", x, emit_table_name)
 
+SPECIALS =
+  between: (acc, xs)->
+    emit_expression(acc,xs[1])
+    push(acc,"BETWEEN")
+    emit_param(acc, xs[2][0])
+    push(acc, "AND")
+    emit_param(acc, xs[2][1])
+    acc
+  in: (acc, xs)->
+    emit_expression(acc,xs[1])
+    push(acc,"IN")
+    surround_parens acc, (acc)->
+      emit_delimit acc, ",", xs[2], (acc, x)->
+        emit_param(acc, x)
+
 emit_expression = (acc, xs)->
   unless isArray(xs)
     push(acc,_toLiteral(xs))
@@ -140,9 +155,13 @@ emit_expression = (acc, xs)->
         surround_parens acc, (acc)->
           emit_delimit(acc, "OR", xs[1..], emit_expression)
       else
-        acc = emit_expression(acc,xs[1])
-        acc = emit_expression(acc,xs[0])
-        acc = emit_param(acc, xs[2])
+        special = SPECIALS[name(which)]
+        if special
+          special(acc, xs)
+        else
+          emit_expression(acc,xs[1])
+          emit_expression(acc,xs[0])
+          emit_param(acc, xs[2])
   acc
 
 emit_expression_by_sample = (acc, obj)->
@@ -278,7 +297,7 @@ emit_delete = (acc,q)->
   emit_where(acc, q.where)
 
 sql = (q)->
-  #console.log("HQL:", q)
+  # console.log("HQL:", q)
   acc = { cnt: 1, result: [], params: [] }
   acc = if q.create
     emit_create(acc, q)
