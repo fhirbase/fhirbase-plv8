@@ -89,7 +89,7 @@ core.search({resourceType, query})
 ```
 
 Query language:
-
+```
 exp = [path op value]
 ['.name.0.given', '=', 'Petr'] // search by element
 ['..id', '=', '???'] // search by columns (id, vid, created_at, updated_at)
@@ -100,6 +100,7 @@ Combine expressions:
 
 ['and', exp, exp, exp] => exp AND exp AND exp
 ['or', exp, exp, exp] => exp AND exp AND exp
+```
 
 LAYER 1: fhirbase core
 -----------------------------------------
