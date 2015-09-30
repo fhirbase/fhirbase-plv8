@@ -1,0 +1,48 @@
+- total: 1
+  query:
+    resourceType: 'Something'
+    limit: 100
+    query: ['and', ['.name', 'contains', 'som'],
+                   ['.name', '=', 'something']]
+
+- total: 2
+  query:
+    resourceType: 'Something'
+    limit: 100
+    query: ['or', ['.name', '=', 'nothing'],
+                  ['.name', '=', 'something']]
+
+- total: 2
+  query:
+    resourceType: 'Something'
+    query: ['.name', 'contains', 'thing']
+
+- total: 0
+  query:
+    resourceType: 'Something'
+    query: ['.name', 'contains', 'wrong']
+
+- total: 1
+  query:
+    resourceType: 'Something'
+    query: ['.contact.0.address', '=', 'Mars']
+
+- total: 1
+  query:
+    resourceType: 'Something'
+    query: ['..id', '=', 'sm-1']
+
+- total: 2
+  query:
+    resourceType: 'Something'
+    query: ['..created_at', '>', '2015-01-01']
+
+- total: 2
+  query:
+    resourceType: 'Something'
+    query: ['..created_at', 'between', '2015-01-01', '2016-01-01']
+
+- total: 2
+  query:
+    resourceType: 'Something'
+    query: ['.contact.0.address', 'in', 'Mars', 'Earth']

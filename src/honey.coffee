@@ -197,6 +197,12 @@ emit_select = (acc,query)->
   emit_tables(acc, query.from)
   emit_join(acc, query.join) if query.join
   emit_where(acc, query.where)
+  if query.limit
+    push(acc, "LIMIT")
+    push(acc, query.limit)
+  if query.offset
+    push(acc,"OFFSET")
+    push(acc, query.offset)
   acc
 
 # DDL
