@@ -46,10 +46,60 @@ Architecture sketch:
 LAYER 0: utils (as separate standalone module)
 -----------------------------------------
 
+* dev in node / build into pg
 * migrations utils
 * js modules to plv8
-* test utils
-* performance tests
+* test in node
+
+LAYER 1: core
+----------------------
+
+This layer is almost FHIR agnostic. 
+It should give convinient primitives to next FHIR related layer.
+
+* schema management for RESOURCES
+* CRUD & HISTORY implementation for Resources
+* Low level SEARCH
+  * element's granular query language
+  * indexing
+* interceptors for CRUD
+* OPERATIONS as a pg function
+
+
+API:
+
+```
+core.generate_storage('ResourceType') // create tables for resource & history
+core.drop_storage('ResourceType') // drop tables
+core.storages() // meta-data about generated storages
+
+core.create(resource)
+core.load(resourcesBundle)
+core.merge(resourcesBundle)
+
+core.read({resourceType, id})
+core.vread({resourceType, id, vid})
+core.update(resource)
+core.delete(resource{resourceType, id})
+core.history({resourceType, id})
+
+core.search({resourceType, query})
+[path op value]
+
+```
+
+Query language:
+
+exp = [path op value]
+['.name.0.given', '=', 'Petr'] // search by element
+['..id', '=', '???'] // search by columns (id, vid, created_at, updated_at)
+['..updated_at', 'between', '2011-01-01', '2015-01-01']
+['name', 'contains', 'Pet']
+
+Combine expressions:
+
+['and', exp, exp, exp] => exp AND exp AND exp
+['or', exp, exp, exp] => exp AND exp AND exp
 
 LAYER 1: fhirbase core
 -----------------------------------------
