@@ -1,4 +1,4 @@
 {
   "database_url": "postgres://root:root@localhost:5432/fb2",
-  "entry": "src/fhir/core.coffee"
+  "entry": "src/core.coffee"
 }
