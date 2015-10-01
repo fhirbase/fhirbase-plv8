@@ -8,6 +8,21 @@ xpath = require('./src/fhir/xpath.coffee')
 
 params = require('./fhir/search-parameters.json')
 
+get_by_path = (node, path)->
+  [x, xs...] = path
+  value = node[x]
+  if xs.lenght == 0
+    value
+
+
+
+
+get_by_paths = (resource, paths)->
+  res  = []
+  for path in paths
+    res = res.concat(get_by_path(resource, path))
+  res
+
 console.log params.entry.length
 console.log xpath
 
