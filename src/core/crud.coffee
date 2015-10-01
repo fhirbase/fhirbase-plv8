@@ -3,7 +3,7 @@ pg_meta = require('./pg_meta')
 utils = require('./utils')
 bundle = require('./bundle')
 
-exports.plv8_schema = 'fhir'
+exports.plv8_schema = "core"
 
 validate_create_resource = (resource)->
   unless resource.resourceType
@@ -28,12 +28,15 @@ exports.create = (plv8, resource)->
   errors = validate_create_resource(resource)
   return errors if errors
 
+
   [table_name, errors] = ensure_table(plv8, resource.resourceType)
   return errors if errors
+
 
   id = resource.id || utils.uuid(plv8)
   resource.id = id
   version_id = (resource.meta && resource.meta.versionId) ||  utils.uuid(plv8)
+
 
   ensure_meta resource,
     versionId: version_id
@@ -60,7 +63,7 @@ exports.create = (plv8, resource)->
 
   resource
 
-exports.create.plv8_signature = ['jsonb', 'jsonb']
+exports.create.plv8_signature = ['json', 'json']
 
 exports.read = (plv8, query)->
   assert(query.id, 'query.id')
@@ -76,7 +79,7 @@ exports.read = (plv8, query)->
 
   JSON.parse(row.resource)
 
-exports.read.plv8_signature = ['jsonb', 'jsonb']
+exports.read.plv8_signature = ['json', 'json']
 
 exports.vread = (plv8, query)->
   assert(query.id, 'query.id')
@@ -99,7 +102,7 @@ exports.vread = (plv8, query)->
 
   JSON.parse(row.resource)
 
-exports.vread.plv8_signature = ['jsonb', 'jsonb']
+exports.vread.plv8_signature = ['json', 'json']
 
 exports.update = (plv8, resource)->
   id = resource.id
@@ -148,7 +151,7 @@ exports.update = (plv8, resource)->
   resource
 
 
-exports.update.plv8_signature = ['jsonb', 'jsonb']
+exports.update.plv8_signature = ['json', 'json']
 
 exports.delete = (plv8, resource)->
   id = resource.id
@@ -195,7 +198,7 @@ exports.delete = (plv8, resource)->
   resource
 
 
-exports.delete.plv8_signature = ['jsonb', 'jsonb']
+exports.delete.plv8_signature = ['json', 'json']
 
 exports.history = (plv8, query)->
   id = query.id

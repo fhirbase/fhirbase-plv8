@@ -3,6 +3,8 @@ bundle = require('./bundle')
 sql = require('../honey')
 utils = require('./utils')
 
+exports.plv8_schema = "core"
+
 
 selector = (path)->
   path
@@ -62,6 +64,8 @@ exports.search = (plv8, query)->
   # console.log("RESULT", res)
   res = res.map((x)-> JSON.parse(x.resource))
   bundle.search_bundle(query, res)
+
+exports.search.plv8_signature = ['json', 'json']
 
 comment = ->
   q =

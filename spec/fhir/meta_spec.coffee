@@ -18,7 +18,7 @@ search = require('../../src/core/search')
 # meta.load(plv8, resources)
 
 
-console.log search.search(plv8, {
-  resourceType: 'StructureDefinition'
-  query: ['.kind', '=', 'datatype']
-})
+# console.log search.search(plv8, {
+#   resourceType: 'StructureDefinition'
+#   query: ['.kind', '=', 'datatype']
+# })
