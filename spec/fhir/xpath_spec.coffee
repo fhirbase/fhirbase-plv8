@@ -7,8 +7,8 @@ samples = [
   ]
 
   [
-    "f:Patient/f:identifier[type/coding/@code='SSN'",
-    [[['identifier', [['type','coding','code'], 'SSN']]]]
+    "f:Patient/f:identifier[type/coding/@code='SSN']/value",
+    [[['identifier', [['type','coding','code'], 'SSN']], 'value']]
   ]
 ]
 

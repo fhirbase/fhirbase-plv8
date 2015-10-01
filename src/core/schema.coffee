@@ -9,10 +9,26 @@ exports.create_table = (plv8, resource_type)->
     {status: 'error', message: "Table #{nm} already exists"}
   else
     utils.exec(plv8, create: "table", name: nm, inherits: ['resource'])
-    plv8.execute "alter table #{nm} ALTER column resource_type SET DEFAULT '#{resource_type}'"
+    plv8.execute """
+      ALTER TABLE #{nm}
+      ADD PRIMARY KEY (id),
+      ALTER COLUMN created_at SET NOT NULL,
+      ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP,
+      ALTER COLUMN updated_at SET NOT NULL,
+      ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP,
+      ALTER COLUMN resource SET NOT NULL,
+      ALTER column resource_type SET DEFAULT '#{resource_type}'
+    """
 
     utils.exec(plv8, create: "table", name: ['history', nm],  inherits:  ['history.resource'])
-    plv8.execute "alter table history.#{nm} ALTER column resource_type SET DEFAULT '#{resource_type}'"
+    plv8.execute """
+      ALTER TABLE history.#{nm}
+      ADD PRIMARY KEY (version_id),
+      ALTER COLUMN valid_from SET NOT NULL,
+      ALTER COLUMN valid_to SET NOT NULL,
+      ALTER COLUMN resource SET NOT NULL,
+      ALTER column resource_type SET DEFAULT '#{resource_type}'
+    """
     {status: 'ok', message: "Table #{nm} was created"}
 
 exports.drop_table = (plv8, nm)->

@@ -1,3 +1,18 @@
+# This module parse xpath expressions in SearchParameter
+# and provide extract functions - to get data by xpath
+# parse xpath => array of paths [paths..]
+# simple path just a list of elements to dig into - ['name','given']
+# we also parse ```elem[attr=value]```, then item in path represented as array
+# name[@use='given'] => [['name',['use','official]],'given']
+# if expression in predicate is path we convert it into array
+# type/system/@value => ['type','system','value']
+#
+# So most complicated case:
+#
+#  "f:Patient/f:identifier[type/coding/@code='SSN']" =>
+#
+#  [[['identifier', [['type','coding','code'], 'SSN']]]]
+
 isArray = (value)->
   value and
   typeof value is 'object' and
@@ -22,12 +37,16 @@ parse_one = (str)->
       res.push([path_item, parse_pred(pred.join(''))])
     else
       res.push(path_item)
+    pred = []
     current = []
 
   for x in str
     switch state
       when 'predicat'
-        if x == ']' then state == 'normal' else pred.push(x)
+        if x == ']'
+          state = 'normal'
+        else
+          pred.push(x)
       when 'normal'
         switch x
           when '/' then push()
