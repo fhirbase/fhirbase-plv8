@@ -218,12 +218,20 @@ emit_join = (acc, xs)->
     emit_expression(acc, x[1])
   acc
 
+emit_order = (acc, ords)->
+  console.log(ords)
+  push(acc, 'ORDER')
+  emit_delimit acc, ',', ords, (acc, x)->
+    push(acc, x)
+
 emit_select = (acc,query)->
   push(acc,"SELECT")
   emit_columns(acc, query.select)
   emit_tables(acc, query.from)
   emit_join(acc, query.join) if query.join
   emit_where(acc, query.where)
+  if query.order
+    emit_order(acc, query.order)
   if query.limit
     push(acc, "LIMIT")
     push(acc, query.limit)

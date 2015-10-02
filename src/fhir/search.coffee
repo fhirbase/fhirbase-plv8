@@ -25,10 +25,22 @@
 #   one index for parameter
 #
 # NOTES: we need umlauts normalization for strings
+TABLE = require('./conditions')
 
-exports.condition = ({path, elementType, searchType, resultArity, operation})->
+exports.build_conditions = (opts)->
 
-exports._search = ({resourceType, query})->
+exports.condition = (opts)->
+  handler = TABLE[opts.elementType]
+  throw new Error("Unsupported #{opts.elementType}") unless handler
+  handler = handler[opts.searchType]
+  throw new Error("Unsupported #{opts.elementType} #{opts.searchType}") unless handler
+  handler = handler[opts.operation]
+  throw new Error("Unsupported #{opts.elementType} #{opts.searchType} #{opts.operation}") unless handler
+  handler(opts)
+
+exports._search = (plv8, query)->
+  []
 
 
-exports.search
+exports.search = (plv8, query)->
+  parse(query.queryString)
