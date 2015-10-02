@@ -3,6 +3,7 @@ namings = require('./namings')
 utils = require('./utils')
 pg_meta = require('./pg_meta')
 
+# TODO: rename to create_storage
 exports.create_table = (plv8, resource_type)->
   nm = namings.table_name(plv8, resource_type)
   if pg_meta.table_exists(plv8, nm)

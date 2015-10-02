@@ -5,7 +5,6 @@ utils = require('./utils')
 
 exports.plv8_schema = "core"
 
-
 selector = (path)->
   path
   if path.match(/^\.\./)

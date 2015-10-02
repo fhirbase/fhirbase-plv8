@@ -12,6 +12,17 @@
 #  "f:Patient/f:identifier[type/coding/@code='SSN']" =>
 #
 #  [[['identifier', [['type','coding','code'], 'SSN']]]]
+#  alternative
+#  [
+#    {
+#     element: 'identifier',
+#     cond: {
+#         path: ['type','coding','code'],
+#         value: 'SSN'
+#       }
+#    },
+#    {element: 'value'}
+#  ]
 
 isArray = (value)->
   value and
@@ -108,4 +119,3 @@ exports.get_in = (resource, paths)->
   for path in paths
     res = res.concat(get_by_path(resource, path))
   res
-

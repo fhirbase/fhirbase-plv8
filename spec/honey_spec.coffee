@@ -110,7 +110,17 @@ delete_from =
     delete: 'users'
     where: {id: 1}
 
-tests = [q1, q2, qjoin, ddl, ddl2, ddl3, ddl4, insert, insert_ns, insert_obj, update, update_simple_where, delete_from]
+select_fn_call =
+ res: ['SELECT * FROM "patient" WHERE ( extract_as_string_array ( resource , $1 , $2 ) )::text[] && ARRAY[ $3 , $4 ]::text[]', '["name"]', 'HumanName', 'nicola','ivan']
+ exp:
+  select: [':*']
+  from: ['patient']
+  where: ['^&&'
+      {call: 'extract_as_string_array', args: [':resource', '["name"]', 'HumanName'], cast: 'text[]' }
+      {value: ['nicola','ivan'], array:true, cast: 'text[]'}
+  ]
+
+tests = [q1, q2, qjoin, ddl, ddl2, ddl3, ddl4, insert, insert_ns, insert_obj, update, update_simple_where, delete_from, select_fn_call]
 
 strcmp = (x,y)->
   unless x and y

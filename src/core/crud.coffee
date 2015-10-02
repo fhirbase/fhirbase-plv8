@@ -215,3 +215,6 @@ exports.history = (plv8, query)->
   ).map((x)-> JSON.parse(x.resource))
 
   bundle.history_bundle(resources)
+
+# TODO: implement load bundle
+# TODO: implement merge bundle

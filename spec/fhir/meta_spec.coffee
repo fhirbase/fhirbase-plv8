@@ -7,18 +7,24 @@ search = require('../../src/core/search')
 
 # types = require('../../fhir/profiles-types.json')
 # resources = require('../../fhir/profiles-resources.json')
+# sp = require('../../fhir/search-parameters.json')
 
 # schema.drop_table(plv8, 'StructureDefinition')
 # schema.drop_table(plv8, 'OperationDefinition')
 
+# schema.drop_table(plv8, 'SearchParameter')
+
 # schema.create_table(plv8, 'StructureDefinition')
 # schema.create_table(plv8, 'OperationDefinition')
 
+# schema.create_table(plv8, 'SearchParameter')
+
 # meta.load(plv8, types)
 # meta.load(plv8, resources)
+# meta.load(plv8, sp)
 
 
 # console.log search.search(plv8, {
-#   resourceType: 'StructureDefinition'
-#   query: ['.kind', '=', 'datatype']
-# })
+#  resourceType: 'SearchParameter'
+#  query: ['.base', '=', 'Patient']
+# }).entry

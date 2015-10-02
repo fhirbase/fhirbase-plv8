@@ -7,7 +7,7 @@ isArray = (value)->
   not ( value.propertyIsEnumerable 'length' )
 
 isObject = (x)->
-  x != null and typeof x == 'object'
+  JSON.stringify(x).indexOf('{') == 0
 
 isKeyword = (x)->
   isString(x) && x.indexOf && x.indexOf(':') == 0
@@ -75,6 +75,16 @@ emit_param = (acc, v)->
     push(acc,rawToSql(v))
   else if isKeyword(v)
     push(acc,name(v))
+  else if isObject(v) and v.cast
+    if v.array
+      args = []
+      for val in v.value
+        args.push(" $#{acc.cnt} ")
+        acc.cnt = acc.cnt + 1
+        acc.params.push(coerce_param(val))
+      push(acc,"ARRAY[#{args.join(',')}]::#{v.cast}")
+    else
+      throw new Error('unhandled')
   else
     push(acc,"$#{acc.cnt}")
     acc.cnt = acc.cnt + 1
@@ -89,6 +99,9 @@ surround = (acc, parens, proc)->
 
 surround_parens = (acc, proc)->
   surround acc, ['(',')'], proc
+
+surround_cast = (acc, type, proc)->
+  surround acc, ['(',")::#{type}"], proc
 
 emit_delimit = (acc, delim, xs, next)->
   unless isArray(xs) # means object
@@ -142,10 +155,20 @@ SPECIALS =
       emit_delimit acc, ",", xs[2], (acc, x)->
         emit_param(acc, x)
 
-emit_expression = (acc, xs)->
-  unless isArray(xs)
-    push(acc,_toLiteral(xs))
+emit_function_call = (acc, obj)->
+  fn_call = (acc)->
+    push(acc, obj.call)
+    surround_parens acc, (acc)->
+      emit_delimit acc, ',', obj.args, (acc, x)->
+        emit_param(acc,x)
+    acc
+  if obj.cast
+    surround_cast(acc, obj.cast, fn_call)
   else
+    fn_call(acc)
+
+emit_expression = (acc, xs)->
+  if isArray(xs)
     which = xs[0]
     switch which
       when ':and'
@@ -162,6 +185,10 @@ emit_expression = (acc, xs)->
           emit_expression(acc,xs[1])
           emit_expression(acc,xs[0])
           emit_param(acc, xs[2])
+  else if isObject(xs) && xs.call
+    emit_function_call(acc, xs)
+  else
+    push(acc,_toLiteral(xs))
   acc
 
 emit_expression_by_sample = (acc, obj)->
@@ -339,4 +366,13 @@ comment = ->
     update: "users",
     values: {a: 1, b: '^current_timestamp'},
     where: [':=', ':id', 5]
+  )
+
+  console.log sql(
+       select: [":*"]
+       from: ['users']
+       where: ['^&&'
+          {call: 'extract_as_string_array', args: [':resource', '["name"]', 'HumanName'], cast: 'text[]' }
+          {value: ['nicola','ivan'], array:true, cast: 'text[]'}
+       ]
   )
