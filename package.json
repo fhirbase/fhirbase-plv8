@@ -13,7 +13,8 @@
     "coffee": "latest",
     "jasmine-node": "latest",
     "pg-native":"latest",
-    "js-yaml": "latest"
+    "js-yaml": "latest",
+    "mocha": "latest"
   },
   "dev": {
     "plpl": "latest"
@@ -23,6 +24,7 @@
   "files": ["bin", "lib", "src", "migrations"],
   "scripts": {
     "publish": "coffee -o lib/ -c src/ && npm publish",
-    "test": "node_modules/jasmine-node/bin/jasmine-node spec --coffee"
+    "test": "node_modules/jasmine-node/bin/jasmine-node spec --coffee",
+    "test-mocha": "node_modules/mocha/bin/mocha -w --compilers coffee:coffee-script/register ./spec/fhir/params_spec.coffee"
   }
 }

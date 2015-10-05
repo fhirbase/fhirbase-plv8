@@ -72,6 +72,15 @@ merge = (obj, anothers...)->
     acc
   ), obj)
 
+or_join = (arr)->
+  res = ['or']
+  arr.map (x)-> res.push x
+  res
+and_join = (arr)->
+  res = ['and']
+  arr.map (x)-> res.push x
+  res
+
 # parse key
 parse_left = (x)->
   if x.indexOf('.') > -1
@@ -85,22 +94,31 @@ OPERATORS_REG =/^(eq|ne|gt|lt|ge|le|sa|eb|ap)[0-9]/
 VALUE_SEP_REG= /\||\$/
 # parse value
 parse_right = (x)->
-  res =  OPERATORS_REG.exec(x)
-  if res && res[1]
-    prefix = res[1]
-    x = x.substring(2)
   values = x.split(',')
     .map(decodeURIComponent)
     .map((x)-> if x.match(VALUE_SEP_REG) then x.split(VALUE_SEP_REG) else x)
+    .map((x)->
+      res =  OPERATORS_REG.exec(x)
+      if res && res[1]
+        {value: x.substring(2), prefix: res[1]}
+      else
+        {value: x}
+    )
 
-  merge({}, { value: values, prefix:  prefix })
+  values.map (x)-> merge({}, values)
+
+  #merge({}, { value: values, prefix:  prefix })
 
 exports.parse = (str) ->
   return {}  if typeof str isnt "string"
   str = str.trim().replace(/^(\?|#)/, "")
   return {}  unless str
-  str.trim().split("&").map (param) ->
+  and_join str.trim().split("&").map (param) ->
     parts = param.replace(/\+/g, " ").split("=")
     left = parts[0]
     right = parts[1]
-    merge(parse_left(left), parse_right(right))
+    #res.push(['or', merge(parse_left(left), parse_right(right))])
+    or_join parse_right(right).map (x)->
+      merge(parse_left(left), x)
+  
+

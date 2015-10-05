@@ -1,14 +1,22 @@
 params = require('../../src/fhir/params')
+assert = require "assert"
 
 specs = [
-  ['a=1', ['and', {name: 'a', value: '1'}]]
-  ['a=a%20a', ['and', {name: 'a', value: 'a a'}]]
-  ['a=1,2', ['and', {name: 'a', value: '1','2'}]]
-  ['a=1&b=2&c=3', ['and', {name: 'a', value: '1'},{name: 'b', value: '2'},{name: 'c', value: '3'}]]
-  ['a:missing=true', ['and', {name: 'a', value: 'true', modifier: 'missing'}]]
-  ['name:text=ivan', ['and', {name: 'name', value: 'ivan', modifier: 'text'}]]
-  ['age=lt10', ['and', {name: 'age', value: '10', prefix: 'lt'}]]
-  ['age=lt20,gt10&name=ivan', ['and', ['or', {name: 'age', value: '10', prefix: 'lt'}, {name: 'age', value: '10', prefix: 'gt'}], {name: 'age', value: '10', prefix: 'lt'}]]
+  ['a=1', ['and', ['or', {name: 'a', value: '1'}]]]
+  ['a=a%20a', ['and', ['or', {name: 'a', value: 'a a'}]]]
+  ['a=1&b=2&c=3', ['and', ['or', {name: 'a', value: '1'}],
+                          ['or', {name: 'b', value: '2'}],
+                          ['or', {name: 'c', value: '3'}]]]
+  ['a=1,2', ['and', ['or', {name: 'a', value: '1'},
+                           {name: 'a', value: '2'}]]]
+
+  ['a:missing=true', ['and', ['or', {name: 'a', value: 'true', modifier: 'missing'}]]]
+  ['name:text=ivan', ['and', ['or', {name: 'name', value: 'ivan', modifier: 'text'}]]]
+  ['age=lt10', ['and', ['or', {name: 'age', value: '10', prefix: 'lt'}]]]
+  ['age=lt20,gt10,eq30&name=ivan', ['and', ['or', {name: 'age', value: '20', prefix: 'lt'},
+                                                  #{name: 'age', value: '10', prefix: 'gt'},
+                                                  #{name: 'age', value: '30', prefix: 'eq'}],
+                                           #['or', {name: 'name', value: 'ivan'}]]]
 
   # ['name=ap10', [{name: 'name', value: '10', prefix: 'ap'}]]
   # ['type=loinc|444', [{name: 'type', value: [['loinc', '444']]}]]
