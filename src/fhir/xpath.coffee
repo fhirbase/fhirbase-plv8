@@ -64,7 +64,7 @@ parse_one = (str)->
           when '[' then state = 'predicat'
           else current.push(x)
   push()
-  res[1..]
+  res
 
 exports.parse = (xpath)->
   return unless xpath

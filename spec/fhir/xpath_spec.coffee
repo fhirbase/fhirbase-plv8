@@ -3,12 +3,12 @@ xpath = require('../../src/fhir/xpath')
 samples = [
   [
     "f:DataElement/f:element/f:mapping/f:extension[@url='http://hl7.org/fhir/StructureDefinition/11179-objectClass'",
-    [["element","mapping",["extension",["url","http://hl7.org/fhir/StructureDefinition/11179-objectClass"]]]]
+    [["DataElement", "element","mapping",["extension",["url","http://hl7.org/fhir/StructureDefinition/11179-objectClass"]]]]
   ]
 
   [
     "f:Patient/f:identifier[type/coding/@code='SSN']/value",
-    [[['identifier', [['type','coding','code'], 'SSN']], 'value']]
+    [['Patient', ['identifier', [['type','coding','code'], 'SSN']], 'value']]
   ]
 ]
 
