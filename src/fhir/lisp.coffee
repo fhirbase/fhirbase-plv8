@@ -1,21 +1,11 @@
 sql = require('../honey')
 
-isArray = (value)->
-  value and
-  typeof value is 'object' and
-  value instanceof Array and
-  typeof value.length is 'number' and
-  typeof value.splice is 'function' and
-  not ( value.propertyIsEnumerable 'length' )
-
-addParam = (env, x)->
-  res = "$#{env.cnt}"
-  env.cnt = env.cnt + 1
-  env.params.push(x)
-  res
+isArray = (v)-> Array.isArray(v)
+isFn = (v)-> typeof v == "function"
+isObject = (v)->  !!v && not isArray(v) && v.constructor == Object
 
 merge = (into, args)->
-  args.reduce(((acc, x)->
+  (args || []).reduce(((acc, x)->
     for k,v of x
       if acc[k]
         acc[k].push(v)
@@ -31,65 +21,73 @@ key_merge = (key, init, args)->
   res[key] = init
   res
 
+table_name = (x)-> x.toLowerCase()
+
 TABLE =
-  search: (env,[resourceType, args...])->
-    merge({select: [':*'], from: [resourceType]}, args)
-  '=': (env, [left, right]) ->
-    {where: [':=', left, right]}
-  contains: (env, [left, right])->
-    {where: [':&&', left, right]}
-  param: (env, path)->
-    {call: 'extract', args: [':resource', path], array: true}
-  and: (env, args)->
+  search: (resourceType, args...)->
+    merge({select: [':*'], from: [table_name(resourceType)]}, args)
+
+  equal: (left, right)->
+    where: [':=', left, right]
+
+  contains: (left, right)->
+    where: [':&&', left, right]
+
+  param: (path...)->
+    call: 'extract',
+    args: [':resource', path]
+    array: true
+
+  and: (args...)->
     key_merge('where', [':and'], args)
-  or: (env, args)->
+
+  or: (args...)->
     key_merge('where', [':or'], args)
-  ref: (env, [field,res])->
-    {join: [[[res,res], [':=', "^ref(#{field})",':id']]]}
-  join: (env, args)-> merge({}, args)
-  limit: (env, [num])-> {limit: num}
-  asc: (env, [col])->
-    {order: [col, 'asc']}
-  desc: (env, [col])->
-    {order: [col, 'desc']}
-  order: (env, args)->
-    key_merge('order',[],args)
-  offset: (env, [num])-> {offset: num}
 
-_eval = (env,expr)->
-  if expr.length == 1 and not isArray(expr[0])
-    return expr[0]
-  op = expr[0]
-  fn = TABLE[op]
-  throw new Error("Unbound symbol #{op}") unless fn
-  args = expr[1...].map((x)-> _eval(env,(if isArray(x) then x else [x])))
-  fn(env, args)
+  ref: (field,res)->
+    join: [[[res,res], [':=', "^ref(#{field})",':id']]]
 
+  join: (args...)->
+    merge({}, args)
 
-env = {
-  params: []
-  cnt: 1
-}
+  order: (args...)->
+    order: args
 
-program = ['search',
+  limit: (num)->
+    limit: num
+
+  offset: (num)->
+    offset: num
+
+_eval = (expr)->
+  if isArray(expr)
+    first = expr[0]
+    if isFn(first)
+      args = expr[1..].map(_eval)
+      first.apply(null, args)
+    else
+      expr.map(_eval)
+  else if isObject(expr)
+    for k,v of expr
+      expr[k] = _eval(v)
+    expr
+  else
+    expr
+
+x = TABLE
+
+program = [x.search,
   'Patient'
-  ['order', ['asc', 'name']]
-  ['limit', 10]
-  ['join', ['ref', 'organization', 'Organization']]
-  ['and',
-    ['=', ['param', 'type'], 'animal']
-    ['or',
-      ['contains', ['param', 'name', 'given'], 'ivan']
-      ['=', ['param', 'active'], 'true']]]
-  ['offset', 10]]
+  [x.order, ['name', 'desc'], ['birthDate', 'asc']]
+  [x.limit, 10]
+  [x.join, [x.ref, 'organization', 'Organization']]
+  [x.and,
+    [x.equal, [x.param, 'type'], 'animal']
+    [x.or,
+      [x.contains, [x.param, 'name', 'given'], 'ivan']
+      [x.equal, [x.param, 'active'], 'true']]]
+  [x.offset, 10]]
 
-res = _eval(env,program)
-console.log sql(res)
-
-delete res.order
-delete res.limit
-delete res.offset
-res.select = ['^count(*)']
-
-console.log sql(res)
-
+res = _eval(program)
+console.log(res)
+console.log(sql(res))
