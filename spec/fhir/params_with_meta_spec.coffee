@@ -1,38 +1,24 @@
 params = require('../../src/fhir/params_with_meta')
+meta = require('../../src/fhir/meta_fs')
 
-pt_profile = require('./patient.json')
+pt_profile = require('./fixtures/patient.json')
 
-find_structure_definition = (resourceType, path)->
+cache = {}
+
+find_structure_definition = (resourceType)->
   pt_profile
 
-adapter = {
-  find_parameter: (resourceType, name)->
-    {
-      "resourceType": "SearchParameter",
-      "base": "Patient",
-      "id": "Patient-name",
-      "name": "name",
-      "type": "string",
-      "xpath": "f:Patient/f:name",
-      "xpathUsage": "normal"
-    }
-  find_element: (resourceType, path)->
-    profile = find_structure_definition(resourceType)
-    epath = path.join('.')
-    console.log(epath)
-    res = profile.snapshot.element.filter (x)-> x.path == epath
-    console.log(res)
-    res[0]
-}
+adapter = meta.adapter()
 
-query =
-  resourceType: 'Patient'
-  params: [{value: 'ivan', name: 'name'}]
+specs = []
 
-result =
-  resourceType: 'Patient',
-  params: [
-    {
+specs.push
+  query:
+    resourceType: 'Patient'
+    params: [{value: 'ivan', name: 'name'}]
+  result:
+    resourceType: 'Patient',
+    params: [
       name: 'name'
       searchType: 'string'
       elementType: 'HumanName'
@@ -40,9 +26,25 @@ result =
       pathUsage: "normal"
       multiple: true
       value: 'ivan'
-    }
-  ]
+    ]
+
+# specs.push
+#   query:
+#     resourceType: 'Patient'
+#     params: [{value: 'ivan', name: 'given'}]
+#   result:
+#     resourceType: 'Patient',
+#     params: [
+#       name: 'name'
+#       searchType: 'string'
+#       elementType: 'string'
+#       path: ['Patient','name', 'given']
+#       pathUsage: "normal"
+#       multiple: true
+#       value: 'ivan'
+#     ]
 
 describe "Params with meta", ()->
    it "params", ()->
-     expect(params._expand(adapter,query)).toEqual(result)
+     for spec in specs
+       expect(params._expand(adapter, spec.query)).toEqual(spec.result)

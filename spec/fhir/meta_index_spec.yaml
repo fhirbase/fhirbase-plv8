@@ -1,0 +1,39 @@
+- query: ['Patient', 'contact', 'relationship']
+  result:
+    path: 'Patient.contact.relationship'
+    max: '*'
+    type: [ { code: 'CodeableConcept' } ]
+    elements: {}
+- query: ['Patient', 'multipleBirthBoolean']
+  result:
+    path: 'Patient.multipleBirth[x]'
+    max: '1'
+    type: [ { code: 'boolean' } ]
+    elements: {}
+- query: ['Patient', 'multipleBirth[x]']
+  result:
+    path: 'Patient.multipleBirth[x]'
+    max: '1'
+    type: [ { code: 'boolean' }, { code: 'integer' } ]
+    elements: {}
+- query: ['Patient', 'name', 'given']
+  result:
+    path: 'HumanName.given'
+    max: '*'
+    type: [ { code: 'string' } ]
+    isSummary: true
+    elements: {}
+- query: ['Patient', 'contact', 'address', 'city']
+  result:
+    path : 'Address.city'
+    max : '1'
+    type : [ { code : 'string' } ]
+    isSummary : true
+    elements : {  }
+- query: ['Patient', 'contact', 'address', 'period', 'start']
+  result:
+    path : 'Period.start'
+    max : '1'
+    isSummary : true
+    type : [ { code : 'dateTime' } ]
+    elements : {  }

@@ -23,7 +23,7 @@ expand_param = (adapter, resourceType, x)->
 
   x.pathUsage = info.xpathUsage
 
-  element = adapter.find_element(resourceType, x.path)
+  element = adapter.find_element(x.path)
 
   if element.type.length != 1
     throw new Error("TODO: support elements with multiple types #{resourceType} #{name}")
@@ -37,4 +37,17 @@ exports._expand = (adapter, query)->
     expand_param(adapter, query.resourceType, x)
   query
 
+mk_adapter = (plv8)->
+  cache = {}
 
+  find_parameter: (resourceType, name)->
+
+  find_element: (path)->
+    unless cache[path]
+      profile = find_structure_definition(path[0])
+      epath = path.join('.')
+      res = profile.snapshot.element.filter (x)-> x.path == epath
+      unless res[0]
+        throw new Error("#{path} not found")
+      cache[path] = res[0]
+      res[0]
