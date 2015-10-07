@@ -11,10 +11,12 @@
   },
   "devDependencies": {
     "coffee": "latest",
+    "coffee-script": "latest",
     "jasmine-node": "latest",
     "pg-native":"latest",
     "js-yaml": "latest",
-    "mocha": "latest"
+    "mocha": "latest",
+    "chai": "latest"
   },
   "dev": {
     "plpl": "latest"

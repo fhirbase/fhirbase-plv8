@@ -2,6 +2,7 @@ plv8 = require('../../plpl/src/plv8')
 crud = require('../../src/core/crud')
 schema = require('../../src/core/schema')
 search = require('../../src/core/search')
+assert = require('assert')
 
 yaml = require('js-yaml')
 fs   = require('fs')
@@ -32,4 +33,4 @@ describe "SEARCH", ()->
       res = search.search(plv8, sp.query)
       if res.total.toString() != sp.total.toString()
         throw new Error()
-      expect(res.total).toEqual(sp.total)
+      assert.equal(res.total, sp.total)
