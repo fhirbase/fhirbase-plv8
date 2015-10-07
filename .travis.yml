@@ -12,4 +12,4 @@ before_script:
   - npm install && cd plpl && npm install
   - npm install -g mocha && npm install -g coffee-script
 
-script: mocha --compilers mocha --compilers coffee:coffee-script/register $(find spec -name '*.coffee')
+script: mocha --compilers mocha --compilers coffee:coffee-script/register "spec/**/*.coffee"
