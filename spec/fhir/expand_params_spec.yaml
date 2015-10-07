@@ -30,15 +30,16 @@
   result:
     resourceType: 'Patient'
     params:
-      - name: 'deceased'
-        searchType: 'token'
-        elementType: 'boolean'
-        path: ['Patient','deceasedBoolean']
-        pathUsage: "normal"
-        value: 'true'
-- query:
-    resourceType: 'Patient'
-    params: [{value: 'true', name: 'name'}, {value: 'ups', name: 'given'}]
-  result:
-    resourceType: 'Patient'
-    params: []
+      - - 'OR'
+        - name: 'deceased'
+          searchType: 'token'
+          elementType: 'boolean'
+          path: ['Patient','deceasedBoolean']
+          pathUsage: "normal"
+          value: 'true'
+        - name: 'deceased'
+          searchType: 'token'
+          elementType: 'dateTime'
+          path: ['Patient','deceasedDateTime']
+          pathUsage: "normal"
+          value: 'true'

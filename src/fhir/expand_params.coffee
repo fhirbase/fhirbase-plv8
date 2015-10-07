@@ -11,9 +11,13 @@ merge = (xs...)->
 
 expand_param = (idx, resourceType, x)->
   info = index.parameter(idx, [resourceType, x.name])
-  merge(x,info)
+  res = info.map((y)-> merge(y,x))
+  if res.length == 1
+    res[0]
+  else
+    ['OR'].concat(res)
 
 exports._expand = (idx, query)->
-  query.params = query.params.map (x)->
-    expand_param(idx, query.resourceType, x)
-  query
+  merge query,
+    params: query.params.map (x)->
+      expand_param(idx, query.resourceType, x)

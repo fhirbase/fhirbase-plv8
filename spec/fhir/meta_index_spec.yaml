@@ -1,12 +1,12 @@
 params:
   - query: ['Patient', 'name']
     result:
-      searchType: 'string'
-      path: ['Patient','name']
-      name: 'name'
-      elementType: 'HumanName'
-      pathUsage: "normal"
-      multiple: true
+      - searchType: 'string'
+        path: ['Patient','name']
+        name: 'name'
+        elementType: 'HumanName'
+        pathUsage: "normal"
+        multiple: true
 elements:
   - query: ['Patient', 'contact', 'relationship']
     result:

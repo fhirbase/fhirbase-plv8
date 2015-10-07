@@ -64,9 +64,9 @@ module.exports.new = (getter)->
         idx.elements[tp.name]
       else if rt == 'SearchParameter'
         key = "#{tp.base}-#{tp.name}"
-        unless idx.params[key]
+        if idx.params[key] == undefined
           sp = getter(rt, tp)
-          idx.params[key] = select_keys(sp, ['xpath', 'type', 'xpathUsage'])
+          idx.params[key] = (sp && select_keys(sp, ['xpath', 'type', 'xpathUsage'])) || null
         idx.params[key]
       else
         throw new Error("unexpected call")
@@ -100,44 +100,17 @@ module.exports.parameter = (idx, path)->
 
   epathes = xpath.parse(sp.xpath)
 
-  if epathes.length > 1
-    throw new Error("MetaIndex: Param have more then one path #{JSON.stringify(epathes)}")
+  if epathes.length < 1
+    throw new Error("MetaIndex: Path not expandable #{path.join('-')}")
 
-  epath = epathes[0]
-  epath = epath.map((x)-> if Array.isArray(x) then x[0] else x)
-  el = element(idx, epath)
-  throw new Error("MetaIndex: Element [#{JSON.stringify(path)}] -> #{epath.join('.')} not found") unless el
+  epathes.map (epath)->
+    epath = epath.map((x)-> if Array.isArray(x) then x[0] else x)
+    el = element(idx, epath)
+    throw new Error("MetaIndex: Element [#{JSON.stringify(path)}] -> #{epath.join('.')} not found") unless el
 
-  name: name
-  path: epath
-  multiple: el.max == '*'
-  searchType: sp.type
-  elementType: el.type[0].code
-  pathUsage: sp.xpathUsage
-
-
-todo = ()->
-  unless info
-    throw new Error("expand_param: No SearchParameter for #{resourceType} #{x.name}")
-
-  x.searchType = info.type
-
-  unless info.xpath
-    throw new Error("expand_param: Could not search without xpath #{x}")
-
-  path = xpath.parse(info.xpath)
-
-  if path.length > 1
-    throw new Error("TODO: support multi path search params")
-
-  x.path = path[0]
-
-  unless info.xpathUsage == 'normal'
-    throw new Error("expand_param: Could not work with xpathUsage #{info.xpathUsage}")
-
-  x.pathUsage = info.xpathUsage
-
-  element = adapter.find_element(x.path)
-
-  if element.type.length != 1
-    throw new Error("TODO: support elements with multiple types #{resourceType} #{name}")
+    name: name
+    path: epath
+    multiple: el.max == '*'
+    searchType: sp.type
+    elementType: el.type[0].code
+    pathUsage: sp.xpathUsage
