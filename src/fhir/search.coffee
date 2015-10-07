@@ -1,3 +1,5 @@
+parser = require('./params')
+expand = require('./expand_params')
 # cases
 
 # Patient.active
@@ -29,18 +31,18 @@ TABLE = require('./conditions')
 
 exports.build_conditions = (opts)->
 
-exports.condition = (opts)->
-  handler = TABLE[opts.elementType]
-  throw new Error("Unsupported #{opts.elementType}") unless handler
-  handler = handler[opts.searchType]
-  throw new Error("Unsupported #{opts.elementType} #{opts.searchType}") unless handler
-  handler = handler[opts.operation]
-  throw new Error("Unsupported #{opts.elementType} #{opts.searchType} #{opts.operation}") unless handler
-  handler(opts)
+condition = (opts)->
+  console.log(opts)
+  return 'ups'
 
-exports._search = (plv8, query)->
-  []
+exports.condition = condition
 
+exports._search_sql = (idx, query)->
+  params = parser.parse(query.queryString)
+  params.resourceType = query.resourceType
+  eparams = expand._expand(idx, params)
+  eparams.params.map(condition)
 
-exports.search = (plv8, query)->
-  parse(query.queryString)
+exports._search = (plv8, query)-> []
+exports.search = (plv8, query)-> 'ups'
+exports.search_sql = (plv8, query)-> 'ups'
