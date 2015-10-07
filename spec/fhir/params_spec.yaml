@@ -11,7 +11,7 @@ params:
       - {name: 'age', value: '20', prefix: 'lt'}
       - {name: 'age', value: '10', prefix: 'gt'}
       - {name: 'age', value: '30', prefix: 'eq'}
-    - {name: 'name', value: 'ivan'}]
+    - {name: 'name', value: 'ivan'}
   name=ap10: [{name: 'name', value: '10', prefix: 'ap'}]
   type=loinc|444: [{name: 'type', value: ['loinc', '444']}]
   subject:Patient.name=ivan:

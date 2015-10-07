@@ -39,11 +39,11 @@ specs = [
 ]
 
 
-describe "CRUD", ()->
-  it "simple", ()->
-    for spec in specs
-      assert.deepEqual(search.condition(spec.cond), spec.result)
-      console.log honey(select: [':*'], from: ['patient'], where: spec.result)
+# describe "CRUD", ()->
+#   it "simple", ()->
+#     for spec in specs
+#       assert.deepEqual(search.condition(spec.cond), spec.result)
+#       console.log honey(select: [':*'], from: ['patient'], where: spec.result)
 
 
-search.search_sql('Patient', 'name=ivan&given=ivanov') => sql
+# search.search_sql('Patient', 'name=ivan&given=ivanov')
