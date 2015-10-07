@@ -72,7 +72,7 @@ module.exports.new = (getter)->
         throw new Error("unexpected call")
 
 
-module.exports.element = (idx, path)->
+element = (idx, path)->
   cur = idx.get('StructureDefinition', name: path[0])
   for p in path[1..] when cur
     if cur.elements && cur.elements[p]
@@ -85,15 +85,28 @@ module.exports.element = (idx, path)->
       else
         cur = null
   cur
+module.exports.element = element
 
 module.exports.parameter = (idx, path)->
   resourceType = path[0]
   name = path[1]
   sp = idx.get('SearchParameter', base: resourceType, name: name)
-  throw new Error("Param not found #{path.join('-')}") unless sp
-  epath = xpath.parse(sp.xpath)[0]
-  el = module.exports.element(idx, epath)
-  throw new Error("Element not found #{epath.join('.')}") unless el
+
+  unless sp
+    throw new Error("MetaIndex: Param not found #{path.join('-')}")
+
+  unless sp.xpath
+    throw new Error("MetaIndex: Param does not have xpath #{path.join('-')}")
+
+  epathes = xpath.parse(sp.xpath)
+
+  if epathes.length > 1
+    throw new Error("MetaIndex: Param have more then one path #{JSON.stringify(epathes)}")
+
+  epath = epathes[0]
+  epath = epath.map((x)-> if Array.isArray(x) then x[0] else x)
+  el = element(idx, epath)
+  throw new Error("MetaIndex: Element [#{JSON.stringify(path)}] -> #{epath.join('.')} not found") unless el
 
   name: name
   path: epath
@@ -103,3 +116,28 @@ module.exports.parameter = (idx, path)->
   pathUsage: sp.xpathUsage
 
 
+todo = ()->
+  unless info
+    throw new Error("expand_param: No SearchParameter for #{resourceType} #{x.name}")
+
+  x.searchType = info.type
+
+  unless info.xpath
+    throw new Error("expand_param: Could not search without xpath #{x}")
+
+  path = xpath.parse(info.xpath)
+
+  if path.length > 1
+    throw new Error("TODO: support multi path search params")
+
+  x.path = path[0]
+
+  unless info.xpathUsage == 'normal'
+    throw new Error("expand_param: Could not work with xpathUsage #{info.xpathUsage}")
+
+  x.pathUsage = info.xpathUsage
+
+  element = adapter.find_element(x.path)
+
+  if element.type.length != 1
+    throw new Error("TODO: support elements with multiple types #{resourceType} #{name}")

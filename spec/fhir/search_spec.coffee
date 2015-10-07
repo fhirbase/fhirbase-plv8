@@ -1,5 +1,6 @@
 search = require('../../src/fhir/search')
 honey = require('../../src/honey')
+assert = require('assert')
 
 
 search.condition(
@@ -41,5 +42,5 @@ specs = [
 describe "CRUD", ()->
   it "simple", ()->
     for spec in specs
-      expect(search.condition(spec.cond)).toEqual(spec.result)
+      assert.deepEqual(search.condition(spec.cond), spec.result)
       console.log honey(select: [':*'], from: ['patient'], where: spec.result)

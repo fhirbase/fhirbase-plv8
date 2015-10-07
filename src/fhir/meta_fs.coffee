@@ -1,45 +1,23 @@
-resources = require('../../fhir/profiles-resources.json')
+params = require('../../fhir/search-parameters.json')
+profiles = require('../../fhir/profiles-resources.json')
 types = require('../../fhir/profiles-types.json')
 
-resources.entry = resources.entry.concat(types.entry)
+profiles.entry = profiles.entry.concat(types.entry)
 
-search_params = require('../../fhir/search-parameters.json')
 
-exports.adapter = (_)->
+exports.getter = (rt,query)->
+  if rt == 'StructureDefinition'
+    res = profiles.entry.filter (x)->
+      x.resource.name == query.name
 
-  cache = {}
-  sp_idx = {}
-  el_idx = {}
-  res_idx = {}
+    if res.length > 1
+      throw new Error("Unexpected behavior: more then one #{rt} #{JSON.stringify(query)}\n #{JSON.stringify(res.map((x)-> x.resource.id))}")
 
-  find_structure_definition = (resourceType)->
-    key = resourceType
-    unless res_idx[key]
-      res = resources.entry.filter (x)->
-        x.resource.name == resourceType
-      res = resources.entry.filter (x)->
-        x.resource.name == resourceType
-      unless res[0]
-        throw new Error("Could not find resource #{resourceType}")
-      res_idx[key] = res[0].resource
-    res_idx[key]
+    res[0].resource
+  else
+    res = params.entry.filter (x)->
+      x.resource.base == query.base && x.resource.name == query.name
+    if res.length > 1
+      throw new Error("Unexpected behavior: more then one SearchParameter #{rt} #{JSON.stringify(query)}\n #{JSON.stringify(res.map((x)-> x.resource.id ))}")
 
-  find_parameter: (resourceType, name)->
-    key = "#{resourceType}-#{name}"
-    unless sp_idx[key]
-      res = search_params.entry.filter (x)->
-        x.resource.base == resourceType && x.resource.name == name
-      unless res[0]
-        throw new Error("Could not find search parameter #{resourceType} #{name}")
-      sp_idx[key] = res[0].resource
-    sp_idx[key]
-
-  find_element: (path)->
-    epath = path.join('.')
-    unless cache[epath]
-      profile = find_structure_definition(path[0])
-      res = profile.snapshot.element.filter (x)-> x.path == epath
-      unless res[0]
-        throw new Error("Element #{path} not found")
-      cache[epath] = res[0]
-    cache[epath]
+    res[0] && res[0].resource

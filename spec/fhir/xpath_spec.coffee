@@ -1,4 +1,5 @@
 xpath = require('../../src/fhir/xpath')
+assert = require("assert")
 
 samples = [
   [
@@ -15,7 +16,7 @@ samples = [
 describe "CRUD", ()->
   it "simple", ()->
     for [k,v] in samples
-      expect(xpath.parse(k)).toEqual(v)
+      assert.deepEqual(xpath.parse(k), v)
 
 
 yaml = require('js-yaml')
@@ -37,7 +38,7 @@ spec =
     [[[['identifier', [['type','coding','code'], 'MR']], 'value']], ['12345']]
   ]
 
-describe "CRUD", ()->
+describe "Get in", ()->
   it "simple", ()->
     for  [k,v] in spec
-      expect(xpath.get_in(pt, k)).toEqual(v)
+      assert.deepEqual(xpath.get_in(pt, k), v)

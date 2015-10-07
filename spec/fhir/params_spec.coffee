@@ -1,5 +1,5 @@
 params = require('../../src/fhir/params')
-assert = require "assert"
+assert = require('assert')
 
 params_specs = [
   ['a=1', [ {name: 'a', value: '1'}]]
@@ -120,10 +120,10 @@ other_spec = [
 describe "Params", ()->
  it "params", ()->
    for [k,v] in params_specs
-     expect(params.parse(k).params).toEqual(v)
+     assert.deepEqual(params.parse(k).params, v)
 
  it "other", ()->
    for [k,v] in other_spec
      res = params.parse(k)
      delete res.params
-     expect(res).toEqual(v)
+     assert.deepEqual(res, v)
