@@ -2,47 +2,48 @@ plv8 = require('../../plpl/src/plv8')
 crud = require('../../src/core/crud')
 schema = require('../../src/core/schema')
 
+assert = require('assert')
+
 copy = (x)-> JSON.parse(JSON.stringify(x))
 
 describe "CRUD", ()->
   beforeEach ()->
     schema.drop_table(plv8, 'Users')
     schema.create_table(plv8, 'Users')
-
-  it "simple", ()->
+ 
+  it "create", ()->
     created = crud.create(plv8, {resourceType: 'Users', name: 'admin'})
-    expect(created.id).not.toBeFalsy()
-    expect(created.id).not.toBeFalsy()
-    expect(created.meta.versionId).not.toBe(undefined)
-    expect(created.name).toEqual('admin')
+    assert.notEqual(created.id , false)
+    assert.notEqual(created.meta.versionId, undefined)
+    assert.equal(created.name, 'admin')
 
     read = crud.read(plv8, {id: created.id, resourceType: 'Users'})
-    expect(read.id).toEqual(created.id)
+    assert.equal(read.id, created.id)
 
     vread = crud.vread(plv8, read)
-    expect(read.id).toEqual(vread.id)
-    expect(read.meta.versionId).toEqual(vread.meta.versionId)
+    assert.equal(read.id, vread.id)
+    assert.equal(read.meta.versionId, vread.meta.versionId)
 
     to_update = copy(read)
     to_update.name = 'changed'
 
     updated = crud.update(plv8, to_update)
-    expect(updated.name).toEqual(to_update.name)
-    expect(updated.meta.versionId).not.toBeFalsy()
-    expect(updated.meta.versionId).not.toEqual(read.meta.versionId)
+    assert.equal(updated.name, to_update.name)
+    assert.notEqual(updated.meta.versionId, false)
+    assert.notEqual(updated.meta.versionId, read.meta.versionId)
 
 
     read_updated = crud.read(plv8, updated)
-    expect(read_updated.name).toEqual(to_update.name)
-    expect(read_updated.meta.request.method).toEqual('PUT')
+    assert.equal(read_updated.name, to_update.name)
+    assert.equal(read_updated.meta.request.method, 'PUT')
 
     hx  = crud.history(plv8, {id: read.id, resourceType: 'Users'})
-    expect(hx.total).toEqual(2)
-    expect(hx.entry.length).toEqual(2)
+    assert.equal(hx.total, 2)
+    assert.equal(hx.entry.length, 2)
 
     deleted = crud.delete(plv8, {id: read.id, resourceType: 'Users'})
-    expect(deleted.meta.request.method).toEqual('DELETE')
+    assert.equal(deleted.meta.request.method, 'DELETE')
 
     hx_deleted  = crud.history(plv8, {id: read.id, resourceType: 'Users'})
-    expect(hx_deleted.total).toEqual(3)
-    expect(hx_deleted.entry.length).toEqual(3)
+    assert.equal(hx_deleted.total, 3)
+    assert.equal(hx_deleted.entry.length, 3)

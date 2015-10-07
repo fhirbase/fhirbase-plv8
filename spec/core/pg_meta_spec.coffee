@@ -1,6 +1,6 @@
 plv8 = require('../../plpl/src/plv8')
 meta = require('../../src/core/pg_meta')
-
+assert = require('assert')
 
 describe "CRUD", ()->
   it "simple", ()->
@@ -11,5 +11,5 @@ describe "CRUD", ()->
     plv8.execute "CREATE SCHEMA testo"
     plv8.execute "CREATE TABLE testo.test_pg_meta (id serial)"
 
-    expect(meta.table_exists(plv8, 'test_pg_meta')).toEqual(true)
-    expect(meta.table_exists(plv8, 'testo.test_pg_meta')).toEqual(true)
+    assert.equal(meta.table_exists(plv8, 'test_pg_meta'), true)
+    assert.equal(meta.table_exists(plv8, 'testo.test_pg_meta'), true)
