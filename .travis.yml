@@ -10,6 +10,6 @@ notifications:
 before_script:
   - sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
   - npm install && cd plpl && npm install
-  - npm install -g mocha
+  - npm install -g mocha && npm install -g coffee-script
 
 script: mocha --compilers mocha --compilers coffee:coffee-script/register spec/**/*coffee
