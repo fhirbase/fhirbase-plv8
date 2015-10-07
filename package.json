@@ -14,8 +14,7 @@
     "jasmine-node": "latest",
     "pg-native":"latest",
     "js-yaml": "latest",
-    "mocha": "latest",
-    "chai": "latest"
+    "mocha": "latest"
   },
   "dev": {
     "plpl": "latest"

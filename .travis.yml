@@ -11,4 +11,4 @@ before_script:
   - sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
   - npm install && cd plpl && npm install
 
-script: node_modules/jasmine-node/bin/jasmine-node spec --coffee
+script: node_modules/mocha/bin/mocha --compilers mocha --compilers coffee:coffee-script/register spec/**/*coffee
