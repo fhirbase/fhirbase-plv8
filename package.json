@@ -25,7 +25,6 @@
   "files": ["bin", "lib", "src", "migrations"],
   "scripts": {
     "publish": "coffee -o lib/ -c src/ && npm publish",
-    "test": "node_modules/jasmine-node/bin/jasmine-node spec --coffee",
-    "test-mocha": "node_modules/mocha/bin/mocha -w --compilers coffee:coffee-script/register ./spec/fhir/params_spec.coffee"
+    "test": "node_modules/mocha/bin/mocha --compilers mocha --compilers coffee:coffee-script/register  --recursive"
   }
 }
