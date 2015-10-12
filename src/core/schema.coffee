@@ -4,7 +4,7 @@ utils = require('./utils')
 pg_meta = require('./pg_meta')
 
 # TODO: rename to create_storage
-exports.create_table = (plv8, resource_type)->
+exports.create_storage = (plv8, resource_type)->
   nm = namings.table_name(plv8, resource_type)
   if pg_meta.table_exists(plv8, nm)
     {status: 'error', message: "Table #{nm} already exists"}
@@ -32,7 +32,7 @@ exports.create_table = (plv8, resource_type)->
     """
     {status: 'ok', message: "Table #{nm} was created"}
 
-exports.drop_table = (plv8, nm)->
+exports.drop_storage = (plv8, nm)->
   nm = namings.table_name(plv8, nm)
   unless pg_meta.table_exists(plv8, nm)
     {status: 'error', message: "Table #{nm} not exists"}
@@ -46,7 +46,7 @@ exports.describe_table = (plv8, resource_type)->
   columns = utils.exec plv8,
     select: [':column_name', ':dtd_identifier']
     from: ['information_schema.columns']
-    where: [':and',[':=',':table_name', nm]
+    where: [':AND',[':=',':table_name', nm]
                    [':=', ':table_schema', 'public']]
   name: nm
   columns: columns.reduce(((acc, x)-> acc[x.column_name] = x; delete x.column_name; acc),{})

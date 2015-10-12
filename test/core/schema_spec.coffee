@@ -5,9 +5,9 @@ assert = require('assert')
 
 describe "simple", ()->
   it "test", ()->
-    schema.drop_table(plv8, 'Users')
+    schema.drop_storage(plv8, 'Users')
     assert.equal(pg_meta.table_exists(plv8, 'users'), false)
-    schema.create_table(plv8, 'Users')
+    schema.create_storage(plv8, 'Users')
 
     assert.equal(pg_meta.table_exists(plv8, 'users'), true)
     assert.equal(pg_meta.table_exists(plv8, 'history.users'), true)
@@ -15,6 +15,6 @@ describe "simple", ()->
     desc = schema.describe_table(plv8, 'users')
     assert.equal(desc.name, 'users')
 
-    schema.drop_table(plv8, 'Users')
+    schema.drop_storage(plv8, 'Users')
     assert.equal(pg_meta.table_exists(plv8, 'Users'), false)
     assert.equal(pg_meta.table_exists(plv8, 'history.users'), false)

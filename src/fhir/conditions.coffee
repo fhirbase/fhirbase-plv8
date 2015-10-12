@@ -1,4 +1,8 @@
-TODO = 'TODO'
+lang = require('../lang')
+
+TODO = ()->
+  throw new Error("Not impl.")
+
 TABLE =
   boolean:
     token: TODO
@@ -51,12 +55,12 @@ TABLE =
     token: TODO
   HumanName:
     string:
-      eq: (opts)->
+      co: (opts)->
         call =
           call: extract_fn(opts.searchType, opts.array)
           args: [':resource', JSON.stringify(opts.path), opts.elementType]
           cast: 'text'
-        [':=', call, ':true']
+        [':ilike', call, "%#{opts.value}%"]
   Identifier:
     token: TODO
   Quantity:
@@ -78,10 +82,28 @@ extract_fn = (resultType, array)->
     res.push('_array')
   res.join('')
 
-module.exports.condition = (opts)->
+condition = (opts)->
   handler = TABLE[opts.elementType]
   throw new Error("#{opts.elementType} is not suported") unless handler
   handler = handler[opts.searchType]
   throw new Error("#{opts.elementType} #{opts.searchType} is not suported") unless handler
-  console.log(opts)
+  handler = handler[opts.operator]
+  throw new Error("Operator #{opts.operator} in #{opts.elementType} #{opts.searchType} is not suported") unless handler
   handler(opts)
+
+exports.condition = condition
+
+walk = (expr)->
+  if lang.isArray(expr)
+    expr.map((x)-> walk(x))
+  else if lang.isObject(expr)
+    condition(expr)
+  else
+    if expr == 'OR'
+      ':OR'
+    else if expr == 'AND'
+      ':AND'
+    else
+      expr
+
+exports.walk = walk

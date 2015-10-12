@@ -8,9 +8,9 @@ copy = (x)-> JSON.parse(JSON.stringify(x))
 
 describe "CRUD", ()->
   beforeEach ()->
-    schema.drop_table(plv8, 'Users')
-    schema.create_table(plv8, 'Users')
- 
+    schema.drop_storage(plv8, 'Users')
+    schema.create_storage(plv8, 'Users')
+
   it "create", ()->
     created = crud.create(plv8, {resourceType: 'Users', name: 'admin'})
     assert.notEqual(created.id , false)

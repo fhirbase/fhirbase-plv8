@@ -11,8 +11,8 @@ specs = yaml.safeLoad(fs.readFileSync("#{__dirname}/search_spec.yml", 'utf8'))
 
 describe "SEARCH", ()->
   beforeEach ()->
-    schema.drop_table(plv8, 'Something')
-    schema.create_table(plv8, 'Something')
+    schema.drop_storage(plv8, 'Something')
+    schema.create_storage(plv8, 'Something')
 
   it "simple", ()->
     sample =

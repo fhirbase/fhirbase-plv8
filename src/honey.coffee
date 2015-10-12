@@ -1,23 +1,5 @@
 lang = require('./lang')
 
-isKeyword = (x)->
-  isString(x) && x.indexOf && x.indexOf(':') == 0
-
-name = (x)->
-  if isKeyword(x)
-    x.replace(/^:/,'')
-
-assertArray = (x)->
-  unless lang.isArray(x)
-    throw new Error('from: [array] expected)')
-
-assert = (x, msg)-> throw new Error(x) unless x
-
-interpose = (sep, col)->
-  col.reduce(((acc, x)-> acc.push(x); acc.push(sep); acc),[])[0..-2]
-
-isString = (x)-> typeof x == 'string'
-
 push = (acc, x)->
   acc.result.push(x)
   acc
@@ -30,14 +12,14 @@ concat = (acc, xs)->
 RAW_SQL_REGEX = /^\^/
 
 isRawSql = (x)->
-  x && isString(x) && x.match(RAW_SQL_REGEX)
+  x && lang.isString(x) && x.match(RAW_SQL_REGEX)
 
 rawToSql = (x)->
   x.replace(RAW_SQL_REGEX,'')
 
 _toLiteral = (x)->
-  if isKeyword(x)
-    name(x)
+  if lang.isKeyword(x)
+    lang.name(x)
   else if isRawSql(x)
     rawToSql(x)
   else if lang.isNumber(x)
@@ -61,8 +43,8 @@ coerce_param = (x)->
 emit_param = (acc, v)->
   if isRawSql(v)
     push(acc,rawToSql(v))
-  else if isKeyword(v)
-    push(acc,name(v))
+  else if lang.isKeyword(v)
+    push(acc,lang.name(v))
   else if lang.isObject(v) and v.cast
     if v.array
       args = []
@@ -102,8 +84,8 @@ emit_delimit = (acc, delim, xs, next)->
 
 emit_columns = (acc, xs)->
   emit_delimit acc, ",", xs, (acc,x)->
-    if isKeyword(x)
-      push(acc,name(x))
+    if lang.isKeyword(x)
+      push(acc,lang.name(x))
     else if isRawSql(x)
       push(acc,rawToSql(x))
     else
@@ -123,8 +105,8 @@ emit_table_name = (acc, y)->
     push(acc, quote_ident(y))
 
 emit_tables = (acc, x)->
-  assert(x, 'from: [tables] expected')
-  assertArray(x)
+  lang.assert(x, 'from: [tables] expected')
+  lang.assertArray(x)
   push(acc,"FROM")
   emit_delimit(acc, ",", x, emit_table_name)
 
@@ -159,14 +141,14 @@ emit_expression = (acc, xs)->
   if lang.isArray(xs)
     which = xs[0]
     switch which
-      when ':and'
+      when ':AND'
         surround_parens acc, (acc)->
           emit_delimit(acc, "AND", xs[1..], emit_expression)
-      when ':or'
+      when ':OR'
         surround_parens acc, (acc)->
           emit_delimit(acc, "OR", xs[1..], emit_expression)
       else
-        special = SPECIALS[name(which)]
+        special = SPECIALS[lang.name(which)]
         if special
           special(acc, xs)
         else
@@ -355,7 +337,7 @@ comment = ->
      select: [":a","^b",'c'],
      from: ['users','roles'],
      joins: [['roles', [':=', '^r.user_id', '^users.id']]]
-     where: [':and', [':=', ':id', 5],[':=', ':name', 'x']]
+     where: [':AND', [':=', ':id', 5],[':=', ':name', 'x']]
   )
 
   console.log sql(

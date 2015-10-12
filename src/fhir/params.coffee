@@ -73,7 +73,7 @@ merge = (obj, anothers...)->
   ), obj)
 
 or_join = (arr)->
-  res = ['or']
+  res = ['OR']
   arr.map (x)-> res.push x
   res
 
@@ -198,4 +198,4 @@ exports.parse = (str) ->
     else
       parse_right(acc, left, right)
     acc
-  ), {params: []})
+  ), {params: ['AND']})

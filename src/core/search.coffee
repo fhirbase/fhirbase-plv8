@@ -27,7 +27,7 @@ isArray = lang.isArray
 mk_where = (expr)->
   if isArray(expr)
     if expr[0].toLowerCase() == 'and' || expr[0].toLowerCase() == 'or'
-      [":#{expr[0].toLowerCase()}"].concat(expr[1..].map(mk_where))
+      [":#{expr[0].toUpperCase()}"].concat(expr[1..].map(mk_where))
     else
       path = selector(expr[0])
       op = expr[1]

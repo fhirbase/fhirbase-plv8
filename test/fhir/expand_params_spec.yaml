@@ -1,9 +1,10 @@
 - query:
     resourceType: 'Patient'
-    params: [{value: 'ivan', name: 'name'}]
+    params: ['AND', {value: 'ivan', name: 'name'}]
   result:
     resourceType: 'Patient'
     params:
+      - 'AND'
       - name: 'name'
         searchType: 'string'
         elementType: 'HumanName'
@@ -13,10 +14,11 @@
         value: 'ivan'
 - query:
     resourceType: 'Patient'
-    params: [{value: 'ivan', name: 'given'}]
+    params: ['AND', {value: 'ivan', name: 'given'}]
   result:
     resourceType: 'Patient'
     params:
+      - 'AND'
       - name: 'given'
         searchType: 'string'
         elementType: 'string'
@@ -26,10 +28,11 @@
         value: 'ivan'
 - query:
     resourceType: 'Patient'
-    params: [{value: 'true', name: 'deceased'}]
+    params: ['AND', {value: 'true', name: 'deceased'}]
   result:
     resourceType: 'Patient'
     params:
+      - 'AND'
       - - 'OR'
         - name: 'deceased'
           searchType: 'token'
@@ -43,3 +46,25 @@
           path: ['Patient','deceasedDateTime']
           pathUsage: "normal"
           value: 'true'
+- query:
+    resourceType: 'Patient'
+    params: ['AND', ['OR', {value: 'ivan', name: 'name'}, {value: 'peter', name: 'name'}]]
+  result:
+    resourceType: 'Patient'
+    params:
+      - 'AND'
+      - - 'OR'
+        - name: 'name'
+          searchType: 'string'
+          elementType: 'HumanName'
+          path: ['Patient','name']
+          pathUsage: "normal"
+          multiple: true
+          value: 'ivan'
+        - name: 'name'
+          searchType: 'string'
+          elementType: 'HumanName'
+          path: ['Patient','name']
+          pathUsage: "normal"
+          multiple: true
+          value: 'peter'

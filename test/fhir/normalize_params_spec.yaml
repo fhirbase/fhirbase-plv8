@@ -1,0 +1,6 @@
+- query:  ['AND', {value: 'ivan', name: 'name', searchType: 'string'}]
+  result: ['AND', {value: 'ivan', name: 'name', searchType: 'string', operator: 'co'}]
+- query:  ['AND', {value: 'ivan', name: 'name', modifier: 'exact', searchType: 'string'}]
+  result: ['AND', {value: 'ivan', name: 'name', searchType: 'string', operator: 'eq'}]
+- query:  ['AND', {value: 'ivan', name: 'name', modifier: 'exact', searchType: 'string'}]
+  result: ['AND', {value: 'ivan', name: 'name', searchType: 'string', operator: 'eq'}]

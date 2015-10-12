@@ -5,7 +5,7 @@ search = require('../../src/core/search')
 
 # describe "SEARCH", ()->
 #   beforeEach ()->
-#     schema.create_table(plv8, 'Patient')
+#     schema.create_storage(plv8, 'Patient')
 
 #   it "simple", ()->
 

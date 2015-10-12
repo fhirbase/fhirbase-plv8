@@ -9,15 +9,15 @@ search = require('../../src/core/search')
 # resources = require('../../fhir/profiles-resources.json')
 # sp = require('../../fhir/search-parameters.json')
 
-# schema.drop_table(plv8, 'StructureDefinition')
-# schema.drop_table(plv8, 'OperationDefinition')
+# schema.drop_storage(plv8, 'StructureDefinition')
+# schema.drop_storage(plv8, 'OperationDefinition')
 
-# schema.drop_table(plv8, 'SearchParameter')
+# schema.drop_storage(plv8, 'SearchParameter')
 
-# schema.create_table(plv8, 'StructureDefinition')
-# schema.create_table(plv8, 'OperationDefinition')
+# schema.create_storage(plv8, 'StructureDefinition')
+# schema.create_storage(plv8, 'OperationDefinition')
 
-# schema.create_table(plv8, 'SearchParameter')
+# schema.create_storage(plv8, 'SearchParameter')
 
 # meta.load(plv8, types)
 # meta.load(plv8, resources)
