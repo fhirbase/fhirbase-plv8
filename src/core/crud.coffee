@@ -24,7 +24,7 @@ ensure_table = (plv8, resourceType)->
   else
     [table_name, null]
 
-exports.create = (plv8, resource)->
+create = (plv8, resource)->
   errors = validate_create_resource(resource)
   return errors if errors
 
@@ -63,9 +63,10 @@ exports.create = (plv8, resource)->
 
   resource
 
+exports.create = create
 exports.create.plv8_signature = ['json', 'json']
 
-exports.read = (plv8, query)->
+read = (plv8, query)->
   assert(query.id, 'query.id')
   assert(query.resourceType, 'query.resourceType')
 
@@ -79,6 +80,7 @@ exports.read = (plv8, query)->
 
   JSON.parse(row.resource)
 
+exports.read = read
 exports.read.plv8_signature = ['json', 'json']
 
 exports.vread = (plv8, query)->
@@ -104,7 +106,7 @@ exports.vread = (plv8, query)->
 
 exports.vread.plv8_signature = ['json', 'json']
 
-exports.update = (plv8, resource)->
+update = (plv8, resource)->
   id = resource.id
   assert(id, 'resource.id')
   assert(resource.resourceType, 'resource.resourceType')
@@ -151,6 +153,7 @@ exports.update = (plv8, resource)->
   resource
 
 
+exports.update = update
 exports.update.plv8_signature = ['json', 'json']
 
 exports.delete = (plv8, resource)->
@@ -215,6 +218,21 @@ exports.history = (plv8, query)->
   ).map((x)-> JSON.parse(x.resource))
 
   bundle.history_bundle(resources)
+
+exports.load = (plv8, bundle)->
+  for entry in bundle.entry when entry.resource
+    resource = entry.resource
+    if resource.id
+      prev = read(plv8, resource)
+      if prev
+        console.log('update', resource.id)
+        update(plv8, resource)
+      else
+        console.log('create', resource.id)
+        create(plv8, resource)
+    else
+      console.log('create', resource.id)
+      create(plv8, resource)
 
 # TODO: implement load bundle
 # TODO: implement merge bundle

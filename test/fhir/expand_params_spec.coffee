@@ -6,7 +6,7 @@ test = require('../helpers.coffee')
 
 assert = require("assert")
 
-idx = index.new(meta_fs.getter)
+idx = index.new({}, meta_fs.getter)
 
 specs = test.loadYaml("#{__dirname}/expand_params_spec.yaml", 'utf8')
 

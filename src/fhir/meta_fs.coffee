@@ -5,7 +5,7 @@ types = require('../../fhir/profiles-types.json')
 profiles.entry = profiles.entry.concat(types.entry)
 
 
-exports.getter = (rt,query)->
+exports.getter = (_, rt,query)->
   if rt == 'StructureDefinition'
     res = profiles.entry.filter (x)->
       x.resource.name == query.name

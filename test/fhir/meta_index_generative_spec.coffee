@@ -2,7 +2,7 @@ index = require('../../src/fhir/meta_index')
 meta_fs = require('../../src/fhir/meta_fs')
 test = require('../helpers.coffee')
 
-idx = index.new(meta_fs.getter)
+idx = index.new({}, meta_fs.getter)
 
 sp = require('../../fhir/search-parameters.json')
 

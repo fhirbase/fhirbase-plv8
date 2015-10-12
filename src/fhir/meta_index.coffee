@@ -53,24 +53,26 @@ index_elements = (idx, structure_definition)->
 # counstruct idx object from getter
 # getter is function which should return structure definition by name
 # getter(name)-> StructureDefinition
-module.exports.new = (getter)->
-  idx =
-    elements: {}
-    params: {}
-    get: (rt, tp)->
-      if rt == 'StructureDefinition'
-        unless idx.elements[tp.name]
-          sd = getter(rt, tp)
-          sd && index_elements(idx.elements, sd)
-        idx.elements[tp.name]
-      else if rt == 'SearchParameter'
-        key = "#{tp.base}-#{tp.name}"
-        if idx.params[key] == undefined
-          sp = getter(rt, tp)
-          idx.params[key] = (sp && select_keys(sp, ['xpath', 'type', 'xpathUsage'])) || null
-        idx.params[key]
-      else
-        throw new Error("unexpected call")
+module.exports.new = (plv8, getter)->
+  elements = {}
+  params = {}
+
+  elements: elements
+  params: params
+  get: (rt, tp)->
+    if rt == 'StructureDefinition'
+      unless elements[tp.name]
+        sd = getter(plv8, rt, tp)
+        sd && index_elements(elements, sd)
+      elements[tp.name]
+    else if rt == 'SearchParameter'
+      key = "#{tp.base}-#{tp.name}"
+      if params[key] == undefined
+        sp = getter(plv8, rt, tp)
+        params[key] = (sp && select_keys(sp, ['xpath', 'type', 'xpathUsage'])) || null
+      params[key]
+    else
+      throw new Error("unexpected call")
 
 
 element = (idx, path)->
