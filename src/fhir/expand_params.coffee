@@ -9,6 +9,8 @@ merge = (xs...)->
     acc
   ), {})
 
+walk = (expr)->
+
 expand_param = (idx, resourceType, x)->
   info = index.parameter(idx, [resourceType, x.name])
   res = info.map((y)-> merge(y,x))

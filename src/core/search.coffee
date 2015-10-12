@@ -2,6 +2,7 @@ namings = require('./namings')
 bundle = require('./bundle')
 sql = require('../honey')
 utils = require('./utils')
+lang = require('../lang')
 
 exports.plv8_schema = "core"
 
@@ -21,13 +22,7 @@ table =
   in: (v)-> [':in', v]
   between: (v)-> [':between', v]
 
-isArray = (value)->
-  value and
-  typeof value is 'object' and
-  value instanceof Array and
-  typeof value.length is 'number' and
-  typeof value.splice is 'function' and
-  not ( value.propertyIsEnumerable 'length' )
+isArray = lang.isArray
 
 mk_where = (expr)->
   if isArray(expr)

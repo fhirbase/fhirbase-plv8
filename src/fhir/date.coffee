@@ -28,7 +28,7 @@ exports.to_range = (date)->
 
     #2010-03-05T23:50
     when 16 then "[#{date},#{date}:59.99999]"
-    
+
     #2010-03-05T23:50:30
     when 19 then "[#{date},#{date}.99999]"
 

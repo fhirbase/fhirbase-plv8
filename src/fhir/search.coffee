@@ -27,21 +27,14 @@ expand = require('./expand_params')
 #   one index for parameter
 #
 # NOTES: we need umlauts normalization for strings
-TABLE = require('./conditions')
-
-exports.build_conditions = (opts)->
-
-condition = (opts)->
-  console.log(opts)
-  return 'ups'
-
-exports.condition = condition
+cond = require('./conditions')
 
 exports._search_sql = (idx, query)->
   params = parser.parse(query.queryString)
+  console.log(JSON.stringify(['and'].concat(params.params)))
   params.resourceType = query.resourceType
-  eparams = expand._expand(idx, params)
-  eparams.params.map(condition)
+  # eparams = expand._expand(idx, params)
+  # eparams.params.map(cond.condition)
 
 exports._search = (plv8, query)-> []
 exports.search = (plv8, query)-> 'ups'

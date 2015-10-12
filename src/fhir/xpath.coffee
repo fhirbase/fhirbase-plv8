@@ -23,14 +23,7 @@
 #    },
 #    {element: 'value'}
 #  ]
-
-isArray = (value)->
-  value and
-  typeof value is 'object' and
-  value instanceof Array and
-  typeof value.length is 'number' and
-  typeof value.splice is 'function' and
-  not ( value.propertyIsEnumerable 'length' )
+lang = require('../lang')
 
 parse_pred = (x)->
   [k,v] = x.split('=').map((x)-> x.replace(/['@]/g,''))
@@ -73,7 +66,7 @@ exports.parse = (xpath)->
 check_predicate = (node, pred)->
   return true unless pred
   [k,v] = pred
-  if isArray(k)
+  if lang.isArray(k)
     res = get_by_path_recur([], node, k)
     res.some((x)-> x == v)
   else
@@ -83,7 +76,7 @@ get_by_path_recur = (acc, node, path)->
   next_path_item = path[0]
   predicat = null
 
-  if isArray(next_path_item)
+  if lang.isArray(next_path_item)
     [next_path_item, predicat] = next_path_item
 
   next_node = node[next_path_item]
@@ -92,13 +85,13 @@ get_by_path_recur = (acc, node, path)->
   unless next_node
     return acc
   else if next_path.length == 0
-    if isArray(next_node)
+    if lang.isArray(next_node)
       for x in next_node when check_predicate(x,predicat)
         acc.push(x)
     else
       acc.push(next_node) if check_predicate(next_node, predicat)
     return acc
-  else if isArray(next_node)
+  else if lang.isArray(next_node)
     next_node.reduce(((acc, x)->
       if check_predicate(x, predicat)
         get_by_path_recur(acc, x, next_path)

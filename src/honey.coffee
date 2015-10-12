@@ -1,26 +1,14 @@
-isArray = (value)->
-  value and
-  typeof value is 'object' and
-  value instanceof Array and
-  typeof value.length is 'number' and
-  typeof value.splice is 'function' and
-  not ( value.propertyIsEnumerable 'length' )
-
-isObject = (x)->
-  JSON.stringify(x).indexOf('{') == 0
+lang = require('./lang')
 
 isKeyword = (x)->
   isString(x) && x.indexOf && x.indexOf(':') == 0
-
-isNumber = (x)->
-  not isNaN(parseFloat(x)) && isFinite(x)
 
 name = (x)->
   if isKeyword(x)
     x.replace(/^:/,'')
 
 assertArray = (x)->
-  unless isArray(x)
+  unless lang.isArray(x)
     throw new Error('from: [array] expected)')
 
 assert = (x, msg)-> throw new Error(x) unless x
@@ -52,9 +40,9 @@ _toLiteral = (x)->
     name(x)
   else if isRawSql(x)
     rawToSql(x)
-  else if isNumber(x)
+  else if lang.isNumber(x)
     x
-  else if isObject(x)
+  else if lang.isObject(x)
     JSON.stringify(x)
   else
     "'#{x}'"
@@ -65,7 +53,7 @@ quote_ident = (x)->
   x.split('.').map((x)-> "\"#{x}\"").join('.')
 
 coerce_param = (x)->
-  if isObject(x)
+  if lang.isObject(x)
     JSON.stringify(x)
   else
     x
@@ -75,7 +63,7 @@ emit_param = (acc, v)->
     push(acc,rawToSql(v))
   else if isKeyword(v)
     push(acc,name(v))
-  else if isObject(v) and v.cast
+  else if lang.isObject(v) and v.cast
     if v.array
       args = []
       for val in v.value
@@ -104,7 +92,7 @@ surround_cast = (acc, type, proc)->
   surround acc, ['(',")::#{type}"], proc
 
 emit_delimit = (acc, delim, xs, next)->
-  unless isArray(xs) # means object
+  unless lang.isArray(xs) # means object
     xs = ([k,v] for k,v of xs)
   for x in xs[0..-2]
     acc = next(acc, x)
@@ -123,13 +111,13 @@ emit_columns = (acc, xs)->
     acc
 
 emit_qualified_name = (acc, y)->
-  if isArray(y)
+  if lang.isArray(y)
     push(acc, y.map(quote_ident).join('.'))
   else
     push(acc, quote_ident(y))
 
 emit_table_name = (acc, y)->
-  if isArray(y)
+  if lang.isArray(y)
     push(acc, "#{quote_ident(y[0])} #{y[1]}")
   else
     push(acc, quote_ident(y))
@@ -168,7 +156,7 @@ emit_function_call = (acc, obj)->
     fn_call(acc)
 
 emit_expression = (acc, xs)->
-  if isArray(xs)
+  if lang.isArray(xs)
     which = xs[0]
     switch which
       when ':and'
@@ -185,7 +173,7 @@ emit_expression = (acc, xs)->
           emit_expression(acc,xs[1])
           emit_expression(acc,xs[0])
           emit_param(acc, xs[2])
-  else if isObject(xs) && xs.call
+  else if lang.isObject(xs) && xs.call
     emit_function_call(acc, xs)
   else
     push(acc,_toLiteral(xs))
@@ -202,9 +190,9 @@ emit_expression_by_sample = (acc, obj)->
 emit_where = (acc,x)->
   return acc unless x
   push(acc, "WHERE")
-  if isArray(x)
+  if lang.isArray(x)
     emit_expression(acc, x)
-  else if isObject(x)
+  else if lang.isObject(x)
     emit_expression_by_sample(acc, x)
   else
     throw new Error('unexpected where section')
@@ -243,11 +231,11 @@ emit_select = (acc,query)->
 # DDL
 
 _to_table_name = (x)->
-  if isArray(x) then x.map(quote_ident).join('.') else quote_ident(x)
+  if lang.isArray(x) then x.map(quote_ident).join('.') else quote_ident(x)
 
 
 _to_array = (x)->
-  if isArray(x)
+  if lang.isArray(x)
     x
   else if x
     [x]

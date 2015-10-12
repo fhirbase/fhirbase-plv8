@@ -50,7 +50,13 @@ TABLE =
   ContactPoint:
     token: TODO
   HumanName:
-    string: TODO
+    string:
+      eq: (opts)->
+        call =
+          call: extract_fn(opts.searchType, opts.array)
+          args: [':resource', JSON.stringify(opts.path), opts.elementType]
+          cast: 'text'
+        [':=', call, ':true']
   Identifier:
     token: TODO
   Quantity:
@@ -72,27 +78,10 @@ extract_fn = (resultType, array)->
     res.push('_array')
   res.join('')
 
-module.exports = TABLE
-
-comment = ()->
-    $nonIndexable: false
-    token:
-      eq: (opts)->
-        call =
-          call: extract_fn(opts.searchType, opts.array)
-          args: [':resource', JSON.stringify(opts.path), opts.elementType]
-          cast: 'boolean'
-        [':=', call, ':true']
-  HumanName:
-    string:
-      eq: (opts)->
-        call =
-          call: extract_fn(opts.searchType, opts.array)
-          args: [':resource', JSON.stringify(opts.path), opts.elementType]
-          cast: 'text[]'
-        value =
-            value: opts.value
-            array:true
-            cast: 'text[]'
-        [':&&', call, value]
-
+module.exports.condition = (opts)->
+  handler = TABLE[opts.elementType]
+  throw new Error("#{opts.elementType} is not suported") unless handler
+  handler = handler[opts.searchType]
+  throw new Error("#{opts.elementType} #{opts.searchType} is not suported") unless handler
+  console.log(opts)
+  handler(opts)

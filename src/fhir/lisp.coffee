@@ -1,8 +1,9 @@
 sql = require('../honey')
+lang = require('../lang')
 
-isArray = (v)-> Array.isArray(v)
-isFn = (v)-> typeof v == "function"
-isObject = (v)->  !!v && not isArray(v) && v.constructor == Object
+isArray = lang.isArray
+isFn = lang.isFn
+isObject = lang.isObject
 
 merge = (into, args)->
   (args || []).reduce(((acc, x)->

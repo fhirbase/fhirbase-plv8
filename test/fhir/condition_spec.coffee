@@ -3,14 +3,14 @@ honey = require('../../src/honey')
 assert = require('assert')
 
 
-search.condition(
-  path: ['name']
-  elementType: 'HumanName',
-  searchType: 'string'
-  multi: true
-  operation: 'eq'
-  values: ['nicola','ivan']
-)
+# search.condition(
+#   path: ['name']
+#   elementType: 'HumanName',
+#   searchType: 'string'
+#   multi: true
+#   operation: 'eq'
+#   values: ['nicola','ivan']
+# )
 
 specs = [
  {cond:

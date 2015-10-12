@@ -2,6 +2,7 @@
 # for quick access to elements meta information
 # handle [x] elements and complex types
 xpath = require('./xpath')
+lang = require('../lang')
 
 FIELDS = ['path', 'min','max','type','isSummary']
 upcaseFirst = (x)->
@@ -104,7 +105,7 @@ module.exports.parameter = (idx, path)->
     throw new Error("MetaIndex: Path not expandable #{path.join('-')}")
 
   epathes.map (epath)->
-    epath = epath.map((x)-> if Array.isArray(x) then x[0] else x)
+    epath = epath.map((x)-> if lang.isArray(x) then x[0] else x)
     el = element(idx, epath)
     throw new Error("MetaIndex: Element [#{JSON.stringify(path)}] -> #{epath.join('.')} not found") unless el
 
