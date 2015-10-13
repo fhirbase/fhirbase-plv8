@@ -9,8 +9,8 @@ notifications:
 
 before_script:
   - sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
-  - npm install && cd plpl && npm install && pwd
+  - npm install && cd plpl && npm install
   - npm install -g mocha && npm install -g coffee-script
-  - pwd && plpl/bin/plpl migrate
+  - cd .. && plpl/bin/plpl migrate
 
 script: npm test
