@@ -9,12 +9,12 @@ fs   = require('fs')
 
 specs = yaml.safeLoad(fs.readFileSync("#{__dirname}/search_spec.yml", 'utf8'))
 
-describe "SEARCH", ()->
+describe "CORE: search", ()->
   beforeEach ()->
     schema.drop_storage(plv8, 'Something')
     schema.create_storage(plv8, 'Something')
 
-  it "simple", ()->
+  it "base search", ()->
     sample =
       resourceType: 'Something'
       id: 'sm-1'

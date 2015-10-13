@@ -3,18 +3,21 @@ schema = require('../../src/core/schema')
 pg_meta = require('../../src/core/pg_meta')
 assert = require('assert')
 
-describe "simple", ()->
-  it "test", ()->
+describe "CORE: schema", ()->
+  it "drop Users storage", ()->
     schema.drop_storage(plv8, 'Users')
     assert.equal(pg_meta.table_exists(plv8, 'users'), false)
-    schema.create_storage(plv8, 'Users')
 
+  it "create Users storage and history.users", ()->
+    schema.create_storage(plv8, 'Users')
     assert.equal(pg_meta.table_exists(plv8, 'users'), true)
     assert.equal(pg_meta.table_exists(plv8, 'history.users'), true)
 
+  it "change Users storage name", ()->
     desc = schema.describe_table(plv8, 'users')
     assert.equal(desc.name, 'users')
 
+  it "drop Users storage", ()->
     schema.drop_storage(plv8, 'Users')
     assert.equal(pg_meta.table_exists(plv8, 'Users'), false)
     assert.equal(pg_meta.table_exists(plv8, 'history.users'), false)
