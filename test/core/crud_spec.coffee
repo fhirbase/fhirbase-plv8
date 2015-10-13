@@ -6,7 +6,7 @@ assert = require('assert')
 
 copy = (x)-> JSON.parse(JSON.stringify(x))
 
-describe "CRUD", ->
+describe "CORE: CRUD spec", ->
   beforeEach ->
     schema.drop_storage(plv8, 'Users')
     schema.create_storage(plv8, 'Users')
@@ -17,6 +17,9 @@ describe "CRUD", ->
     assert.notEqual(created.meta.versionId, undefined)
     assert.equal(created.name, 'admin')
 
+
+  it "read", ->
+    created = crud.create(plv8, {resourceType: 'Users', name: 'admin'})
     read = crud.read(plv8, {id: created.id, resourceType: 'Users'})
     assert.equal(read.id, created.id)
 
@@ -24,6 +27,9 @@ describe "CRUD", ->
     assert.equal(read.id, vread.id)
     assert.equal(read.meta.versionId, vread.meta.versionId)
 
+  it "update", ->
+    created = crud.create(plv8, {resourceType: 'Users', name: 'admin'})
+    read = crud.read(plv8, {id: created.id, resourceType: 'Users'})
     to_update = copy(read)
     to_update.name = 'changed'
 
@@ -41,9 +47,13 @@ describe "CRUD", ->
     assert.equal(hx.total, 2)
     assert.equal(hx.entry.length, 2)
 
+  it "delete", ->
+    created = crud.create(plv8, {resourceType: 'Users', name: 'admin'})
+    read = crud.read(plv8, {id: created.id, resourceType: 'Users'})
+
     deleted = crud.delete(plv8, {id: read.id, resourceType: 'Users'})
     assert.equal(deleted.meta.request.method, 'DELETE')
 
     hx_deleted  = crud.history(plv8, {id: read.id, resourceType: 'Users'})
-    assert.equal(hx_deleted.total, 3)
-    assert.equal(hx_deleted.entry.length, 3)
+    assert.equal(hx_deleted.total, 2)
+    assert.equal(hx_deleted.entry.length, 2)
