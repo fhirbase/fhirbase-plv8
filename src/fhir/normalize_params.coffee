@@ -19,6 +19,15 @@ TABLE =
     gt: 'gt'
     ge: 'ge'
     ne: 'ne'
+  date:
+    $prefix: 'eq'
+    $modifier: false
+    eq: 'eq'
+    lt: 'lt'
+    le: 'le'
+    gt: 'gt'
+    ge: 'ge'
+    ne: 'ne'
 
 
 normalize_param = (x)->
