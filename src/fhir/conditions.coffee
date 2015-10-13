@@ -3,6 +3,13 @@ lang = require('../lang')
 TODO = ()->
   throw new Error("Not impl.")
 
+string_ilike = (opts, value)->
+  call =
+    call: extract_fn(opts.searchType, opts.array)
+    args: [':resource::json', JSON.stringify(opts.path), opts.elementType]
+    cast: 'text'
+  [':ilike', call, value]
+
 TABLE =
   boolean:
     token: TODO
@@ -55,12 +62,8 @@ TABLE =
     token: TODO
   HumanName:
     string:
-      co: (opts)->
-        call =
-          call: extract_fn(opts.searchType, opts.array)
-          args: [':resource::json', JSON.stringify(opts.path), opts.elementType]
-          cast: 'text'
-        [':ilike', call, "%#{opts.value}%"]
+      sw: (opts)-> string_ilike(opts, "%^^#{opts.value}%")
+      co: (opts)-> string_ilike(opts, "%#{opts.value}%")
   Identifier:
     token: TODO
   Quantity:
