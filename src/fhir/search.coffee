@@ -4,8 +4,9 @@ norm = require('./normalize_params')
 cond = require('./conditions')
 namings = require('../core/namings')
 meta_db = require('./meta_pg')
-index = require('../meta_index')
-utils = require('../meta_index')
+index = require('./meta_index')
+utils = require('../core/utils')
+sql = require('../honey')
 # cases
 
 # Patient.active
@@ -34,7 +35,7 @@ utils = require('../meta_index')
 #
 # NOTES: we need umlauts normalization for strings
 
-exports._search_sql = (plv8, idx, query)->
+_search_sql = (plv8, idx, query)->
   params = parser.parse(query.queryString)
   params.resourceType = query.resourceType
   eparams = expand._expand(idx, params)
@@ -43,10 +44,14 @@ exports._search_sql = (plv8, idx, query)->
   from: [namings.table_name(plv8, eparams.resourceType)]
   where: cond.walk(eparams.params)
 
-exports._search = (plv8, query)->
+exports._search_sql = _search_sql
 
-exports.search_sql = (plv8, query)-> 'ups'
+search_sql = (plv8, query)->
   idx_db = index.new(plv8, meta_db.getter)
-  _search_sql(plv8, idx_db, query)
+  sql(_search_sql(plv8, idx_db, query))
+
+exports.search_sql = search_sql
 
 exports.search = (plv8, query)->
+  idx_db = index.new(plv8, meta_db.getter)
+  utils.exec(plv8, _search_sql(plv8, idx_db, query))
