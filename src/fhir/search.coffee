@@ -3,7 +3,9 @@ expand = require('./expand_params')
 norm = require('./normalize_params')
 cond = require('./conditions')
 namings = require('../core/namings')
-
+meta_db = require('./meta_pg')
+index = require('../meta_index')
+utils = require('../meta_index')
 # cases
 
 # Patient.active
@@ -41,6 +43,10 @@ exports._search_sql = (plv8, idx, query)->
   from: [namings.table_name(plv8, eparams.resourceType)]
   where: cond.walk(eparams.params)
 
-exports._search = (plv8, query)-> []
-exports.search = (plv8, query)-> 'ups'
+exports._search = (plv8, query)->
+
 exports.search_sql = (plv8, query)-> 'ups'
+  idx_db = index.new(plv8, meta_db.getter)
+  _search_sql(plv8, idx_db, query)
+
+exports.search = (plv8, query)->

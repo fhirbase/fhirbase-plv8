@@ -11,6 +11,10 @@ before_script:
   - sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
   - npm install && cd plpl && npm install
   - npm install -g mocha && npm install -g coffee-script
-  - cd .. && plpl/bin/plpl migrate
+  - psql -c "CREATE USER fb WITH PASSWORD 'fb'"
+  - psql -c 'ALTER ROLE fb WITH SUPERUSER'
+  - psql -c 'CREATE DATABASE fhirbase;' -U postgres
+  - psql -c '\dt' -U postgres
+  - cd ..
 
-script: npm test
+script: export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase && pwd && plpl/bin/plpl migrate && npm test
