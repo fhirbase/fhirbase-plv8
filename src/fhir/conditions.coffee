@@ -58,7 +58,7 @@ TABLE =
       co: (opts)->
         call =
           call: extract_fn(opts.searchType, opts.array)
-          args: [':resource', JSON.stringify(opts.path), opts.elementType]
+          args: [':resource::json', JSON.stringify(opts.path), opts.elementType]
           cast: 'text'
         [':ilike', call, "%#{opts.value}%"]
   Identifier:

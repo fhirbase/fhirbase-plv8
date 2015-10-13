@@ -52,6 +52,23 @@ search_sql = (plv8, query)->
 
 exports.search_sql = search_sql
 
+countize_query = (q)->
+  delete q.limit
+  delete q.offset
+  delete q.order
+  q.select = [':count(*) as count']
+  q
+
+to_entry = (row)->
+  resource: JSON.parse(row.resource)
+
 exports.search = (plv8, query)->
   idx_db = index.new(plv8, meta_db.getter)
-  utils.exec(plv8, _search_sql(plv8, idx_db, query))
+  honey = _search_sql(plv8, idx_db, query)
+  resources = utils.exec(plv8, honey)
+
+  count = utils.exec(plv8, countize_query(honey))[0].count
+
+  type: 'searchset'
+  total: count
+  entry: resources.map(to_entry)

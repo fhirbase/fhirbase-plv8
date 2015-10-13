@@ -1,5 +1,8 @@
 outcome = require('../core/outcome')
 xpath = require('./xpath')
+lang = require('../lang')
+
+exports.plv8_schema = "fhir"
 
 noimpl = ->
   throw new Error('not implemented')
@@ -86,3 +89,30 @@ exports.extract  = (resource, opts)->
   for v in xpath.get_in(resource, opts.path)
     res = res.concat(handler(v))
   res
+
+get_in = (obj, path)->
+  cur = obj
+  cur = cur[x] for x in path[1..] when cur
+  cur
+
+values = (obj)->
+  values_recur = (acc, obj)->
+    if lang.isArray(obj)
+      obj.reduce(values_recur, acc)
+    else if lang.isObject(obj)
+      for k,v of obj
+        acc = values_recur(acc, v)
+      acc
+    else
+      acc.push(obj)
+      acc
+  values_recur([], obj)
+
+exports.extract_as_string = (plv8, resource, path, element_type)->
+  obj = get_in(resource, path)
+  res = ""
+  for v in values(obj)
+    res += " ^^#{v}$$"
+  res
+
+exports.extract_as_string.plv8_signature = ['json', 'json', 'text', 'text']

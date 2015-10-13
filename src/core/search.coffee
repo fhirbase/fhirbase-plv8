@@ -60,18 +60,3 @@ exports.search = (plv8, query)->
   bundle.search_bundle(query, res)
 
 exports.search.plv8_signature = ['json', 'json']
-
-comment = ->
-  q =
-    resourceType: 'Something'
-    query: ['contains', 'name', 'som']
-
-  q =
-    resourceType: 'Something'
-    limit: 100
-    offset: 5
-    query: ['and', ['.name','contains', 'som'],
-                   ['.contact.0.address', '=', 'something']]
-
-  console.log exports.search_sql(null, q)
-
