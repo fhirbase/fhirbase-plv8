@@ -1,44 +1,18 @@
 xpath = require('../../src/fhir/xpath')
 assert = require("assert")
+test = require('../helpers.coffee')
 
-samples = [
-  [
-    "f:DataElement/f:element/f:mapping/f:extension[@url='http://hl7.org/fhir/StructureDefinition/11179-objectClass'",
-    [["DataElement", "element","mapping",["extension",["url","http://hl7.org/fhir/StructureDefinition/11179-objectClass"]]]]
-  ]
+specs = test.loadYaml("#{__dirname}/xpath_spec.yaml", 'utf8')
 
-  [
-    "f:Patient/f:identifier[type/coding/@code='SSN']/value",
-    [['Patient', ['identifier', [['type','coding','code'], 'SSN']], 'value']]
-  ]
-]
-
-describe "CRUD", ()->
-  it "simple", ()->
-    for [k,v] in samples
-      assert.deepEqual(xpath.parse(k), v)
+describe "Text Xpath", ()->
+  for spec in specs.xpaths
+    it "xpath #{spec.query}", ()->
+      assert.deepEqual(xpath.parse(spec.query), spec.result)
 
 
-yaml = require('js-yaml')
-fs   = require('fs')
+# xpath.get_in(pt,[['identifier', 'value']]) # ['12345', '777']
 
-pt = yaml.safeLoad(fs.readFileSync("#{__dirname}/pt.yaml", 'utf8'))
-
-xpath.get_in(pt,[['identifier', 'value']]) # ['12345', '777']
-
-spec =
-  [
-    [[['name', 'given']], [ 'Peter', 'James', 'Jim' ]]
-    [[[['name', ['use', 'usual']], 'given']], [ 'Jim' ]]
-    [[[['name', ['use', 'official']], 'given']], [ 'Peter', 'James' ]]
-    [[['identifier', 'value']], ['12345', '777']]
-    [[[['name', ['use', 'official']], 'given']], [ 'Peter', 'James' ]]
-
-    [[[['identifier', [['type','coding','code'], 'SSN']], 'value']], ['777']]
-    [[[['identifier', [['type','coding','code'], 'MR']], 'value']], ['12345']]
-  ]
-
-describe "Get in", ()->
-  it "simple", ()->
-    for  [k,v] in spec
-      assert.deepEqual(xpath.get_in(pt, k), v)
+describe "xpath: get_in", ()->
+  for  spec in specs.extracts
+    it "#{spec.query.join('/')}", ()->
+      assert.deepEqual(xpath.get_in(specs.patient, [spec.query]), spec.result)

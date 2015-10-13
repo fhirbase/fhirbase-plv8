@@ -90,11 +90,6 @@ exports.extract  = (resource, opts)->
     res = res.concat(handler(v))
   res
 
-get_in = (obj, path)->
-  cur = obj
-  cur = cur[x] for x in path[1..] when cur
-  cur
-
 values = (obj)->
   values_recur = (acc, obj)->
     if lang.isArray(obj)
@@ -109,7 +104,7 @@ values = (obj)->
   values_recur([], obj)
 
 exports.extract_as_string = (plv8, resource, path, element_type)->
-  obj = get_in(resource, path)
+  obj = xpath.get_in(resource, [path])
   res = ""
   for v in values(obj)
     res += " ^^#{v}$$"

@@ -1,9 +1,8 @@
 idx = require('../../src/fhir/indexing')
+test = require('../helpers.coffee')
 
-yaml = require('js-yaml')
-fs   = require('fs')
-
-pt = yaml.safeLoad(fs.readFileSync("#{__dirname}/pt.yaml", 'utf8'))
+specs = test.loadYaml("#{__dirname}/xpath_spec.yaml", 'utf8')
+pt = specs.patient
 
 console.log idx.extract(pt,
   path: [['identifier', 'value']]

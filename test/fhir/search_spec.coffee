@@ -18,6 +18,7 @@ describe "simple", ()->
     crud.create(plv8, {resourceType: 'Patient', name: [{given: ['noise1']}]})
     crud.create(plv8, {resourceType: 'Patient', name: [{given: ['noise2']}]})
     crud.create(plv8, {resourceType: 'Patient', name: [{given: ['ivan']}]})
+    crud.create(plv8, {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}]})
 
 
     res = search.search(plv8, {resourceType: 'Patient', queryString: 'name=nicola'})
@@ -32,3 +33,8 @@ describe "simple", ()->
     res = search.search(plv8, {resourceType: 'Patient', queryString: 'name=nicola,ivan'})
     assert.equal(res.total, 2)
     assert.equal(res.entry.length, 2)
+
+    res = search.search(plv8, {resourceType: 'Patient', queryString: 'name=lincol'})
+    assert.equal(res.total, 1)
+    assert.equal(res.entry.length, 1)
+    assert.equal(res.entry[0].resource.name[0].given[0], 'Avraam')

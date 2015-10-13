@@ -105,7 +105,7 @@ get_by_path_recur = (acc, node, path)->
       acc
 
 get_by_path = (node, path)->
-  get_by_path_recur([], node, path)
+  get_by_path_recur([], node, path[1..])
 
 exports.get_in = (resource, paths)->
   res  = []
