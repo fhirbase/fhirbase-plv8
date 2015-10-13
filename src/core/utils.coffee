@@ -9,4 +9,5 @@ exports.copy = (x)-> JSON.parse(JSON.stringify(x))
 
 exports.exec = (plv8, hql)->
   q = sql(hql)
+  console.log(q) if plv8.debug
   plv8.execute.call(plv8, q[0], q[1..-1])

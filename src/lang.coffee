@@ -57,3 +57,11 @@ exports.merge = merge
 
 clone = (x) -> JSON.parse(JSON.stringify(x))
 exports.clone = clone
+
+
+exports.keys = (obj)->
+  res = []
+  for k,v of obj
+    res.push(k)
+  res
+

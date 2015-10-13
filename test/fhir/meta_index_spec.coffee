@@ -17,18 +17,18 @@ describe "FS", ()->
     for spec in specs.params[0..0]
       assert.deepEqual(index.parameter(idx_fs, spec.query), spec.result)
 
-# plv8 = require('../../plpl/src/plv8')
-# meta_db = require('../../src/fhir/meta_pg')
-# meta_db._initialize(plv8)
-# idx_db = index.new(plv8, meta_db.getter)
+plv8 = require('../../plpl/src/plv8')
+# plv8.debug = true
+meta_db = require('../../src/fhir/meta_pg')
+idx_db = index.new(plv8, meta_db.getter)
 
-# describe "DB", ()->
+describe "DB", ()->
 
-#   it "elements", ()->
+  it "elements", ()->
 
-#     for spec in specs.elements[0..0]
-#       assert.deepEqual(index.element(idx_db, spec.query), spec.result)
+    for spec in specs.elements[0..0]
+      assert.deepEqual(index.element(idx_db, spec.query), spec.result)
 
-#   it "params", ()->
-#     for spec in specs.params[0..0]
-#       assert.deepEqual(index.parameter(idx_db, spec.query), spec.result)
+  it "params", ()->
+    for spec in specs.params[0..0]
+      assert.deepEqual(index.parameter(idx_db, spec.query), spec.result)

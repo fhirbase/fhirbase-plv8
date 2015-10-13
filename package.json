@@ -25,6 +25,7 @@
   "files": ["bin", "lib", "src", "migrations"],
   "scripts": {
     "publish": "coffee -o lib/ -c src/ && npm publish",
+    "migrate": "plpl/bin/plpl migrate",
     "test": "node_modules/mocha/bin/mocha --compilers mocha --compilers coffee:coffee-script/register  --recursive"
   }
 }

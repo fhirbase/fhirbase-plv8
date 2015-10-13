@@ -220,19 +220,21 @@ exports.history = (plv8, query)->
   bundle.history_bundle(resources)
 
 exports.load = (plv8, bundle)->
+  res = []
   for entry in bundle.entry when entry.resource
     resource = entry.resource
     if resource.id
       prev = read(plv8, resource)
-      if prev
-        console.log('update', resource.id)
+      unless prev.status == 'Error'
+        res.push([resource.id, 'udpated'])
         update(plv8, resource)
       else
-        console.log('create', resource.id)
+        res.push([resource.id, 'created'])
         create(plv8, resource)
     else
-      console.log('create', resource.id)
+      res.push([resource.id, 'created'])
       create(plv8, resource)
+  res
 
 # TODO: implement load bundle
 # TODO: implement merge bundle

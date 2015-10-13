@@ -12,4 +12,4 @@ before_script:
   - npm install && cd plpl && npm install
   - npm install -g mocha && npm install -g coffee-script
 
-script: npm test
+script: npm run migrate &&  npm test

@@ -1,0 +1,5 @@
+{
+  "src/*.coffee": {"alternate": "test/{}_spec.coffee"},
+  "test/*_spec.coffee": {"alternate": "test/{}_spec.yaml"},
+  "test/*_spec.yaml": {"alternate": "src/{}.coffee"}
+}
