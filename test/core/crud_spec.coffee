@@ -6,12 +6,12 @@ assert = require('assert')
 
 copy = (x)-> JSON.parse(JSON.stringify(x))
 
-describe "CRUD", ()->
-  beforeEach ()->
+describe "CRUD", ->
+  beforeEach ->
     schema.drop_storage(plv8, 'Users')
     schema.create_storage(plv8, 'Users')
 
-  it "create", ()->
+  it "create", ->
     created = crud.create(plv8, {resourceType: 'Users', name: 'admin'})
     assert.notEqual(created.id , false)
     assert.notEqual(created.meta.versionId, undefined)

@@ -39,6 +39,9 @@ exports.drop_storage = (plv8, nm)->
   else
     utils.exec(plv8, drop: "table", name: nm, safe: true)
     utils.exec(plv8, drop: "table", name: ['history',nm], safe: true)
+    if plv8.cache
+      delete plv8.cache[nm]
+      delete plv8.cache["history.#{nm}"]
     {status: 'ok', message: "Table #{nm} was dropped"}
 
 exports.describe_table = (plv8, resource_type)->
@@ -50,3 +53,9 @@ exports.describe_table = (plv8, resource_type)->
                    [':=', ':table_schema', 'public']]
   name: nm
   columns: columns.reduce(((acc, x)-> acc[x.column_name] = x; delete x.column_name; acc),{})
+
+exports.truncate_storage = (plv8, resource_type)->
+  nm = namings.table_name(plv8, resource_type)
+  plv8.execute("TRUNCATE #{nm}")
+  plv8.execute("TRUNCATE history.#{nm}")
+  {status: 'ok', message: "Table #{nm} was truncated"}
