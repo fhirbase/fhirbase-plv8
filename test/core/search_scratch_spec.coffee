@@ -3,11 +3,11 @@ crud = require('../../src/core/crud')
 schema = require('../../src/core/schema')
 search = require('../../src/core/search')
 
-# describe "SEARCH", ()->
+# describe "CORE: search scratch", ()->
 #   beforeEach ()->
 #     schema.create_storage(plv8, 'Patient')
 
-#   it "simple", ()->
+#   it "something", ()->
 
 #     console.log search.search_sql(plv8,
 #       resourceType: 'Patient'
