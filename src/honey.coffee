@@ -39,12 +39,30 @@ coerce_param = (x)->
     JSON.stringify(x)
   else
     x
+emit_casted_param = (acc, cast, value)->
+  if lang.isArray(value)
+    args = []
+    for val in value
+      args.push(" $#{acc.cnt} ")
+      acc.cnt = acc.cnt + 1
+      acc.params.push(coerce_param(val))
+    push(acc,"ARRAY[#{args.join(',')}]::#{cast}")
+  else
+    push(acc,"$#{acc.cnt}::#{cast}")
+    acc.cnt = acc.cnt + 1
+    acc.params.push(coerce_param(value))
+  acc
 
 emit_param = (acc, v)->
   if isRawSql(v)
     push(acc,rawToSql(v))
   else if lang.isKeyword(v)
     push(acc,lang.name(v))
+  else if lang.isArray(v)
+    if isRawSql(v[0])
+      emit_casted_param(acc,rawToSql(v[0]),v[1])
+    else
+      throw new Error('unhandled')
   else if lang.isObject(v) and v.cast
     if v.array
       args = []

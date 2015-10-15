@@ -10,9 +10,17 @@ string_ilike = (opts, value)->
     cast: 'text'
   [':ilike', call, value]
 
+token_eq = (opts)->
+  call =
+    call: extract_fn(opts.searchType, opts.array)
+    args: [':resource::json', JSON.stringify(opts.path), opts.elementType]
+    cast: 'text[]'
+  [':&&', call, ['^text[]', [opts.value]]]
+
 TABLE =
   boolean:
-    token: TODO
+    token:
+      eq: token_eq
   code:
     token: TODO
   date:

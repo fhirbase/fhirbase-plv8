@@ -10,7 +10,7 @@ specs = test.loadYaml("#{__dirname}/search_spec.yaml")
 
 assert = require('assert')
 
-# plv8.debug = true
+plv8.debug = true
 get_in = (obj, path)->
   cur = obj
   for item in path when cur

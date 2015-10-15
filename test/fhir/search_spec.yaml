@@ -1,9 +1,9 @@
 resources: ['patient']
 fixtures:
-  - {resourceType: 'Patient', name: [{given: ['nicola']}]}
+  - {resourceType: 'Patient', name: [{given: ['nicola']}], active: true}
   - {resourceType: 'Patient', name: [{given: ['noise1']}]}
   - {resourceType: 'Patient', name: [{given: ['noise2']}]}
-  - {resourceType: 'Patient', name: [{given: ['ivan']}]}
+  - {resourceType: 'Patient', name: [{given: ['ivan']}], active: true }
   - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}]}
 
 queries:
@@ -32,3 +32,8 @@ queries:
           result: 1
         - path: ['entry',0,'resource', 'name',0, 'given',0]
           result: 'Avraam'
+    - query: 'active=true'
+      total: 2
+      probes:
+        - path: ['total']
+          result: 2

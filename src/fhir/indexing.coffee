@@ -111,3 +111,13 @@ exports.extract_as_string = (plv8, resource, path, element_type)->
   res.join(" ")
 
 exports.extract_as_string.plv8_signature = ['json', 'json', 'text', 'text']
+
+str = (x)-> x.toString()
+
+exports.extract_as_token = (plv8, resource, path, element_type)->
+  if ['boolean'].indexOf(element_type) > -1
+    xpath.get_in(resource, [path]).map(str)
+  else
+    throw new Error("extract_as_token: Not implemented for #{element_type}")
+
+exports.extract_as_token.plv8_signature = ['json', 'json', 'text', 'text[]']

@@ -98,3 +98,9 @@
      - value: ['nicola','ivan']
        array: true
        cast: 'text[]'
+
+- res: ['SELECT * FROM "patient" WHERE token && ARRAY[ $1 , $2 ]::text[]', 'token1', 'token2']
+  exp:
+    select: [':*']
+    from: ['patient']
+    where: [':&&',':token', ['^text[]', ['token1', 'token2']]]

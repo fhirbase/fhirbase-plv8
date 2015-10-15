@@ -19,6 +19,9 @@ TABLE =
     gt: 'gt'
     ge: 'ge'
     ne: 'ne'
+  token:
+    $prefix: false
+    $modifier: 'eq'
   date:
     $prefix: 'eq'
     $modifier: false

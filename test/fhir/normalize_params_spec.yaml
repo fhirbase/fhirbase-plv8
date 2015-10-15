@@ -32,3 +32,6 @@
   result: ['AND', {value: 'ivan', name: 'birthday', searchType: 'date', operator: 'ge'}]
 - query:  ['AND', {value: 'ivan', name: 'birthday', searchType: 'date', prefix: 'ne'}]
   result: ['AND', {value: 'ivan', name: 'birthday', searchType: 'date', operator: 'ne'}]
+
+- query:  ['AND', {value: 'true', name: 'active', searchType: 'token'}]
+  result: ['AND', {value: 'true', name: 'active', searchType: 'token', operator: 'eq'}]
