@@ -10,7 +10,7 @@ specs = test.loadYaml("#{__dirname}/search_spec.yaml")
 
 assert = require('assert')
 
-plv8.debug = true
+# plv8.debug = true
 get_in = (obj, path)->
   cur = obj
   for item in path when cur
@@ -28,7 +28,7 @@ describe "Seatch integration test", ()->
       crud.create(plv8, res)
 
   for resourceType, queries of specs.queries
-    for q in queries
+    queries.forEach (q)->
       it q.query, ->
         res = search.search(plv8, resourceType: resourceType, queryString: q.query)
         if q.total

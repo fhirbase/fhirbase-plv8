@@ -1,4 +1,7 @@
 exports.to_range = (date)->
+  return null unless date
+  date = date.toString()
+  return null if date.trim() == ''
 
   switch date.length
     #2010
@@ -33,4 +36,21 @@ exports.to_range = (date)->
     when 19 then "[#{date},#{date}.99999]"
 
     else
-      "ERR"
+      throw new Error("date.to_range: Don't know how to handle #{date}")
+
+to_sql_date = (x)->
+  return null unless x
+  if x.length == 4
+    "#{x}-01-01"
+  else if x.length == 7
+    "#{x}-01"
+  else
+    throw new Error("Not implemented: could not parse #{x} as date")
+
+exports.normalize =  to_sql_date
+
+exports.range = (start, ending)->
+  if ending == 'infinity'
+    "(#{to_sql_date(start)},infinity]"
+  else
+    throw new Error("Imlement me")

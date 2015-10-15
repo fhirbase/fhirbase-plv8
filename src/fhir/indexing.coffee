@@ -1,6 +1,7 @@
 outcome = require('../core/outcome')
 xpath = require('./xpath')
 lang = require('../lang')
+date = require('./date')
 
 exports.plv8_schema = "fhir"
 
@@ -121,3 +122,12 @@ exports.extract_as_token = (plv8, resource, path, element_type)->
     throw new Error("extract_as_token: Not implemented for #{element_type}")
 
 exports.extract_as_token.plv8_signature = ['json', 'json', 'text', 'text[]']
+
+exports.extract_as_daterange = (plv8, resource, path, element_type)->
+  if ['date'].indexOf(element_type) > -1
+    value = xpath.get_in(resource, [path]).map(str)
+    date.to_range(value) if value
+  else
+    throw new Error("extract_as_token: Not implemented for #{element_type}")
+
+exports.extract_as_daterange.plv8_signature = ['json', 'json', 'text', 'tstzrange']

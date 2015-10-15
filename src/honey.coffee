@@ -63,6 +63,8 @@ emit_param = (acc, v)->
       emit_casted_param(acc,rawToSql(v[0]),v[1])
     else
       throw new Error('unhandled')
+  else if lang.isObject(v) and v.call
+    emit_function_call(acc, v)
   else if lang.isObject(v) and v.cast
     if v.array
       args = []

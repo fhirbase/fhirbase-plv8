@@ -1,4 +1,5 @@
 lang = require('../lang')
+date = require('./date')
 
 TODO = ()->
   throw new Error("Not impl.")
@@ -17,6 +18,18 @@ token_eq = (opts)->
     cast: 'text[]'
   [':&&', call, ['^text[]', [opts.value]]]
 
+overlap_datetime = (opts)->
+  call =
+    call: 'fhir.extract_as_daterange'
+    args: [':resource::json', JSON.stringify(opts.path), opts.elementType]
+    cast: 'tstzrange'
+
+  vcall =
+    call: 'tstzrange'
+    args: [date.normalize(opts.value), 'infinity']
+
+  [':&&', call, vcall]
+
 TABLE =
   boolean:
     token:
@@ -27,7 +40,7 @@ TABLE =
     date:
       eq: TODO
       ne: TODO
-      gt: TODO
+      gt: overlap_datetime
       lt: TODO
       ge: TODO
       le: TODO
@@ -70,8 +83,8 @@ TABLE =
     token: TODO
   HumanName:
     string:
-      sw: (opts)-> string_ilike(opts, "%^^#{opts.value}%")
-      co: (opts)-> string_ilike(opts, "%#{opts.value}%")
+      sw: (opts)-> string_ilike(opts, "%^^#{opts.value.trim()}%")
+      co: (opts)-> string_ilike(opts, "%#{opts.value.trim()}%")
   Identifier:
     token: TODO
   Quantity:
@@ -88,7 +101,10 @@ TABLE =
 extract_fn = (resultType, array)->
   res = []
   res.push('fhir.extract_as_')
-  res.push(resultType.toLowerCase())
+  if ['date', 'datetime', 'instant'].indexOf(resultType.toLowerCase()) > 0
+    res.push('daterange')
+  else
+    res.push(resultType.toLowerCase())
   if array
     res.push('_array')
   res.join('')

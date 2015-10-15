@@ -1,10 +1,10 @@
 resources: ['patient']
 fixtures:
-  - {resourceType: 'Patient', name: [{given: ['nicola']}], active: true}
-  - {resourceType: 'Patient', name: [{given: ['noise1']}]}
-  - {resourceType: 'Patient', name: [{given: ['noise2']}]}
-  - {resourceType: 'Patient', name: [{given: ['ivan']}], active: true }
-  - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}]}
+  - {resourceType: 'Patient', name: [{given: ['nicola']}], active: true, birthDate: '1980'}
+  - {resourceType: 'Patient', name: [{given: ['noise1']}], birthDate: '1970'}
+  - {resourceType: 'Patient', name: [{given: ['noise2']}], birthDate: '1971'}
+  - {resourceType: 'Patient', name: [{given: ['ivan']}], active: true , birthDate: '1981'}
+  - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}], birthDate: '1988'}
 
 queries:
   Patient:
@@ -37,3 +37,15 @@ queries:
       probes:
         - path: ['total']
           result: 2
+    - query: 'birthdate=gt1980'
+      total: 3
+      probes:
+        - path: ['total']
+          result: 3
+        - path: ['entry', 'length']
+          result: 3
+    - query: 'birthdate=gt1985'
+      total: 1
+      probes:
+        - path: ['total']
+          result: 1

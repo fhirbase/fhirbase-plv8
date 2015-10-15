@@ -1,0 +1,41 @@
+- query:
+    path: ['name']
+    elementType: 'HumanName'
+    searchType: 'string'
+    operator: 'co'
+    value: 'nicola'
+    array: true
+  result:
+    - :ilike
+    -  call: fhir.extract_as_string_array
+       args: [':resource::json', '["name"]', 'HumanName']
+       cast: text
+    -  '%nicola%'
+- query:
+    path: ['active']
+    elementType: 'boolean'
+    searchType: 'token'
+    operator: 'eq'
+    value: 'true'
+    array: false
+  result:
+    - :&&
+    - call: fhir.extract_as_token
+      args: [':resource::json', '["active"]', 'boolean']
+      cast: text[]
+    - ['^text[]', ['true']]
+- query:
+    path: ['birthDate']
+    elementType: 'date'
+    searchType: 'date'
+    operator: 'gt'
+    value: '1980'
+    array: false
+  result:
+    - :&&
+    - call: fhir.extract_as_daterange
+      args: [':resource::json', '["birthDate"]', 'date']
+      cast: tstzrange
+    - call: tstzrange
+      args: ['1980-01-01', 'infinity']
+
