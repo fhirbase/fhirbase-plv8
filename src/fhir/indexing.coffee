@@ -105,9 +105,9 @@ values = (obj)->
 
 exports.extract_as_string = (plv8, resource, path, element_type)->
   obj = xpath.get_in(resource, [path])
-  res = ""
+  res = []
   for v in values(obj)
-    res += " ^^#{v}$$"
-  res
+    res.push("^^#{v}$$")
+  res.join(" ")
 
 exports.extract_as_string.plv8_signature = ['json', 'json', 'text', 'text']

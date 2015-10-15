@@ -1,0 +1,34 @@
+resources: ['patient']
+fixtures:
+  - {resourceType: 'Patient', name: [{given: ['nicola']}]}
+  - {resourceType: 'Patient', name: [{given: ['noise1']}]}
+  - {resourceType: 'Patient', name: [{given: ['noise2']}]}
+  - {resourceType: 'Patient', name: [{given: ['ivan']}]}
+  - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}]}
+
+queries:
+  Patient:
+    - query: 'name=nicola'
+      total: 1
+      probes:
+        - path: ['entry',0,'resource', 'name',0, 'given',0]
+          result: 'nicola'
+        - path: ['total']
+          result: 1
+    - query: 'name=noise'
+      total: 2
+      probes:
+        - path: ['total']
+          result: 2
+    - query: 'name=nicola, ivan'
+      total: 2
+      probes:
+        - path: ['total']
+          result: 2
+    - query: 'name=lincol'
+      total: 1
+      probes:
+        - path: ['total']
+          result: 1
+        - path: ['entry',0,'resource', 'name',0, 'given',0]
+          result: 'Avraam'

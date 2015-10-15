@@ -1,41 +1,15 @@
 idx = require('../../src/fhir/indexing')
 test = require('../helpers.coffee')
 
-specs = test.loadYaml("#{__dirname}/xpath_spec.yaml", 'utf8')
-pt = specs.patient
+assert = require("assert")
 
-console.log idx.extract(pt,
-  path: [['identifier', 'value']]
-  searchType: 'string'
-  elementType: 'string'
-)
+specs = test.loadYaml("#{__dirname}/indexing_spec.yaml")
 
-console.log idx.extract(pt,
-  path: [['gender']]
-  searchType: 'token'
-  elementType: 'code'
-)
 
-console.log idx.extract(pt,
-  path: [['name','given']]
-  searchType: 'string'
-  elementType: 'string'
-)
-
-console.log idx.extract(pt,
-  path: [['birthDate']]
-  elementType: 'date'
-  searchType: 'date'
-)
-
-console.log idx.extract(pt,
-  path: [['name']]
-  elementType: 'HumanName'
-  searchType: 'string'
-)
-
-console.log idx.extract(pt,
-  path: [['address']]
-  elementType: 'Address'
-  searchType: 'string'
-)
+for k,sampels of specs
+  describe "INDEXING #{k}", ()->
+    for spec in sampels
+     it JSON.stringify(spec.query), ()->
+       query = spec.query
+       res = idx[k]({},query.resource, query.path, query.element_type)
+       assert.deepEqual(res, spec.result)

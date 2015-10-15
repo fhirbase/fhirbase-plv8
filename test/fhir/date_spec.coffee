@@ -13,13 +13,13 @@ specs = [
   ['2010-03-05T23:50:30', '[2010-03-05T23:50:30,2010-03-05T23:50:30.99999]']
 ]
 
-describe "CRUD", ()->
-  it "simple", ()->
-    for [k,v] in specs
+describe "Test fhir.date/to_range", ()->
+  for [k,v] in specs
+    it "#{k} -> #{v}", ()->
       assert.equal(date.to_range(k), v)
 
       d1 = new Date()
-      for _ in [0..1000000]
+      for _ in [0..100000]
         date.to_range(k)
       d2 = new Date()
 
