@@ -8,7 +8,7 @@ specs = test.loadYaml("#{__dirname}/indexing_spec.yaml")
 
 for k, samples of specs
   describe "INDEXING #{k}:", ()->
-    for spec in specs[k]
+    specs[k].forEach (spec)->
       key = "#{k}"
       it JSON.stringify(spec.query), ()->
         query = spec.query

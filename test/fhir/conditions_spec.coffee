@@ -13,5 +13,3 @@ describe "Build conditions", ()->
       assert.deepEqual(cond.condition(spec.query), spec.result)
       console.log honey(select: [':*'], from: ['patient'], where: spec.result)
 
-
-# search.search_sql('Patient', 'name=ivan&given=ivanov')

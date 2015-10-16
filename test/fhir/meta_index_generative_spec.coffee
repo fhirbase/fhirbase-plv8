@@ -7,7 +7,7 @@ idx = index.new({}, meta_fs.getter)
 sp = require('../../fhir/search-parameters.json')
 
 errors = 0
-for entry in sp.entry
+sp.entry.forEach (entry)->
   base = entry.resource.base
   name = entry.resource.name
   try

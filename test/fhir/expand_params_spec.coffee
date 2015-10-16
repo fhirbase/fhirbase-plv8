@@ -10,7 +10,7 @@ idx = index.new({}, meta_fs.getter)
 
 specs = test.loadYaml("#{__dirname}/expand_params_spec.yaml", 'utf8')
 
-describe "Params with meta", ()->
-   it "params", ()->
-     for spec in specs
+describe "Params with meta", ->
+   specs.forEach (spec)->
+     it JSON.stringify(spec.query), ->
        assert.deepEqual(params._expand(idx, spec.query), spec.result)
