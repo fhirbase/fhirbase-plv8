@@ -38,4 +38,32 @@
       cast: tstzrange
     - call: tstzrange
       args: ['1980-01-01', 'infinity']
+- query:
+    path: ['birthDate']
+    elementType: 'date'
+    searchType: 'date'
+    operator: 'lt'
+    value: '1980'
+    array: false
+  result:
+    - :&&
+    - call: fhir.extract_as_daterange
+      args: [':resource::json', '["birthDate"]', 'date']
+      cast: tstzrange
+    - call: tstzrange
+      args: ['-infinity', '1981-01-01']
+- query:
+    path: ['birthDate']
+    elementType: 'date'
+    searchType: 'date'
+    operator: 'eq'
+    value: '1980'
+    array: false
+  result:
+    - :&&
+    - call: fhir.extract_as_daterange
+      args: [':resource::json', '["birthDate"]', 'date']
+      cast: tstzrange
+    - call: tstzrange
+      args: ['1980-01-01', '1981-01-01']
 

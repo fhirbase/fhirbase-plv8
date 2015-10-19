@@ -19,6 +19,15 @@ token_eq = (opts)->
   [':&&', call, ['^text[]', [opts.value]]]
 
 overlap_datetime = (opts)->
+  args = if opts.operator == 'lt' || opts.operator == 'le'
+    ['-infinity', date.to_upper_date(opts.value)]
+  else if opts.operator == 'gt' || opts.operator == 'ge'
+    [date.to_lower_date(opts.value), 'infinity']
+  else if opts.operator == 'eq'
+    [date.to_lower_date(opts.value), date.to_upper_date(opts.value)]
+  else
+    throw new  Error('Unhandled')
+
   call =
     call: 'fhir.extract_as_daterange'
     args: [':resource::json', JSON.stringify(opts.path), opts.elementType]
@@ -26,9 +35,20 @@ overlap_datetime = (opts)->
 
   vcall =
     call: 'tstzrange'
-    args: [date.normalize(opts.value), 'infinity']
+    args: args
 
   [':&&', call, vcall]
+
+COMMON_DATE =
+  eq: overlap_datetime
+  ne: TODO
+  gt: overlap_datetime
+  ge: overlap_datetime
+  lt: overlap_datetime
+  le: overlap_datetime
+  sa: TODO
+  eb: TODO
+  ap: TODO
 
 TABLE =
   boolean:
@@ -37,29 +57,11 @@ TABLE =
   code:
     token: TODO
   date:
-    date:
-      eq: TODO
-      ne: TODO
-      gt: overlap_datetime
-      lt: TODO
-      ge: TODO
-      le: TODO
-      sa: TODO
-      eb: TODO
-      ap: TODO
+    date: COMMON_DATE
   dateTime:
-    date:
-      eq: TODO
-      ne: TODO
-      gt: TODO
-      lt: TODO
-      ge: TODO
-      le: TODO
-      sa: TODO
-      eb: TODO
-      ap: TODO
+    date: COMMON_DATE
   instant:
-    date: TODO
+    date: COMMON_DATE
   integer:
     number: TODO
   decimal:
