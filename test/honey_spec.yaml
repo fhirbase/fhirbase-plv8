@@ -8,7 +8,7 @@
   exp:
      select: [':*']
      from: [['patient', 'p'], ['users', 'u']]
-     where: [':AND',[':=',':logical_id', 'x'], [':=', ':version_id', 'y']]
+     where: [':and',[':=',':logical_id', 'x'], [':=', ':version_id', 'y']]
 
 - res: ['SELECT * FROM "patient" p JOIN "encounter" e ON e.name = p.name JOIN "another" a ON a.name = e.name WHERE ( p.name = $1 AND a.name = $2 AND e.name = $3 )', 4 ,4 ,4]
   exp:
@@ -18,7 +18,7 @@
       -  [['encounter', 'e'], [':=',':e.name',':p.name']]
       -  [['another', 'a'], [':=',':a.name',':e.name']]
     where:
-      - ':AND'
+      - ':and'
       - [':=',':p.name',4]
       - [':=',':a.name',4]
       - [':=',':e.name',4]

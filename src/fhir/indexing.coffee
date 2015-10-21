@@ -131,3 +131,11 @@ exports.extract_as_daterange = (plv8, resource, path, element_type)->
     throw new Error("extract_as_token: Not implemented for #{element_type}")
 
 exports.extract_as_daterange.plv8_signature = ['json', 'json', 'text', 'tstzrange']
+
+exports.extract_as_reference = (plv8, resource, path, element_type)->
+  if element_type == 'Reference'
+    xpath.get_in(resource, [path]).map((x)-> x.reference)
+  else
+    throw new Error("extract_as_reference: Not implemented for #{element_type}")
+
+exports.extract_as_reference.plv8_signature = ['json', 'json', 'text', 'text[]']

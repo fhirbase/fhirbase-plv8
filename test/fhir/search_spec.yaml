@@ -1,10 +1,14 @@
-resources: ['patient']
+resources: ['patient', 'encounter']
 fixtures:
-  - {resourceType: 'Patient', name: [{given: ['nicola']}], active: true, birthDate: '1980'}
+  - {id: 'nicola', resourceType: 'Patient', name: [{given: ['nicola']}], active: true, birthDate: '1980'}
   - {resourceType: 'Patient', name: [{given: ['noise1']}], birthDate: '1970'}
   - {resourceType: 'Patient', name: [{given: ['noise2']}], birthDate: '1971'}
   - {resourceType: 'Patient', name: [{given: ['ivan']}], active: true , birthDate: '1981'}
-  - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}], birthDate: '1988'}
+  - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}], birthDate: '1988', multipleBirthInteger: 3}
+  - {resourceType: 'Patient', name: [{given: ['Cheburashka']}], birthDate: '1972', multipleBirthInteger: 2}
+  - {resourceType: 'Encounter', patient: {reference: 'Patient/nicola'}, status: 'planned'}
+  - {resourceType: 'Encounter', patient: {reference: 'Patient/noise'},  status: 'planned'}
+  - {resourceType: 'Encounter', patient: {reference: 'Patient/noise2'},  status: 'planned'}
 
 queries:
   Patient:
@@ -50,6 +54,22 @@ queries:
         - path: ['total']
           result: 1
     - query: 'birthdate=lt1970-05'
+      total: 1
+      probes:
+        - path: ['total']
+          result: 1
+    - query: 'birthdate=lt1970-05'
+      total: 1
+      probes:
+        - path: ['total']
+          result: 1
+  Encounter:
+    - query: 'patient=Patient/nicola'
+      total: 1
+      probes:
+        - path: ['total']
+          result: 1
+    - query: 'patient:Patient.name=nicola'
       total: 1
       probes:
         - path: ['total']

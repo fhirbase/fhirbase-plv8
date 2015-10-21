@@ -1,0 +1,50 @@
+[{:query (param {:resourceType "Patient" :name "name"} "_")
+  :result (param
+           {:resourceType "Patient"
+            :name "name"
+            :searchType "string"
+            :elementType "HumanName"
+            :path ["Patient" "name"]
+            :pathUsage "normal"
+            :multiple true}
+           "_")}
+
+ {:query (enything (param {:resourceType "Patient" :name "name"} "_"))
+  :result (enything
+           (param
+            {:resourceType "Patient"
+             :name "name"
+             :searchType "string"
+             :elementType "HumanName"
+             :path ["Patient" "name"]
+             :pathUsage "normal"
+             :multiple true}
+            "_"))}
+
+ {:query (param {:resourceType "Patient" :name "given"} "_")
+  :result (param
+           {:resourceType "Patient"
+            :name "given"
+            :searchType "string"
+            :elementType "string"
+            :path ["Patient" "name" "given"]
+            :pathUsage "normal"
+            :multiple true}
+           "_")}
+
+ {:query  (param {:resourceType "Patient" :name "deceased"} "_")
+  :result (or 
+           (param
+            {:resourceType "Patient"
+             :name "deceased"
+             :searchType "token"
+             :elementType "boolean"
+             :path ["Patient" "deceasedBoolean"]
+             :pathUsage "normal"} "_")
+           (param
+            {:resourceType "Patient"
+             :name "deceased"
+             :searchType "token"
+             :elementType "dateTime"
+             :path ["Patient" "deceasedDateTime"]
+             :pathUsage "normal"} "_"))}]

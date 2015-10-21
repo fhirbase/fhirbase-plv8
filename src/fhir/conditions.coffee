@@ -1,36 +1,73 @@
 lang = require('../lang')
+lisp = require('../lispy')
 date = require('./date')
 
 TODO = ()->
   throw new Error("Not impl.")
 
-string_ilike = (opts, value)->
+string_ilike = (tbl, meta, value)->
+  # ['$ilike',
+  #   ['$cast',  ['$call', extract_fn(meta.searchType, meta.array),
+  #     ['$cast', ['$id', "resource"], "json"]
+  #     ['$cast', meta.path, "json"]
+  #     meta.elementType]
+  #     "text"]
+  #   value]
   call =
-    call: extract_fn(opts.searchType, opts.array)
-    args: [':resource::json', JSON.stringify(opts.path), opts.elementType]
+    call: extract_fn(meta.searchType, meta.array)
+    args: [":#{tbl}.resource::json", JSON.stringify(meta.path), meta.elementType]
     cast: 'text'
   [':ilike', call, value]
 
-token_eq = (opts)->
+token_eq = (tbl, meta, value)->
+  # ['$&&',
+  #   ['$cast', 
+  #     ['$call', extract_fn(meta.searchType, meta.array),
+  #     ['$cast', ['$id', "resource"], "json"]
+  #     ['$cast', meta.path, "json"]
+  #     meta.elementType]
+  #     "text[]"]
+  #   ['$array',"text[]",[value.value]]]
   call =
-    call: extract_fn(opts.searchType, opts.array)
-    args: [':resource::json', JSON.stringify(opts.path), opts.elementType]
+    call: extract_fn(meta.searchType, meta.array)
+    args: [":#{tbl}.resource::json", JSON.stringify(meta.path), meta.elementType]
     cast: 'text[]'
-  [':&&', call, ['^text[]', [opts.value]]]
+  [':&&', call, ['^text[]', [value.value]]]
 
-overlap_datetime = (opts)->
-  args = if opts.operator == 'lt' || opts.operator == 'le'
-    ['-infinity', date.to_upper_date(opts.value)]
-  else if opts.operator == 'gt' || opts.operator == 'ge'
-    [date.to_lower_date(opts.value), 'infinity']
-  else if opts.operator == 'eq'
-    [date.to_lower_date(opts.value), date.to_upper_date(opts.value)]
+overlap_datetime = (tbl, meta, value)->
+
+  # op = meta.operator
+  # tsvalue = if op == 'lt' || op == 'le'
+  #   ['$tstzrange', '-infinity', date.to_upper_date(value.value)]
+  # else if op == 'gt' || op == 'ge'
+  #   ['$tstzrange', date.to_lower_date(value.value), 'infinity']
+  # else if op == 'eq'
+  #   ['$tstzrange', date.to_lower_date(value.value), date.to_upper_date(value.value)]
+  # else
+  #   throw new  Error('Unhandled')
+
+  # ['$&&',
+  #   ['$cast',
+  #     ['$call', "fhir.extract_as_daterange",
+  #     ['$cast', ['$id', "resource"], "json"]
+  #     ['$cast', meta.path, "json"]
+  #     meta.elementType]
+  #     "tstzrange"]
+  #   tsvalue]
+
+  value = value.value
+  args = if meta.operator == 'lt' || meta.operator == 'le'
+    ['-infinity', date.to_upper_date(value)]
+  else if meta.operator == 'gt' || meta.operator == 'ge'
+    [date.to_lower_date(value), 'infinity']
+  else if meta.operator == 'eq'
+    [date.to_lower_date(value), date.to_upper_date(value)]
   else
     throw new  Error('Unhandled')
 
   call =
     call: 'fhir.extract_as_daterange'
-    args: [':resource::json', JSON.stringify(opts.path), opts.elementType]
+    args: [":#{tbl}.resource::json", JSON.stringify(meta.path), meta.elementType]
     cast: 'tstzrange'
 
   vcall =
@@ -50,6 +87,14 @@ COMMON_DATE =
   eb: TODO
   ap: TODO
 
+REFERENCE =
+  eq: (tbl, meta, value)->
+    call =
+      call: extract_fn(meta.searchType, meta.array)
+      args: [":#{tbl}.resource::json", JSON.stringify(meta.path), meta.elementType]
+      cast: 'text[]'
+    [':&&', call, ['^text[]', [value.value]]]
+
 TABLE =
   boolean:
     token:
@@ -62,6 +107,8 @@ TABLE =
     date: COMMON_DATE
   instant:
     date: COMMON_DATE
+  Period:
+    date: TODO
   integer:
     number: TODO
   decimal:
@@ -72,8 +119,6 @@ TABLE =
   uri:
     reference: TODO
     uri: TODO
-  Period:
-    date: TODO
   Address:
     string: TODO
   Annotation: null
@@ -85,8 +130,8 @@ TABLE =
     token: TODO
   HumanName:
     string:
-      sw: (opts)-> string_ilike(opts, "%^^#{opts.value.trim()}%")
-      co: (opts)-> string_ilike(opts, "%#{opts.value.trim()}%")
+      sw: (tbl, meta, value)-> string_ilike(tbl, meta, "%^^#{value.value.trim()}%")
+      co: (tbl, meta, value)-> string_ilike(tbl, meta, "%#{value.value.trim()}%")
   Identifier:
     token: TODO
   Quantity:
@@ -95,7 +140,7 @@ TABLE =
   Duration: null
   Range: null
   Reference:
-    reference: TODO
+    reference: REFERENCE
   SampledData: null
   Timing:
     date: TODO
@@ -111,28 +156,20 @@ extract_fn = (resultType, array)->
     res.push('_array')
   res.join('')
 
-condition = (opts)->
-  handler = TABLE[opts.elementType]
-  throw new Error("#{opts.elementType} is not suported") unless handler
-  handler = handler[opts.searchType]
-  throw new Error("#{opts.elementType} #{opts.searchType} is not suported") unless handler
-  handler = handler[opts.operator]
-  throw new Error("Operator #{opts.operator} in #{opts.elementType} #{opts.searchType} is not suported") unless handler
-  handler(opts)
+condition = (tbl, meta, value)->
+  handler = TABLE[meta.elementType]
+  throw new Error("#{meta.elementType} is not suported") unless handler
+  handler = handler[meta.searchType]
+  throw new Error("#{meta.elementType} #{meta.searchType} is not suported") unless handler
+  handler = handler[meta.operator]
+  throw new Error("Operator #{meta.operator} in #{meta.elementType} #{meta.searchType} is not suported") unless handler
+  handler(tbl, meta, value)
 
 exports.condition = condition
 
-walk = (expr)->
-  if lang.isArray(expr)
-    expr.map((x)-> walk(x))
-  else if lang.isObject(expr)
-    condition(expr)
-  else
-    if expr == 'OR'
-      ':OR'
-    else if expr == 'AND'
-      ':AND'
-    else
-      expr
+exports.eval = (tbl, expr)->
+  forms =
+    $param: (left, right)->
+      condition(tbl, left, right)
 
-exports.walk = walk
+  lisp.eval_with(forms, expr)

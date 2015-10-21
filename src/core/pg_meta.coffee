@@ -22,7 +22,7 @@ table_exists = (plv8, table_name)->
     result = utils.exec plv8,
       select: ['^true']
       from: ['information_schema.tables']
-      where: [':AND', [':=', ':table_name', table_name],
+      where: [':and', [':=', ':table_name', table_name],
                       [':=', ':table_schema', schema_name]]
     result.length > 0
 

@@ -1,14 +1,7 @@
 xpath = require('./xpath')
 index = require('./meta_index')
 lang = require('../lang')
-
-walk = (idx, resourceType, expr)->
-  if lang.isArray(expr)
-    expr.map((x)-> walk(idx, resourceType, x))
-  else if lang.isObject(expr)
-    expand_param(idx, resourceType, expr)
-  else
-    expr
+lisp = require('../lispy')
 
 expand_param = (idx, resourceType, x)->
   info = index.parameter(idx, [resourceType, x.name])
@@ -16,7 +9,16 @@ expand_param = (idx, resourceType, x)->
   if res.length == 1
     res[0]
   else
-    ['OR'].concat(res)
+    [':or'].concat(res)
 
-exports._expand = (idx, query)->
-  lang.merge query, {params: walk(idx, query.resourceType, query.params)}
+exports.expand = (idx, expr)->
+  forms =
+    $param: (left, right)->
+      info = index.parameter(idx, [left.resourceType, left.name])
+      res = info.map (inf)-> ['$param', lang.merge(left, inf), right]
+      if res.length == 1
+        res[0]
+      else
+        ['$or'].concat(res)
+
+  lisp.eval_with(forms, expr)

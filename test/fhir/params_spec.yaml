@@ -108,3 +108,11 @@ specials:
   _revinclude=MedicationOrder:patient: {revinclude: [['MedicationOrder', 'patient']]}
   _include=MedicationDispense:authorizingPrescription&_include:recurse=MedicationOrder:prescriber: {include: [['MedicationDispense', 'authorizingPrescription'],['MedicationOrder', 'prescriber']]}
   _elements=identifier,active,link: {elements: ['identifier', 'active', 'link']}
+
+chained:
+  subject:Patient.organization:Organization.name=hl7:
+    chain:
+      - resourceType: 'Patient'
+        chain:
+          - resourceType: 'Organization'
+            params: ['AND', {}]

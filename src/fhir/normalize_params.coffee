@@ -1,4 +1,5 @@
 lang = require('../lang')
+lisp = require('../lispy')
 
 # normalize query string to filter format
 # add modifier & prefix => operator
@@ -22,6 +23,9 @@ TABLE =
   token:
     $prefix: false
     $modifier: 'eq'
+  reference:
+    $prefix: false
+    $modifier: 'eq'
   date:
     $prefix: 'eq'
     $modifier: false
@@ -33,40 +37,36 @@ TABLE =
     ne: 'ne'
 
 
-normalize_param = (x)->
-  x = lang.clone(x)
-  handler = TABLE[x.searchType]
+normalize_param = (meta, value)->
+  meta = lang.clone(meta)
+  handler = TABLE[meta.searchType]
   unless handler
-    throw new Error("NORMALIZE: Not supported #{JSON.stringify(x)}")
-  if !handler.$prefix and x.prefix
-    throw new Error("NORMALIZE: Prefix not suported for #{JSON.stringify(x)}")
-  if !handler.$modifier and x.modifier
-    throw new Error("NORMALIZE: Modifier not suported for #{JSON.stringify(x)}")
+    throw new Error("NORMALIZE: Not supported #{JSON.stringify(meta)}")
+  if !handler.$prefix and value.prefix
+    throw new Error("NORMALIZE: Prefix not suported for #{JSON.stringify(meta)}")
+  if !handler.$modifier and meta.modifier
+    throw new Error("NORMALIZE: Modifier not suported for #{JSON.stringify(meta)}")
 
-  if !x.modifier and handler.$modifier
+  if !meta.modifier and handler.$modifier
     op = handler.$modifier
-  if !x.prefix and handler.$prefix
+  if !value.prefix and handler.$prefix
     op = handler.$prefix
 
-  if x.prefix and handler.$prefix
-    op = handler[x.prefix]
-  if x.modifier and handler.$modifier
-    op = handler[x.modifier]
+  if value.prefix and handler.$prefix
+    op = handler[value.prefix]
+  if meta.modifier and handler.$modifier
+    op = handler[meta.modifier]
 
   unless op
     throw new Error("NORMALIZE: No operator for #{JSON.stringify(x)}")
-  x.operator = op
-  delete x.prefix
-  delete x.modifier
-  x
+  meta.operator = op
+  delete value.prefix
+  delete meta.modifier
 
-walk = (expr)->
-  if lang.isArray(expr)
-    expr.map((x)-> walk(x))
-  else if lang.isObject(expr)
-    normalize_param(expr)
-  else
-    expr
+  [meta, value]
 
-exports.normalize = (query)->
-  lang.merge query, {params: walk(query.params)}
+exports.normalize = (expr)->
+  forms =
+    $param: (left, right)->
+      ['$param'].concat normalize_param(left, right)
+  lisp.eval_with(forms, expr)

@@ -8,9 +8,9 @@ assert = require("assert")
 
 idx = index.new({}, meta_fs.getter)
 
-specs = test.loadYaml("#{__dirname}/expand_params_spec.yaml", 'utf8')
+specs = test.loadEdn("#{__dirname}/expand_params_spec.edn")
 
 describe "Params with meta", ->
    specs.forEach (spec)->
      it JSON.stringify(spec.query), ->
-       assert.deepEqual(params._expand(idx, spec.query), spec.result)
+       assert.deepEqual(params.expand(idx, spec.query), spec.result)

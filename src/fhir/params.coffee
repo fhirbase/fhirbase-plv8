@@ -185,6 +185,8 @@ dispatch = (name)->
     throw new Error("parser for #{name} not implemented")
   handler
 
+is_special = (left)-> left.name.indexOf('_') == 0
+
 exports.parse = (str) ->
   return {}  if typeof str isnt "string"
   str = str.trim().replace(/^(\?|#)/, "")
@@ -193,7 +195,7 @@ exports.parse = (str) ->
     parts = param.replace(/\+/g, " ").split("=")
     left = parse_left(parts[0])
     right = parts[1]
-    if left.name.indexOf('_') == 0
+    if is_special(left)
       dispatch(left.name)(acc, left, right)
     else
       parse_right(acc, left, right)

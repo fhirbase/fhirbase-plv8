@@ -10,7 +10,7 @@ exports.getter = (plv8, rt, query)->
     utils.exec plv8,
       select:[':*']
       from: [rt.toLowerCase()]
-      where: [':AND', [':=', "^resource->>'name'", query.name],
+      where: [':and', [':=', "^resource->>'name'", query.name],
                       [':=', "^resource->>'base'", query.base]]
 
   if res.length > 1

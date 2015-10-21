@@ -1,0 +1,78 @@
+[{:query (param {:path ["name"]
+                 :elementType "HumanName"
+                 :searchType "string"
+                 :operator "co"
+                 :array true}
+                {:value "nicola"})
+  :result [":ilike" {:call "fhir.extract_as_string"
+                     :args [":resource::json" "[\"name\"]" "HumanName"]
+                     :cast "text"}
+           "%nicola%"]
+  #_(ilike
+           (cast
+             (call "fhir.extract_as_string_array"
+                  (cast (id "resource") "json")
+                  (cast ["name"] "json")
+                  "HumanName")
+             "text")
+           "%nicola%")}
+
+ {:query (param {:path ["active"]
+                 :elementType "boolean"
+                 :searchType "token"
+                 :operator "eq"
+                 :array false}
+                {:value "true"})
+  :result (&&
+           (cast
+            (call "fhir.extract_as_token"
+                  (cast (id "resource") "json")
+                  (cast ["active"] "json")
+                  "boolean")
+            "text[]")
+           (array "text[]" ["true"]))}
+
+ {:query (param {:path ["birthDate"]
+                 :elementType "date"
+                 :searchType "date"
+                 :operator "gt"
+                 :array false}
+                {:value "1980"})
+  :result (&&
+           (cast
+            (call "fhir.extract_as_daterange"
+                  (cast (id "resource") "json")
+                  (cast ["birthDate"] "json")
+                  "date")
+            "tstzrange")
+           (tstzrange "1980-01-01" "infinity"))}
+
+ {:query (param {:path ["birthDate"]
+                 :elementType "date"
+                 :searchType "date"
+                 :operator "lt"
+                 :array false}
+                {:value "1980"})
+  :result (&&
+           (cast
+            (call "fhir.extract_as_daterange"
+                  (cast (id "resource") "json")
+                  (cast ["birthDate"] "json")
+                  "date")
+            "tstzrange")
+           (tstzrange "-infinity" "1981-01-01"))}
+
+ {:query (param {:path ["birthDate"]
+                 :elementType "date"
+                 :searchType "date"
+                 :operator "eq"
+                 :array false}
+                {:value "1980"})
+  :result (&&
+           (cast
+            (call "fhir.extract_as_daterange"
+                  (cast (id "resource") "json")
+                  (cast ["birthDate"] "json")
+                  "date")
+            "tstzrange")
+           (tstzrange "1980-01-01" "1981-01-01"))}]

@@ -17,6 +17,8 @@ get_in = (obj, path)->
     cur = cur[item]
   cur
 
+its = ([res,q] for res, q of specs.queries)
+
 describe "Seatch integration test", ()->
   before ->
     plv8.execute("SET plv8.start_proc = 'plv8_init'")
@@ -27,11 +29,11 @@ describe "Seatch integration test", ()->
     for res in specs.fixtures
       crud.create(plv8, res)
 
-  for resourceType, queries of specs.queries
+  its.forEach ([resourceType, queries])->
     queries.forEach (q)->
-      it q.query, ->
+      it "#{resourceType} :  #{q.query}", ->
         res = search.search(plv8, resourceType: resourceType, queryString: q.query)
         if q.total
           assert.equal(res.total, q.total)
-        for probe in q.probes
+        q.probes.forEach (probe)->
           assert.equal(get_in(res, probe.path), probe.result)

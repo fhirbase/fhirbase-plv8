@@ -39,18 +39,17 @@ coerce_param = (x)->
     JSON.stringify(x)
   else
     x
+
 emit_casted_param = (acc, cast, value)->
   if lang.isArray(value)
-    args = []
-    for val in value
-      args.push(" $#{acc.cnt} ")
-      acc.cnt = acc.cnt + 1
-      acc.params.push(coerce_param(val))
-    push(acc,"ARRAY[#{args.join(',')}]::#{cast}")
+    push(acc,"ARRAY[")
+    emit_delimit acc, ",", value, (acc, x)->
+      emit_param(acc, x)
+    push(acc,"]::#{cast}")
   else
-    push(acc,"$#{acc.cnt}::#{cast}")
-    acc.cnt = acc.cnt + 1
-    acc.params.push(coerce_param(value))
+    push(acc,"(")
+    emit_param(acc, value)
+    push(acc,")::#{cast}")
   acc
 
 emit_param = (acc, v)->
@@ -62,17 +61,16 @@ emit_param = (acc, v)->
     if isRawSql(v[0])
       emit_casted_param(acc,rawToSql(v[0]),v[1])
     else
-      throw new Error('unhandled')
+      emit_expression(acc,v)
+      # throw new Error("emit_param: unhandled #{JSON.stringify(v)}")
   else if lang.isObject(v) and v.call
     emit_function_call(acc, v)
   else if lang.isObject(v) and v.cast
     if v.array
-      args = []
-      for val in v.value
-        args.push(" $#{acc.cnt} ")
-        acc.cnt = acc.cnt + 1
-        acc.params.push(coerce_param(val))
-      push(acc,"ARRAY[#{args.join(',')}]::#{v.cast}")
+      push(acc,"ARRAY[")
+      emit_delimit acc, ',' , v.value, (acc, x)->
+        emit_param(acc, x)
+      push(acc,"]::#{v.cast}")
     else
       throw new Error('unhandled')
   else
@@ -161,10 +159,10 @@ emit_expression = (acc, xs)->
   if lang.isArray(xs)
     which = xs[0]
     switch which
-      when ':AND'
+      when ':and'
         surround_parens acc, (acc)->
           emit_delimit(acc, "AND", xs[1..], emit_expression)
-      when ':OR'
+      when ':or'
         surround_parens acc, (acc)->
           emit_delimit(acc, "OR", xs[1..], emit_expression)
       else
@@ -177,6 +175,8 @@ emit_expression = (acc, xs)->
           emit_param(acc, xs[2])
   else if lang.isObject(xs) && xs.call
     emit_function_call(acc, xs)
+  else if isRawSql(xs)
+    push(acc, rawToSql(xs))
   else
     push(acc,_toLiteral(xs))
   acc
@@ -352,25 +352,3 @@ module.exports = sql
 sql.TZ = "TIMESTAMP WITH TIME ZONE"
 sql.JSONB = "jsonb"
 
-comment = ->
-  console.log sql(
-     select: [":a","^b",'c'],
-     from: ['users','roles'],
-     joins: [['roles', [':=', '^r.user_id', '^users.id']]]
-     where: [':AND', [':=', ':id', 5],[':=', ':name', 'x']]
-  )
-
-  console.log sql(
-    update: "users",
-    values: {a: 1, b: '^current_timestamp'},
-    where: [':=', ':id', 5]
-  )
-
-  console.log sql(
-       select: [":*"]
-       from: ['users']
-       where: ['^&&'
-          {call: 'extract_as_string_array', args: [':resource', '["name"]', 'HumanName'], cast: 'text[]' }
-          {value: ['nicola','ivan'], array:true, cast: 'text[]'}
-       ]
-  )
