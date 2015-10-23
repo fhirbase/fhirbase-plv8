@@ -1,19 +1,13 @@
 [[["Patient" "name=ivan"]
   {:query "Patient"
-   :where [:and (param {:resourceType "Patient" :name "name"} {:value "ivan"})]}
-  #_(query "Patient"
-         (where (param {:resourceType "Patient" :name "name"} {:value "ivan"})))]
+   :where [:and (param {:resourceType "Patient" :name "name"} {:value "ivan"})]}]
 
  [["Patient" "name=ivan,nicola"]
   {:query "Patient"
    :where [:and
            [:or
             (param {:resourceType "Patient" :name "name"} {:value "ivan"})
-            (param {:resourceType "Patient" :name "name"} {:value "nicola"})]]}
-  #_(query "Patient"
-         (where (or
-           (param {:resourceType "Patient" :name "name"} {:value "ivan"})
-           (param {:resourceType "Patient" :name "name"} {:value "nicola"}))))]
+            (param {:resourceType "Patient" :name "name"} {:value "nicola"})]]}]
 
  [["Patient" "_page=12"]
   {:query "Patient" :page 12}

@@ -8,7 +8,6 @@ concat = (acc, xs)->
   acc.result = acc.result.concat(xs)
   acc
 
-
 RAW_SQL_REGEX = /^\^/
 
 isRawSql = (x)->

@@ -1,0 +1,120 @@
+[[{:select :* :from :patient}
+  ["SELECT * FROM patient"]]
+
+ [{:select :id :from :patient}
+  ["SELECT id FROM patient"]]
+
+ [{:select [(raw "*")]
+   :from (alias (q :schema :patient) "pt")}
+  ["SELECT * FROM schema.patient pt"]]
+
+ [{:select (raw "count(*)")
+   :from (q :schema :patient)}
+  ["SELECT count(*) FROM schema.patient"]]
+
+ [{:select (as (cast (count :*) :integer) :cnt)
+   :from :patient}
+  ["SELECT ( count( * ) )::integer AS cnt FROM patient"]]
+
+
+ [{:select (count :*)
+   :from :patient
+   :where  (lt (to_json :current_timestamp) "1980-01-01")}
+  ["SELECT count( * ) FROM patient WHERE to_json( current_timestamp ) < $1" "1980-01-01"]]
+
+ [{:select :*
+   :from :patient
+   :where (and (or (eq :a 1) (eq :b 2))
+               (or (eq :c 3) (eq :d 4)))}
+  ["SELECT * FROM patient WHERE ( ( a = $1 OR b = $2 ) AND ( c = $3 OR d = $4 ) )" 1 2 3 4]]
+
+ [{:select :*
+   :from [:patient, :group]
+   :where  (and (eq :patient.id 1) (eq :patient.id :group.patient_id))}
+  ["SELECT * FROM patient , group WHERE ( patient.id = $1 AND patient.id = group.patient_id )", 1]]
+
+ [{:select :*
+   :from :patient
+   :join [[(alias :group :g) (eq :patient.id :g.user_id)]]}
+  ["SELECT * FROM patient JOIN group g ON patient.id = g.user_id"]]
+
+ [{:select :*
+   :from :patient
+   :join [[(alias :group :g) (eq :patient.id :g.user_id)]
+          [:user_settings  (eq :patient.id :user_settings.user_id)]]}
+  ["SELECT * FROM patient JOIN group g ON patient.id = g.user_id JOIN user_settings ON patient.id = user_settings.user_id"]]
+
+ [{:select :*
+   :from :patient
+   :join [[(alias :group :g) (and (eq :patient.id :g.user_id) (eq :g.name "ups"))]]}
+  ["SELECT * FROM patient JOIN group g ON ( patient.id = g.user_id AND g.name = $1 )" "ups"]]
+
+ [{:create :extension
+   :name :plv8
+   :safe true}
+  ["CREATE EXTENSION IF NOT EXISTS plv8"]]
+
+ [{:create :table
+   :name :users
+   :inherits :resource}
+  ["CREATE TABLE users ( ) INHERITS ( resource )"]]
+
+ [{:create :table
+   :name :users
+   :inherits [:resource]}
+  ["CREATE TABLE users ( ) INHERITS ( resource )"]]
+
+ [{:create :table
+   :name :users
+   :inherits :resource
+   :columns [[:content :jsonb :PK]
+             [:logical_id :text]
+             [:published (raw "timestamp with time zone")]]}
+  ["CREATE TABLE users ( content jsonb PK , logical_id text , published timestamp with time zone ) INHERITS ( resource )"]]
+
+ [{:insert :users
+   :values {:name "nicola" :updated :CURRENT_TIMESTAMP}
+   :returning :id}
+  ["INSERT INTO users ( name , updated ) VALUES ( $1 , CURRENT_TIMESTAMP ) RETURNING id" "nicola"]]
+
+ [{:insert :users
+   :values {:obj (json {:a 1})}}
+  ["INSERT INTO users ( obj ) VALUES ( to_json( $1 ) )" "{\"a\":1}"]]
+
+ [{:update :users
+   :values {:name "nicola" :updated :CURRENT_TIMESTAMP}
+   :where (eq :id 2)}
+  ["UPDATE users SET name = $1 , updated = CURRENT_TIMESTAMP WHERE id = $2", "nicola", 2]]
+
+ [{:update :users
+   :values {:name "nicola" :updated :CURRENT_TIMESTAMP}
+   :where {:id 2 :version_id 3}}
+  ["UPDATE users SET name = $1 , updated = CURRENT_TIMESTAMP WHERE ( id = $2 AND version_id = $3 )", "nicola", 2, 3]]
+
+ [{:delete :users
+   :where {:id 2 :version_id 3}}
+  ["DELETE FROM users WHERE ( id = $1 AND version_id = $2 )", 2, 3]]
+
+ [{:delete :users
+   :where (and (eq :id 2) (eq :version_id 3))}
+  ["DELETE FROM users WHERE ( id = $1 AND version_id = $2 )", 2, 3]]
+
+ [{:truncate :users
+   :restart true
+   :cascade true}
+  ["TRUNCATE users RESTART IDENTITY CASCADE"]]
+
+ [{:drop :table :name :users :safe true :cascade true}
+  ["DROP TABLE IF EXISTS users CASCADE"]]
+
+ [{:drop :extension :name  :plv8 :safe true}
+  ["DROP EXTENSION IF EXISTS plv8"]]
+
+ [{:alter :table
+   :name :users
+   :action [(add_column :emal :text)
+            (drop_column :name :CASCADE)
+            (set_column_type :content :jsonb (to_jsonb (cast :content :text)))]}
+
+  ["TODO"]]
+ ]
