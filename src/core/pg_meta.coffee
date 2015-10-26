@@ -1,15 +1,7 @@
 utils =  require('./utils')
 
-memoize = (cache, key, cb)->
-  if cache && cache[key]
-    return [key]
-  res = cb()
-  if cache
-    cache[key] = res
-  res
-
 table_exists = (plv8, table_name)->
-  memoize plv8.cache, table_name, ()->
+  utils.memoize plv8.cache, table_name, ()->
     parts = table_name.split('.')
 
     if parts.length > 1

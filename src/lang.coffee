@@ -65,3 +65,8 @@ exports.keys = (obj)->
     res.push(k)
   res
 
+exports.mapcat = (coll, fn)->
+  res = []
+  for x in coll
+    Array.prototype.push.apply(res, fn(x))
+  res

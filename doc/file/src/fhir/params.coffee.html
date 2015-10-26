@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset='UTF-8'>
+  <title>CoffeeScript API Documentation</title>
+  <script src='../../../javascript/application.js'></script>
+  <script src='../../../javascript/search.js'></script>
+  <link rel='stylesheet' href='../../../stylesheets/application.css' type='text/css'>
+</head>
+  <body>
+    <div id='base' data-path='../../../'></div>
+<div id='header'>
+  <div id='menu'>
+    <a href='../../../extra/README.md.html' title='Fhirbase'>
+      Fhirbase
+    </a>
+    &raquo;
+    <a href='../../../alphabetical_index.html' title='Index'>
+      Index
+    </a>
+    &raquo;
+    <span class='title'>src</span>
+    &raquo;
+    <span class='title'>fhir</span>
+    &raquo;
+    <span class='title'>params.coffee</span>
+  </div>
+</div>
+    <div id='content'>
+      <h1>
+        File:
+        params.coffee
+      </h1>
+      <table class='box'>
+        <tr>
+          <td>Defined in:</td>
+          <td>src&#47;fhir</td>
+        </tr>
+      </table>
+      <h2>Variables Summary</h2>
+      <dl class='constants'>
+  <dt id='OPERATORS-variable'>
+    OPERATORS
+    =
+  </dt>
+  <dd>
+    <pre><code class='coffeescript'>[&#39;eq&#39;, &#39;ne&#39;, &#39;gt&#39;, &#39;lt&#39;, &#39;ge&#39;, &#39;le&#39;, &#39;sa&#39;, &#39;eb&#39;, &#39;ap&#39;]</code></pre>
+    
+  </dd>
+  <dt id='MODIFIERS-variable'>
+    MODIFIERS
+    =
+  </dt>
+  <dd>
+    <pre><code class='coffeescript'>[&#39;missing&#39;, &#39;exact&#39;, &#39;contains&#39;, &#39;text&#39;, &#39;in&#39;, &#39;below&#39;, &#39;above&#39;, &#39;not-in&#39;, &#39;not&#39;, &#39;asc&#39;, &#39;desc&#39;]</code></pre>
+    
+  </dd>
+  <dt id='SPECIALS-variable'>
+    SPECIALS
+    =
+  </dt>
+  <dd>
+    <pre><code class='coffeescript'>[&#39;_id&#39;, &#39;_lastUpdated&#39;, &#39;_tag&#39;, &#39;_profile&#39;, &#39;_security&#39;, &#39;_text&#39;, &#39;_content&#39;, &#39;_list&#39;, &#39;_query&#39;, &#39;_sort&#39;, &#39;_count&#39;, &#39;_include&#39;, &#39;_revinclude&#39;, &#39;_summary&#39;, &#39;_elements&#39;, &#39;_contained&#39;, &#39;_containedType&#39;]</code></pre>
+    
+  </dd>
+  <dt id='OPERATORS_REG-variable'>
+    OPERATORS_REG
+    =
+  </dt>
+  <dd>
+    <pre><code class='coffeescript'>&#47;^(eq|ne|gt|lt|ge|le|sa|eb|ap)[0-9]&#47;</code></pre>
+    
+  </dd>
+  <dt id='VALUE_SEP_REG-variable'>
+    VALUE_SEP_REG
+    =
+  </dt>
+  <dd>
+    <pre><code class='coffeescript'>&#47;\||\$&#47;</code></pre>
+    
+  </dd>
+  <dt id='DISPATCH_TABLE-variable'>
+    DISPATCH_TABLE
+    =
+  </dt>
+  <dd>
+    <pre><code class='coffeescript'>{
+  _sort: parse_sort,
+  _count: parse_count,
+  _limit: parse_limit,
+  _include: parse_include,
+  _revinclude: parse_revinclude,
+  _elements: parse_elements
+}</code></pre>
+    
+  </dd>
+  <dt id='TO_PARAMS_SPECIALS-variable'>
+    TO_PARAMS_SPECIALS
+    =
+  </dt>
+  <dd>
+    <pre><code class='coffeescript'>[&#39;_id&#39;, &#39;_lastUpdated&#39;, &#39;_tag&#39;, &#39;_profile&#39;, &#39;_security&#39;, &#39;_text&#39;, &#39;_content&#39;, &#39;_list&#39;]</code></pre>
+    
+  </dd>
+</dl>
+      <h2>Method Summary</h2>
+      <ul class='summary'>
+  <li>
+    <span class='signature'>
+      <a href='#merge-'>
+        ~
+(void)
+<b>merge</b><span>(obj, anothers...)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#or_join-'>
+        ~
+(void)
+<b>or_join</b><span>(arr)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse_left-'>
+        ~
+(void)
+<b>parse_left</b><span>(x)</span>
+      </a>
+    </span>
+    <span class='desc'>
+      parse key 
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse_composite-'>
+        ~
+(void)
+<b>parse_composite</b><span>(left, x)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse_reference-'>
+        ~
+(void)
+<b>parse_reference</b><span>(left, x)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse_simple_value-'>
+        ~
+(void)
+<b>parse_simple_value</b><span>(left, x)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse_one_value-'>
+        ~
+(void)
+<b>parse_one_value</b><span>(left, x)</span>
+      </a>
+    </span>
+    <span class='desc'>
+      parse value 
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse_right-'>
+        ~
+(void)
+<b>parse_right</b><span>(acc, left, x)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#include-'>
+        ~
+(void)
+<b>include</b><span>()</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse_count-'>
+        ~
+(void)
+<b>parse_count</b><span>(acc, left, right)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse_limit-'>
+        ~
+(void)
+<b>parse_limit</b><span>(acc, left, right)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse_sort-'>
+        ~
+(void)
+<b>parse_sort</b><span>(acc, left, right)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse_include-'>
+        ~
+(void)
+<b>parse_include</b><span>(acc, left, right)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse_revinclude-'>
+        ~
+(void)
+<b>parse_revinclude</b><span>(acc, left, right)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse_elements-'>
+        ~
+(void)
+<b>parse_elements</b><span>(acc, left, right)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#dispatch-'>
+        ~
+(void)
+<b>dispatch</b><span>(name)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#is_special-'>
+        ~
+(void)
+<b>is_special</b><span>(left)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#parse-'>
+        ~
+(void)
+<b>parse</b><span>(str)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+</ul>
+      <h2>Method Details</h2>
+      <div class='methods'>
+  <div class='method_details'>
+    <p class='signature' id='merge-'>
+      ~
+(void)
+<b>merge</b><span>(obj, anothers...)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='or_join-'>
+      ~
+(void)
+<b>or_join</b><span>(arr)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse_left-'>
+      ~
+(void)
+<b>parse_left</b><span>(x)</span>
+      <br>
+    </p>
+    <div class='docstring'>
+  <p>parse key</p>
+</div>
+<div class='tags'>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse_composite-'>
+      ~
+(void)
+<b>parse_composite</b><span>(left, x)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse_reference-'>
+      ~
+(void)
+<b>parse_reference</b><span>(left, x)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse_simple_value-'>
+      ~
+(void)
+<b>parse_simple_value</b><span>(left, x)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse_one_value-'>
+      ~
+(void)
+<b>parse_one_value</b><span>(left, x)</span>
+      <br>
+    </p>
+    <div class='docstring'>
+  <p>parse value</p>
+</div>
+<div class='tags'>
+</div>
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse_right-'>
+      ~
+(void)
+<b>parse_right</b><span>(acc, left, x)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='include-'>
+      ~
+(void)
+<b>include</b><span>()</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse_count-'>
+      ~
+(void)
+<b>parse_count</b><span>(acc, left, right)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse_limit-'>
+      ~
+(void)
+<b>parse_limit</b><span>(acc, left, right)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse_sort-'>
+      ~
+(void)
+<b>parse_sort</b><span>(acc, left, right)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse_include-'>
+      ~
+(void)
+<b>parse_include</b><span>(acc, left, right)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse_revinclude-'>
+      ~
+(void)
+<b>parse_revinclude</b><span>(acc, left, right)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse_elements-'>
+      ~
+(void)
+<b>parse_elements</b><span>(acc, left, right)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='dispatch-'>
+      ~
+(void)
+<b>dispatch</b><span>(name)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='is_special-'>
+      ~
+(void)
+<b>is_special</b><span>(left)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='parse-'>
+      ~
+(void)
+<b>parse</b><span>(str)</span>
+      <br>
+    </p>
+    
+  </div>
+</div>
+    </div>
+    <div id='footer'>
+  October 26, 15 15:33:30 by
+  <a href='https://github.com/coffeedoc/codo' title='CoffeeScript API documentation generator'>
+    Codo
+  </a>
+  2.0.11
+  &#10034;
+  Press H to see the keyboard shortcuts
+  &#10034;
+  <a href='http://twitter.com/netzpirat' target='_parent'>@netzpirat</a>
+  &#10034;
+  <a href='http://twitter.com/_inossidabile' target='_parent'>@_inossidabile</a>
+</div>
+<iframe id='search_frame'></iframe>
+<div id='fuzzySearch'>
+  <input type='text'>
+  <ol></ol>
+</div>
+<div id='help'>
+  <p>
+    Quickly fuzzy find classes, mixins, methods, file:
+  </p>
+  <ul>
+    <li>
+      <span>T</span>
+      Open fuzzy finder dialog
+    </li>
+  </ul>
+  <p>
+    Control the navigation frame:
+  </p>
+  <ul>
+    <li>
+      <span>L</span>
+      Toggle list view
+    </li>
+    <li>
+      <span>C</span>
+      Show class list
+    </li>
+    <li>
+      <span>I</span>
+      Show mixin list
+    </li>
+    <li>
+      <span>F</span>
+      Show file list
+    </li>
+    <li>
+      <span>M</span>
+      Show method list
+    </li>
+    <li>
+      <span>E</span>
+      Show extras list
+    </li>
+  </ul>
+  <p>
+    You can focus and blur the search input:
+  </p>
+  <ul>
+    <li>
+      <span>S</span>
+      Focus search input
+    </li>
+    <li>
+      <span>Esc</span>
+      Blur search input
+    </li>
+  </ul>
+</div>
+  </body>
+</html>

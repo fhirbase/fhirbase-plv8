@@ -7,6 +7,9 @@ meta_db = require('./meta_pg')
 index = require('./meta_index')
 utils = require('../core/utils')
 sql = require('../honey')
+lang = require('../lang')
+
+exports.plv8_schema = "fhir"
 # cases
 
 # Patient.active
@@ -51,16 +54,27 @@ mk_join = (base, next_alias, chained)->
   res[(res.length - 1)][1] = sql.and(last_join_cond, last_cond)
   res
 
-_search_sql = (plv8, idx, query)->
+
+# return function to alias tables 
+# with incapsulated counter
+mk_alias = ()->
   tbl_cnt = 0 
-  next_alias = ()->
+  ()->
     tbl_cnt += 1
     "tbl#{tbl_cnt}"
 
+# This function get plv8, index object and query
+# and build honey sql
+_search_sql = (plv8, idx, query)->
+
+  next_alias = mk_alias()
+
   alias = next_alias()
+
   expr = parser.parse(query.resourceType, query.queryString)
   expr = expand.expand(idx, expr)
   expr = norm.normalize(expr)
+
   expr.where = cond.eval(alias, expr.where)
 
   hsql =
@@ -69,21 +83,17 @@ _search_sql = (plv8, idx, query)->
     where: expr.where
 
   if expr.joins
-    joins = []
-    expr.joins.forEach (chained)->
-      joins = joins.concat(mk_join(alias, next_alias, chained))
+    hsql.join = lang.mapcat expr.joins, (x)->
+      mk_join(alias, next_alias, x)
 
-    hsql.join = joins
   hsql
 
 exports._search_sql = _search_sql
 
-search_sql = (plv8, query)->
-  idx_db = index.new(plv8, meta_db.getter)
-  sql(_search_sql(plv8, idx_db, query))
 
-exports.search_sql = search_sql
-
+# transform honey sql to count sql
+# stripping limit, offset, order
+# and replace select
 countize_query = (q)->
   delete q.limit
   delete q.offset
@@ -91,11 +101,21 @@ countize_query = (q)->
   q.select = [':count(*) as count']
   q
 
-to_entry = (row)->
-  resource: JSON.parse(row.resource)
+to_entry = (row)-> resource: JSON.parse(row.resource)
 
+ensure_index = (plv8)->
+  utils.memoize plv8.cache, 'fhirbaseIdx', -> index.new(plv8, meta_db.getter)
+
+
+###
+ search FHIR  resources
+
+ @param query [Object]
+ * query.resourceType
+ * query.queryString - original query string for search
+###
 exports.search = (plv8, query)->
-  idx_db = index.new(plv8, meta_db.getter)
+  idx_db = ensure_index(plv8)
   honey = _search_sql(plv8, idx_db, query)
   resources = utils.exec(plv8, honey)
   if !honey.limit or (honey.limit && resources.length < honey.limit)
@@ -106,3 +126,17 @@ exports.search = (plv8, query)->
   type: 'searchset'
   total: count
   entry: resources.map(to_entry)
+
+exports.search.plv8_signature = ['json', 'json']
+
+
+search_sql = (plv8, query)->
+  idx_db = ensure_index(plv8)
+  sql(_search_sql(plv8, idx_db, query))
+
+# search function
+# accept same params as search but return generated sql
+# * query.resourceType
+# * query.queryString - original query string for search
+exports.search_sql = search_sql
+exports.search_sql.plv8_signature = ['json', 'json']

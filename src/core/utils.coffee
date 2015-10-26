@@ -11,3 +11,9 @@ exports.exec = (plv8, hql)->
   q = sql(hql)
   console.log(q) if plv8.debug
   plv8.execute.call(plv8, q[0], q[1..-1])
+
+exports.memoize = (cache, key, cb)->
+  return cache[key] if cache && cache[key]
+  res = cb()
+  cache[key] = res if cache
+  res

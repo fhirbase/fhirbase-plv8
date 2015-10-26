@@ -218,6 +218,10 @@ CREATE_CLAUSES =
     res.push("CREATE EXTENSION")
     res.push("IF NOT EXISTS") if expr.safe
     res.push(name(expr.name))
+  schema: (res, expr)->
+    res.push("CREATE SCHEMA")
+    res.push("IF NOT EXISTS") if expr.safe
+    res.push(name(expr.name))
   table: (res, expr)->
     res.push("CREATE TABLE")
     res.push("IF NOT EXISTS") if expr.safe
@@ -295,9 +299,7 @@ heval = (res, expr)->
   tp(res, expr)
   res.to_sql()
 
-sql = (expr)->
-  res = mk_result()
-  heval(res, expr)
+sql = (expr)-> heval(mk_result(), expr)
 
 sql.key = (s)-> ":#{s}"
 sql.symbol = (s)-> "$#{s}"
