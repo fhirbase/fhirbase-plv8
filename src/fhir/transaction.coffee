@@ -1,5 +1,8 @@
 crud = require('../core/crud.coffee')
 
+exports.translate = (bundle)->
+  []
+
 exports.transaction = (plv8, bundle)->
   for entry in bundle.entry
     if entry.request.method == 'POST'

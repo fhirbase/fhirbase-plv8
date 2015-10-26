@@ -1,0 +1,27 @@
+{
+  "resourceType": "Bundle",
+  "id": "bundle-transaction",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {"id": "idPOST"},
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "resource": {"id": "idPUT"}
+      "request": {
+        "method": "PUT",
+        "url": "Patient/123"
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "url": "Patient/234"
+      }
+    }
+  ]
+}
