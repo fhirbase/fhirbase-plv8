@@ -19,96 +19,72 @@
       Index
     </a>
     &raquo;
+    <span class='title'>plpl</span>
+    &raquo;
     <span class='title'>src</span>
     &raquo;
-    <span class='title'>core</span>
-    &raquo;
-    <span class='title'>crud.coffee</span>
+    <span class='title'>loader.coffee</span>
   </div>
 </div>
     <div id='content'>
       <h1>
         File:
-        crud.coffee
+        loader.coffee
       </h1>
       <table class='box'>
         <tr>
           <td>Defined in:</td>
-          <td>src&#47;core</td>
+          <td>plpl&#47;src</td>
         </tr>
       </table>
       <h2>Variables Summary</h2>
       <dl class='constants'>
-  <dt id='exports.plv8_schema-variable'>
-    exports.plv8_schema
+  <dt id='currentModule-variable'>
+    currentModule
     =
   </dt>
   <dd>
-    <pre><code class='coffeescript'>&quot;core&quot;</code></pre>
+    <pre><code class='coffeescript'>null</code></pre>
     
   </dd>
-  <dt id='exports.create-variable'>
-    exports.create
+  <dt id='modules_idx-variable'>
+    modules_idx
     =
   </dt>
   <dd>
-    <pre><code class='coffeescript'>create</code></pre>
+    <pre><code class='coffeescript'>{}</code></pre>
     
   </dd>
-  <dt id='exports.create.plv8_signature-variable'>
-    exports.create.plv8_signature
+  <dt id='plv8_exports-variable'>
+    plv8_exports
     =
   </dt>
   <dd>
-    <pre><code class='coffeescript'>[&#39;json&#39;, &#39;json&#39;]</code></pre>
+    <pre><code class='coffeescript'>{}</code></pre>
     
   </dd>
-  <dt id='exports.read-variable'>
-    exports.read
+  <dt id='oldrequire-variable'>
+    oldrequire
     =
   </dt>
   <dd>
-    <pre><code class='coffeescript'>read</code></pre>
+    <pre><code class='coffeescript'>Module</code></pre>
     
   </dd>
-  <dt id='exports.read.plv8_signature-variable'>
-    exports.read.plv8_signature
+  <dt id='oldcompile-variable'>
+    oldcompile
     =
   </dt>
   <dd>
-    <pre><code class='coffeescript'>[&#39;json&#39;, &#39;json&#39;]</code></pre>
+    <pre><code class='coffeescript'>Module</code></pre>
     
   </dd>
-  <dt id='exports.vread.plv8_signature-variable'>
-    exports.vread.plv8_signature
+  <dt id='exports.scan-variable'>
+    exports.scan
     =
   </dt>
   <dd>
-    <pre><code class='coffeescript'>[&#39;json&#39;, &#39;json&#39;]</code></pre>
-    
-  </dd>
-  <dt id='exports.update-variable'>
-    exports.update
-    =
-  </dt>
-  <dd>
-    <pre><code class='coffeescript'>update</code></pre>
-    
-  </dd>
-  <dt id='exports.update.plv8_signature-variable'>
-    exports.update.plv8_signature
-    =
-  </dt>
-  <dd>
-    <pre><code class='coffeescript'>[&#39;json&#39;, &#39;json&#39;]</code></pre>
-    
-  </dd>
-  <dt id='exports.delete.plv8_signature-variable'>
-    exports.delete.plv8_signature
-    =
-  </dt>
-  <dd>
-    <pre><code class='coffeescript'>[&#39;json&#39;, &#39;json&#39;]</code></pre>
+    <pre><code class='coffeescript'>scan</code></pre>
     
   </dd>
 </dl>
@@ -116,10 +92,10 @@
       <ul class='summary'>
   <li>
     <span class='signature'>
-      <a href='#validate_create_resource-'>
+      <a href='#Module-'>
         ~
 (void)
-<b>validate_create_resource</b><span>(resource)</span>
+<b>Module</b><span>(fl)</span>
       </a>
     </span>
     <span class='desc'>
@@ -127,10 +103,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#assert-'>
+      <a href='#module_code-'>
         ~
 (void)
-<b>assert</b><span>(pred, msg)</span>
+<b>module_code</b><span>(mod, code)</span>
       </a>
     </span>
     <span class='desc'>
@@ -138,10 +114,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#ensure_meta-'>
+      <a href='#parse_params-'>
         ~
 (void)
-<b>ensure_meta</b><span>(resource, props)</span>
+<b>parse_params</b><span>(src)</span>
       </a>
     </span>
     <span class='desc'>
@@ -149,10 +125,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#ensure_table-'>
+      <a href='#zip-'>
         ~
 (void)
-<b>ensure_table</b><span>(plv8, resourceType)</span>
+<b>zip</b><span>(a, b)</span>
       </a>
     </span>
     <span class='desc'>
@@ -160,10 +136,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#create-'>
+      <a href='#Module-'>
         ~
 (void)
-<b>create</b><span>(plv8, resource)</span>
+<b>Module</b><span>(answer, filename)</span>
       </a>
     </span>
     <span class='desc'>
@@ -171,10 +147,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#read-'>
+      <a href='#_isAbsolute-'>
         ~
 (void)
-<b>read</b><span>(plv8, query)</span>
+<b>_isAbsolute</b><span>(pth)</span>
       </a>
     </span>
     <span class='desc'>
@@ -182,10 +158,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#vread-'>
+      <a href='#generate_fn-'>
         ~
 (void)
-<b>vread</b><span>(plv8, query)</span>
+<b>generate_fn</b><span>(mod, name, info)</span>
       </a>
     </span>
     <span class='desc'>
@@ -193,43 +169,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#update-'>
+      <a href='#scan-'>
         ~
 (void)
-<b>update</b><span>(plv8, resource)</span>
-      </a>
-    </span>
-    <span class='desc'>
-    </span>
-  </li>
-  <li>
-    <span class='signature'>
-      <a href='#delete-'>
-        ~
-(void)
-<b>delete</b><span>(plv8, resource)</span>
-      </a>
-    </span>
-    <span class='desc'>
-    </span>
-  </li>
-  <li>
-    <span class='signature'>
-      <a href='#history-'>
-        ~
-(void)
-<b>history</b><span>(plv8, query)</span>
-      </a>
-    </span>
-    <span class='desc'>
-    </span>
-  </li>
-  <li>
-    <span class='signature'>
-      <a href='#load-'>
-        ~
-(void)
-<b>load</b><span>(plv8, bundle)</span>
+<b>scan</b><span>(pth)</span>
       </a>
     </span>
     <span class='desc'>
@@ -239,100 +182,73 @@
       <h2>Method Details</h2>
       <div class='methods'>
   <div class='method_details'>
-    <p class='signature' id='validate_create_resource-'>
+    <p class='signature' id='Module-'>
       ~
 (void)
-<b>validate_create_resource</b><span>(resource)</span>
+<b>Module</b><span>(fl)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='assert-'>
+    <p class='signature' id='module_code-'>
       ~
 (void)
-<b>assert</b><span>(pred, msg)</span>
+<b>module_code</b><span>(mod, code)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='ensure_meta-'>
+    <p class='signature' id='parse_params-'>
       ~
 (void)
-<b>ensure_meta</b><span>(resource, props)</span>
+<b>parse_params</b><span>(src)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='ensure_table-'>
+    <p class='signature' id='zip-'>
       ~
 (void)
-<b>ensure_table</b><span>(plv8, resourceType)</span>
+<b>zip</b><span>(a, b)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='create-'>
+    <p class='signature' id='Module-'>
       ~
 (void)
-<b>create</b><span>(plv8, resource)</span>
+<b>Module</b><span>(answer, filename)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='read-'>
+    <p class='signature' id='_isAbsolute-'>
       ~
 (void)
-<b>read</b><span>(plv8, query)</span>
+<b>_isAbsolute</b><span>(pth)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='vread-'>
+    <p class='signature' id='generate_fn-'>
       ~
 (void)
-<b>vread</b><span>(plv8, query)</span>
+<b>generate_fn</b><span>(mod, name, info)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='update-'>
+    <p class='signature' id='scan-'>
       ~
 (void)
-<b>update</b><span>(plv8, resource)</span>
-      <br>
-    </p>
-    
-  </div>
-  <div class='method_details'>
-    <p class='signature' id='delete-'>
-      ~
-(void)
-<b>delete</b><span>(plv8, resource)</span>
-      <br>
-    </p>
-    
-  </div>
-  <div class='method_details'>
-    <p class='signature' id='history-'>
-      ~
-(void)
-<b>history</b><span>(plv8, query)</span>
-      <br>
-    </p>
-    
-  </div>
-  <div class='method_details'>
-    <p class='signature' id='load-'>
-      ~
-(void)
-<b>load</b><span>(plv8, bundle)</span>
+<b>scan</b><span>(pth)</span>
       <br>
     </p>
     
@@ -340,7 +256,7 @@
 </div>
     </div>
     <div id='footer'>
-  October 26, 15 15:55:32 by
+  October 26, 15 15:45:58 by
   <a href='https://github.com/coffeedoc/codo' title='CoffeeScript API documentation generator'>
     Codo
   </a>

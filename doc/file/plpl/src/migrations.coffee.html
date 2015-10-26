@@ -19,96 +19,56 @@
       Index
     </a>
     &raquo;
+    <span class='title'>plpl</span>
+    &raquo;
     <span class='title'>src</span>
     &raquo;
-    <span class='title'>core</span>
-    &raquo;
-    <span class='title'>crud.coffee</span>
+    <span class='title'>migrations.coffee</span>
   </div>
 </div>
     <div id='content'>
       <h1>
         File:
-        crud.coffee
+        migrations.coffee
       </h1>
       <table class='box'>
         <tr>
           <td>Defined in:</td>
-          <td>src&#47;core</td>
+          <td>plpl&#47;src</td>
         </tr>
       </table>
       <h2>Variables Summary</h2>
       <dl class='constants'>
-  <dt id='exports.plv8_schema-variable'>
-    exports.plv8_schema
+  <dt id='MIGRATION_REG-variable'>
+    MIGRATION_REG
     =
   </dt>
   <dd>
-    <pre><code class='coffeescript'>&quot;core&quot;</code></pre>
+    <pre><code class='coffeescript'>&#47;^\d.*__.*&#47;</code></pre>
     
   </dd>
-  <dt id='exports.create-variable'>
-    exports.create
+  <dt id='module.exports.up-variable'>
+    module.exports.up
     =
   </dt>
   <dd>
-    <pre><code class='coffeescript'>create</code></pre>
+    <pre><code class='coffeescript'>up</code></pre>
     
   </dd>
-  <dt id='exports.create.plv8_signature-variable'>
-    exports.create.plv8_signature
+  <dt id='module.exports.down-variable'>
+    module.exports.down
     =
   </dt>
   <dd>
-    <pre><code class='coffeescript'>[&#39;json&#39;, &#39;json&#39;]</code></pre>
+    <pre><code class='coffeescript'>down</code></pre>
     
   </dd>
-  <dt id='exports.read-variable'>
-    exports.read
+  <dt id='module.exports.generate-variable'>
+    module.exports.generate
     =
   </dt>
   <dd>
-    <pre><code class='coffeescript'>read</code></pre>
-    
-  </dd>
-  <dt id='exports.read.plv8_signature-variable'>
-    exports.read.plv8_signature
-    =
-  </dt>
-  <dd>
-    <pre><code class='coffeescript'>[&#39;json&#39;, &#39;json&#39;]</code></pre>
-    
-  </dd>
-  <dt id='exports.vread.plv8_signature-variable'>
-    exports.vread.plv8_signature
-    =
-  </dt>
-  <dd>
-    <pre><code class='coffeescript'>[&#39;json&#39;, &#39;json&#39;]</code></pre>
-    
-  </dd>
-  <dt id='exports.update-variable'>
-    exports.update
-    =
-  </dt>
-  <dd>
-    <pre><code class='coffeescript'>update</code></pre>
-    
-  </dd>
-  <dt id='exports.update.plv8_signature-variable'>
-    exports.update.plv8_signature
-    =
-  </dt>
-  <dd>
-    <pre><code class='coffeescript'>[&#39;json&#39;, &#39;json&#39;]</code></pre>
-    
-  </dd>
-  <dt id='exports.delete.plv8_signature-variable'>
-    exports.delete.plv8_signature
-    =
-  </dt>
-  <dd>
-    <pre><code class='coffeescript'>[&#39;json&#39;, &#39;json&#39;]</code></pre>
+    <pre><code class='coffeescript'>generate</code></pre>
     
   </dd>
 </dl>
@@ -116,10 +76,10 @@
       <ul class='summary'>
   <li>
     <span class='signature'>
-      <a href='#validate_create_resource-'>
+      <a href='#parse_name-'>
         ~
 (void)
-<b>validate_create_resource</b><span>(resource)</span>
+<b>parse_name</b><span>(x)</span>
       </a>
     </span>
     <span class='desc'>
@@ -127,10 +87,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#assert-'>
+      <a href='#ensure_migrations_table-'>
         ~
 (void)
-<b>assert</b><span>(pred, msg)</span>
+<b>ensure_migrations_table</b><span>()</span>
       </a>
     </span>
     <span class='desc'>
@@ -138,10 +98,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#ensure_meta-'>
+      <a href='#past_migrations-'>
         ~
 (void)
-<b>ensure_meta</b><span>(resource, props)</span>
+<b>past_migrations</b><span>()</span>
       </a>
     </span>
     <span class='desc'>
@@ -149,10 +109,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#ensure_table-'>
+      <a href='#existing_migrations-'>
         ~
 (void)
-<b>ensure_table</b><span>(plv8, resourceType)</span>
+<b>existing_migrations</b><span>(dir)</span>
       </a>
     </span>
     <span class='desc'>
@@ -160,10 +120,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#create-'>
+      <a href='#save_migration-'>
         ~
 (void)
-<b>create</b><span>(plv8, resource)</span>
+<b>save_migration</b><span>(m)</span>
       </a>
     </span>
     <span class='desc'>
@@ -171,10 +131,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#read-'>
+      <a href='#rm_migration-'>
         ~
 (void)
-<b>read</b><span>(plv8, query)</span>
+<b>rm_migration</b><span>(m)</span>
       </a>
     </span>
     <span class='desc'>
@@ -182,10 +142,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#vread-'>
+      <a href='#clear_migrations-'>
         ~
 (void)
-<b>vread</b><span>(plv8, query)</span>
+<b>clear_migrations</b><span>()</span>
       </a>
     </span>
     <span class='desc'>
@@ -193,10 +153,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#update-'>
+      <a href='#migrate_up-'>
         ~
 (void)
-<b>update</b><span>(plv8, resource)</span>
+<b>migrate_up</b><span>(m)</span>
       </a>
     </span>
     <span class='desc'>
@@ -204,10 +164,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#delete-'>
+      <a href='#migrate_down-'>
         ~
 (void)
-<b>delete</b><span>(plv8, resource)</span>
+<b>migrate_down</b><span>(m)</span>
       </a>
     </span>
     <span class='desc'>
@@ -215,10 +175,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#history-'>
+      <a href='#pending-'>
         ~
 (void)
-<b>history</b><span>(plv8, query)</span>
+<b>pending</b><span>(dir)</span>
       </a>
     </span>
     <span class='desc'>
@@ -226,10 +186,54 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#load-'>
+      <a href='#ensure_migrations_dir-'>
         ~
 (void)
-<b>load</b><span>(plv8, bundle)</span>
+<b>ensure_migrations_dir</b><span>(dir)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#up-'>
+        ~
+(void)
+<b>up</b><span>(dir)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#down-'>
+        ~
+(void)
+<b>down</b><span>(dir)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#spit-'>
+        ~
+(void)
+<b>spit</b><span>(pth, cnt)</span>
+      </a>
+    </span>
+    <span class='desc'>
+    </span>
+  </li>
+  <li>
+    <span class='signature'>
+      <a href='#generate-'>
+        ~
+(void)
+<b>generate</b><span>(name, dir)</span>
       </a>
     </span>
     <span class='desc'>
@@ -239,100 +243,136 @@
       <h2>Method Details</h2>
       <div class='methods'>
   <div class='method_details'>
-    <p class='signature' id='validate_create_resource-'>
+    <p class='signature' id='parse_name-'>
       ~
 (void)
-<b>validate_create_resource</b><span>(resource)</span>
+<b>parse_name</b><span>(x)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='assert-'>
+    <p class='signature' id='ensure_migrations_table-'>
       ~
 (void)
-<b>assert</b><span>(pred, msg)</span>
+<b>ensure_migrations_table</b><span>()</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='ensure_meta-'>
+    <p class='signature' id='past_migrations-'>
       ~
 (void)
-<b>ensure_meta</b><span>(resource, props)</span>
+<b>past_migrations</b><span>()</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='ensure_table-'>
+    <p class='signature' id='existing_migrations-'>
       ~
 (void)
-<b>ensure_table</b><span>(plv8, resourceType)</span>
+<b>existing_migrations</b><span>(dir)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='create-'>
+    <p class='signature' id='save_migration-'>
       ~
 (void)
-<b>create</b><span>(plv8, resource)</span>
+<b>save_migration</b><span>(m)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='read-'>
+    <p class='signature' id='rm_migration-'>
       ~
 (void)
-<b>read</b><span>(plv8, query)</span>
+<b>rm_migration</b><span>(m)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='vread-'>
+    <p class='signature' id='clear_migrations-'>
       ~
 (void)
-<b>vread</b><span>(plv8, query)</span>
+<b>clear_migrations</b><span>()</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='update-'>
+    <p class='signature' id='migrate_up-'>
       ~
 (void)
-<b>update</b><span>(plv8, resource)</span>
+<b>migrate_up</b><span>(m)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='delete-'>
+    <p class='signature' id='migrate_down-'>
       ~
 (void)
-<b>delete</b><span>(plv8, resource)</span>
+<b>migrate_down</b><span>(m)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='history-'>
+    <p class='signature' id='pending-'>
       ~
 (void)
-<b>history</b><span>(plv8, query)</span>
+<b>pending</b><span>(dir)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='load-'>
+    <p class='signature' id='ensure_migrations_dir-'>
       ~
 (void)
-<b>load</b><span>(plv8, bundle)</span>
+<b>ensure_migrations_dir</b><span>(dir)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='up-'>
+      ~
+(void)
+<b>up</b><span>(dir)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='down-'>
+      ~
+(void)
+<b>down</b><span>(dir)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='spit-'>
+      ~
+(void)
+<b>spit</b><span>(pth, cnt)</span>
+      <br>
+    </p>
+    
+  </div>
+  <div class='method_details'>
+    <p class='signature' id='generate-'>
+      ~
+(void)
+<b>generate</b><span>(name, dir)</span>
       <br>
     </p>
     
@@ -340,7 +380,7 @@
 </div>
     </div>
     <div id='footer'>
-  October 26, 15 15:55:32 by
+  October 26, 15 15:45:58 by
   <a href='https://github.com/coffeedoc/codo' title='CoffeeScript API documentation generator'>
     Codo
   </a>

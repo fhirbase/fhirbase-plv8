@@ -19,77 +19,75 @@
       Index
     </a>
     &raquo;
+    <span class='title'>plpl</span>
+    &raquo;
     <span class='title'>src</span>
     &raquo;
-    <span class='title'>fhir</span>
-    &raquo;
-    <span class='title'>query_string.coffee</span>
+    <span class='title'>cli.coffee</span>
   </div>
 </div>
     <div id='content'>
       <h1>
         File:
-        query_string.coffee
+        cli.coffee
       </h1>
       <table class='box'>
         <tr>
           <td>Defined in:</td>
-          <td>src&#47;fhir</td>
+          <td>plpl&#47;src</td>
         </tr>
       </table>
       <h2>Variables Summary</h2>
       <dl class='constants'>
-  <dt id='OPERATORS_REG-variable'>
-    OPERATORS_REG
+  <dt id='process.env.DATABASE_URL-variable'>
+    process.env.DATABASE_URL
     =
   </dt>
   <dd>
-    <pre><code class='coffeescript'>&#47;^(eq|ne|gt|lt|ge|le|sa|eb|ap)[0-9]&#47;</code></pre>
+    <pre><code class='coffeescript'>config</code></pre>
     
   </dd>
-  <dt id='VALUE_SEP_REG-variable'>
-    VALUE_SEP_REG
-    =
-  </dt>
-  <dd>
-    <pre><code class='coffeescript'>&#47;\||\$&#47;</code></pre>
-    
-  </dd>
-  <dt id='special_parameters-variable'>
-    special_parameters
-    =
-  </dt>
-  <dd>
-    <pre><code class='coffeescript'>[&#39;_id&#39;, &#39;_lastUpdated&#39;, &#39;_tag&#39;, &#39;_profile&#39;, &#39;_security&#39;, &#39;_text&#39;, &#39;_content&#39;, &#39;_list&#39;]</code></pre>
-    
-  </dd>
-  <dt id='specials-variable'>
-    specials
+  <dt id='commands-variable'>
+    commands
     =
   </dt>
   <dd>
     <pre><code class='coffeescript'>{
-  limit: function(query, left, right) {
-    query.limit = parseInt(right);
-    return query;
-  },
-  count: function(query, left, right) {
-    query.count = parseInt(right);
-    return query;
-  },
-  page: function(query, left, right) {
-    query.page = parseInt(right);
-    return query;
-  },
-  sort: function(query, left, right) {
-    var key;
-    key = right;
-    if (left) {
-      key = key + &quot;:&quot; + left;
+  compile: {
+    &quot;default&quot;: {
+      fn: compile,
+      args: &#39;&#39;,
+      desc: &#39;return sql string&#39;
     }
-    query.sort || (query.sort = []);
-    query.sort.push([&#39;$param&#39;, key, &#39;&#39;]);
-    return query;
+  },
+  reload: {
+    &quot;default&quot;: {
+      fn: reload,
+      args: &#39;&#39;,
+      desc: &#39;reload procedures&#39;
+    },
+    watch: {
+      fn: reload,
+      args: &#39;&#39;,
+      desc: &#39;watch src directory and update procs&#39;
+    }
+  },
+  migrate: {
+    &quot;default&quot;: {
+      fn: migrate,
+      args: &#39;&#39;,
+      desc: &#39;migrate up&#39;
+    },
+    down: {
+      fn: unmigrate,
+      args: &#39;&#39;,
+      desc: &#39;migrate down&#39;
+    },
+    &quot;new&quot;: {
+      fn: generate_migration,
+      args: &#39;&lt;migration_name&gt;&#39;,
+      desc: &#39;generate new migration&#39;
+    }
   }
 }</code></pre>
     
@@ -99,22 +97,10 @@
       <ul class='summary'>
   <li>
     <span class='signature'>
-      <a href='#parse_param_left-'>
+      <a href='#migrate-'>
         ~
 (void)
-<b>parse_param_left</b><span>(x)</span>
-      </a>
-    </span>
-    <span class='desc'>
-      parse key 
-    </span>
-  </li>
-  <li>
-    <span class='signature'>
-      <a href='#parse_chained_left-'>
-        ~
-(void)
-<b>parse_chained_left</b><span>(x)</span>
+<b>migrate</b><span>(args)</span>
       </a>
     </span>
     <span class='desc'>
@@ -122,10 +108,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#parse_right-'>
+      <a href='#unmigrate-'>
         ~
 (void)
-<b>parse_right</b><span>(x)</span>
+<b>unmigrate</b><span>(args)</span>
       </a>
     </span>
     <span class='desc'>
@@ -133,10 +119,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#parse_one_value-'>
+      <a href='#generate_migration-'>
         ~
 (void)
-<b>parse_one_value</b><span>(x)</span>
+<b>generate_migration</b><span>(args)</span>
       </a>
     </span>
     <span class='desc'>
@@ -144,10 +130,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#is_special_param-'>
+      <a href='#reload-'>
         ~
 (void)
-<b>is_special_param</b><span>(k)</span>
+<b>reload</b><span>(args)</span>
       </a>
     </span>
     <span class='desc'>
@@ -155,10 +141,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#grouping-'>
+      <a href='#compile-'>
         ~
 (void)
-<b>grouping</b><span>(acc, expr)</span>
+<b>compile</b><span>(args)</span>
       </a>
     </span>
     <span class='desc'>
@@ -166,10 +152,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#typed-'>
+      <a href='#print_usage-'>
         ~
 (void)
-<b>typed</b><span>({l, r})</span>
+<b>print_usage</b><span>(commands)</span>
       </a>
     </span>
     <span class='desc'>
@@ -177,10 +163,10 @@
   </li>
   <li>
     <span class='signature'>
-      <a href='#parse-'>
+      <a href='#run-'>
         ~
 (void)
-<b>parse</b><span>(resourceType, str)</span>
+<b>run</b><span>()</span>
       </a>
     </span>
     <span class='desc'>
@@ -190,77 +176,64 @@
       <h2>Method Details</h2>
       <div class='methods'>
   <div class='method_details'>
-    <p class='signature' id='parse_param_left-'>
+    <p class='signature' id='migrate-'>
       ~
 (void)
-<b>parse_param_left</b><span>(x)</span>
-      <br>
-    </p>
-    <div class='docstring'>
-  <p>parse key</p>
-</div>
-<div class='tags'>
-</div>
-  </div>
-  <div class='method_details'>
-    <p class='signature' id='parse_chained_left-'>
-      ~
-(void)
-<b>parse_chained_left</b><span>(x)</span>
+<b>migrate</b><span>(args)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='parse_right-'>
+    <p class='signature' id='unmigrate-'>
       ~
 (void)
-<b>parse_right</b><span>(x)</span>
+<b>unmigrate</b><span>(args)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='parse_one_value-'>
+    <p class='signature' id='generate_migration-'>
       ~
 (void)
-<b>parse_one_value</b><span>(x)</span>
+<b>generate_migration</b><span>(args)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='is_special_param-'>
+    <p class='signature' id='reload-'>
       ~
 (void)
-<b>is_special_param</b><span>(k)</span>
+<b>reload</b><span>(args)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='grouping-'>
+    <p class='signature' id='compile-'>
       ~
 (void)
-<b>grouping</b><span>(acc, expr)</span>
+<b>compile</b><span>(args)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='typed-'>
+    <p class='signature' id='print_usage-'>
       ~
 (void)
-<b>typed</b><span>({l, r})</span>
+<b>print_usage</b><span>(commands)</span>
       <br>
     </p>
     
   </div>
   <div class='method_details'>
-    <p class='signature' id='parse-'>
+    <p class='signature' id='run-'>
       ~
 (void)
-<b>parse</b><span>(resourceType, str)</span>
+<b>run</b><span>()</span>
       <br>
     </p>
     
@@ -268,7 +241,7 @@
 </div>
     </div>
     <div id='footer'>
-  October 26, 15 15:55:32 by
+  October 26, 15 15:45:58 by
   <a href='https://github.com/coffeedoc/codo' title='CoffeeScript API documentation generator'>
     Codo
   </a>
