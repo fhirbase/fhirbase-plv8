@@ -4,18 +4,12 @@
                  :operator "co"
                  :array true}
                 {:value "nicola"})
-  :result [":ilike" {:call "fhir.extract_as_string"
-                     :args [":resource::json" "[\"name\"]" "HumanName"]
-                     :cast "text"}
-           "%nicola%"]
-  #_(ilike
-           (cast
-             (call "fhir.extract_as_string_array"
-                  (cast (id "resource") "json")
-                  (cast ["name"] "json")
-                  "HumanName")
-             "text")
-           "%nicola%")}
+  :result (ilike (cast
+                  (fhir.extract_as_string_array
+                   (cast (q :table :resource) :json)
+                   (json ["name"]) "HumanName")
+                  "text")
+                 "%nicola%")}
 
  {:query (param {:path ["active"]
                  :elementType "boolean"
@@ -25,12 +19,12 @@
                 {:value "true"})
   :result (&&
            (cast
-            (call "fhir.extract_as_token"
-                  (cast (id "resource") "json")
-                  (cast ["active"] "json")
-                  "boolean")
-            "text[]")
-           (array "text[]" ["true"]))}
+            (fhir.extract_as_token
+             (cast (q :table :resource) :json)
+             (json ["active"])
+             "boolean")
+            ":text[]")
+           (cast  (array "true") ":text[]"))}
 
  {:query (param {:path ["birthDate"]
                  :elementType "date"
@@ -40,10 +34,10 @@
                 {:value "1980"})
   :result (&&
            (cast
-            (call "fhir.extract_as_daterange"
-                  (cast (id "resource") "json")
-                  (cast ["birthDate"] "json")
-                  "date")
+            (fhir.extract_as_daterange
+             (cast (q :table :resource) :json)
+             (json ["birthDate"])
+             "date")
             "tstzrange")
            (tstzrange "1980-01-01" "infinity"))}
 
@@ -55,10 +49,10 @@
                 {:value "1980"})
   :result (&&
            (cast
-            (call "fhir.extract_as_daterange"
-                  (cast (id "resource") "json")
-                  (cast ["birthDate"] "json")
-                  "date")
+            (fhir.extract_as_daterange
+             (cast (q :table :resource) :json)
+             (json ["birthDate"])
+             "date")
             "tstzrange")
            (tstzrange "-infinity" "1981-01-01"))}
 
@@ -70,9 +64,9 @@
                 {:value "1980"})
   :result (&&
            (cast
-            (call "fhir.extract_as_daterange"
-                  (cast (id "resource") "json")
-                  (cast ["birthDate"] "json")
-                  "date")
+            (fhir.extract_as_daterange
+             (cast (q :table :resource) :json)
+             (json ["birthDate"])
+             "date")
             "tstzrange")
            (tstzrange "1980-01-01" "1981-01-01"))}]

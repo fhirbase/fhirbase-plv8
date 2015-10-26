@@ -19,6 +19,8 @@ get_in = (obj, path)->
 
 its = ([res,q] for res, q of specs.queries)
 
+# plv8.debug = true
+
 describe "Seatch integration test", ()->
   before ->
     plv8.execute("SET plv8.start_proc = 'plv8_init'")

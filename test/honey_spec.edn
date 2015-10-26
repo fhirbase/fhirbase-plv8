@@ -5,8 +5,14 @@
   ["SELECT id FROM patient"]]
 
  [{:select [(raw "*")]
-   :from (alias (q :schema :patient) "pt")}
+   :from   (alias (q :schema :patient) "pt")}
   ["SELECT * FROM schema.patient pt"]]
+
+ [{:select (array 1 2 3)}
+  ["SELECT ARRAY[ $1 , $2 , $3 ]" 1 2 3]]
+
+ [{:select :* :from :users :where (in :id [1 2 3])}
+  ["SELECT * FROM users WHERE id IN ( $1 , $2 , $3 )" 1 2 3]]
 
  [{:select (raw "count(*)")
    :from (q :schema :patient)}
@@ -79,7 +85,11 @@
 
  [{:insert :users
    :values {:obj (json {:a 1})}}
-  ["INSERT INTO users ( obj ) VALUES ( to_json( $1 ) )" "{\"a\":1}"]]
+  ["INSERT INTO users ( obj ) VALUES ( ( $1 )::json )" "{\"a\":1}"]]
+
+ [{:insert :users
+   :values {:obj (jsonb {:a 1})}}
+  ["INSERT INTO users ( obj ) VALUES ( ( $1 )::jsonb )" "{\"a\":1}"]]
 
  [{:update :users
    :values {:name "nicola" :updated :CURRENT_TIMESTAMP}
@@ -110,11 +120,12 @@
  [{:drop :extension :name  :plv8 :safe true}
   ["DROP EXTENSION IF EXISTS plv8"]]
 
+
  [{:alter :table
    :name :users
-   :action [(add_column :emal :text)
-            (drop_column :name :CASCADE)
-            (set_column_type :content :jsonb (to_jsonb (cast :content :text)))]}
+   :action [[:ADD :PRIMARY :KEY :id]
+            [:ALTER :COLUMN :created_at :SET :NOT :NULL]
+            [:ALTER :COLUMN :resource_type :SET :DEFAULT "User"]]}
 
-  ["TODO"]]
+  ["ALTER TABLE users ADD PRIMARY KEY id , ALTER COLUMN created_at SET NOT NULL , ALTER COLUMN resource_type SET DEFAULT $1", "User"]]
  ]

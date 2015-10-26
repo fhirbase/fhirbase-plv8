@@ -20,10 +20,9 @@ table_exists = (plv8, table_name)->
       table_name = table_name
 
     result = utils.exec plv8,
-      select: ['^true']
-      from: ['information_schema.tables']
-      where: [':and', [':=', ':table_name', table_name],
-                      [':=', ':table_schema', schema_name]]
+      select: [':true']
+      from: ['$q', 'information_schema', 'tables']
+      where: {table_name: table_name, table_schema: schema_name}
     result.length > 0
 
 exports.table_exists = table_exists

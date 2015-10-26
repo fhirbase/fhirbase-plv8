@@ -1,6 +1,7 @@
 namings = require('./namings')
 pg_meta = require('./pg_meta')
 utils = require('./utils')
+sql = require('../honey')
 bundle = require('./bundle')
 
 exports.plv8_schema = "core"
@@ -44,22 +45,22 @@ create = (plv8, resource)->
     request: { method: 'POST', url: resource.resourceType }
 
   utils.exec plv8,
-    insert: table_name
+    insert: sql.q(table_name)
     values:
       id: id
       version_id: version_id
-      resource: resource
-      created_at: '^CURRENT_TIMESTAMP'
-      updated_at: '^CURRENT_TIMESTAMP'
+      resource: sql.jsonb(resource)
+      created_at: sql.now
+      updated_at: sql.now
 
   utils.exec plv8,
-    insert: ['history',table_name]
+    insert: sql.q('history', table_name)
     values:
       id: id
       version_id: version_id
-      resource: resource
-      valid_from: '^CURRENT_TIMESTAMP'
-      valid_to: '^CURRENT_TIMESTAMP'
+      resource: sql.jsonb(resource)
+      valid_from: sql.now
+      valid_to: sql.now
 
   resource
 
@@ -73,7 +74,7 @@ read = (plv8, query)->
   [table_name, errors] = ensure_table(plv8, query.resourceType)
   return errors if errors
 
-  res = utils.exec(plv8, select: [':*'], from: [table_name], where: { id: query.id })
+  res = utils.exec(plv8, select: sql.raw('*'), from: sql.q(table_name), where: { id: query.id })
   row = res[0]
   unless row
     return {status: "Error", message: "Not found"}
@@ -93,8 +94,8 @@ exports.vread = (plv8, query)->
   return errors if errors
 
   q =
-    select: [':*']
-    from: ["history.#{table_name}"]
+    select: sql.raw('*')
+    from: sql.q("history", table_name)
     where: {id: query.id, version_id: version_id}
 
   res = utils.exec(plv8,q)
@@ -129,26 +130,26 @@ update = (plv8, resource)->
       url: resource.resourceType
 
   utils.exec plv8,
-    update: table_name
+    update: sql.q(table_name)
     where: {id: id}
     values:
       version_id: version_id
-      resource: resource
-      updated_at: '^CURRENT_TIMESTAMP'
+      resource: sql.jsonb(resource)
+      updated_at: sql.now
 
   utils.exec plv8,
-    update: ['history', table_name]
+    update: sql.q('history', table_name)
     where: {id: id, version_id: old_version.meta.versionId}
-    values: {valid_to: '^CURRENT_TIMESTAMP'}
+    values: {valid_to: sql.now}
 
   utils.exec plv8,
-    insert: ['history',table_name]
+    insert: sql.q('history',table_name)
     values:
       id: id
       version_id: version_id
-      resource: resource
-      valid_from: '^CURRENT_TIMESTAMP'
-      valid_to: "^'infinity'"
+      resource: sql.jsonb(resource)
+      valid_from: sql.now
+      valid_to: sql.infinity
 
   resource
 
@@ -181,22 +182,22 @@ exports.delete = (plv8, resource)->
       url: resource.resourceType
 
   utils.exec plv8,
-    delete: table_name
+    delete: sql.q(table_name)
     where: { id: id }
 
   utils.exec plv8,
-    update: ['history', table_name]
+    update: sql.q('history', table_name)
     where: {id: id, version_id: old_version.meta.versionId}
-    values: {valid_to: '^CURRENT_TIMESTAMP'}
+    values: {valid_to: sql.now }
 
   utils.exec plv8,
-    insert: ['history', table_name]
+    insert: sql.q('history', table_name)
     values:
       id: id
       version_id: version_id
-      resource: resource
-      valid_from: '^CURRENT_TIMESTAMP'
-      valid_to: '^CURRENT_TIMESTAMP'
+      resource: sql.jsonb(resource)
+      valid_from: sql.now
+      valid_to: sql.now
 
   resource
 
@@ -212,8 +213,8 @@ exports.history = (plv8, query)->
   return errors if errors
 
   resources = utils.exec( plv8,
-    select: [':*']
-    from:   ["history.#{table_name}"]
+    select: sql.raw('*')
+    from:   sql.q("history", table_name)
     where:  {id: query.id}
   ).map((x)-> JSON.parse(x.resource))
 

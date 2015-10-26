@@ -1,75 +1,53 @@
 [[["Patient" "name=ivan"]
   {:query "Patient"
-   :where [:and (param {:resourceType "Patient" :name "name"} {:value "ivan"})]}]
+   :where (and (param {:resourceType "Patient" :name "name"} {:value "ivan"}))}]
 
  [["Patient" "name=ivan,nicola"]
   {:query "Patient"
-   :where [:and
-           [:or
+   :where (and
+           (or
             (param {:resourceType "Patient" :name "name"} {:value "ivan"})
-            (param {:resourceType "Patient" :name "name"} {:value "nicola"})]]}]
+            (param {:resourceType "Patient" :name "name"} {:value "nicola"})))}]
 
  [["Patient" "_page=12"]
   {:query "Patient" :page 12}
-  #_(query "Patient" (page 12))]
+  ]
 
  [["Patient" "name:exact=ivan"]
   {:query "Patient"
-   :where [:and (param {:resourceType "Patient" :name "name" :modifier "exact"} {:value "ivan"})]}
-
-  #_(query "Patient"
-         (where (param {:resourceType "Patient" :name "name" :modifier "exact"} {:value "ivan"})))]
+   :where (and (param {:resourceType "Patient" :name "name" :modifier "exact"} {:value "ivan"}))}]
 
  [["Patient" "birthdate=lt1980"]
   {:query "Patient"
-   :where [:and
-           (param {:resourceType "Patient" :name "birthdate"} {:value "1980" :prefix "lt"})]}
-  #_(query "Patient"
-         (where (param {:resourceType "Patient" :name "birthdate"} {:value "1980" :prefix "lt"})))]
+   :where (and
+           (param {:resourceType "Patient" :name "birthdate"} {:value "1980" :prefix "lt"}))}
+  ]
 
  [["Patient" "_count=11"]
-  {:query "Patient" :count 11}
-  #_(query "Patient" (count 11))]
+  {:query "Patient" :count 11}]
 
  [["Patient" "_page=12"]
-  {:query "Patient" :page 12}
-  (query "Patient" (page 12))]
+  {:query "Patient" :page 12}]
 
  [["Patient" "careprovider:Practitioner.name=igor"]
   {:query "Patient"
    :joins [(chained
             (param {:resourceType "Patient" :name "careprovider" :join "Practitioner"} {:value "$id"})
-            (param {:resourceType "Practitioner" :name "name"} {:value "igor"}))]}
-
-  #_(query "Patient"
-         (joins
-          (chained
-            (param {:resourceType "Patient" :name "careprovider"} {:value "$id"})
-            (param {:resourceType "Practitioner" :name "name"} {:value "igor"}))))]
+            (param {:resourceType "Practitioner" :name "name"} {:value "igor"}))]}]
  
  [["Patient" "careprovider:Practitioner.organization:Organization.name=hl7"]
   {:query "Patient"
    :joins [(chained
             (param {:resourceType "Patient" :name "careprovider" :join "Practitioner"} {:value "$id"})
             (param {:resourceType "Practitioner" :name "organization" :join "Organization"} {:value "$id"})
-            (param {:resourceType "Organization" :name "name"} {:value "hl7"}))]}
-
-  #_(query "Patient"
-           (joins
-            (chained
-             (param {:resourceType "Patient" :name "careprovider"} {:value "$id"})
-             (param {:resourceType "Practitioner" :name "name"} {:value "igor"}))))]
+            (param {:resourceType "Organization" :name "name"} {:value "hl7"}))]}]
 
  [["Patient" "_sort:desc=name"]
   {:query "Patient"
-   :sort [(param {:resourceType "Patient" :name "name" :modifier "desc"} {:value ""})]}
-  #_(query "Patient"
-   (sort (param {:resourceType "Patient" :name "name" :modifier "desc"} {:value ""})))]
+   :sort [(param {:resourceType "Patient" :name "name" :modifier "desc"} {:value ""})]}]
 
 
  [["Patient" "name=a%20b"]
   {:query "Patient"
-   :where [:and
-            (param {:resourceType "Patient" :name "name"} {:value "a b"})]}
-  #_(query "Patient"
-         (where (param {:resourceType "Patient" :name "name"} {:value "a b"})))]]
+   :where (and
+            (param {:resourceType "Patient" :name "name"} {:value "a b"}))}]]

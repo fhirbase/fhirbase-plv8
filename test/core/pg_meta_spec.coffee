@@ -4,7 +4,7 @@ assert = require('assert')
 
 describe "CORE: pg meta", ()->
   it "drop and create table", ()->
-    plv8.execute "DROP TABLE IF EXISTS test_pg_meta"
+    plv8.execute "DROP TABLE IF EXISTS test_pg_meta CASCADE"
     plv8.execute "DROP SCHEMA IF EXISTS testo CASCADE"
     plv8.execute "CREATE TABLE test_pg_meta (id serial)"
 

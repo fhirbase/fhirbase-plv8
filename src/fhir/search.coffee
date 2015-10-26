@@ -41,14 +41,14 @@ mk_join = (base, next_alias, chained)->
   for param in chained[1..-2]
     meta = param[1]
     join_alias = next_alias() 
-    param[2] = {value: "^'#{meta.join}/' || #{join_alias}.id"}
+    param[2] = {value: ":'#{meta.join}/' || #{join_alias}.id"}
     join_on = cond.eval(current_alias, param)
-    res.push([[meta.join.toLowerCase(), join_alias], join_on])
+    res.push([sql.alias(sql.q(meta.join.toLowerCase()), join_alias), join_on])
     current_alias = join_alias
   last_param = chained[(chained.length - 1)]
   last_cond = cond.eval(current_alias, last_param)
   last_join_cond = res[(res.length - 1)][1]
-  res[(res.length - 1)][1] = [':and', last_join_cond, last_cond] 
+  res[(res.length - 1)][1] = sql.and(last_join_cond, last_cond)
   res
 
 _search_sql = (plv8, idx, query)->
@@ -64,8 +64,8 @@ _search_sql = (plv8, idx, query)->
   expr.where = cond.eval(alias, expr.where)
 
   hsql =
-    select: [':*']
-    from: [[namings.table_name(plv8, expr.query), alias]]
+    select: ':*'
+    from: ['$alias', ['$q', namings.table_name(plv8,expr.query)], alias]
     where: expr.where
 
   if expr.joins

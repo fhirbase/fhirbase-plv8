@@ -66,7 +66,7 @@ specials =
 grouping = (acc, expr)->
   result = acc
   joins = []
-  where = [':and']
+  where = ['$and']
   for form in expr
     key = form[0]
     if key == '$param'
@@ -106,7 +106,7 @@ exports.parse = (resourceType, str) ->
       if right.length == 1
         ['$param', left, right[0]]
       else
-        [':or'].concat(right.map((x)-> ['$param', lang.clone(left), x]))
+        ['$or'].concat(right.map((x)-> ['$param', lang.clone(left), x]))
     $chained: (l, r)->
       left = parse_chained_left(l)
       right = parse_right(r)
@@ -124,7 +124,7 @@ exports.parse = (resourceType, str) ->
       if right.length == 1
         form.push ['$param', meta, right[0]]
       else
-        form.push [':or'].concat(right.map((x)-> ['$param', lang.clone(meta), x]))
+        form.push ['$or'].concat(right.map((x)-> ['$param', lang.clone(meta), x]))
       form
 
   lisp.eval_with(forms, expr)

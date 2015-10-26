@@ -9,7 +9,7 @@ expand_param = (idx, resourceType, x)->
   if res.length == 1
     res[0]
   else
-    [':or'].concat(res)
+    ['$or'].concat(res)
 
 exports.expand = (idx, expr)->
   forms =

@@ -1,80 +1,54 @@
 lang = require('../lang')
 lisp = require('../lispy')
+sql = require('../honey')
 date = require('./date')
 
 TODO = ()->
   throw new Error("Not impl.")
 
+extract_fn = (tbl, meta)->
+  resultType = meta.searchType.toLowerCase()
+
+  res = ["$"]
+
+  res.push('fhir.extract_as_')
+
+  if ['date', 'datetime', 'instant'].indexOf(resultType) > -1
+    res.push('daterange')
+  else
+    res.push(resultType)
+
+  res.push('_array') if meta.array
+
+  fn = res.join('')
+
+  [
+   fn
+   sql.cast(sql.q(":#{tbl}", ":resource"), sql.key('json'))
+   sql.json(meta.path)
+   meta.elementType
+  ]
+
+
 string_ilike = (tbl, meta, value)->
-  # ['$ilike',
-  #   ['$cast',  ['$call', extract_fn(meta.searchType, meta.array),
-  #     ['$cast', ['$id', "resource"], "json"]
-  #     ['$cast', meta.path, "json"]
-  #     meta.elementType]
-  #     "text"]
-  #   value]
-  call =
-    call: extract_fn(meta.searchType, meta.array)
-    args: [":#{tbl}.resource::json", JSON.stringify(meta.path), meta.elementType]
-    cast: 'text'
-  [':ilike', call, value]
+  ["$ilike", sql.cast(extract_fn(tbl, meta), "text"), value]
 
 token_eq = (tbl, meta, value)->
-  # ['$&&',
-  #   ['$cast', 
-  #     ['$call', extract_fn(meta.searchType, meta.array),
-  #     ['$cast', ['$id', "resource"], "json"]
-  #     ['$cast', meta.path, "json"]
-  #     meta.elementType]
-  #     "text[]"]
-  #   ['$array',"text[]",[value.value]]]
-  call =
-    call: extract_fn(meta.searchType, meta.array)
-    args: [":#{tbl}.resource::json", JSON.stringify(meta.path), meta.elementType]
-    cast: 'text[]'
-  [':&&', call, ['^text[]', [value.value]]]
+  ["$&&", sql.cast(extract_fn(tbl, meta), ":text[]"), sql.cast(sql.array(value.value), ":text[]")]
 
 overlap_datetime = (tbl, meta, value)->
-
-  # op = meta.operator
-  # tsvalue = if op == 'lt' || op == 'le'
-  #   ['$tstzrange', '-infinity', date.to_upper_date(value.value)]
-  # else if op == 'gt' || op == 'ge'
-  #   ['$tstzrange', date.to_lower_date(value.value), 'infinity']
-  # else if op == 'eq'
-  #   ['$tstzrange', date.to_lower_date(value.value), date.to_upper_date(value.value)]
-  # else
-  #   throw new  Error('Unhandled')
-
-  # ['$&&',
-  #   ['$cast',
-  #     ['$call', "fhir.extract_as_daterange",
-  #     ['$cast', ['$id', "resource"], "json"]
-  #     ['$cast', meta.path, "json"]
-  #     meta.elementType]
-  #     "tstzrange"]
-  #   tsvalue]
-
   value = value.value
   args = if meta.operator == 'lt' || meta.operator == 'le'
-    ['-infinity', date.to_upper_date(value)]
+    ['$tstzrange', '-infinity', date.to_upper_date(value)]
   else if meta.operator == 'gt' || meta.operator == 'ge'
-    [date.to_lower_date(value), 'infinity']
+    ['$tstzrange', date.to_lower_date(value), 'infinity']
   else if meta.operator == 'eq'
-    [date.to_lower_date(value), date.to_upper_date(value)]
+    ['$tstzrange', date.to_lower_date(value), date.to_upper_date(value)]
   else
     throw new  Error('Unhandled')
 
-  call =
-    call: 'fhir.extract_as_daterange'
-    args: [":#{tbl}.resource::json", JSON.stringify(meta.path), meta.elementType]
-    cast: 'tstzrange'
+  ["$&&", sql.cast(extract_fn(tbl, meta), "tstzrange"), args]
 
-  vcall =
-    call: 'tstzrange'
-    args: args
-
-  [':&&', call, vcall]
 
 COMMON_DATE =
   eq: overlap_datetime
@@ -88,12 +62,7 @@ COMMON_DATE =
   ap: TODO
 
 REFERENCE =
-  eq: (tbl, meta, value)->
-    call =
-      call: extract_fn(meta.searchType, meta.array)
-      args: [":#{tbl}.resource::json", JSON.stringify(meta.path), meta.elementType]
-      cast: 'text[]'
-    [':&&', call, ['^text[]', [value.value]]]
+  eq: token_eq
 
 TABLE =
   boolean:
@@ -145,16 +114,6 @@ TABLE =
   Timing:
     date: TODO
 
-extract_fn = (resultType, array)->
-  res = []
-  res.push('fhir.extract_as_')
-  if ['date', 'datetime', 'instant'].indexOf(resultType.toLowerCase()) > 0
-    res.push('daterange')
-  else
-    res.push(resultType.toLowerCase())
-  if array
-    res.push('_array')
-  res.join('')
 
 condition = (tbl, meta, value)->
   handler = TABLE[meta.elementType]
@@ -168,8 +127,5 @@ condition = (tbl, meta, value)->
 exports.condition = condition
 
 exports.eval = (tbl, expr)->
-  forms =
-    $param: (left, right)->
-      condition(tbl, left, right)
-
+  forms ={$param: (left, right)-> condition(tbl, left, right)}
   lisp.eval_with(forms, expr)
