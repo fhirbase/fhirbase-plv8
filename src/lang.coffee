@@ -1,3 +1,9 @@
+###
+Language plumbing
+
+set of util functions, to feel with js/coffee more confortable
+###
+
 isArray = (value)->
   Array.isArray(value)
 

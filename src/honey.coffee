@@ -1,3 +1,14 @@
+###
+Data DSL for composing SLQ queries, so we do not need to join strings.
+It's mostly clone of clojure honeysql with some postgresql specific extensions
+
+
+@example
+
+see examples in tests
+###
+
+
 lang = require('./lang')
 
 mk_result = ->
@@ -93,7 +104,7 @@ update = (res, expr)->
   if expr.where
     where_clause(res, expr.where)
 
-insert = (res, expr)-> 
+insert = (res, expr)->
   res.push("INSERT INTO")
   heval(res, expr.insert)
   names = []
@@ -118,7 +129,7 @@ insert = (res, expr)->
     ret = [ret] unless lang.isArray(ret)
     comma_delimited res, ret, (x)-> heval(res, x)
 
-array = (res, expr)-> 
+array = (res, expr)->
   throw new Error("array not impl")
 
 function_call = (res, [fn, args...])->
@@ -129,7 +140,7 @@ function_call = (res, [fn, args...])->
 raw = (res, expr)->
   res.push(expr.replace(/^:/, ''))
 
-ignore = (res, expr)->  
+ignore = (res, expr)->
  console.log('ignore', expr)
 
 isSymbol = (x)-> x && x.indexOf && x.indexOf('$') == 0
@@ -247,7 +258,7 @@ drop = (res, expr)->
   if expr.cascade
     res.push("CASCADE")
 
-truncate = (res, expr)->  
+truncate = (res, expr)->
   res.push("TRUNCATE")
   heval(res, expr.truncate)
   if expr.restart
@@ -317,7 +328,6 @@ sql.in = (args...)-> ["$in"].concat(args)
 sql.and = (args...)-> ["$and"].concat(args)
 sql.or = (args...)-> ["$or"].concat(args)
 sql.between = (x,y)-> ["$between", x, y]
-sql["&&"] = (x, y)-> ["$&&", x, y]
 sql.fn = (fn, args...)-> ["$#{fn}"].concat(args)
 sql.eq = (x,y)-> ["$eq", x, y]
 sql.array = (args...)-> ["$array"].concat(args)
