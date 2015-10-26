@@ -1,6 +1,7 @@
 plv8 = require('../../plpl/src/plv8')
 transaction = require('../../src/fhir/transaction')
 assert = require('assert')
+helpers = require('../helpers.coffee')
 
 describe 'transaction test', ()->
   before ->
@@ -12,3 +13,4 @@ describe 'transaction test', ()->
     assert.equal('bundle-transaction', response.id)
     assert.equal('transaction-response', response.type)
     assert.deepEqual([], response.entry)
+    console.log (helpers.loadJson(("#{__dirname}/fixtures/transaction.json")))
