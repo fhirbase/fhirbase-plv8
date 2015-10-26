@@ -30,5 +30,6 @@ describe 'transaction test', ()->
 describe 'translate test', ()->
   it 'should process valid transation', ->
     bundle = helpers.loadJson(("#{__dirname}/fixtures/translate.json"))
+    result = helpers.loadJson(("#{__dirname}/fixtures/translate_result.json"))
     response = transaction.translate(bundle)
-    assert.deepEqual([], response)
+    assert.deepEqual(result, response)

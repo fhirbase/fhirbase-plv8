@@ -1,0 +1,14 @@
+[
+    {
+      "resource": {"id": "idPOST"},
+      "action": "create"
+    },
+    {
+      "resource": {"id": "idPUT"},
+      "action": "update"
+    },
+    {
+        "resource": {"id": "234", "resourceType": "Patient"},
+        "action": "delete"
+    }
+]
