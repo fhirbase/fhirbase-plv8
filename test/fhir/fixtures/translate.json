@@ -11,7 +11,7 @@
       }
     },
     {
-      "resource": {"id": "idPUT"}
+      "resource": {"id": "idPUT"},
       "request": {
         "method": "PUT",
         "url": "Patient/123"
