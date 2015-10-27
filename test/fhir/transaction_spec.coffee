@@ -21,4 +21,3 @@ describe 'transaction plans', ->
     it "should generate right plan for bundle ##{index}", ->
       plan = transaction.makePlan(e.bundle)
       assert.deepEqual(e.plan, plan)
-      console.log "!!!!", JSON.stringify(transaction.executePlan(plv8, plan))
