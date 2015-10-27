@@ -1,15 +1,36 @@
 sql = require('../honey')
+lang = require('../lang')
 xpath = require('./xpath')
 
 exports.plv8_schema = "fhir"
 
 TODO = -> throw new Error("TODO")
 
-str = (x)-> x.toString()
-
 exports.extract_as_token = (plv8, resource, path, element_type)->
-  if ['boolean'].indexOf(element_type) > -1
-    xpath.get_in(resource, [path]).map(str)
+  res = []
+  data = xpath.get_in(resource, [path])
+  if element_type == 'boolean' || element_type == 'code' || element_type == 'string'
+    str.toString() for str in data 
+  else if element_type == 'Identifier' or element_type == 'ContactPoint'
+    for coding in data 
+        res.push(coding.value)
+        res.push("#{coding.system}|#{coding.value}")
+    res
+  else if element_type == 'Coding'
+    for coding in data 
+        res.push(coding.code)
+        res.push("#{coding.system}|#{coding.code}")
+    res
+  else if element_type == 'CodeableConcept'
+    for concept in data
+      for coding in (concept.coding || [])
+        res.push(coding.code)
+        res.push("#{coding.system}|#{coding.code}")
+    res
+  else if element_type == 'Reference'
+    for ref in data
+      res.push(ref.reference)
+    res
   else
     throw new Error("extract_as_token: Not implemented for #{element_type}")
 

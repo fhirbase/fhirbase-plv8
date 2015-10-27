@@ -1,4 +1,3 @@
-lang = require('../lang')
 sql = require('../honey')
 xpath = require('./xpath')
 
