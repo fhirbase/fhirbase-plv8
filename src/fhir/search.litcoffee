@@ -1,4 +1,16 @@
-# This is main search module
+# FHIRbase search implementation
+
+
+This module is responsible for FHIR search implementation.
+
+Search API is specified on
+
+* [http://hl7-fhir.github.io/search.html]  
+
+
+This is a most complicated feature of fhirbase,
+so the code split as much as possible  into small modules
+
 
     parser = require('./query_string')
     expand = require('./expand_params')
@@ -12,12 +24,37 @@
     sql = require('../honey')
     lang = require('../lang')
 
+
+For every search type we have dedicated module,
+with indexing and building search expression implementation.
+
     string_s = require('./search_string')
     token_s = require('./search_token')
     date_s = require('./search_date')
     reference_s = require('./search_reference')
 
     exports.plv8_schema = "fhir"
+
+This is main function:
+
+@param query [Object]
+ query.resourceType
+ query.queryString - original query string for search
+
+    exports.search = (plv8, query)->
+      idx_db = ensure_index(plv8)
+      honey = _search_sql(plv8, idx_db, query)
+      resources = utils.exec(plv8, honey)
+      if !honey.limit or (honey.limit && resources.length < honey.limit)
+        count = resources.length
+      else
+        count = utils.exec(plv8, countize_query(honey))[0].count
+
+      type: 'searchset'
+      total: count
+      entry: resources.map(to_entry)
+
+    exports.search.plv8_signature = ['json', 'json']
 
     to_hsql = (tbl, expr)->
       table =
@@ -126,27 +163,6 @@ and replace select
       utils.memoize plv8.cache, 'fhirbaseIdx', -> index.new(plv8, meta_db.getter)
 
 
-Search FHIR  resources
-
-@param query [Object]
-* query.resourceType
-* query.queryString - original query string for search
-
-    exports.search = (plv8, query)->
-      idx_db = ensure_index(plv8)
-      honey = _search_sql(plv8, idx_db, query)
-      resources = utils.exec(plv8, honey)
-      if !honey.limit or (honey.limit && resources.length < honey.limit)
-        count = resources.length
-      else
-        count = utils.exec(plv8, countize_query(honey))[0].count
-
-      type: 'searchset'
-      total: count
-      entry: resources.map(to_entry)
-
-    exports.search.plv8_signature = ['json', 'json']
-
 
     search_sql = (plv8, query)->
       idx_db = ensure_index(plv8)
@@ -154,8 +170,8 @@ Search FHIR  resources
 
 search function
 accept same params as search but return generated sql
-* query.resourceType
-* query.queryString - original query string for search
+query.resourceType
+query.queryString - original query string for search
 
     exports.search_sql = search_sql
     exports.search_sql.plv8_signature = ['json', 'json']
