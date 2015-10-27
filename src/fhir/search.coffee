@@ -2,7 +2,7 @@ parser = require('./query_string')
 expand = require('./expand_params')
 norm = require('./normalize_params')
 namings = require('../core/namings')
-cond = require('./conditions')
+lisp = require('../lispy')
 namings = require('../core/namings')
 meta_db = require('./meta_pg')
 index = require('./meta_index')
@@ -10,8 +10,30 @@ utils = require('../core/utils')
 sql = require('../honey')
 lang = require('../lang')
 
+string_s = require('./search_string')
+token_s = require('./search_token')
+date_s = require('./search_date')
+reference_s = require('./search_reference')
+
 exports.plv8_schema = "fhir"
 
+to_hsql = (tbl, expr)->
+  table =
+    string: string_s.handle
+    token: token_s.handle
+    reference: reference_s.handle
+    date: date_s.handle
+
+  forms =
+    $param: (left, right)->
+      console.log(left.searchType)
+      h = table[left.searchType]
+      unless h
+        throw new Error("Unsupported search type [#{left.searchType}] #{JSON.stringify(left)}")
+      h(tbl, left, right)
+  lisp.eval_with(forms, expr)
+
+exports.to_hsql
 
 ###
 [a b c d e]
@@ -32,7 +54,7 @@ mk_join = (plv8, base, next_alias, chained)->
     join_alias = next_alias() 
     value = {value: ":'#{joined_resource}/' || #{join_alias}.id"}
 
-    on_expr = cond.eval(current_alias, ['$param', meta, value])
+    on_expr = to_hsql(current_alias, ['$param', meta, value])
     current_alias = join_alias
 
     [['$alias',
@@ -41,7 +63,7 @@ mk_join = (plv8, base, next_alias, chained)->
       on_expr]
 
   last_param = lang.last(chained)
-  last_cond = cond.eval(current_alias, last_param)
+  last_cond = to_hsql(current_alias, last_param)
   last_join_cond = lang.last(res)[1]
 
   res[(res.length - 1)][1] = sql.and(last_join_cond, last_cond)
@@ -68,7 +90,7 @@ _search_sql = (plv8, idx, query)->
   expr = expand.expand(idx, expr)
   expr = norm.normalize(expr)
 
-  expr.where = cond.eval(alias, expr.where)
+  expr.where = to_hsql(alias, expr.where)
 
   hsql =
     select: ':*'

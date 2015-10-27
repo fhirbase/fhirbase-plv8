@@ -9,8 +9,11 @@ assert = (x, msg)-> throw new Error(x) unless x
 exports.isFn = (v)->
   typeof v == "function"
 
-exports.isObject = (v)->
+exports
+isObject = (v)->
   !!v && not Array.isArray(v) && v.constructor == Object
+
+exports.isObject = isObject
 
 exports.isNumber = (x)->
   not isNaN(parseFloat(x)) && isFinite(x)
@@ -73,3 +76,16 @@ exports.mapcat = (coll, fn)->
 
 exports.last = (arr)->
   arr[(arr.length - 1)]
+
+exports.values = (obj)->
+  values_recur = (acc, obj)->
+    if isArray(obj)
+      obj.reduce(values_recur, acc)
+    else if isObject(obj)
+      for k,v of obj
+        acc = values_recur(acc, v)
+      acc
+    else
+      acc.push(obj)
+      acc
+  values_recur([], obj)

@@ -31,34 +31,6 @@ fs.readdirSync("#{__dirname}/search").forEach (yml)->
         res = search.search(plv8, q.query)
         if q.total
           assert.equal(res.total, q.total)
-        q.probes.forEach (probe)->
+
+        (q.probes || []).forEach (probe)->
           assert.equal(get_in(res, probe.path), probe.result)
-
-comment = ->
-  test = require('../helpers.coffee')
-
-  specs = test.loadYaml("#{__dirname}/search_spec.yaml")
-
-
-  its = ([res,q] for res, q of specs.queries)
-
-  # plv8.debug = true
-
-  describe "Seatch integration test", ()->
-    before ->
-      plv8.execute("SET plv8.start_proc = 'plv8_init'")
-      for res in specs.resources
-        schema.create_storage(plv8, res)
-        schema.truncate_storage(plv8, res)
-
-      for res in specs.fixtures
-        crud.create(plv8, res)
-
-    its.forEach ([resourceType, queries])->
-      queries.forEach (q)->
-        it "#{resourceType} :  #{q.query}", ->
-          res = search.search(plv8, resourceType: resourceType, queryString: q.query)
-          if q.total
-            assert.equal(res.total, q.total)
-          q.probes.forEach (probe)->
-            assert.equal(get_in(res, probe.path), probe.result)
