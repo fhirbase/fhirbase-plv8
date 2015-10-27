@@ -1,0 +1,75 @@
+title: Token Search
+resources: ['Patient']
+fixtures:
+  - resourceType: 'Patient'
+    name: [{given: ['nicola']}]
+    active: true
+    identifier:
+      - use: usual
+        type:
+        coding:
+            - system: http://hl7.org/fhir/v2/0203
+              code: MR
+        system: urn:oid:1.2.36.146.595.217.0.1
+        value: 12345
+      - use: usual
+        type:
+        coding:
+            - system: http://hl7.org/fhir/v2/0203
+              code: SSN
+        system: ssn
+        value: 54321
+  - resourceType: 'Patient'
+    name: [{given: ['ivan']}]
+    active: true
+    identifier:
+      - use: usual
+        type:
+        coding:
+            - system: http://hl7.org/fhir/v2/0203
+              code: MR
+        system: urn:oid:1.2.36.146.595.217.0.1
+        value: 12346
+      - use: usual
+        type:
+        coding:
+            - system: http://hl7.org/fhir/v2/0203
+              code: SSN
+        system: ssn
+        value: 64321
+  - {resourceType: 'Patient', name: [{given: ['noise1']}], birthDate: '1970'}
+  - {resourceType: 'Patient', name: [{given: ['noise2']}], birthDate: '1971'}
+
+queries:
+  - query: {resourceType: 'Patient', queryString:  'active=true'}
+    total: 2
+    probes:
+      - path: ['entry', 'length']
+        result: 2
+
+  - query: {resourceType: 'Patient', queryString:  'identifier=12345'}
+    total: 1
+    probes:
+      - path: ['entry', 'length']
+        result: 1 
+      - path: ['entry', 0, 'resource', 'name', 0, 'given', 0]
+        result: nicola
+
+  - query: {resourceType: 'Patient', queryString:  'identifier=12346'}
+    total: 1
+    probes:
+      - path: ['entry', 'length']
+        result: 1 
+      - path: ['entry', 0, 'resource', 'name', 0, 'given', 0]
+        result: ivan
+
+  - query: {resourceType: 'Patient', queryString:  'identifier=12346,12345'}
+    total: 2
+
+  - query: {resourceType: 'Patient', queryString:  'identifier=ssn|64321'}
+    total: 1
+    probes:
+      - path: ['entry', 'length']
+        result: 1 
+      - path: ['entry', 0, 'resource', 'name', 0, 'given', 0]
+        result: ivan

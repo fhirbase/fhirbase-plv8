@@ -11,6 +11,8 @@ TABLE =
     contains: 'co'
     sw: 'sw'
     ew: 'ew'
+    startwith: 'sw'
+    endwith: 'ew'
   number:
     $prefix: 'eq'
     $modifier: false
@@ -58,7 +60,7 @@ normalize_param = (meta, value)->
     op = handler[meta.modifier]
 
   unless op
-    throw new Error("NORMALIZE: No operator for #{JSON.stringify(x)}")
+    throw new Error("NORMALIZE: No operator for #{JSON.stringify(meta)}")
   meta.operator = op
   delete value.prefix
   delete meta.modifier

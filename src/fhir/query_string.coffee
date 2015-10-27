@@ -28,8 +28,6 @@ parse_one_value = ( x)->
   if match && match[1]
     res.prefix = match[1]
     x = x.substring(2)
-  if x.indexOf('|') > -1
-    x = x.split('|')
   res.value = x
   res
 

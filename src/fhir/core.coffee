@@ -1,3 +1,3 @@
 require('./meta_pg')
 require('./search')
-require('./indexing')
+require('./transaction')

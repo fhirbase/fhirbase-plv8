@@ -1,0 +1,139 @@
+title: String search
+resources: ['patient']
+
+
+fixtures:
+  - resourceType: 'Patient'
+    name: [{given: ['nicola'], family: ['poganini']}]
+    address:
+      - use: home
+        type: both
+        line: ["534 Erewhon St"]
+        city: PleasantVille
+        district: Rainbow
+        state: Vic
+        postalCode: 3999
+        period: {start: "1974-12-25"}
+  - resourceType: Patient
+    name: [{given: ['ivan']}]
+    address:
+      - use: home
+        type: both
+        line:
+          - 123 North 102nd Street
+          - Apt 4d
+        city: Harrisburg
+        state: PA
+        postalCode: 17102
+        country: USA
+  - {resourceType: 'Patient', name: [{given: ['noise1']}]}
+  - {resourceType: 'Patient', name: [{given: ['noise2']}]}
+  - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}]}
+  - {resourceType: 'Patient', name: [{given: ['Cheburashka']}]}
+
+queries:
+  - query: {queryString: 'name=nicola', resourceType: 'Patient'}
+    total: 1
+    probes:
+      - path: ['entry',0,'resource', 'name',0, 'given',0]
+        result: 'nicola'
+      - path: ['total']
+        result: 1
+  - query: {queryString: 'name=noise', resourceType: 'Patient'}
+    total: 2
+    probes:
+      - path: ['total']
+        result: 2
+  - query: {queryString: 'name=nicola,ivan', resourceType: 'Patient'}
+    total: 2
+    probes:
+      - path: ['total']
+        result: 2
+  - query: {queryString: 'name=lincoln', resourceType: 'Patient'}
+    total: 1
+    probes:
+      - path: ['total']
+        result: 1
+      - path: ['entry',0,'resource', 'name',0, 'given',0]
+        result: 'Avraam'
+  - query: {queryString: 'name:contains=inco', resourceType: 'Patient'}
+    total: 1
+  - query: {queryString: 'name:exact=nicol', resourceType: 'Patient'}
+    total: 0 
+  - query: {queryString: 'name:exact=nicola', resourceType: 'Patient'}
+    total: 1 
+  - query: {queryString: 'name:startwith=nik', resourceType: 'Patient'}
+    total: 0 
+  - query: {queryString: 'name:startwith=nic', resourceType: 'Patient'}
+    total: 1 
+  - query: {queryString: 'name:sw=nik', resourceType: 'Patient'}
+    total: 0 
+  - query: {queryString: 'name:sw=nic', resourceType: 'Patient'}
+    total: 1 
+  - query: {queryString: 'name:ew=kola', resourceType: 'Patient'}
+    total: 0 
+  - query: {queryString: 'name:ew=cola', resourceType: 'Patient'}
+    total: 1 
+  - query: {queryString: 'name:endwith=kola', resourceType: 'Patient'}
+    total: 0 
+  - query: {queryString: 'name:endwith=cola', resourceType: 'Patient'}
+    total: 1 
+
+  - query: {queryString: 'name:endwith=kola', resourceType: 'Patient'}
+    total: 0 
+  - query: {queryString: 'name:endwith=cola', resourceType: 'Patient'}
+    total: 1 
+
+  - query: {queryString: 'given=nico', resourceType: 'Patient'}
+    total: 1 
+  - query: {queryString: 'given=poga', resourceType: 'Patient'}
+    total: 0 
+
+  - query: {queryString: 'family=poga', resourceType: 'Patient'}
+    total: 1 
+  - query: {queryString: 'family=nico', resourceType: 'Patient'}
+    total: 0 
+
+  - query: {queryString: 'family=poga&name=nico', resourceType: 'Patient'}
+    total: 1 
+  - query: {queryString: 'family=nico&name=poga', resourceType: 'Patient'}
+    total: 0 
+
+  - query: {queryString: 'name=poga&name:contains=nini', resourceType: 'Patient'}
+    total: 1 
+
+  - query: {queryString: 'address=123%20Nord', resourceType: 'Patient'}
+    total: 0 
+  - query: {queryString: 'address=123%20North', resourceType: 'Patient'}
+    total: 1 
+    probes:
+      - path: ['entry',0,'resource', 'address',0, 'city']
+        result: 'Harrisburg'
+
+  - query: {queryString: 'address:contains=enexist', resourceType: 'Patient'}
+    total: 0 
+  - query: {queryString: 'address:contains=nor', resourceType: 'Patient'}
+    total: 1 
+    probes:
+      - path: ['entry',0,'resource', 'address',0, 'city']
+        result: 'Harrisburg'
+
+  - query: {queryString: 'address-city=Pleaj', resourceType: 'Patient'}
+    total: 0 
+  - query: {queryString: 'address-city=PleaSan', resourceType: 'Patient'}
+    total: 1 
+    probes:
+      - path: ['entry',0,'resource', 'address',0, 'city']
+        result: 'PleasantVille'
+
+  - query: {queryString: 'address-country=usa', resourceType: 'Patient'}
+    total: 1 
+    probes:
+      - path: ['entry',0,'resource', 'address',0, 'country']
+        result: 'USA'
+
+  - query: {queryString: 'address-postalcode=3999', resourceType: 'Patient'}
+    total: 1 
+    probes:
+      - path: ['entry',0,'resource', 'address',0, 'postalCode']
+        result: '3999'
