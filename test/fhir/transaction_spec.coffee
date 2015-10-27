@@ -17,7 +17,8 @@ planExamples = helpers.loadYaml("#{__dirname}/fixtures/transaction_plans.yml")
 #       schema.truncate_storage(plv8, res)
 
 describe 'transaction plans', ->
-  for e, index in planExamples
+  planExamples.forEach (e, index) ->
     it "should generate right plan for bundle ##{index}", ->
       plan = transaction.makePlan(e.bundle)
       assert.deepEqual(e.plan, plan)
+      console.log "!!!!", JSON.stringify(transaction.executePlan(plv8, plan))

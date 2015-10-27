@@ -91,4 +91,25 @@ makePlan = (bundle) ->
 
     action
 
+executePlan = (plv8, plan) ->
+  plan.map (action) ->
+    switch action.type
+      when "create"
+        crud.create(plv8, action.resource)
+      when "update"
+        resource = action.resource
+        resource.resourceType = action.resourceType
+        resource.id = action.resourceId
+
+        crud.update(plv8, resource)
+      when "delete"
+        crud.delete(plv8, {id: action.resourceId, resourceType: action.resourceType})
+      when "read"
+        crud.read(plv8, {id: action.resourceId, resourceType: action.resourceType})
+      when "vread"
+        crud.vread(plv8, {id: action.resourceId, resourceType: action.resourceType, versionId: action.versionId})
+      else
+        "TODO: return operation outcome here!\n#{action.message}"
+
 exports.makePlan = makePlan
+exports.executePlan = executePlan
