@@ -1,26 +1,94 @@
 crud = require('../core/crud.coffee')
 
-exports.translate = (bundle)->
-  response = []
-  for entry in bundle.entry
-    res = null
-    if entry.request.method == 'POST'
-      res = {action: "create", resource: entry.resource}
-    else if entry.request.method == 'PUT'
-      res = {action: 'update', resource: entry.resource}
-    else if entry.request.method == 'DELETE'
-      parts = entry.request.url.split('/')
-      res = {action: 'delete', resource: {id: parts[1], resourceType: parts[0]}}
-    if res
-      response.push res
-  response
+RES_TYPE_RE = "([A-Za-z]+)"
+ID_RE = "([A-Za-z0-9\\-]+)"
 
-exports.transaction = (plv8, bundle)->
-  for entry in bundle.entry
-    if entry.request.method == 'POST'
-      crud.create plv8, entry.resource
+ROUTES =
+  resource_instance: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}$")
+  resource_instance_rev: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}/_history/#{ID_RE}$")
+  resource_instance_hist: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}/_history$")
+  resource: new RegExp("^/#{RES_TYPE_RE}$")
+  resource_hist: new RegExp("^/#{RES_TYPE_RE}/_history$")
+  hist: new RegExp("^/_history$")
 
-  resourceType: 'Bundle',
-  id: 'bundle-transaction',
-  type: 'transaction-response'
-  entry: []
+# TODO:
+# - conditional update
+# - conditional delete
+makePlan = (bundle) ->
+  bundle.entry.map (entry) ->
+    url = entry.request.url
+    method = entry.request.method
+    action = null
+    match = null
+    matchType = null
+
+    for type, re of ROUTES
+      match = url.match(re)
+
+      if match
+        matchType = type
+        break
+
+    if match && matchType
+      switch matchType
+        when 'resource_instance'
+          if method == 'GET'
+            action =
+              type: 'read'
+              resourceId: match[2]
+              resourceType: match[1]
+
+          else if method == 'PUT'
+            action =
+              type: 'update'
+              resourceId: match[2]
+              resourceType: match[1]
+              resource: entry.resource
+
+          else if method == 'DELETE'
+            action =
+              type: 'delete'
+              resourceId: match[2]
+              resourceType: match[1]
+
+        when 'resource_instance_rev'
+          if method == 'GET'
+            action =
+              type: 'vread'
+              resourceId: match[2]
+              resourceType: match[1]
+              versionId: match[3]
+
+        when 'resource'
+          if method == 'POST'
+            action =
+              type: 'create'
+              resource: entry.resource
+              resourceType: match[1]
+
+        when 'resource_instance_hist'
+          if method == 'GET'
+            action =
+              type: 'history'
+              resourceType: match[1]
+              resourceId: match[2]
+
+        when 'resource_hist'
+          if method == 'GET'
+            action =
+              type: 'history'
+              resourceType: match[1]
+
+        when 'hist'
+          if method == 'GET'
+            action =
+              type: 'history'
+
+    if !action
+      action =
+        type: 'error'
+        message: "Cannot determine action for request #{method} #{url}"
+
+    action
+
+exports.makePlan = makePlan
