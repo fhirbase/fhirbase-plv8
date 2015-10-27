@@ -41,10 +41,26 @@ This is main function:
  query.resourceType
  query.queryString - original query string for search
 
+function return [SearchBundle](http://hl7-fhir.github.io/bundle.html)
+
+Initially we need to initialize index with FHIR metainformation.
+We need to look-up this index to resolve search parameter type, path and element type.
+
+Then we are building sql query as honeysql  datastructure
+(see _search_sql implementation).
+
+If number of results is equal to our limit, we have to execute
+another query for potential results count.
+
+Then we are returning  resulting Bundle.
+
     exports.search = (plv8, query)->
+
       idx_db = ensure_index(plv8)
+
       honey = _search_sql(plv8, idx_db, query)
       resources = utils.exec(plv8, honey)
+
       if !honey.limit or (honey.limit && resources.length < honey.limit)
         count = resources.length
       else
@@ -54,71 +70,21 @@ This is main function:
       total: count
       entry: resources.map(to_entry)
 
+Helper function to convert resource into entry bundle:
+TODO: add links
+
+    to_entry = (row)-> resource: JSON.parse(row.resource)
+
+This function should be visible from postgresql, so
+we have to describe it signature:
+
     exports.search.plv8_signature = ['json', 'json']
 
-    to_hsql = (tbl, expr)->
-      table =
-        string: string_s.handle
-        token: token_s.handle
-        reference: reference_s.handle
-        date: date_s.handle
 
-      forms =
-        $param: (left, right)->
-          console.log(left.searchType)
-          h = table[left.searchType]
-          unless h
-            throw new Error("Unsupported search type [#{left.searchType}] #{JSON.stringify(left)}")
-          h(tbl, left, right)
-      lisp.eval_with(forms, expr)
+###  Building SQL from search parameters
 
-    exports.to_hsql
+To build search query we need to
 
-This is how we handle joins
-[a b c d e]
-1 2 3 4 5
-
-[b with a on ref]
-[c with b on ref]
-[d with c on ref]
-[e with d on ref and param]
-
-    mk_join = (plv8, base, next_alias, chained)->
-      current_alias = base
-      res = for param in chained[1..-2]
-        meta = param[1]
-        joined_resource = meta.join
-        joined_table = namings.table_name(plv8, joined_resource)
-        join_alias = next_alias() 
-        value = {value: ":'#{joined_resource}/' || #{join_alias}.id"}
-
-        on_expr = to_hsql(current_alias, ['$param', meta, value])
-        current_alias = join_alias
-
-        [['$alias',
-            ['$q', joined_table]
-            join_alias]
-          on_expr]
-
-      last_param = lang.last(chained)
-      last_cond = to_hsql(current_alias, last_param)
-      last_join_cond = lang.last(res)[1]
-
-      res[(res.length - 1)][1] = sql.and(last_join_cond, last_cond)
-      res
-
-
-return function to alias tables 
-with incapsulated counter
-
-    mk_alias = ()->
-      tbl_cnt = 0 
-      ()->
-        tbl_cnt += 1
-        "tbl#{tbl_cnt}"
-
-This function get plv8, index object and query
-and build honey sql
 
     _search_sql = (plv8, idx, query)->
 
@@ -146,9 +112,68 @@ and build honey sql
     exports._search_sql = _search_sql
 
 
-transform honey sql to count sql
-stripping limit, offset, order
-and replace select
+###  Building SQL from search parameters
+
+
+    to_hsql = (tbl, expr)->
+      table =
+        string: string_s.handle
+        token: token_s.handle
+        reference: reference_s.handle
+        date: date_s.handle
+
+      forms =
+        $param: (left, right)->
+          console.log(left.searchType)
+          h = table[left.searchType]
+          unless h
+            throw new Error("Unsupported search type [#{left.searchType}] #{JSON.stringify(left)}")
+          h(tbl, left, right)
+      lisp.eval_with(forms, expr)
+
+    exports.to_hsql
+
+
+###  Handling chained parameters
+
+This tricky function converts chained parameters into SQL joins:
+
+
+    mk_join = (plv8, base, next_alias, chained)->
+      current_alias = base
+      res = for param in chained[1..-2]
+        meta = param[1]
+        joined_resource = meta.join
+        joined_table = namings.table_name(plv8, joined_resource)
+        join_alias = next_alias() 
+        value = {value: ":'#{joined_resource}/' || #{join_alias}.id"}
+
+        on_expr = to_hsql(current_alias, ['$param', meta, value])
+        current_alias = join_alias
+
+        [['$alias',
+            ['$q', joined_table]
+            join_alias]
+          on_expr]
+
+      last_param = lang.last(chained)
+      last_cond = to_hsql(current_alias, last_param)
+      last_join_cond = lang.last(res)[1]
+
+      res[(res.length - 1)][1] = sql.and(last_join_cond, last_cond)
+      res
+
+
+Helper function to  generate aliases for joins:
+
+    mk_alias = ()->
+      tbl_cnt = 0 
+      ()->
+        tbl_cnt += 1
+        "tbl#{tbl_cnt}"
+
+To  convert search query into counting query
+we just strip limit, offset, order and rewrite select clause:
 
     countize_query = (q)->
       delete q.limit
@@ -157,21 +182,21 @@ and replace select
       q.select = [':count(*) as count']
       q
 
-    to_entry = (row)-> resource: JSON.parse(row.resource)
+
+We cache FHIR meta-data index per connection using plv8 object:
 
     ensure_index = (plv8)->
       utils.memoize plv8.cache, 'fhirbaseIdx', -> index.new(plv8, meta_db.getter)
 
 
+This is debug function with same arguments as `search`,
+but returning SQL query string. It could be used
+to analyze, what's happening during search.
 
     search_sql = (plv8, query)->
       idx_db = ensure_index(plv8)
       sql(_search_sql(plv8, idx_db, query))
 
-search function
-accept same params as search but return generated sql
-query.resourceType
-query.queryString - original query string for search
 
     exports.search_sql = search_sql
     exports.search_sql.plv8_signature = ['json', 'json']

@@ -120,6 +120,9 @@ update = (plv8, resource)->
   unless old_version
     return {status: "Error", message: "Resource #{resource.resourceType}/#{id} not exists"}
 
+  if not old_version.meta  or not old_version.meta.versionId
+    return {status: "Error", message: "Resource #{resource.resourceType}/#{id}, has broken old version #{JSON.stringify(old_version)}"}
+
   version_id = utils.uuid(plv8)
 
   ensure_meta resource,
@@ -169,6 +172,9 @@ exports.delete = (plv8, resource)->
 
   unless old_version
     return {status: "Error", message: "Resource #{resource.resourceType}/#{id} not exists"}
+
+  if not old_version.meta  or not old_version.meta.versionId
+    return {status: "Error", message: "Resource #{resource.resourceType}/#{id}, has broken old version #{JSON.stringify(old_version)}"}
 
   resource = utils.copy(old_version)
 
