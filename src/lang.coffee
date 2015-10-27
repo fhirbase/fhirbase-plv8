@@ -70,3 +70,6 @@ exports.mapcat = (coll, fn)->
   for x in coll
     Array.prototype.push.apply(res, fn(x))
   res
+
+exports.last = (arr)->
+  arr[(arr.length - 1)]

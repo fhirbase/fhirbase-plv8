@@ -1,0 +1,35 @@
+title: String search
+resources: ['patient']
+fixtures:
+  - {resourceType: 'Patient', name: [{given: ['nicola']}]}
+  - {resourceType: 'Patient', name: [{given: ['noise1']}]}
+  - {resourceType: 'Patient', name: [{given: ['noise2']}]}
+  - {resourceType: 'Patient', name: [{given: ['ivan']}]}
+  - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}], birthDate: '1988', multipleBirthInteger: 3}
+  - {resourceType: 'Patient', name: [{given: ['Cheburashka']}]}
+
+queries:
+  - query: {queryString: 'name=nicola', resourceType: 'Patient'}
+    total: 1
+    probes:
+      - path: ['entry',0,'resource', 'name',0, 'given',0]
+        result: 'nicola'
+      - path: ['total']
+        result: 1
+  - query: {queryString: 'name=noise', resourceType: 'Patient'}
+    total: 2
+    probes:
+      - path: ['total']
+        result: 2
+  - query: {queryString: 'name=nicola,ivan', resourceType: 'Patient'}
+    total: 2
+    probes:
+      - path: ['total']
+        result: 2
+  - query: {queryString: 'name=lincoln', resourceType: 'Patient'}
+    total: 1
+    probes:
+      - path: ['total']
+        result: 1
+      - path: ['entry',0,'resource', 'name',0, 'given',0]
+        result: 'Avraam'

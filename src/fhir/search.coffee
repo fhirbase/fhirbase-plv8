@@ -1,6 +1,7 @@
 parser = require('./query_string')
 expand = require('./expand_params')
 norm = require('./normalize_params')
+namings = require('../core/namings')
 cond = require('./conditions')
 namings = require('../core/namings')
 meta_db = require('./meta_pg')
@@ -10,47 +11,39 @@ sql = require('../honey')
 lang = require('../lang')
 
 exports.plv8_schema = "fhir"
-# cases
 
-# Patient.active
-# 1 to 1; primitive
-# (resource->>'active')::boolean [= <> is null]
-# not selective; we do not need index for such type
 
-# address-city
+###
+[a b c d e]
+ 1 2 3 4 5
 
-# 1 to *; complex
-# a)
-#   (resource#>>'{address,0,city}') ilike ~ =
-#   (resource#>>'{address,1,city}') ilike ~ =
-#   (resource#>>'{address,2,city}') ilike ~ =
-#   (resource#>>'{address,3,city}') ilike ~ =
-# we need trigram and/or fulltext index
-# separate index for each index - starting from 0 and accumulating statistic
-#
-#  pro: more accurate result
-#  contra: quite complex solution
-#
-# b)
-#   use GIN (expr::text[]) gin_trgm_ops) or GIST
-#   GIN (extract(resource, paths,opts)::text[] gin_trgm_ops)
-#   one index for parameter
-#
-# NOTES: we need umlauts normalization for strings
+[b with a on ref]
+[c with b on ref]
+[d with c on ref]
+[e with d on ref and param]
+###
 
-mk_join = (base, next_alias, chained)->
-  res = []
+mk_join = (plv8, base, next_alias, chained)->
   current_alias = base
-  for param in chained[1..-2]
+  res = for param in chained[1..-2]
     meta = param[1]
+    joined_resource = meta.join
+    joined_table = namings.table_name(plv8, joined_resource)
     join_alias = next_alias() 
-    param[2] = {value: ":'#{meta.join}/' || #{join_alias}.id"}
-    join_on = cond.eval(current_alias, param)
-    res.push([sql.alias(sql.q(meta.join.toLowerCase()), join_alias), join_on])
+    value = {value: ":'#{joined_resource}/' || #{join_alias}.id"}
+
+    on_expr = cond.eval(current_alias, ['$param', meta, value])
     current_alias = join_alias
-  last_param = chained[(chained.length - 1)]
+
+    [['$alias',
+        ['$q', joined_table]
+        join_alias]
+      on_expr]
+
+  last_param = lang.last(chained)
   last_cond = cond.eval(current_alias, last_param)
-  last_join_cond = res[(res.length - 1)][1]
+  last_join_cond = lang.last(res)[1]
+
   res[(res.length - 1)][1] = sql.and(last_join_cond, last_cond)
   res
 
@@ -79,12 +72,12 @@ _search_sql = (plv8, idx, query)->
 
   hsql =
     select: ':*'
-    from: ['$alias', ['$q', namings.table_name(plv8,expr.query)], alias]
+    from: ['$alias', ['$q', namings.table_name(plv8, expr.query)], alias]
     where: expr.where
 
   if expr.joins
     hsql.join = lang.mapcat expr.joins, (x)->
-      mk_join(alias, next_alias, x)
+      mk_join(plv8, alias, next_alias, x)
 
   hsql
 
