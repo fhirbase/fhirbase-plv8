@@ -1,0 +1,17 @@
+title: Number Search
+resources: ['Encounter']
+fixtures:
+  - {id: 'e10', resourceType: 'Encounter', length: {value: 10}}
+  - {id: 'e20', resourceType: 'Encounter', length: {value: 20}}
+  - {id: 'e30', resourceType: 'Encounter', length: {value: 30}}
+  - {id: 'e40', resourceType: 'Encounter', length: {value: 40}}
+
+queries:
+  - query: {resourceType: 'Encounter', queryString:  'length=gt20'}
+    total: 2 
+  - query: {resourceType: 'Encounter', queryString:  'length=ge20'}
+    total: 3 
+  - query: {resourceType: 'Encounter', queryString:  'length=lt20'}
+    total: 1 
+  - query: {resourceType: 'Encounter', queryString:  'length=le20'}
+    total: 2 

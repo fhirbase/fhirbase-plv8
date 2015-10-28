@@ -14,6 +14,11 @@ get_in = (obj, path)->
   cur = cur[item] for item in path when cur
   cur
 
+match = (x)->
+  (y)-> y.indexOf(x) > -1
+
+# plv8.debug = true
+
 fs.readdirSync("#{__dirname}/search").forEach (yml)->
   spec = test.loadYaml("#{__dirname}/search/#{yml}")
   describe spec.title, ->
