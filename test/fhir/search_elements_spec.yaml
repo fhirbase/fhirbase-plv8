@@ -1,0 +1,28 @@
+param_to_elements:
+  - args:   ["a"]
+    result: {a: true}
+  - args:   ["a.b"]
+    result: {a: {b: true}}
+  - args:   ["a.b.c"]
+    result: {a: {b: {c: true}}}
+
+  - args:   ["a", "a.b"]
+    result: {a: {b: true}}
+  - args:   ["a", "a.b", "a.c"]
+    result: {a: {b: true, c: true}}
+  - args:   ["a", "a.b", "a.c.e"]
+    result: {a: {b: true, c: {e: true}}}
+  - args:   ["a", "a.b", "a.c", "a.c.e"]
+    result: {a: {b: true, c: {e: true}}}
+
+  - args:   ["a", "b"]
+    result: {a: true, b: true}
+  - args:   ["a.b", "b"]
+    result: {a: {b: true}, b: true}
+  - args:   ["a.b.c", "b.d"]
+    result: {a: {b: {c: true}}, b: {d: true}}
+
+
+## a,a.b,c,a.b.d => [[a, [[b, [d]]], [c]]]
+
+## {a: {c: 1, d: 3}, b: 2}, ['a.c'] => {a: {c: 1}}
