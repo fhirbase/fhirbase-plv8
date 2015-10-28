@@ -4,10 +4,38 @@ xpath = require('./xpath')
 
 exports.plv8_schema = "fhir"
 
+UNACCENT_MAP =
+  'é': 'e'
+  'á': 'a'
+  'ű': 'u'
+  'ő': 'o'
+  'ú': 'u'
+  'ö': 'o'
+  'ü': 'u'
+  'ó': 'o'
+  'í': 'i'
+  'É': 'E'
+  'Á': 'A'
+  'Ű': 'U'
+  'Ő': 'O'
+  'Ú': 'U'
+  'Ö': 'O'
+  'Ü': 'U'
+  'Ó': 'O'
+  'Í': 'I'
+  'ò': 'o'
+
+UNACCENT_RE = new RegExp("[" + (k for k,_ of UNACCENT_MAP).join('') + "]" , 'g');
+unaccent_fn = (match) -> UNACCENT_MAP[match]
+
+unaccent = (s) -> s.replace(UNACCENT_RE, unaccent_fn)
+exports.unaccent = unaccent
+
 TODO = -> throw new Error("TODO")
+
 exports.extract_as_string = (plv8, resource, path, element_type)->
   obj = xpath.get_in(resource, [path])
-  ("^^#{v}$$" for v in lang.values(obj)).join(" ")
+  ("^^#{unaccent(v)}$$" for v in lang.values(obj)).join(" ")
 
 exports.extract_as_string.plv8_signature = ['json', 'json', 'text', 'text']
 
@@ -24,7 +52,7 @@ ilike_expr = (tbl, meta, value)->
         "text"]
     value]
 
-
+    
 OPERATORS =
   eq: (tbl, meta, value)-> ilike_expr(tbl, meta, "%^^#{normalize_string_value(value.value)}$$%")
   sw: (tbl, meta, value)-> ilike_expr(tbl, meta, "%^^#{normalize_string_value(value.value)}%")

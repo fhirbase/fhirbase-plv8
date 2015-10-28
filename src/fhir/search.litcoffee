@@ -6,11 +6,16 @@ This module is responsible for FHIR search implementation.
 Search API is specified on
 
 * [http://hl7-fhir.github.io/search.html]  
+* [http://hl7-fhir.github.io/search_filter.html]  
 
+pages.
 
-This is a most complicated feature of fhirbase,
+This is a most sofistiacted part of fhirbase,
 so the code split as much as possible  into small modules
 
+`query_string` module parse query string into {query: 'ResourceType', where: [params], joins: [params]} form 
+`expand_params` walk throw it and add required FHIR meta-data to each parameter 
+`noramalize_params` unify operators
 
     parser = require('./query_string')
     expand = require('./expand_params')
@@ -27,6 +32,12 @@ so the code split as much as possible  into small modules
 
 For every search type we have dedicated module,
 with indexing and building search expression implementation.
+
+Every module implements and exports `handle(table_name, meta, value)` function,
+which should generate honey sql predicate expression.
+
+Such expressions usualy contains some `extract` function, because we have to extract
+appropriate elements from resource by path
 
     string_s = require('./search_string')
     token_s = require('./search_token')
@@ -114,6 +125,8 @@ To build search query we need to
 
 ###  Building SQL from search parameters
 
+To build search expressions, we dispatch to
+implementation based on searchType
 
     to_hsql = (tbl, expr)->
       table =
@@ -124,7 +137,6 @@ To build search query we need to
 
       forms =
         $param: (left, right)->
-          console.log(left.searchType)
           h = table[left.searchType]
           unless h
             throw new Error("Unsupported search type [#{left.searchType}] #{JSON.stringify(left)}")
@@ -136,7 +148,7 @@ To build search query we need to
 
 ###  Handling chained parameters
 
-This tricky function converts chained parameters into SQL joins:
+This tricky function converts chained parameters into SQL joins.
 
 
     mk_join = (plv8, base, next_alias, chained)->
@@ -151,10 +163,7 @@ This tricky function converts chained parameters into SQL joins:
         on_expr = to_hsql(current_alias, ['$param', meta, value])
         current_alias = join_alias
 
-        [['$alias',
-            ['$q', joined_table]
-            join_alias]
-          on_expr]
+        [['$alias', ['$q', joined_table], join_alias], on_expr]
 
       last_param = lang.last(chained)
       last_cond = to_hsql(current_alias, last_param)
@@ -188,15 +197,20 @@ We cache FHIR meta-data index per connection using plv8 object:
     ensure_index = (plv8)->
       utils.memoize plv8.cache, 'fhirbaseIdx', -> index.new(plv8, meta_db.getter)
 
+## Debuging fhirbase search
 
-This is debug function with same arguments as `search`,
-but returning SQL query string. It could be used
-to analyze, what's happening during search.
+`fhir.search_sql(query)` is debug function, accepting same arguments as `fhir.search`
+and returning SQL query string. It could be used
+to analyze, what's happening under the hud.
 
     search_sql = (plv8, query)->
       idx_db = ensure_index(plv8)
       sql(_search_sql(plv8, idx_db, query))
 
-
+    search_sql.plv8_signature = ['json', 'json']
     exports.search_sql = search_sql
-    exports.search_sql.plv8_signature = ['json', 'json']
+
+## TODO
+
+* `search_analyze`
+* caching queries
