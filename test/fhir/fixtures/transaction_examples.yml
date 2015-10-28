@@ -2,8 +2,9 @@
 fixtures:
   Patient:
     - resourceType: Patient
+      id: bob-the-patient
       name:
-        - given: ["Will"]
+        - given: ["Bob"]
 
 examples:
   - desc: simple transaction creating a patient
@@ -12,6 +13,12 @@ examples:
           resourceType: Patient
           queryString: name=john
         total: 0
+
+      - search:
+          resourceType: Patient
+          queryString: name=Bob
+        total: 1
+
 
     transaction:
       entry:
@@ -23,8 +30,17 @@ examples:
             name:
               - given: ["John"]
 
+        - request:
+            url: /Patient/bob-the-patient
+            method: DELETE
+
     after:
       - search:
           resourceType: Patient
           queryString: name=john
         total: 1
+
+      - search:
+          resourceType: Patient
+          queryString: name=Bob
+        total: 0
