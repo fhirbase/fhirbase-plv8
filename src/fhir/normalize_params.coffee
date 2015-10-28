@@ -13,7 +13,20 @@ TABLE =
     ew: 'ew'
     startwith: 'sw'
     endwith: 'ew'
+  uri:
+    $prefix: false
+    $modifier: 'eq'
+    below: 'below'
   number:
+    $prefix: 'eq'
+    $modifier: false
+    eq: 'eq'
+    lt: 'lt'
+    le: 'le'
+    gt: 'gt'
+    ge: 'ge'
+    ne: 'ne'
+  quantity:
     $prefix: 'eq'
     $modifier: false
     eq: 'eq'

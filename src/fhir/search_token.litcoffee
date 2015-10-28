@@ -39,6 +39,13 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
             res.push(coding.code)
             res.push("#{coding.system}|#{coding.code}")
         res
+      else if element_type == 'Quantity'
+        for quant in data
+            res.push(quant.code)
+            res.push(quant.unit)
+            res.push("#{quant.system}|#{quant.code}")
+            res.push("#{quant.system}|#{quant.unit}")
+        res
       else if element_type == 'CodeableConcept'
         for concept in data
           for coding in (concept.coding || [])
@@ -78,6 +85,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       'ContactPoint'
       'Identifier'
       'Reference'
+      'Quantity'
     ]
 
     handle = (tbl, meta, value)->
