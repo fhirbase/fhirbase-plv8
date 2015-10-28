@@ -111,5 +111,26 @@ executePlan = (plv8, plan) ->
       else
         "TODO: return operation outcome here!\n#{action.message}"
 
+execute = (plv8, bundle, strictMode) ->
+  plan = makePlan(bundle)
+
+  if strictMode
+    errors = plan.filter (i) -> i.type == 'error'
+
+    if errors.length > 0
+      oo =
+        resourceType: "OperationOutcome"
+        message: "TODO: make correct operation outcome here!\nThere were incorrect requests within transaction"
+
+      return oo
+
+  result = executePlan(plv8, plan)
+  bundle =
+    resourceType: "Bundle"
+    entry: result
+
+  return bundle
+
 exports.makePlan = makePlan
 exports.executePlan = executePlan
+exports.execute = execute
