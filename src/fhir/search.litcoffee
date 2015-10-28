@@ -45,6 +45,7 @@ appropriate elements from resource by path
     reference_s = require('./search_reference')
     number_s = require('./search_number')
     quantity_s = require('./search_quantity')
+    uri_s = require('./search_uri')
 
     exports.plv8_schema = "fhir"
 
@@ -138,6 +139,7 @@ implementation based on searchType
         date: date_s.handle
         number: number_s.handle
         quantity: quantity_s.handle
+        uri: uri_s.handle
 
       forms =
         $param: (left, right)->

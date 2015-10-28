@@ -1,0 +1,19 @@
+title: Uri Search
+resources: ['Device']
+fixtures:
+  - resourceType: 'Device'
+    url: 'http://acme.org/devices/1'  
+  - resourceType: 'Device'
+    url: 'http://acme.org/devices/2'  
+  - resourceType: 'Device'
+    url: 'http://google.com/devices/000000000000000000000000000001'  
+
+queries:
+  - query: {resourceType: 'Device', queryString:  'url=http://acme.org/devices/1'}
+    total:  1
+  - query: {resourceType: 'Device', queryString:  'url=http://acme.org/devices/2'}
+    total:  1
+  - query: {resourceType: 'Device', queryString:  'url:below=http://acme.org/devices'}
+    total:  2
+  - query: {resourceType: 'Device', queryString:  'url:below=http://acme.org'}
+    total:  2

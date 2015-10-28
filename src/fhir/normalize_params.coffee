@@ -13,6 +13,10 @@ TABLE =
     ew: 'ew'
     startwith: 'sw'
     endwith: 'ew'
+  uri:
+    $prefix: false
+    $modifier: 'eq'
+    below: 'below'
   number:
     $prefix: 'eq'
     $modifier: false
