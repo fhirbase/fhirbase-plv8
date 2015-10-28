@@ -6,8 +6,14 @@ fixtures:
       name:
         - given: ["Bob"]
 
+    - resourceType: Patient
+      id: update-me-please
+      name:
+        - given: ["UNKNOWN"]
+          family: ["PATIENT"]
+
 examples:
-  - desc: simple transaction creating a patient
+  - desc: simple transaction creating and deleting a patient
     before:
       - search:
           resourceType: Patient
@@ -44,3 +50,29 @@ examples:
           resourceType: Patient
           queryString: name=Bob
         total: 0
+
+  - desc: simple transaction updating a patient
+    before:
+      - search:
+          resourceType: Patient
+          queryString: name=UNKNOWN
+        total: 1
+
+
+    transaction:
+      entry:
+        - request:
+            url: /Patient/update-me-please
+            method: PUT
+
+          resource:
+            resourceType: Patient
+            name:
+              - given: ["Donald"]
+                family: ["Duck"]
+
+    after:
+      - search:
+          resourceType: Patient
+          queryString: name=Duck
+        total: 1

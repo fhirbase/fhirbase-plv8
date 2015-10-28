@@ -28,7 +28,7 @@ describe 'transaction execution', ->
         crud.create(plv8, res)
 
   transactionExamples.examples.forEach (e, index) ->
-    it "should correctly execute transaction ##{index}", ->
+    it e.desc, ->
       e.before.forEach (i) ->
         result = search.search(plv8, i.search)
         assert.equal(i.total, result.total)
