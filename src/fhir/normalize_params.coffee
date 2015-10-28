@@ -22,6 +22,15 @@ TABLE =
     gt: 'gt'
     ge: 'ge'
     ne: 'ne'
+  quantity:
+    $prefix: 'eq'
+    $modifier: false
+    eq: 'eq'
+    lt: 'lt'
+    le: 'le'
+    gt: 'gt'
+    ge: 'ge'
+    ne: 'ne'
   token:
     $prefix: false
     $modifier: 'eq'

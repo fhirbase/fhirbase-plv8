@@ -1,0 +1,31 @@
+title: Quantity Search
+resources: ['Observation']
+fixtures:
+  - resourceType: 'Observation'
+    valueQuantity: 
+        value: 185
+        unit: "lbs"
+        system: "http://unitsofmeasure.org"
+        code: "[lb_av]"
+  - resourceType: 'Observation'
+    valueQuantity: 
+        value: 190
+        unit: "lbs"
+        system: "http://unitsofmeasure.org"
+        code: "[lb_av]"
+  - resourceType: 'Observation'
+    valueQuantity: 
+        value: 10
+        unit: "mg"
+        system: "http://unitsofmeasure.org"
+        code: "[mg]"
+
+queries:
+  - query: {resourceType: 'Observation', queryString:  'value-quantity=lt186'}
+    total: 2 
+  - query: {resourceType: 'Observation', queryString:  'value-quantity=lt186||mg'}
+    total:  1
+  - query: {resourceType: 'Observation', queryString:  'value-quantity=lt186|http://unitsofmeasure.org|lbs'}
+    total:  1
+  - query: {resourceType: 'Observation', queryString:  'value-quantity=lt186|http://unitsofmeasure.org|[lb_av]'}
+    total:  1

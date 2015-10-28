@@ -1,8 +1,8 @@
 # Search and indexing date elements
 
-Handle date search queries, extract function and indexing:
+Handle date search queries, providing *extract* function and *indexing*:
 
-Most of job is done using PostgreSQL [tstzranges](http://www.postgresql.org/docs/9.4/static/functions-range.html).
+Most of job is done using PostgreSQL timestamp ranges [tstzranges](http://www.postgresql.org/docs/9.4/static/functions-range.html).
 For example to search Patient with birth date more then 1980:
 
 * we convert birth date into range 1996 -> [1996-01-01, 1997-01-01), where `[]` depicts inclusive boundaries and `()` exclusive
@@ -15,7 +15,8 @@ to_range(resource.birthDate) && '(1980-01-01, infinity]'::tstzrange
 
 ```
 
-Such conversions is extracted into `date` [module]('./date.coffee').
+This conversions is extracted into [date module](date.coffee).
+
 See it for more details.
 
 

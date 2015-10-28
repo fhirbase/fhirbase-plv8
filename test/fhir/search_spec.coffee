@@ -19,7 +19,7 @@ match = (x)->
 
 # plv8.debug = true
 
-fs.readdirSync("#{__dirname}/search").forEach (yml)->
+fs.readdirSync("#{__dirname}/search").filter(match('search')).forEach (yml)->
   spec = test.loadYaml("#{__dirname}/search/#{yml}")
   describe spec.title, ->
     before ->

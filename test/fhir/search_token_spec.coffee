@@ -23,49 +23,60 @@ resource =
     {system: 'ssn', value: '1'}
     {system: 'mrn', value: '2'}
   ]
+  value: 
+    value: 10
+    unit: "mg"
+    system: "http://unitsofmeasure.org"
+    code: "[mg]"
 
 specs = [
   {
-    path: ['Patient', 'active']
+    path: ['Resource', 'active']
     elementType: 'boolean'
     result: ['true']
   }
   {
-    path: ['Patient', 'identifier']
+    path: ['Resource', 'identifier']
     elementType: 'Identifier'
     result: ['1', 'ssn|1', '2', 'mrn|2']
   }
   {
-    path: ['Patient', 'gender']
+    path: ['Resource', 'gender']
     elementType: 'code'
     result: ['male']
   }
   {
-    path: ['Patient', 'gender']
+    path: ['Resource', 'gender']
     elementType: 'string'
     result: ['male']
   }
   {
-    path: ['Patient', 'type']
+    path: ['Resource', 'type']
     elementType: 'Coding'
     result: ['ups', 'dups|ups']
   }
   {
-    path: ['Patient', 'communication', 'language']
+    path: ['Resource', 'communication', 'language']
     elementType: 'CodeableConcept'
     result: ['us', 'lang|us', 'en', 'world|en']
   }
   {
-    path: ['Patient', 'provider']
+    path: ['Resource', 'provider']
     elementType: 'Reference'
     result: ['Provider/1']
   }
   {
-    path: ['Patient', 'telecom']
+    path: ['Resource', 'telecom']
     elementType: 'ContactPoint'
     result: ['444', 'phone|444', 'a@b.com', 'email|a@b.com']
   }
+  {
+    path: ['Resource', 'value']
+    elementType: 'Quantity'
+    result: ['[mg]', 'mg', 'http://unitsofmeasure.org|[mg]', 'http://unitsofmeasure.org|mg']
+  }
 ]
+
 describe "extract_as_token", ->
   specs.forEach (spec)->
     it JSON.stringify(spec.path), ->

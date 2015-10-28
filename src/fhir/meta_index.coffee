@@ -53,7 +53,7 @@ index_elements = (idx, structure_definition)->
 # counstruct idx object from getter
 # getter is function which should return structure definition by name
 # getter(name)-> StructureDefinition
-module.exports.new = (plv8, getter)->
+ module.exports.new = (plv8, getter)->
   elements = {}
   params = {}
 
