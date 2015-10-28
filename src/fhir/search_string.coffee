@@ -28,7 +28,7 @@ UNACCENT_MAP =
 UNACCENT_RE = new RegExp("[" + (k for k,_ of UNACCENT_MAP).join('') + "]" , 'g');
 unaccent_fn = (match) -> UNACCENT_MAP[match]
 
-unaccent = (s) -> s.replace(UNACCENT_RE, unaccent_fn)
+unaccent = (s) -> s.toString().replace(UNACCENT_RE, unaccent_fn)
 exports.unaccent = unaccent
 
 TODO = -> throw new Error("TODO")
