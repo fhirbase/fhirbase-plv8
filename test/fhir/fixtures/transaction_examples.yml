@@ -1,0 +1,21 @@
+- before:
+    - search:
+        resourceType: Patient
+        queryString: name=john
+      count: 0
+
+  transaction:
+    entry:
+      - request:
+          url: /Patient
+          method: POST
+        resource:
+          resourceType: Patient
+          name:
+            - given: ["John"]
+
+  after:
+    - search:
+        resourceType: Patient
+        queryString: name=john
+      count: 1
