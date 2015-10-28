@@ -1,21 +1,30 @@
-- before:
-    - search:
-        resourceType: Patient
-        queryString: name=john
-      count: 0
+---
+fixtures:
+  Patient:
+    - resourceType: Patient
+      name:
+        - given: ["Will"]
 
-  transaction:
-    entry:
-      - request:
-          url: /Patient
-          method: POST
-        resource:
+examples:
+  - desc: simple transaction creating a patient
+    before:
+      - search:
           resourceType: Patient
-          name:
-            - given: ["John"]
+          queryString: name=john
+        total: 0
 
-  after:
-    - search:
-        resourceType: Patient
-        queryString: name=john
-      count: 1
+    transaction:
+      entry:
+        - request:
+            url: /Patient
+            method: POST
+          resource:
+            resourceType: Patient
+            name:
+              - given: ["John"]
+
+    after:
+      - search:
+          resourceType: Patient
+          queryString: name=john
+        total: 1
