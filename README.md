@@ -39,6 +39,43 @@ strictly coupling to FHIR - for example create FHIR-like resources, which never 
 but with almost the same operations and structure.
 
 
+## Installation
+
+Prerequisites: postgresql-9.4, plv8, node 0.12, npm
+On ubuntu
+
+```sh
+
+git clone https://github.com/fhirbase/fhirbase-plv8
+cd fhirbase-plv8
+git submodule init && git submodule update
+
+# install node < 0.12 by nvm for example
+
+sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
+npm install && cd plpl && npm install
+npm install -g mocha && npm install -g coffee-script
+psql -c "CREATE USER fb WITH PASSWORD 'fb'"
+psql -c 'ALTER ROLE fb WITH SUPERUSER'
+psql -c 'CREATE DATABASE fhirbase;' -U postgres
+psql -c '\dt' -U postgres
+
+export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase
+
+plpl/bin/plpl migrate
+plpl/bin/plpl reload
+npm run test
+```
+
+## Usage
+
+To make fhirbase-plv8 work after opening connection to postgresql
+you have to issue command (read more [here](http://pgxn.org/dist/plv8/doc/plv8.html#Start-up.procedure)):
+
+```sql
+SET plv8.start_proc = 'plv8_init'
+```
+
 ## Preview
 
 Architecture sketch:
