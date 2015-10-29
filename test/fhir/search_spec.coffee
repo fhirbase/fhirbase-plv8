@@ -34,15 +34,24 @@ fs.readdirSync("#{__dirname}/search").filter(match('search')).forEach (yml)->
       for idx in (spec.indices or [])
         search.index_parameter(plv8, idx)
 
+      for res in spec.resources
+        search.analyze_storage(plv8, resourceType: res)
+
     spec.queries.forEach (q)->
       it "#{JSON.stringify(q.query)}", ->
+
+        plv8.execute "SET enable_seqscan = OFF;" if q.indexed
+
         res = search.search(plv8, q.query)
+        explain = JSON.stringify(search.explain_search(plv8, q.query))
+
+        plv8.execute "SET enable_seqscan = ON;" if q.indexed
+
         if q.total
           assert.equal(res.total, q.total)
 
         (q.probes || []).forEach (probe)->
           assert.equal(get_in(res, probe.path), probe.result)
 
-        explain = JSON.stringify(search.explain_search(plv8, q.query))
         if q.indexed
           assert(explain.indexOf("Index Cond") > -1, "Should be indexed but #{explain}") 

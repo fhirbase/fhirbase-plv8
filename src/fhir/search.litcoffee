@@ -203,7 +203,8 @@ We cache FHIR meta-data index per connection using plv8 object:
 
 ## Indexing
 
-`fhir.index_parameter(query)` this function create index for parameter
+`fhir.index_parameter(query)` this function create index for parameter,
+awaiting query.resourceType and query.name - name of parameter
 
 
     index_parameter = (plv8, query)->
@@ -225,6 +226,17 @@ We cache FHIR meta-data index per connection using plv8 object:
         utils.exec(plv8, idx_info.ddl)
 
     exports.index_parameter = index_parameter
+
+## Maintains
+
+This function do analyze on resource tables to update pg statistic
+args: query.resourceType
+
+    analyze_storage = (plv8, query)->
+      console.log("analize", plv8.execute "ANALYZE #{query.resourceType.toLowerCase()}")
+
+    exports.analyze_storage = analyze_storage
+    analyze_storage.plv8_signature = ['json', 'json']
 
 ## Debuging fhirbase search
 
