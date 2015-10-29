@@ -45,22 +45,23 @@ exports.extract_as_string.plv8_signature =
 normalize_string_value = (x)->
   x && x.trim().toLowerCase()
 
-ilike_expr = (tbl, meta, value)->
-  ["$ilike"
-    ['$cast'
-      ['$fhir.extract_as_string'
-        ['$cast', ['$q',":#{tbl}", ':resource'], ':json']
-        ['$json', meta.path]
-        meta.elementType]
-        "text"]
-    value]
+extract_fn_expr = (meta, tbl)->
+  from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-    
+  ['$fhir.extract_as_string'
+    ['$cast', from, ':json']
+    ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
+    ['$quote', meta.elementType]]
+
 OPERATORS =
-  eq: (tbl, meta, value)-> ilike_expr(tbl, meta, "%^^#{normalize_string_value(value.value)}$$%")
-  sw: (tbl, meta, value)-> ilike_expr(tbl, meta, "%^^#{normalize_string_value(value.value)}%")
-  ew: (tbl, meta, value)-> ilike_expr(tbl, meta, "%#{normalize_string_value(value.value)}$$%")
-  co: (tbl, meta, value)-> ilike_expr(tbl, meta, "%#{normalize_string_value(value.value)}%")
+  eq: (tbl, meta, value)->
+    ["$ilike", extract_fn_expr(meta, tbl), "%^^#{normalize_string_value(value.value)}$$%"]
+  sw: (tbl, meta, value)->
+    ["$ilike", extract_fn_expr(meta, tbl), "%^^#{normalize_string_value(value.value)}%"]
+  ew: (tbl, meta, value)->
+    ["$ilike", extract_fn_expr(meta, tbl), "%#{normalize_string_value(value.value)}$$%"]
+  co: (tbl, meta, value)->
+    ["$ilike", extract_fn_expr(meta, tbl), "%#{normalize_string_value(value.value)}%"]
 
 SUPPORTED_TYPES = [
  'Address'
@@ -82,15 +83,18 @@ handle = (tbl, meta, value)->
 
 exports.handle = handle
 
-
 exports.index = (plv8, meta)->
-  create: 'index'
-  name:   "#{meta.resourceType}_#{meta.name}_string"
-  using: ':GIN'
-  on: meta.resourceType.toLowerCase()
-  opclass: ':gin_trgm_ops'
-  expression: ['$fhir.extract_as_string'
-                ['$cast', ':resource', ':json']
-                ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-                ['$quote', meta.elementType]]
+  idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_string"
+
+  name: idx_name
+  ddl:
+    create: 'index'
+    name:  idx_name
+    using: ':GIN'
+    on: meta.resourceType.toLowerCase()
+    opclass: ':gin_trgm_ops'
+    expression: ['$fhir.extract_as_string'
+                  ['$cast', ':resource', ':json']
+                  ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
+                  ['$quote', meta.elementType]]
 

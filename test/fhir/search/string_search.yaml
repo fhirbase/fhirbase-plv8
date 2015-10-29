@@ -1,5 +1,13 @@
 title: String search
 resources: ['patient']
+indices:
+  - {resourceType: 'Patient', name: 'name'}
+  - {resourceType: 'Patient', name: 'address'}
+  - {resourceType: 'Patient', name: 'address-city'}
+  - {resourceType: 'Patient', name: 'address-country'}
+  - {resourceType: 'Patient', name: 'address-postalcode'}
+  - {resourceType: 'Patient', name: 'given'}
+  - {resourceType: 'Patient', name: 'family'}
 
 
 fixtures:
@@ -33,6 +41,7 @@ fixtures:
 
 queries:
   - query: {queryString: 'name=nicola', resourceType: 'Patient'}
+    indexed: true
     total: 1
     probes:
       - path: ['entry',0,'resource', 'name',0, 'given',0]
@@ -40,16 +49,19 @@ queries:
       - path: ['total']
         result: 1
   - query: {queryString: 'name=noise', resourceType: 'Patient'}
+    indexed: true
     total: 2
     probes:
       - path: ['total']
         result: 2
   - query: {queryString: 'name=nicola,ivan', resourceType: 'Patient'}
+    indexed: true
     total: 2
     probes:
       - path: ['total']
         result: 2
   - query: {queryString: 'name=lincoln', resourceType: 'Patient'}
+    indexed: true
     total: 1
     probes:
       - path: ['total']
@@ -57,82 +69,110 @@ queries:
       - path: ['entry',0,'resource', 'name',0, 'given',0]
         result: 'Avraam'
   - query: {queryString: 'name:contains=inco', resourceType: 'Patient'}
+    indexed: true
     total: 1
   - query: {queryString: 'name:exact=nicol', resourceType: 'Patient'}
+    indexed: true
     total: 0 
   - query: {queryString: 'name:exact=nicola', resourceType: 'Patient'}
+    indexed: true
     total: 1 
   - query: {queryString: 'name:startwith=nik', resourceType: 'Patient'}
+    indexed: true
     total: 0 
   - query: {queryString: 'name:startwith=nic', resourceType: 'Patient'}
+    indexed: true
     total: 1 
   - query: {queryString: 'name:sw=nik', resourceType: 'Patient'}
+    indexed: true
     total: 0 
   - query: {queryString: 'name:sw=nic', resourceType: 'Patient'}
+    indexed: true
     total: 1 
   - query: {queryString: 'name:ew=kola', resourceType: 'Patient'}
+    indexed: true
     total: 0 
   - query: {queryString: 'name:ew=cola', resourceType: 'Patient'}
+    indexed: true
     total: 1 
   - query: {queryString: 'name:endwith=kola', resourceType: 'Patient'}
+    indexed: true
     total: 0 
   - query: {queryString: 'name:endwith=cola', resourceType: 'Patient'}
+    indexed: true
     total: 1 
 
   - query: {queryString: 'name:endwith=kola', resourceType: 'Patient'}
+    indexed: true
     total: 0 
   - query: {queryString: 'name:endwith=cola', resourceType: 'Patient'}
+    indexed: true
     total: 1 
 
   - query: {queryString: 'given=nico', resourceType: 'Patient'}
+    indexed: true
     total: 1 
   - query: {queryString: 'given=poga', resourceType: 'Patient'}
+    indexed: true
     total: 0 
 
   - query: {queryString: 'family=poga', resourceType: 'Patient'}
+    indexed: true
     total: 1 
   - query: {queryString: 'family=nico', resourceType: 'Patient'}
+    indexed: true
     total: 0 
 
   - query: {queryString: 'family=poga&name=nico', resourceType: 'Patient'}
+    indexed: true
     total: 1 
   - query: {queryString: 'family=nico&name=poga', resourceType: 'Patient'}
+    indexed: true
     total: 0 
 
   - query: {queryString: 'name=poga&name:contains=nini', resourceType: 'Patient'}
+    indexed: true
     total: 1 
 
   - query: {queryString: 'address=123%20Nord', resourceType: 'Patient'}
+    indexed: true
     total: 0 
   - query: {queryString: 'address=123%20North', resourceType: 'Patient'}
+    indexed: true
     total: 1 
     probes:
       - path: ['entry',0,'resource', 'address',0, 'city']
         result: 'Harrisburg'
 
   - query: {queryString: 'address:contains=enexist', resourceType: 'Patient'}
+    indexed: true
     total: 0 
   - query: {queryString: 'address:contains=nor', resourceType: 'Patient'}
+    indexed: true
     total: 1 
     probes:
       - path: ['entry',0,'resource', 'address',0, 'city']
         result: 'Harrisburg'
 
   - query: {queryString: 'address-city=Pleaj', resourceType: 'Patient'}
+    indexed: true
     total: 0 
   - query: {queryString: 'address-city=PleaSan', resourceType: 'Patient'}
+    indexed: true
     total: 1 
     probes:
       - path: ['entry',0,'resource', 'address',0, 'city']
         result: 'PleasantVille'
 
   - query: {queryString: 'address-country=usa', resourceType: 'Patient'}
+    indexed: true
     total: 1 
     probes:
       - path: ['entry',0,'resource', 'address',0, 'country']
         result: 'USA'
 
   - query: {queryString: 'address-postalcode=3999', resourceType: 'Patient'}
+    indexed: true
     total: 1 
     probes:
       - path: ['entry',0,'resource', 'address',0, 'postalCode']

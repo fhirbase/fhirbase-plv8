@@ -26,6 +26,7 @@ so the code split as much as possible  into small modules
     meta_db = require('./meta_pg')
     index = require('./meta_index')
     utils = require('../core/utils')
+    pg_meta = require('../core/pg_meta')
     sql = require('../honey')
     lang = require('../lang')
 
@@ -39,8 +40,6 @@ which should generate honey sql predicate expression.
 Such expressions usualy contains some `extract` function, because we have to extract
 appropriate elements from resource by path
 
-    string_s = 
-    token_s = 
 
     SEARCH_TYPES_TABLE =
       string: require('./search_string')
@@ -200,6 +199,8 @@ We cache FHIR meta-data index per connection using plv8 object:
 
     ensure_index = (plv8)->
       utils.memoize plv8.cache, 'fhirbaseIdx', -> index.new(plv8, meta_db.getter)
+
+
 ## Indexing
 
 `fhir.index_parameter(query)` this function create index for parameter
@@ -208,6 +209,7 @@ We cache FHIR meta-data index per connection using plv8 object:
     index_parameter = (plv8, query)->
       idx = ensure_index(plv8)
       [_, meta] = expand.expand(idx, ['$param', query])
+
       h = SEARCH_TYPES_TABLE[meta.searchType]
 
       unless h
@@ -215,8 +217,12 @@ We cache FHIR meta-data index per connection using plv8 object:
       unless h.index
         throw new Error("Search type does not exports index [#{meta.searchType}] #{JSON.stringify(meta)}")
 
-      expr = h.index(plv8, meta)
-      utils.exec(plv8, expr)
+      idx_info = h.index(plv8, meta)
+
+      if pg_meta.index_exists(plv8, idx_info.name)
+        return {status: 'error', message: "Index #{idx_info.name} already exists"}
+      else
+        utils.exec(plv8, idx_info.ddl)
 
     exports.index_parameter = index_parameter
 
@@ -232,6 +238,15 @@ to analyze, what's happening under the hud.
 
     search_sql.plv8_signature = ['json', 'json']
     exports.search_sql = search_sql
+
+    explain_search = (plv8, query)->
+      idx_db = ensure_index(plv8)
+      query = sql(_search_sql(plv8, idx_db, query))
+      query[0] = "EXPLAIN ( ANALYZE, FORMAT JSON ) #{query[0]}"
+      plv8.execute.call(plv8, query[0], query[1..-1])
+
+    explain_search.plv8_signature = ['json', 'json']
+    exports.explain_search = explain_search
 
 ## TODO
 

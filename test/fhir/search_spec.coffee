@@ -31,6 +31,9 @@ fs.readdirSync("#{__dirname}/search").filter(match('search')).forEach (yml)->
       for res in spec.fixtures
         crud.create(plv8, res)
 
+      for idx in (spec.indices or [])
+        search.index_parameter(plv8, idx)
+
     spec.queries.forEach (q)->
       it "#{JSON.stringify(q.query)}", ->
         res = search.search(plv8, q.query)
@@ -39,3 +42,7 @@ fs.readdirSync("#{__dirname}/search").filter(match('search')).forEach (yml)->
 
         (q.probes || []).forEach (probe)->
           assert.equal(get_in(res, probe.path), probe.result)
+
+        explain = JSON.stringify(search.explain_search(plv8, q.query))
+        if q.indexed
+          assert(explain.indexOf("Index Cond") > -1, "Should be indexed but #{explain}") 
