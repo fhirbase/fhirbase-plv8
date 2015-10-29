@@ -248,6 +248,7 @@ CREATE_CLAUSES =
       res.push(name(expr.using))
     parens res, ->
       heval(res, expr.expression)
+      heval(res, expr.opclass) if expr.opclass
   table: (res, expr)->
     res.push("CREATE TABLE")
     res.push("IF NOT EXISTS") if expr.safe

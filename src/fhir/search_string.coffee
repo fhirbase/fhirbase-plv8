@@ -86,8 +86,9 @@ exports.handle = handle
 exports.index = (plv8, meta)->
   create: 'index'
   name:   "#{meta.resourceType}_#{meta.name}_string"
-  using: ':GIST'
+  using: ':GIN'
   on: meta.resourceType.toLowerCase()
+  opclass: ':gin_trgm_ops'
   expression: ['$fhir.extract_as_string'
                 ['$cast', ':resource', ':json']
                 ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
