@@ -184,6 +184,9 @@ BUILTINS =
   $raw: (res, [op, str])->
     res.push(str)
   $inlineString: (res, [op, str])-> res.push("'#{str}'")
+  $quote: (res, [op, str])->
+    qstr = str.replace("'", "''")
+    res.push("'#{qstr}'")
   $alias: (res, [op, expr, alias])->
     heval(res, expr)
     res.push(name(alias))
@@ -233,6 +236,18 @@ CREATE_CLAUSES =
     res.push("CREATE SCHEMA")
     res.push("IF NOT EXISTS") if expr.safe
     res.push(name(expr.name))
+  index: (res, expr)->
+    res.push("CREATE INDEX")
+    res.push("UNIQUE") if expr.unique
+    res.push(name(expr.name))
+    res.push("CONCURRENTLY") if expr.concurrently
+    res.push("ON")
+    res.push(name(expr.on))
+    if expr.using
+      res.push("USING")
+      res.push(name(expr.using))
+    parens res, ->
+      heval(res, expr.expression)
   table: (res, expr)->
     res.push("CREATE TABLE")
     res.push("IF NOT EXISTS") if expr.safe

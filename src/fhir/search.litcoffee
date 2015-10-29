@@ -39,13 +39,17 @@ which should generate honey sql predicate expression.
 Such expressions usualy contains some `extract` function, because we have to extract
 appropriate elements from resource by path
 
-    string_s = require('./search_string')
-    token_s = require('./search_token')
-    date_s = require('./search_date')
-    reference_s = require('./search_reference')
-    number_s = require('./search_number')
-    quantity_s = require('./search_quantity')
-    uri_s = require('./search_uri')
+    string_s = 
+    token_s = 
+
+    SEARCH_TYPES_TABLE =
+      string: require('./search_string')
+      token: require('./search_token')
+      reference: require('./search_reference')
+      date: require('./search_date')
+      number: require('./search_number')
+      quantity: require('./search_quantity')
+      uri: require('./search_uri')
 
     exports.plv8_schema = "fhir"
 
@@ -128,25 +132,19 @@ To build search query we need to
 
 ###  Building SQL from search parameters
 
+
 To build search expressions, we dispatch to
 implementation based on searchType
 
     to_hsql = (tbl, expr)->
-      table =
-        string: string_s.handle
-        token: token_s.handle
-        reference: reference_s.handle
-        date: date_s.handle
-        number: number_s.handle
-        quantity: quantity_s.handle
-        uri: uri_s.handle
-
       forms =
         $param: (left, right)->
-          h = table[left.searchType]
+          h = SEARCH_TYPES_TABLE[left.searchType]
           unless h
             throw new Error("Unsupported search type [#{left.searchType}] #{JSON.stringify(left)}")
-          h(tbl, left, right)
+          unless h.handle
+            throw new Error("Search type does not exports handle fn: [#{left.searchType}] #{JSON.stringify(left)}")
+          h.handle(tbl, left, right)
       lisp.eval_with(forms, expr)
 
     exports.to_hsql
@@ -202,6 +200,25 @@ We cache FHIR meta-data index per connection using plv8 object:
 
     ensure_index = (plv8)->
       utils.memoize plv8.cache, 'fhirbaseIdx', -> index.new(plv8, meta_db.getter)
+## Indexing
+
+`fhir.index_parameter(query)` this function create index for parameter
+
+
+    index_parameter = (plv8, query)->
+      idx = ensure_index(plv8)
+      [_, meta] = expand.expand(idx, ['$param', query])
+      h = SEARCH_TYPES_TABLE[meta.searchType]
+
+      unless h
+        throw new Error("Unsupported search type [#{meta.searchType}] #{JSON.stringify(meta)}")
+      unless h.index
+        throw new Error("Search type does not exports index [#{meta.searchType}] #{JSON.stringify(meta)}")
+
+      expr = h.index(plv8, meta)
+      utils.exec(plv8, expr)
+
+    exports.index_parameter = index_parameter
 
 ## Debuging fhirbase search
 

@@ -15,7 +15,10 @@ We use string functions to implement uri search (see string_search).
       obj = xpath.get_in(resource, [path])
       ("^^#{normalize_value(v)}$$" for v in lang.values(obj)).join(" ")
 
-    exports.extract_as_uri.plv8_signature = ['json', 'json', 'text', 'text']
+    exports.extract_as_uri.plv8_signature =
+      arguments: ['json', 'json', 'text']
+      returns: 'text'
+      immutable: true
 
     ilike_expr = (tbl, meta, value)->
       ["$ilike"

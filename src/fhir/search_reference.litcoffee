@@ -34,7 +34,10 @@ Only equality operator is implemented.
       else
         throw new Error("extract_as_reference: Not implemented for #{element_type}")
 
-    exports.extract_as_reference.plv8_signature = ['json', 'json', 'text', 'text[]']
+    exports.extract_as_reference.plv8_signature =
+      arguments: ['json', 'json', 'text']
+      returns: 'text[]'
+      immutable: true
 
 
     reference_eq = (tbl, meta, value)->

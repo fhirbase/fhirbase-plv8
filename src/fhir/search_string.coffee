@@ -37,7 +37,10 @@ exports.extract_as_string = (plv8, resource, path, element_type)->
   obj = xpath.get_in(resource, [path])
   ("^^#{unaccent(v)}$$" for v in lang.values(obj)).join(" ")
 
-exports.extract_as_string.plv8_signature = ['json', 'json', 'text', 'text']
+exports.extract_as_string.plv8_signature =
+  arguments: ['json', 'json', 'text']
+  returns: 'text'
+  immutable: true
 
 normalize_string_value = (x)->
   x && x.trim().toLowerCase()
@@ -78,3 +81,15 @@ handle = (tbl, meta, value)->
   op(tbl, meta, value)
 
 exports.handle = handle
+
+
+exports.index = (plv8, meta)->
+  create: 'index'
+  name:   "#{meta.resourceType}_#{meta.name}_string"
+  using: ':GIST'
+  on: meta.resourceType.toLowerCase()
+  expression: ['$fhir.extract_as_string'
+                ['$cast', ':resource', ':json']
+                ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
+                ['$quote', meta.elementType]]
+

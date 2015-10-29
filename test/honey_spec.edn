@@ -128,4 +128,14 @@
             [:ALTER :COLUMN :resource_type :SET :DEFAULT "User"]]}
 
   ["ALTER TABLE users ADD PRIMARY KEY id , ALTER COLUMN created_at SET NOT NULL , ALTER COLUMN resource_type SET DEFAULT $1", "User"]]
- ]
+
+ [{:create :index
+   :name :patient_name
+   :on :patient
+   :using :GIN
+   :expression (extract_as_string
+                (cast (q :patient :resource) :json)
+                (cast (quote "[\"Patient\",\"name\"]") :json)
+                (quote "HumanName"))}
+
+  ["CREATE INDEX patient_name ON patient USING GIN ( extract_as_string( ( patient.resource )::json , ( '[\"Patient\",\"name\"]' )::json , 'HumanName' ) )"]]]

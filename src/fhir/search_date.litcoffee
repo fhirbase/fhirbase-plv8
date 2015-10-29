@@ -47,7 +47,10 @@ Function to extract element from resource as tstzrange.
       else
         throw new Error("extract_as_date: Not implemented for #{element_type}")
 
-    exports.extract_as_daterange.plv8_signature = ['json', 'json', 'text', 'tstzrange']
+    exports.extract_as_daterange.plv8_signature =
+      arguments: ['json', 'json', 'text']
+      returns: 'tstzrange'
+      immutable: true
 
 Function to convert query parameter into range.
 

@@ -27,7 +27,10 @@ it should be done in an extensible maner
       else
         throw new Error("extract_as_number: unsupported element type #{element_type}")
 
-    exports.extract_as_number.plv8_signature = ['json', 'json', 'text', 'numeric']
+    exports.extract_as_number.plv8_signature =
+      arguments: ['json', 'json', 'text']
+      returns: 'numeric'
+      immutable: true
 
     SUPPORTED_TYPES = ['integer', 'Quantity']
     OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge']
