@@ -66,17 +66,18 @@ Function to convert query parameter into range.
 
     exports.value_to_range = value_to_range
 
-    overlap_expr = (tbl, meta, value)->
-      ["$&&"
-        ['$cast'
-          ['$fhir.extract_as_daterange'
-            ['$cast', ['$q',":#{tbl}", ':resource'], ':json']
-            ['$json', meta.path]
-            meta.elementType]
-            "tstzrange"]
-        value_to_range(meta.operator, value.value)]
+    extract_expr = (meta, tbl)->
+      from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-    TODO = -> throw new Error("TODO")
+      ['$fhir.extract_as_daterange'
+        ['$cast', from, ':json']
+        ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
+        ['$quote', meta.elementType]]
+
+    overlap_expr = (tbl, meta, value)->
+      ["$&&", extract_expr(meta), value_to_range(meta.operator, value.value)]
+
+    TODO = -> throw new Error("Date search: unimplemented")
 
     OPERATORS =
       eq: overlap_expr
@@ -107,3 +108,15 @@ and returns honeysql expression.
       op(tbl, meta, value)
 
     exports.handle = handle
+
+    exports.index = (plv8, meta)->
+      idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_date"
+
+      name: idx_name
+      ddl:
+        create: 'index'
+        name:  idx_name
+        using: ':GIST'
+        opclass: ':range_ops'
+        on: meta.resourceType.toLowerCase()
+        expression: extract_expr(meta)

@@ -54,5 +54,7 @@ fs.readdirSync("#{__dirname}/search").filter(match('search')).forEach (yml)->
         (q.probes || []).forEach (probe)->
           assert.equal(get_in(res, probe.path), probe.result)
 
+         # console.log(explain)
+
         if q.indexed
           assert(explain.indexOf("Index Cond") > -1, "Should be indexed but #{explain}") 

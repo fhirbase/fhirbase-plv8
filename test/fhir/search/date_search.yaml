@@ -1,5 +1,8 @@
 title: Dates Search
 resources: ['Patient']
+indices:
+  - {resourceType: 'Patient', name: 'birthdate'}
+
 fixtures:
   - {id: 'nicola', resourceType: 'Patient', name: [{given: ['nicola']}], active: true, birthDate: '1980'}
   - {resourceType: 'Patient', name: [{given: ['noise1']}], birthDate: '1970'}
@@ -11,6 +14,7 @@ fixtures:
 queries:
   - query: {resourceType: 'Patient', queryString:  'birthdate=gt1980'}
     total: 3
+    indexed: true
     probes:
       - path: ['total']
         result: 3
@@ -18,16 +22,19 @@ queries:
         result: 3
   - query: {resourceType: 'Patient', queryString: 'birthdate=gt1985'}
     total: 1
+    indexed: true
     probes:
       - path: ['total']
         result: 1
   - query: {resourceType: 'Patient', queryString: 'birthdate=lt1970-05'}
     total: 1
+    indexed: true
     probes:
       - path: ['total']
         result: 1
   - query: {resourceType: 'Patient', queryString: 'birthdate=lt1970-05'}
     total: 1
+    indexed: true
     probes:
       - path: ['total']
         result: 1
