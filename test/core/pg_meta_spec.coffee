@@ -12,4 +12,8 @@ describe "CORE: pg meta", ()->
     plv8.execute "CREATE TABLE testo.test_pg_meta (id serial)"
 
     assert.equal(meta.table_exists(plv8, 'test_pg_meta'), true)
-    assert.equal(meta.table_exists(plv8, 'testo.test_pg_meta'), true)
+    plv8.execute "DROP TABLE IF EXISTS test_pg_meta CASCADE"
+
+    plv8.execute "SET search_path = 'testo'"
+    assert.equal(meta.table_exists(plv8, 'test_pg_meta'), true)
+    plv8.execute "SET search_path = 'public'"

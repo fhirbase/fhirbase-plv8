@@ -23,8 +23,6 @@ See it for more details.
     date = require('./date')
     xpath = require('./xpath')
 
-    exports.plv8_schema = "fhir"
-
 
 Now we support only simple date data-types - i.e. date, dateTime and instant.
 
@@ -69,7 +67,7 @@ Function to convert query parameter into range.
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-      ['$fhir.extract_as_daterange'
+      ['$extract_as_daterange'
         ['$cast', from, ':json']
         ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
         ['$quote', meta.elementType]]

@@ -4,8 +4,6 @@ utils = require('./utils')
 sql = require('../honey')
 bundle = require('./bundle')
 
-exports.plv8_schema = "core"
-
 validate_create_resource = (resource)->
   unless resource.resourceType
     {status: "Error", message: "resource should have type element"}
@@ -20,17 +18,18 @@ ensure_meta = (resource, props)->
 
 ensure_table = (plv8, resourceType)->
   table_name = namings.table_name(plv8, resourceType)
+  hx_table_name = namings.history_table_name(plv8, resourceType)
   unless pg_meta.table_exists(plv8, table_name)
-    return [null, {status: "Error", message: "Table #{table_name} for #{resourceType} not exists"}]
+    return [null, null, {status: "Error", message: "Table #{table_name} for #{resourceType} not exists"}]
   else
-    [table_name, null]
+    [table_name, hx_table_name, null]
 
-create = (plv8, resource)->
+create_resource = (plv8, resource)->
   errors = validate_create_resource(resource)
   return errors if errors
 
 
-  [table_name, errors] = ensure_table(plv8, resource.resourceType)
+  [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
   return errors if errors
 
 
@@ -54,7 +53,7 @@ create = (plv8, resource)->
       updated_at: sql.now
 
   utils.exec plv8,
-    insert: sql.q('history', table_name)
+    insert: sql.q(hx_table_name)
     values:
       id: id
       version_id: version_id
@@ -64,14 +63,14 @@ create = (plv8, resource)->
 
   resource
 
-exports.create = create
-exports.create.plv8_signature = ['json', 'json']
+exports.create_resource = create_resource
+exports.create_resource.plv8_signature = ['json', 'json']
 
-read = (plv8, query)->
+read_resource = (plv8, query)->
   assert(query.id, 'query.id')
   assert(query.resourceType, 'query.resourceType')
 
-  [table_name, errors] = ensure_table(plv8, query.resourceType)
+  [table_name, hx_table_name, errors] = ensure_table(plv8, query.resourceType)
   return errors if errors
 
   res = utils.exec(plv8, select: sql.raw('*'), from: sql.q(table_name), where: { id: query.id })
@@ -81,21 +80,21 @@ read = (plv8, query)->
 
   JSON.parse(row.resource)
 
-exports.read = read
-exports.read.plv8_signature = ['json', 'json']
+exports.read_resource = read_resource
+exports.read_resource.plv8_signature = ['json', 'json']
 
-exports.vread = (plv8, query)->
+exports.vread_resource = (plv8, query)->
   assert(query.id, 'query.id')
   version_id = query.versionId || query.meta.versionId
   assert(version_id, 'query.versionId or query.meta.versionId')
   assert(query.resourceType, 'query.resourceType')
 
-  [table_name, errors] = ensure_table(plv8, query.resourceType)
+  [table_name, hx_table_name, errors] = ensure_table(plv8, query.resourceType)
   return errors if errors
 
   q =
     select: sql.raw('*')
-    from: sql.q("history", table_name)
+    from: sql.q(hx_table_name)
     where: {id: query.id, version_id: version_id}
 
   res = utils.exec(plv8,q)
@@ -105,17 +104,17 @@ exports.vread = (plv8, query)->
 
   JSON.parse(row.resource)
 
-exports.vread.plv8_signature = ['json', 'json']
+exports.vread_resource.plv8_signature = ['json', 'json']
 
-update = (plv8, resource)->
+update_resource = (plv8, resource)->
   id = resource.id
   assert(id, 'resource.id')
   assert(resource.resourceType, 'resource.resourceType')
 
-  [table_name, errors] = ensure_table(plv8, resource.resourceType)
+  [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
   return errors if errors
 
-  old_version = exports.read(plv8, resource)
+  old_version = exports.read_resource(plv8, resource)
 
   unless old_version
     return {status: "Error", message: "Resource #{resource.resourceType}/#{id} not exists"}
@@ -141,12 +140,12 @@ update = (plv8, resource)->
       updated_at: sql.now
 
   utils.exec plv8,
-    update: sql.q('history', table_name)
+    update: sql.q(hx_table_name)
     where: {id: id, version_id: old_version.meta.versionId}
     values: {valid_to: sql.now}
 
   utils.exec plv8,
-    insert: sql.q('history',table_name)
+    insert: sql.q(hx_table_name)
     values:
       id: id
       version_id: version_id
@@ -157,18 +156,18 @@ update = (plv8, resource)->
   resource
 
 
-exports.update = update
-exports.update.plv8_signature = ['json', 'json']
+exports.update_resource = update_resource
+exports.update_resource.plv8_signature = ['json', 'json']
 
-exports.delete = (plv8, resource)->
+exports.delete_resource = (plv8, resource)->
   id = resource.id
   assert(id, 'resource.id')
   assert(resource.resourceType, 'resource.resourceType')
 
-  [table_name, errors] = ensure_table(plv8, resource.resourceType)
+  [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
   return errors if errors
 
-  old_version = exports.read(plv8, resource)
+  old_version = exports.read_resource(plv8, resource)
 
   unless old_version
     return {status: "Error", message: "Resource #{resource.resourceType}/#{id} not exists"}
@@ -192,12 +191,12 @@ exports.delete = (plv8, resource)->
     where: { id: id }
 
   utils.exec plv8,
-    update: sql.q('history', table_name)
+    update: sql.q(hx_table_name)
     where: {id: id, version_id: old_version.meta.versionId}
     values: {valid_to: sql.now }
 
   utils.exec plv8,
-    insert: sql.q('history', table_name)
+    insert: sql.q(hx_table_name)
     values:
       id: id
       version_id: version_id
@@ -208,19 +207,19 @@ exports.delete = (plv8, resource)->
   resource
 
 
-exports.delete.plv8_signature = ['json', 'json']
+exports.delete_resource.plv8_signature = ['json', 'json']
 
 exports.history = (plv8, query)->
   id = query.id
   assert(id, 'query.id')
   assert(query.resourceType, 'query.resourceType')
 
-  [table_name, errors] = ensure_table(plv8, query.resourceType)
+  [table_name, hx_table_name, errors] = ensure_table(plv8, query.resourceType)
   return errors if errors
 
   resources = utils.exec( plv8,
     select: sql.raw('*')
-    from:   sql.q("history", table_name)
+    from:   sql.q(hx_table_name)
     where:  {id: query.id}
   ).map((x)-> JSON.parse(x.resource))
 
@@ -231,16 +230,16 @@ exports.load = (plv8, bundle)->
   for entry in bundle.entry when entry.resource
     resource = entry.resource
     if resource.id
-      prev = read(plv8, resource)
+      prev = read_resource(plv8, resource)
       unless prev.status == 'Error'
         res.push([resource.id, 'udpated'])
-        update(plv8, resource)
+        update_resource(plv8, resource)
       else
         res.push([resource.id, 'created'])
-        create(plv8, resource)
+        create_resource(plv8, resource)
     else
       res.push([resource.id, 'created'])
-      create(plv8, resource)
+      create_resource(plv8, resource)
   res
 
 # TODO: implement load bundle

@@ -12,34 +12,34 @@ describe "CORE: CRUD spec", ->
     schema.create_storage(plv8, 'Users')
 
   it "create", ->
-    created = crud.create(plv8, {resourceType: 'Users', name: 'admin'})
+    created = crud.create_resource(plv8, {resourceType: 'Users', name: 'admin'})
     assert.notEqual(created.id , false)
     assert.notEqual(created.meta.versionId, undefined)
     assert.equal(created.name, 'admin')
 
 
   it "read", ->
-    created = crud.create(plv8, {resourceType: 'Users', name: 'admin'})
-    read = crud.read(plv8, {id: created.id, resourceType: 'Users'})
+    created = crud.create_resource(plv8, {resourceType: 'Users', name: 'admin'})
+    read = crud.read_resource(plv8, {id: created.id, resourceType: 'Users'})
     assert.equal(read.id, created.id)
 
-    vread = crud.vread(plv8, read)
+    vread = crud.vread_resource(plv8, read)
     assert.equal(read.id, vread.id)
     assert.equal(read.meta.versionId, vread.meta.versionId)
 
   it "update", ->
-    created = crud.create(plv8, {resourceType: 'Users', name: 'admin'})
-    read = crud.read(plv8, {id: created.id, resourceType: 'Users'})
+    created = crud.create_resource(plv8, {resourceType: 'Users', name: 'admin'})
+    read = crud.read_resource(plv8, {id: created.id, resourceType: 'Users'})
     to_update = copy(read)
     to_update.name = 'changed'
 
-    updated = crud.update(plv8, to_update)
+    updated = crud.update_resource(plv8, to_update)
     assert.equal(updated.name, to_update.name)
     assert.notEqual(updated.meta.versionId, false)
     assert.notEqual(updated.meta.versionId, read.meta.versionId)
 
 
-    read_updated = crud.read(plv8, updated)
+    read_updated = crud.read_resource(plv8, updated)
     assert.equal(read_updated.name, to_update.name)
     assert.equal(read_updated.meta.request.method, 'PUT')
 
@@ -48,10 +48,10 @@ describe "CORE: CRUD spec", ->
     assert.equal(hx.entry.length, 2)
 
   it "delete", ->
-    created = crud.create(plv8, {resourceType: 'Users', name: 'admin'})
-    read = crud.read(plv8, {id: created.id, resourceType: 'Users'})
+    created = crud.create_resource(plv8, {resourceType: 'Users', name: 'admin'})
+    read = crud.read_resource(plv8, {id: created.id, resourceType: 'Users'})
 
-    deleted = crud.delete(plv8, {id: read.id, resourceType: 'Users'})
+    deleted = crud.delete_resource(plv8, {id: read.id, resourceType: 'Users'})
     assert.equal(deleted.meta.request.method, 'DELETE')
 
     hx_deleted  = crud.history(plv8, {id: read.id, resourceType: 'Users'})

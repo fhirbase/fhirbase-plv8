@@ -19,6 +19,9 @@ match = (x)->
 
 # plv8.debug = true
 
+# console.log plv8.execute("SET search_path='user1';")
+console.log plv8.execute("SHOW search_path;")
+
 fs.readdirSync("#{__dirname}/search").filter(match('search')).forEach (yml)->
   spec = test.loadYaml("#{__dirname}/search/#{yml}")
   describe spec.title, ->
@@ -29,7 +32,7 @@ fs.readdirSync("#{__dirname}/search").filter(match('search')).forEach (yml)->
         schema.truncate_storage(plv8, res)
 
       for res in spec.fixtures
-        crud.create(plv8, res)
+        crud.create_resource(plv8, res)
 
       for idx in (spec.indices or [])
         # search.unindex_parameter(plv8, idx)

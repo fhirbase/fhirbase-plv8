@@ -1,16 +1,18 @@
 utils = require('../core/utils')
 sql = require('../honey')
+namings = require('../core/namings')
 
 exports.getter = (plv8, rt, query)->
+  tbl_name = namings.table_name(plv8, rt)
   res  = if rt == 'StructureDefinition'
     utils.exec plv8,
       select: sql.raw('*')
-      from: sql.q(rt.toLowerCase())
+      from: sql.q(tbl_name)
       where: {"resource->>'name'": query.name }
   else
     utils.exec plv8,
       select: sql.raw('*')
-      from: sql.q(rt.toLowerCase())
+      from: sql.q(tbl_name)
       where: {"resource->>'name'": query.name, "resource->>'base'": query.base}
 
   if res.length > 1

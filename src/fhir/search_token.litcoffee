@@ -14,8 +14,6 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
     lang = require('../lang')
     xpath = require('./xpath')
 
-    exports.plv8_schema = "fhir"
-
     TODO = -> throw new Error("TODO")
 
     exports.extract_as_token = (plv8, resource, path, element_type)->
@@ -68,7 +66,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-      ['$fhir.extract_as_token'
+      ['$extract_as_token'
         ['$cast', from, ':json']
         ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
         ['$quote', meta.elementType]]

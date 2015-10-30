@@ -1,4 +1,5 @@
 sql = require('../honey')
+pg_meta = require('./pg_meta')
 
 uuid = (plv8)->
   plv8.execute('select gen_random_uuid() as uuid')[0].uuid
@@ -12,8 +13,11 @@ exports.exec = (plv8, hql)->
   console.log(q) if plv8.debug
   plv8.execute.call(plv8, q[0], q[1..-1])
 
-exports.memoize = (cache, key, cb)->
-  return cache[key] if cache && cache[key]
+exports.memoize = (plv8, key, cb)->
+  schema = pg_meta.current_schema(plv8)
+  cache = plv8.cache
+  return cache[schema][key] if cache && cache[schema] && cache[schema][key]
   res = cb()
-  cache[key] = res if cache
+  cache[schema] ||= {}
+  cache[schema][key] = res if cache
   res

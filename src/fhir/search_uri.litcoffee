@@ -7,8 +7,6 @@ We use string functions to implement uri search (see string_search).
     lang = require('../lang')
     xpath = require('./xpath')
 
-    exports.plv8_schema = "fhir"
-
     normalize_value = (x)-> x && x.trim().toLowerCase().replace(/^(http:\/\/|https:\/\/|ftp:\/\/)/, '')
 
     exports.extract_as_uri = (plv8, resource, path, element_type)->
@@ -23,7 +21,7 @@ We use string functions to implement uri search (see string_search).
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-      ['$fhir.extract_as_uri'
+      ['$extract_as_uri'
         ['$cast', from, ':json']
         ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
         ['$quote', meta.elementType]]

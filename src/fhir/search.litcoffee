@@ -50,8 +50,6 @@ appropriate elements from resource by path
       quantity: require('./search_quantity')
       uri: require('./search_uri')
 
-    exports.plv8_schema = "fhir"
-
 This is main function:
 
 @param query [Object]
@@ -198,7 +196,7 @@ we just strip limit, offset, order and rewrite select clause:
 We cache FHIR meta-data index per connection using plv8 object:
 
     ensure_index = (plv8)->
-      utils.memoize plv8.cache, 'fhirbaseIdx', -> index.new(plv8, meta_db.getter)
+      utils.memoize plv8, 'fhirbaseIdx', -> index.new(plv8, meta_db.getter)
 
 
 ## Indexing

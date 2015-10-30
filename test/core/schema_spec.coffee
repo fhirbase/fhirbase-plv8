@@ -11,7 +11,7 @@ describe "CORE: schema", ()->
   it "create Users storage and history.users", ()->
     schema.create_storage(plv8, 'Users')
     assert.equal(pg_meta.table_exists(plv8, 'users'), true)
-    assert.equal(pg_meta.table_exists(plv8, 'history.users'), true)
+    assert.equal(pg_meta.table_exists(plv8, 'users_history'), true)
 
   it "change Users storage name", ()->
     desc = schema.describe_table(plv8, 'users')
@@ -20,4 +20,4 @@ describe "CORE: schema", ()->
   it "drop Users storage", ()->
     schema.drop_storage(plv8, 'Users')
     assert.equal(pg_meta.table_exists(plv8, 'Users'), false)
-    assert.equal(pg_meta.table_exists(plv8, 'history.users'), false)
+    assert.equal(pg_meta.table_exists(plv8, 'users_history'), false)

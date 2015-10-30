@@ -13,8 +13,6 @@ it should be done in an extensible maner
 
     xpath = require('./xpath')
 
-    exports.plv8_schema = "fhir"
-
     TODO = -> throw new Error("TODO")
 
     exports.extract_as_number = (plv8, resource, path, element_type)->
@@ -38,7 +36,7 @@ it should be done in an extensible maner
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-      ['$fhir.extract_as_number'
+      ['$extract_as_number'
         ['$cast', from, ':json']
         ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
         ['$quote', meta.elementType]]

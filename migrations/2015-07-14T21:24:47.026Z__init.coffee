@@ -8,8 +8,6 @@ exports.up = (plv8)->
   for ex in [":pgcrypto", ":plv8"]
     plv8.execute sql({create: "extension", name: ex, safe: true})
 
-  plv8.execute sql({create: "schema", name: ":history", safe: true})
-
   TZ = "TIMESTAMP WITH TIME ZONE"
 
   base_columns  =[
@@ -30,7 +28,7 @@ exports.up = (plv8)->
 
   plv8.execute sql(
     create: ":table"
-    name: ['$q', ':history', ':resource']
+    name: ':resource_history'
     columns: base_columns.concat([
       [':valid_from', ':timestamp with time zone']
       [':valid_to', ':timestamp with time zone']
@@ -38,5 +36,5 @@ exports.up = (plv8)->
   )
 
 exports.down = (plv8)->
-  for tbl in [":resource", ":history.resource"]
+  for tbl in [":resource", ":resource_history"]
     plv8.execute sql(drop: ':table', name: tbl)

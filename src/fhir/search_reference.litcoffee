@@ -16,8 +16,6 @@ Only equality operator is implemented.
     sql = require('../honey')
     xpath = require('./xpath')
 
-    exports.plv8_schema = "fhir"
-
     TODO = -> throw new Error("TODO")
 
     exports.extract_as_reference = (plv8, resource, path, element_type)->
@@ -42,7 +40,7 @@ Only equality operator is implemented.
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-      ['$fhir.extract_as_reference'
+      ['$extract_as_reference'
         ['$cast', from, ':json']
         ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
         ['$quote', meta.elementType]]
