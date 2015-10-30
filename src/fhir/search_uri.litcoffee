@@ -58,6 +58,7 @@ We use string functions to implement uri search (see string_search).
           create: 'index'
           name:  idx_name
           using: ':GIN'
+          opclass: ':gin_trgm_ops'
           on: meta.resourceType.toLowerCase()
           expression: extract_expr(meta)
       ]
