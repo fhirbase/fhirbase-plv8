@@ -1,5 +1,7 @@
 title: Uri Search
 resources: ['Device']
+indices:
+  - {resourceType: 'Device', name: 'url'}
 fixtures:
   - resourceType: 'Device'
     url: 'http://acme.org/devices/1'  
@@ -10,10 +12,14 @@ fixtures:
 
 queries:
   - query: {resourceType: 'Device', queryString:  'url=http://acme.org/devices/1'}
+    indexed: true
     total:  1
   - query: {resourceType: 'Device', queryString:  'url=http://acme.org/devices/2'}
+    indexed: true
     total:  1
   - query: {resourceType: 'Device', queryString:  'url:below=http://acme.org/devices'}
+    indexed: true
     total:  2
   - query: {resourceType: 'Device', queryString:  'url:below=http://acme.org'}
+    indexed: true
     total:  2

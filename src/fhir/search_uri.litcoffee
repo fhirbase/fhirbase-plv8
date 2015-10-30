@@ -20,19 +20,19 @@ We use string functions to implement uri search (see string_search).
       returns: 'text'
       immutable: true
 
-    ilike_expr = (tbl, meta, value)->
-      ["$ilike"
-        ['$cast'
-          ['$fhir.extract_as_uri'
-            ['$cast', ['$q',":#{tbl}", ':resource'], ':json']
-            ['$json', meta.path]
-            meta.elementType]
-            "text"]
-        value]
+    extract_expr = (meta, tbl)->
+      from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
+
+      ['$fhir.extract_as_uri'
+        ['$cast', from, ':json']
+        ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
+        ['$quote', meta.elementType]]
 
     OPERATORS =
-      eq: (tbl, meta, value)-> ilike_expr(tbl, meta, "%^^#{normalize_value(value.value)}$$%")
-      below: (tbl, meta, value)-> ilike_expr(tbl, meta, "%^^#{normalize_value(value.value)}%")
+      eq: (tbl, meta, value)->
+        ["$ilike", extract_expr(meta, tbl), "%^^#{normalize_value(value.value)}$$%"]
+      below: (tbl, meta, value)->
+        ["$ilike", extract_expr(meta, tbl), "%^^#{normalize_value(value.value)}%"]
 
     SUPPORTED_TYPES = ['uri']
 
@@ -48,3 +48,15 @@ We use string functions to implement uri search (see string_search).
       op(tbl, meta, value)
 
     exports.handle = handle
+
+    exports.index = (plv8, meta)->
+      idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_uri"
+
+      name: idx_name
+      ddl:
+        create: 'index'
+        name:  idx_name
+        using: ':GIN'
+        on: meta.resourceType.toLowerCase()
+        opclass: ':gin_trgm_ops'
+        expression: extract_expr(meta)
