@@ -14,6 +14,7 @@ describe "CORE: pg meta", ()->
     assert.equal(meta.table_exists(plv8, 'test_pg_meta'), true)
     plv8.execute "DROP TABLE IF EXISTS test_pg_meta CASCADE"
 
+    oldone = plv8.execute("SHOW search_path")[0].search_path
     plv8.execute "SET search_path = 'testo'"
     assert.equal(meta.table_exists(plv8, 'test_pg_meta'), true)
-    plv8.execute "SET search_path = 'public'"
+    plv8.execute "SET search_path = '#{oldone}'"
