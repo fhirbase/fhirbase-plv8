@@ -1,5 +1,8 @@
 title: Number Search
 resources: ['Encounter']
+indices:
+  - {resourceType: 'Encounter', name: 'length'}
+
 fixtures:
   - {id: 'e10', resourceType: 'Encounter', length: {value: 10}}
   - {id: 'e20', resourceType: 'Encounter', length: {value: 20}}
@@ -8,10 +11,14 @@ fixtures:
 
 queries:
   - query: {resourceType: 'Encounter', queryString:  'length=gt20'}
+    indexed: true
     total: 2 
   - query: {resourceType: 'Encounter', queryString:  'length=ge20'}
+    indexed: true
     total: 3 
   - query: {resourceType: 'Encounter', queryString:  'length=lt20'}
+    indexed: true
     total: 1 
   - query: {resourceType: 'Encounter', queryString:  'length=le20'}
+    indexed: true
     total: 2 
