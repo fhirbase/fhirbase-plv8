@@ -93,8 +93,5 @@ exports.index = (plv8, meta)->
     using: ':GIN'
     on: meta.resourceType.toLowerCase()
     opclass: ':gin_trgm_ops'
-    expression: ['$fhir.extract_as_string'
-                  ['$cast', ':resource', ':json']
-                  ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-                  ['$quote', meta.elementType]]
+    expression: extract_fn_expr(meta)
 

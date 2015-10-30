@@ -32,6 +32,7 @@ fs.readdirSync("#{__dirname}/search").filter(match('search')).forEach (yml)->
         crud.create(plv8, res)
 
       for idx in (spec.indices or [])
+        # search.unindex_parameter(plv8, idx)
         search.index_parameter(plv8, idx)
 
       for res in spec.resources

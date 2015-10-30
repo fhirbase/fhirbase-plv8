@@ -64,20 +64,22 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       returns: 'text[]'
       immutable: true
 
-    token_eq = (tbl, meta, value)->
-      ["$&&"
-        ['$cast'
-          ['$fhir.extract_as_token'
-            ['$cast', ['$q',":#{tbl}", ':resource'], ':json']
-            ['$json', meta.path]
-            meta.elementType]
-            ":text[]"]
-        ['$cast', ['$array', value.value], ":text[]"]
-        value]
+
+    token_eq_expr = (meta, tbl)->
+      from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
+
+      ['$fhir.extract_as_token'
+        ['$cast', from, ':json']
+        ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
+        ['$quote', meta.elementType]]
 
 
     OPERATORS =
-      eq: token_eq
+      eq: (tbl, meta, value)->
+        ["$&&"
+          ['$cast', token_eq_expr(meta, tbl), ":text[]"]
+          ['$cast', ['$array', value.value], ":text[]"]
+          value]
 
     SUPPORTED_TYPES = [
       'boolean'
@@ -103,3 +105,14 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       op(tbl, meta, value)
 
     exports.handle = handle
+
+    exports.index = (plv8, meta)->
+      idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_token"
+
+      name: idx_name
+      ddl:
+        create: 'index'
+        name:  idx_name
+        using: ':GIN'
+        on: meta.resourceType.toLowerCase()
+        expression: token_eq_expr(meta)

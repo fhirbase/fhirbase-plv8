@@ -1,5 +1,8 @@
 title: Token Search
 resources: ['Patient']
+indices:
+  - {resourceType: 'Patient', name: 'active'}
+  - {resourceType: 'Patient', name: 'identifier'}
 fixtures:
   - resourceType: 'Patient'
     name: [{given: ['nicola']}]
@@ -42,12 +45,14 @@ fixtures:
 
 queries:
   - query: {resourceType: 'Patient', queryString:  'active=true'}
+    indexed: true
     total: 2
     probes:
       - path: ['entry', 'length']
         result: 2
 
   - query: {resourceType: 'Patient', queryString:  'identifier=12345'}
+    indexed: true
     total: 1
     probes:
       - path: ['entry', 'length']
@@ -56,6 +61,7 @@ queries:
         result: nicola
 
   - query: {resourceType: 'Patient', queryString:  'identifier=12346'}
+    indexed: true
     total: 1
     probes:
       - path: ['entry', 'length']
@@ -64,9 +70,11 @@ queries:
         result: ivan
 
   - query: {resourceType: 'Patient', queryString:  'identifier=12346,12345'}
+    indexed: true
     total: 2
 
   - query: {resourceType: 'Patient', queryString:  'identifier=ssn|64321'}
+    indexed: true
     total: 1
     probes:
       - path: ['entry', 'length']
