@@ -52,11 +52,12 @@ We use string functions to implement uri search (see string_search).
     exports.index = (plv8, meta)->
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_uri"
 
-      name: idx_name
-      ddl:
-        create: 'index'
-        name:  idx_name
-        using: ':GIN'
-        on: meta.resourceType.toLowerCase()
-        opclass: ':gin_trgm_ops'
-        expression: extract_expr(meta)
+      [
+        name: idx_name
+        ddl:
+          create: 'index'
+          name:  idx_name
+          using: ':GIN'
+          on: meta.resourceType.toLowerCase()
+          expression: extract_expr(meta)
+      ]

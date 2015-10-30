@@ -75,10 +75,12 @@ Only equality operator is implemented.
     exports.index = (plv8, meta)->
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_reference"
 
-      name: idx_name
-      ddl:
-        create: 'index'
-        name:  idx_name
-        using: ':GIN'
-        on: meta.resourceType.toLowerCase()
-        expression: extract_expr(meta)
+      [
+        name: idx_name
+        ddl:
+          create: 'index'
+          name:  idx_name
+          using: ':GIN'
+          on: meta.resourceType.toLowerCase()
+          expression: extract_expr(meta)
+      ]

@@ -57,9 +57,11 @@ it should be done in an extensible maner
     exports.index = (plv8, meta)->
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_number"
 
-      name: idx_name
-      ddl:
-        create: 'index'
-        name:  idx_name
-        on: meta.resourceType.toLowerCase()
-        expression: extract_expr(meta)
+      [
+        name: idx_name
+        ddl:
+          create: 'index'
+          name:  idx_name
+          on: meta.resourceType.toLowerCase()
+          expression: extract_expr(meta)
+      ]

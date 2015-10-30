@@ -225,12 +225,14 @@ awaiting query.resourceType and query.name - name of parameter
     index_parameter = (plv8, query)->
       meta = expand_parameter(plv8, query)
       h = ensure_handler(plv8, meta)
-      idx_info = h.index(plv8, meta)
+      idx_infos = h.index(plv8, meta)
 
-      if pg_meta.index_exists(plv8, idx_info.name)
-        return {status: 'error', message: "Index #{idx_info.name} already exists"}
-      else
-        utils.exec(plv8, idx_info.ddl)
+      for idx_info in idx_infos
+        if pg_meta.index_exists(plv8, idx_info.name)
+          {status: 'error', message: "Index #{idx_info.name} already exists"}
+        else
+          utils.exec(plv8, idx_info.ddl)
+          {status: 'ok', message: "Index #{idx_info.name} was created"}
 
     exports.index_parameter = index_parameter
 
@@ -238,11 +240,13 @@ awaiting query.resourceType and query.name - name of parameter
     unindex_parameter = (plv8, query)->
       meta = expand_parameter(plv8, query)
       h = ensure_handler(plv8, meta)
-      idx_info = h.index(plv8, meta)
-      if pg_meta.index_exists(plv8, idx_info.name)
-        utils.exec(plv8, drop: 'index', name: ":#{idx_info.name}")
-      else
-        return {status: 'error', message: "Index #{idx_info.name} does not exist"}
+      idx_infos = h.index(plv8, meta)
+      for idx_info in idx_infos
+        if pg_meta.index_exists(plv8, idx_info.name)
+          utils.exec(plv8, drop: 'index', name: ":#{idx_info.name}")
+          {status: 'ok', message: "Index #{idx_info.name} was dropped"}
+        else
+          {status: 'error', message: "Index #{idx_info.name} does not exist"}
 
     exports.unindex_parameter = unindex_parameter
 

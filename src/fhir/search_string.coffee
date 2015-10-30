@@ -45,7 +45,7 @@ exports.extract_as_string.plv8_signature =
 normalize_string_value = (x)->
   x && x.trim().toLowerCase()
 
-extract_fn_expr = (meta, tbl)->
+extract_expr = (meta, tbl)->
   from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
   ['$fhir.extract_as_string'
@@ -55,13 +55,13 @@ extract_fn_expr = (meta, tbl)->
 
 OPERATORS =
   eq: (tbl, meta, value)->
-    ["$ilike", extract_fn_expr(meta, tbl), "%^^#{normalize_string_value(value.value)}$$%"]
+    ["$ilike", extract_expr(meta, tbl), "%^^#{normalize_string_value(value.value)}$$%"]
   sw: (tbl, meta, value)->
-    ["$ilike", extract_fn_expr(meta, tbl), "%^^#{normalize_string_value(value.value)}%"]
+    ["$ilike", extract_expr(meta, tbl), "%^^#{normalize_string_value(value.value)}%"]
   ew: (tbl, meta, value)->
-    ["$ilike", extract_fn_expr(meta, tbl), "%#{normalize_string_value(value.value)}$$%"]
+    ["$ilike", extract_expr(meta, tbl), "%#{normalize_string_value(value.value)}$$%"]
   co: (tbl, meta, value)->
-    ["$ilike", extract_fn_expr(meta, tbl), "%#{normalize_string_value(value.value)}%"]
+    ["$ilike", extract_expr(meta, tbl), "%#{normalize_string_value(value.value)}%"]
 
 SUPPORTED_TYPES = [
  'Address'
@@ -86,12 +86,14 @@ exports.handle = handle
 exports.index = (plv8, meta)->
   idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_string"
 
-  name: idx_name
-  ddl:
-    create: 'index'
-    name:  idx_name
-    using: ':GIN'
-    on: meta.resourceType.toLowerCase()
-    opclass: ':gin_trgm_ops'
-    expression: extract_fn_expr(meta)
+  [
+    name: idx_name
+    ddl:
+      create: 'index'
+      name:  idx_name
+      using: ':GIN'
+      on: meta.resourceType.toLowerCase()
+      opclass: ':gin_trgm_ops'
+      expression: extract_expr(meta)
+  ]
 

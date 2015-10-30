@@ -18,10 +18,28 @@ extract_number(resource, path, 'Quantity') OP number AND extract_token(resource,
 TODO: later we will add some support for units convertion and search in canonical form
 
 
+    lang = require('../lang')
+
+    token_s = require('./search_token')
+    number_s = require('./search_number')
+
     SUPPORTED_TYPES = ['Quantity']
     OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge']
 
     identity = (x)-> x
+
+    extract_expr = (meta, tbl)->
+      from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
+
+      ["$fhir.extract_as_#{meta.searchType}"
+        ['$cast', from, ':json']
+        ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
+        ['$quote', meta.elementType]]
+
+    assoc = (obj, k, v)->
+      res = lang.clone(obj)
+      res[k] = v
+      res
 
     handle = (tbl, meta, value)->
       unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
@@ -33,24 +51,24 @@ TODO: later we will add some support for units convertion and search in canonica
       parts = value.value.split('|')
       numeric_part = parts[0]
 
-      expr = 
-        ["$#{meta.operator}"
-          ['$fhir.extract_as_number'
-            ['$cast', ['$q',":#{tbl}", ':resource'], ':json']
-            ['$json', meta.path]
-            'Quantity']
-          numeric_part]
+      expr = ["$#{meta.operator}",
+        extract_expr(assoc(meta, 'searchType', 'number'), tbl),
+        numeric_part]
+
       if parts.length  == 1
         expr
       else
         token_part = parts[1..-1].filter(identity).join('|')
+        meta.searchType = 'token'
         ['$and'
           expr
-          ["$&&"
-            ['$fhir.extract_as_token'
-              ['$cast', ['$q',":#{tbl}", ':resource'], ':json']
-              ['$json', meta.path]
-              'Quantity']
+          ["$&&",
+            extract_expr(assoc(meta, 'searchType', 'token'), tbl),
             ['$cast', ['$array', token_part], ":text[]"]]]
 
     exports.handle = handle
+
+    exports.index = (plv8, meta)->
+      number_part = number_s.index(plv8, assoc(meta, 'searchType', 'number'))
+      token_part = token_s.index(plv8, assoc(meta, 'searchType', 'token'))
+      number_part.concat(token_part)

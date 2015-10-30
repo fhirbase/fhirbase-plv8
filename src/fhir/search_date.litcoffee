@@ -112,11 +112,13 @@ and returns honeysql expression.
     exports.index = (plv8, meta)->
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_date"
 
-      name: idx_name
-      ddl:
-        create: 'index'
-        name:  idx_name
-        using: ':GIST'
-        opclass: ':range_ops'
-        on: meta.resourceType.toLowerCase()
-        expression: extract_expr(meta)
+      [
+        name: idx_name
+        ddl:
+          create: 'index'
+          name:  idx_name
+          using: ':GIST'
+          opclass: ':range_ops'
+          on: meta.resourceType.toLowerCase()
+          expression: extract_expr(meta)
+      ]
