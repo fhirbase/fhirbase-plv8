@@ -1,5 +1,8 @@
 title: Chained params
 resources: ['patient', 'encounter']
+indices:
+  - {resourceType: 'Encounter', name: 'patient'}
+
 fixtures:
   - {id: 'nicola', resourceType: 'Patient', name: [{given: ['nicola']}], active: true, birthDate: '1980'}
   - {id: 'noise1', resourceType: 'Patient', name: [{given: ['noise1']}], birthDate: '1970'}
@@ -14,6 +17,7 @@ fixtures:
 queries:
   - query: {resourceType: 'Encounter', queryString: 'patient=Patient/nicola'}
     total: 1
+    indexed: true
     probes:
       - path: ['total']
         result: 1

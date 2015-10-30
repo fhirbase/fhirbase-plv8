@@ -65,7 +65,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       immutable: true
 
 
-    token_eq_expr = (meta, tbl)->
+    extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
       ['$fhir.extract_as_token'
@@ -77,7 +77,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
     OPERATORS =
       eq: (tbl, meta, value)->
         ["$&&"
-          ['$cast', token_eq_expr(meta, tbl), ":text[]"]
+          ['$cast', extract_expr(meta, tbl), ":text[]"]
           ['$cast', ['$array', value.value], ":text[]"]
           value]
 
@@ -115,4 +115,4 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
         name:  idx_name
         using: ':GIN'
         on: meta.resourceType.toLowerCase()
-        expression: token_eq_expr(meta)
+        expression: extract_expr(meta)

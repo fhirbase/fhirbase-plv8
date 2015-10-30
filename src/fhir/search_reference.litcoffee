@@ -39,21 +39,23 @@ Only equality operator is implemented.
       returns: 'text[]'
       immutable: true
 
+    extract_expr = (meta, tbl)->
+      from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-    reference_eq = (tbl, meta, value)->
-      ["$&&"
-        ['$cast'
-          ['$fhir.extract_as_reference'
-            ['$cast', ['$q',":#{tbl}", ':resource'], ':json']
-            ['$json', meta.path]
-            meta.elementType]
-            ":text[]"]
-        ['$cast', ['$array', value.value.toLowerCase()], ":text[]"]
-        value]
+      ['$fhir.extract_as_reference'
+        ['$cast', from, ':json']
+        ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
+        ['$quote', meta.elementType]]
 
 
     OPERATORS =
-      eq: reference_eq
+      eq: (tbl, meta, value)->
+
+        ["$&&"
+          ['$cast', extract_expr(meta, tbl), ":text[]"]
+          ['$cast', ['$array', value.value.toLowerCase()], ":text[]"]
+          value]
+
 
     SUPPORTED_TYPES = ['Reference']
 
@@ -69,3 +71,14 @@ Only equality operator is implemented.
       op(tbl, meta, value)
 
     exports.handle = handle
+
+    exports.index = (plv8, meta)->
+      idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_reference"
+
+      name: idx_name
+      ddl:
+        create: 'index'
+        name:  idx_name
+        using: ':GIN'
+        on: meta.resourceType.toLowerCase()
+        expression: extract_expr(meta)
