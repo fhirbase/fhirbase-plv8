@@ -1,13 +1,7 @@
 utils =  require('./utils')
 
-current_schema = (plv8)->
-  res = plv8.execute("SHOW search_path")
-  res[0].search_path.split(',').filter((x)-> x.indexOf('$') == -1)[0] || 'public'
-
-exports.current_schema = current_schema
-
 table_exists = (plv8, table_name)->
-  schema = current_schema(plv8)
+  schema = utils.current_schema(plv8)
   # utils.memoize plv8, table_name, ()->
   result = utils.exec plv8,
     select: [':true']
@@ -18,7 +12,7 @@ table_exists = (plv8, table_name)->
 exports.table_exists = table_exists
 
 index_exists = (plv8, table_name)->
-  schema = current_schema(plv8)
+  schema = utils.current_schema(plv8)
   # utils.memoize plv8, table_name, ()->
   result = utils.exec plv8,
     select: [':true']

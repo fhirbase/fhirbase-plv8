@@ -107,7 +107,7 @@ To build search query we need to
 
       alias = next_alias()
 
-      expr = parser.parse(query.resourceType, query.queryString)
+      expr = parser.parse(query.resourceType, query.queryString || "")
       expr = expand.expand(idx, expr)
       expr = norm.normalize(expr)
 

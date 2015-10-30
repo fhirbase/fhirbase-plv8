@@ -92,8 +92,10 @@ typed = ([l,r])->
   else
     ['$param', l, r]
 
+identity = (x)-> x
+
 exports.parse = (resourceType, str) ->
-  pairs = str.trim().split("&").map((x)-> x.trim().split('=')).map(typed)
+  pairs = str.trim().split("&").filter(identity).map((x)-> x.trim().split('=')).map(typed)
   result = {query: resourceType}
   expr = grouping(result, pairs)
   forms =

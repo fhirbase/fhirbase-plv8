@@ -66,7 +66,7 @@ exports.describe_table = (plv8, resource_type)->
   columns = utils.exec plv8,
     select: [sql.key('column_name'), sql.key('dtd_identifier')]
     from: sql.q('information_schema','columns')
-    where: {table_name: nm , table_schema: pg_meta.current_schema(plv8)}
+    where: {table_name: nm , table_schema: utils.current_schema(plv8)}
 
   name: nm
   columns: columns.reduce(((acc, x)-> acc[x.column_name] = x; delete x.column_name; acc),{})
