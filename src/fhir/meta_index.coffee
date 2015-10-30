@@ -53,22 +53,22 @@ index_elements = (idx, structure_definition)->
 # counstruct idx object from getter
 # getter is function which should return structure definition by name
 # getter(name)-> StructureDefinition
- module.exports.new = (plv8, getter)->
+module.exports.new = (plv8, getter)->
   elements = {}
   params = {}
 
   elements: elements
   params: params
-  get: (rt, tp)->
+  get: (rt, query)->
     if rt == 'StructureDefinition'
-      unless elements[tp.name]
-        sd = getter(plv8, rt, tp)
+      unless elements[query.name]
+        sd = getter(plv8, rt, query)
         sd && index_elements(elements, sd)
-      elements[tp.name]
+      elements[query.name]
     else if rt == 'SearchParameter'
-      key = "#{tp.base}-#{tp.name}"
+      key = "#{query.base}-#{query.name}"
       if params[key] == undefined
-        sp = getter(plv8, rt, tp)
+        sp = getter(plv8, rt, query)
         params[key] = (sp && select_keys(sp, ['xpath', 'type', 'xpathUsage'])) || null
       params[key]
     else
