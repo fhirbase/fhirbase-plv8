@@ -31,7 +31,7 @@ it should be done in an extensible maner
       immutable: true
 
     SUPPORTED_TYPES = ['integer', 'Quantity']
-    OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge']
+    OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge', 'ne']
 
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
@@ -41,16 +41,22 @@ it should be done in an extensible maner
         ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
         ['$quote', meta.elementType]]
 
-    handle = (tbl, meta, value)->
+
+    exports.normalize_operator = (meta, value)->
+      if not meta.modifier and not value.prefix
+        return 'eq'
+      if OPERATORS.indexOf(value.prefix) > -1
+        return value.prefix
+      throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
+
+    exports.handle = (tbl, meta, value)->
       unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
         throw new Error("Number Search: unsuported type #{JSON.stringify(meta)}")
 
-      unless OPERATORS.indexOf(meta.operator) > -1
-        throw new Error("Number Search: Unsupported operator #{meta.operator}")
+      # unless OPERATORS.indexOf(meta.operator) > -1
+      #   throw new Error("Number Search: Unsupported operator #{meta.operator}")
 
       ["$#{meta.operator}", extract_expr(meta, tbl), value.value]
-
-    exports.handle = handle
 
     exports.index = (plv8, meta)->
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_number"

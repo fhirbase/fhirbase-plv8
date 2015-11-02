@@ -91,7 +91,11 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       'Quantity'
     ]
 
-    handle = (tbl, meta, value)->
+    exports.normalize_operator = (meta, value)->
+      return 'eq' if not meta.modifier and not value.prefix
+      throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
+
+    exports.handle = (tbl, meta, value)->
       unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
         throw new Error("Token Search: unsuported type #{JSON.stringify(meta)}")
 
@@ -101,8 +105,6 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
         throw new Error("Token Search: Unsupported operator #{JSON.stringify(meta)}")
 
       op(tbl, meta, value)
-
-    exports.handle = handle
 
     exports.index = (plv8, meta)->
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_token"

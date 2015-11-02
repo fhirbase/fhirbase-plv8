@@ -68,6 +68,21 @@ SUPPORTED_TYPES = [
  'string'
 ]
 
+
+OPERATORS_ALIASES =
+  exact: 'eq'
+  contains: 'co'
+  sw: 'sw'
+  ew: 'ew'
+  startwith: 'sw'
+  endwith: 'ew'
+
+exports.normalize_operator = (meta, value)->
+  return 'sw' if not meta.modifier and not value.prefix
+  op = OPERATORS_ALIASES[meta.modifier]
+  return op if op
+  throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
+
 handle = (tbl, meta, value)->
   unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
     throw new Error("String Search: unsuported type #{JSON.stringify(meta)}")

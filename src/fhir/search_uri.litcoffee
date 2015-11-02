@@ -34,7 +34,12 @@ We use string functions to implement uri search (see string_search).
 
     SUPPORTED_TYPES = ['uri']
 
-    handle = (tbl, meta, value)->
+    exports.normalize_operator = (meta, value)->
+      return 'eq' if not meta.modifier and not value.prefix
+      return meta.modifier if OPERATORS[meta.modifier]
+      throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
+
+    exports.handle = (tbl, meta, value)->
       unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
         throw new Error("Uri Search: unsuported type #{JSON.stringify(meta)}")
 
@@ -44,8 +49,6 @@ We use string functions to implement uri search (see string_search).
         throw new Error("Uri Search: Unsupported operator #{JSON.stringify(meta)}")
 
       op(tbl, meta, value)
-
-    exports.handle = handle
 
     exports.index = (plv8, meta)->
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_uri"

@@ -20,7 +20,7 @@ match = (x)->
 # plv8.debug = true
 
 # console.log plv8.execute("SET search_path='user1';")
-console.log plv8.execute("SHOW search_path;")
+# console.log plv8.execute("SHOW search_path;")
 
 fs.readdirSync("#{__dirname}/search").filter(match('search')).forEach (yml)->
   spec = test.loadYaml("#{__dirname}/search/#{yml}")

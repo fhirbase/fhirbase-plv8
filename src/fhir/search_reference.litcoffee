@@ -55,9 +55,13 @@ Only equality operator is implemented.
           value]
 
 
+    exports.normalize_operator = (meta, value)->
+      return 'eq' if not meta.modifier and not value.prefix
+      throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
+
     SUPPORTED_TYPES = ['Reference']
 
-    handle = (tbl, meta, value)->
+    exports.handle = (tbl, meta, value)->
       unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
         throw new Error("Reference Search: unsuported type #{JSON.stringify(meta)}")
 
@@ -67,8 +71,6 @@ Only equality operator is implemented.
         throw new Error("Reference Search: Unsupported operator #{JSON.stringify(meta)}")
 
       op(tbl, meta, value)
-
-    exports.handle = handle
 
     exports.index = (plv8, meta)->
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_reference"

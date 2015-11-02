@@ -83,10 +83,19 @@ Function to convert query parameter into range.
       ge: overlap_expr
       lt: overlap_expr
       le: overlap_expr
-      ne: TODO
-      sa: TODO
-      eb: TODO
-      ap: TODO
+      # ne: TODO
+      # sa: TODO
+      # eb: TODO
+      # ap: TODO
+
+`normalize operators` every type handle operators normalization
+
+    exports.normalize_operator = (meta, value)->
+      if not meta.modifier and not value.prefix
+        return 'eq'
+      if OPERATORS[value.prefix]
+        return value.prefix
+      throw new Exeption("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
 
 `handle` is implementation of search interface for date types.

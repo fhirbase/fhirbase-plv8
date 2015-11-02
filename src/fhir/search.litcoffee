@@ -1,4 +1,5 @@
-# FHIRbase search implementation
+FHIRbase search implementation
+====
 
 
 This module is responsible for FHIR search implementation.
@@ -15,11 +16,10 @@ so the code split as much as possible  into small modules
 
 `query_string` module parse query string into {query: 'ResourceType', where: [params], joins: [params]} form 
 `expand_params` walk throw it and add required FHIR meta-data to each parameter 
-`noramalize_params` unify operators
+`normalize_operators` unify operators
 
     parser = require('./query_string')
     expand = require('./expand_params')
-    norm = require('./normalize_params')
     namings = require('../core/namings')
     lisp = require('../lispy')
     namings = require('../core/namings')
@@ -96,35 +96,55 @@ we have to describe it signature:
     exports.search.plv8_signature = ['json', 'json']
 
 
-###  Building SQL from search parameters
+Building SQL from search parameters
 
 To build search query we need to
+
+    normalize_operators = (expr)->
+      forms =
+        $param: (meta, value)->
+          handler = SEARCH_TYPES_TABLE[meta.searchType]
+
+          unless handler
+            throw new Error("NORMALIZE: Not registered search type [#{meta.searchType}]")
+
+          unless handler.normalize_operator
+            throw new Error("NORMALIZE: Not implemented noramalize_operator for [#{meta.searchType}]")
+
+          op = handler.normalize_operator(meta, value)
+          meta.operator = op
+          delete meta.modifier
+          delete value.prefix
+
+          ['$param', meta, value]
+
+      lisp.eval_with(forms, expr)
 
 
     _search_sql = (plv8, idx, query)->
 
-      next_alias = mk_alias()
+        next_alias = mk_alias()
 
-      alias = next_alias()
+        alias = next_alias()
 
-      expr = parser.parse(query.resourceType, query.queryString || "")
-      expr = expand.expand(idx, expr)
-      expr = norm.normalize(expr)
+        expr = parser.parse(query.resourceType, query.queryString || "")
+        expr = expand.expand(idx, expr)
+        expr = normalize_operators(expr)
 
-      expr.where = to_hsql(alias, expr.where)
+        expr.where = to_hsql(alias, expr.where)
 
-      hsql =
-        select: ':*'
-        from: ['$alias', ['$q', namings.table_name(plv8, expr.query)], alias]
-        where: expr.where
+        hsql =
+          select: ':*'
+          from: ['$alias', ['$q', namings.table_name(plv8, expr.query)], alias]
+          where: expr.where
 
-      if expr.joins
-        hsql.join = lang.mapcat expr.joins, (x)->
-          mk_join(plv8, alias, next_alias, x)
+        if expr.joins
+          hsql.join = lang.mapcat expr.joins, (x)->
+            mk_join(plv8, alias, next_alias, x)
 
-      hsql
+        hsql
 
-    exports._search_sql = _search_sql
+      exports._search_sql = _search_sql
 
 
 ###  Building SQL from search parameters

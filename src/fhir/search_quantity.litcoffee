@@ -41,7 +41,14 @@ TODO: later we will add some support for units convertion and search in canonica
       res[k] = v
       res
 
-    handle = (tbl, meta, value)->
+    exports.normalize_operator = (meta, value)->
+      if not meta.modifier and not value.prefix
+        return 'eq'
+      if OPERATORS.indexOf(value.prefix) > -1
+        return value.prefix
+      throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
+
+    exports.handle = (tbl, meta, value)->
       unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
         throw new Error("Quantity Search: unsuported type #{JSON.stringify(meta)}")
 
@@ -65,8 +72,6 @@ TODO: later we will add some support for units convertion and search in canonica
           ["$&&",
             extract_expr(assoc(meta, 'searchType', 'token'), tbl),
             ['$cast', ['$array', token_part], ":text[]"]]]
-
-    exports.handle = handle
 
     exports.index = (plv8, meta)->
       number_part = number_s.index(plv8, assoc(meta, 'searchType', 'number'))
