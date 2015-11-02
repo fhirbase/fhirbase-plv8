@@ -20,6 +20,9 @@ queries:
         result: 3
       - path: ['entry', 'length']
         result: 3
+  - query: {resourceType: 'Patient', queryString:  'birthdate=gt1980&birthdate=ne1981'}
+    total: 2 
+    indexed: true
   - query: {resourceType: 'Patient', queryString: 'birthdate=gt1985'}
     total: 1
     indexed: true

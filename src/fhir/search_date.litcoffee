@@ -57,10 +57,10 @@ Function to convert query parameter into range.
         ['$tstzrange', '-infinity', date.to_upper_date(value), '()']
       else if operator == 'gt' || operator == 'ge'
         ['$tstzrange', date.to_lower_date(value), 'infinity', '[)']
-      else if operator == 'eq'
+      else if operator == 'eq' or operator = 'ne'
         ['$tstzrange', date.to_lower_date(value), date.to_upper_date(value), '[)']
       else
-        throw new  Error('Unhandled')
+        throw new  Error("Do not know how to create daterange for #{operator} #{value}")
 
     exports.value_to_range = value_to_range
 
@@ -75,6 +75,9 @@ Function to convert query parameter into range.
     overlap_expr = (tbl, meta, value)->
       ["$&&", extract_expr(meta), value_to_range(meta.operator, value.value)]
 
+    not_overlap_expr = (tbl, meta, value)->
+      ['$not', ["$&&", extract_expr(meta), value_to_range(meta.operator, value.value)]]
+
     TODO = -> throw new Error("Date search: unimplemented")
 
     OPERATORS =
@@ -83,7 +86,7 @@ Function to convert query parameter into range.
       ge: overlap_expr
       lt: overlap_expr
       le: overlap_expr
-      # ne: TODO
+      ne: not_overlap_expr
       # sa: TODO
       # eb: TODO
       # ap: TODO
@@ -95,7 +98,7 @@ Function to convert query parameter into range.
         return 'eq'
       if OPERATORS[value.prefix]
         return value.prefix
-      throw new Exeption("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
+      throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
 
 `handle` is implementation of search interface for date types.

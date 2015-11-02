@@ -22,7 +22,9 @@ match = (x)->
 # console.log plv8.execute("SET search_path='user1';")
 # console.log plv8.execute("SHOW search_path;")
 
-fs.readdirSync("#{__dirname}/search").filter(match('search')).forEach (yml)->
+FILTER = 'search'
+
+fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
   spec = test.loadYaml("#{__dirname}/search/#{yml}")
   describe spec.title, ->
     before ->
