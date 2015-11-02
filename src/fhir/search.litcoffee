@@ -84,7 +84,7 @@ Then we are returning  resulting Bundle.
 
       base_url = "#{query.resourceType}/#{query.queryString}"
 
-      resourceType: 'Bunlde'
+      resourceType: 'Bundle'
       type: 'searchset'
       total: count
       link: helpers.search_links(query, count)

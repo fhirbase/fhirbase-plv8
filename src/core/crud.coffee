@@ -4,6 +4,7 @@ utils = require('./utils')
 sql = require('../honey')
 bundle = require('./bundle')
 helpers = require('../fhir/search_helpers')
+outcome = require('./outcome')
 
 validate_create_resource = (resource)->
   unless resource.resourceType
@@ -67,6 +68,17 @@ create_resource = (plv8, resource)->
 exports.create_resource = create_resource
 exports.create_resource.plv8_signature = ['json', 'json']
 
+not_found = (id)->
+  resourceType: "OperationOutcome"
+  issue: [
+    {
+      severity: 'error'
+      code: 'not-found'
+      details: { coding: [{code: 'MSG_NO_EXIST', display: 'Resource Id "%s" does not exist'}]}
+      diagnostics: 'Resource Id \"#{id}\" does not exist'
+    }
+  ]
+
 read_resource = (plv8, query)->
   assert(query.id, 'query.id')
   assert(query.resourceType, 'query.resourceType')
@@ -77,7 +89,7 @@ read_resource = (plv8, query)->
   res = utils.exec(plv8, select: sql.raw('*'), from: sql.q(table_name), where: { id: query.id })
   row = res[0]
   unless row
-    return {status: "Error", message: "Not found"}
+    return not_found(query.id)
 
   helpers.postprocess_resource(JSON.parse(row.resource))
 
@@ -101,7 +113,7 @@ exports.vread_resource = (plv8, query)->
   res = utils.exec(plv8,q)
   row = res[0]
   unless row
-    return {status: "Error", message: "Not found"}
+    return not_found(query.id)
 
   helpers.postprocess_resource(JSON.parse(row.resource))
 
@@ -118,7 +130,7 @@ update_resource = (plv8, resource)->
   old_version = exports.read_resource(plv8, resource)
 
   unless old_version
-    return {status: "Error", message: "Resource #{resource.resourceType}/#{id} not exists"}
+    return not_found(query.id)
 
   if not old_version.meta  or not old_version.meta.versionId
     return {status: "Error", message: "Resource #{resource.resourceType}/#{id}, has broken old version #{JSON.stringify(old_version)}"}
@@ -171,7 +183,7 @@ exports.delete_resource = (plv8, resource)->
   old_version = exports.read_resource(plv8, resource)
 
   unless old_version
-    return {status: "Error", message: "Resource #{resource.resourceType}/#{id} not exists"}
+    return not_found(query.id)
 
   if not old_version.meta  or not old_version.meta.versionId
     return {status: "Error", message: "Resource #{resource.resourceType}/#{id}, has broken old version #{JSON.stringify(old_version)}"}
@@ -225,6 +237,8 @@ exports.history = (plv8, query)->
   ).map((x)-> JSON.parse(x.resource))
 
   bundle.history_bundle(resources)
+
+exports.history.plv8_signature = ['json', 'json']
 
 exports.load = (plv8, bundle)->
   res = []

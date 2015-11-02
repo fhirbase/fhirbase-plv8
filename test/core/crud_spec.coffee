@@ -27,6 +27,14 @@ describe "CORE: CRUD spec", ->
     assert.equal(read.id, vread.id)
     assert.equal(read.meta.versionId, vread.meta.versionId)
 
+  it "read unexisting", ->
+    read = crud.read_resource(plv8, {id: 'unexisting', resourceType: 'Users'})
+    assert.equal(read.resourceType, 'OperationOutcome')
+    issue = read.issue[0]
+    assert.equal(issue.severity, 'error')
+    assert.equal(issue.code, 'not-found')
+
+
   it "update", ->
     created = crud.create_resource(plv8, {resourceType: 'Users', name: 'admin'})
     read = crud.read_resource(plv8, {id: created.id, resourceType: 'Users'})

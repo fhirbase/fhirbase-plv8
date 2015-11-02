@@ -2,10 +2,9 @@ assert = (x, msg)->
   unless x
     throw new Error(msg)
 
-exports.outcome = (issues)->
+exports.outcome = (issues, message)->
   outcome =
     resourceType: "OperationOutcome"
-    text: {status: "TODO", div: '<div>TODO</div>'}
     issue: issues
   # TODO validate
   outcome
