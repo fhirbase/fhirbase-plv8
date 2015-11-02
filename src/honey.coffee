@@ -79,12 +79,28 @@ join_clause = (res, expr)->
     res.push("ON")
     heval(res, on_exp)
 
+order_clause = (res, expr)->
+  res.push("ORDER BY")
+  comma_delimited res, expr, (x)-> heval(res, x)
+
 select = (res, expr)->
   res.push("SELECT")
   select_clause(res, expr.select)
   from(res, expr.from) if expr.from
   where_clause(res, expr.where) if expr.where
   join_clause(res, expr.join) if expr.join
+
+  if expr.order
+    order_clause(res, expr.order)
+
+  if expr.limit
+    res.push("LIMIT")
+    heval(res, expr.limit)
+
+  if expr.offset
+    res.push("OFFSET")
+    heval(res, expr.offset)
+
 
 _delete = (res, expr)->
   res.push("DELETE FROM")

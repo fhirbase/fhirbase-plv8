@@ -100,3 +100,19 @@ describe "CORE: CRUD spec", ->
     issue = read_deleted.issue[0]
     assert.equal(issue.severity, 'error')
     assert.equal(issue.code, 'not-found')
+
+  it "parse_history_params", ->
+    [res, errors] = crud.parse_history_params('_since=2010&_count=10')
+    assert.deepEqual(res, {_since: '2010-01-01', _count: 10})
+
+  it "resource type history", ->
+    schema.truncate_storage(plv8, 'Users')
+    crud.create_resource(plv8, {resourceType: 'Users', name: 'u1'})
+    crud.create_resource(plv8, {resourceType: 'Users', name: 'u2'})
+    crud.create_resource(plv8, {resourceType: 'Users', name: 'u3'})
+
+    res = crud.resource_type_history(plv8, resourceType: 'Users')
+    assert.equal(res.total, 3)
+
+    res = crud.resource_type_history(plv8, resourceType: 'Users', queryString: "_count=2&_since=2015-11")
+    assert.equal(res.total, 2)
