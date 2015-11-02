@@ -51,7 +51,7 @@ describe "CORE: CRUD spec", ->
     assert.equal(read_updated.name, to_update.name)
     # assert.equal(read_updated.meta.request.method, 'PUT')
 
-    hx  = crud.history(plv8, {id: read.id, resourceType: 'Users'})
+    hx  = crud.resource_history(plv8, {id: read.id, resourceType: 'Users'})
     assert.equal(hx.total, 2)
     assert.equal(hx.entry.length, 2)
 
@@ -74,7 +74,24 @@ describe "CORE: CRUD spec", ->
     deleted = crud.delete_resource(plv8, {id: read.id, resourceType: 'Users'})
     # assert.equal(deleted.meta.request.method, 'DELETE')
 
-    hx_deleted  = crud.history(plv8, {id: read.id, resourceType: 'Users'})
+    hx_deleted  = crud.resource_history(plv8, {id: read.id, resourceType: 'Users'})
+    assert.equal(hx_deleted.total, 2)
+    assert.equal(hx_deleted.entry.length, 2)
+
+    read_deleted = crud.read_resource(plv8, {id: created.id, resourceType: 'Users'})
+    assert.equal(read_deleted.resourceType, 'OperationOutcome')
+    issue = read_deleted.issue[0]
+    assert.equal(issue.severity, 'error')
+    assert.equal(issue.code, 'not-found')
+
+  it "history", ->
+    created = crud.create_resource(plv8, {resourceType: 'Users', name: 'admin'})
+    read = crud.read_resource(plv8, {id: created.id, resourceType: 'Users'})
+
+    deleted = crud.delete_resource(plv8, {id: read.id, resourceType: 'Users'})
+    # assert.equal(deleted.meta.request.method, 'DELETE')
+
+    hx_deleted  = crud.resource_history(plv8, {id: read.id, resourceType: 'Users'})
     assert.equal(hx_deleted.total, 2)
     assert.equal(hx_deleted.entry.length, 2)
 

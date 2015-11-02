@@ -15,6 +15,9 @@ exports.error = (issue)->
   assert(issue.diagnostics, 'Issue.diagnostics expected')
   exports.outcome([issue])
 
+exports.is_not_found = (outcome)->
+  outcome && outcome.issue && outcome.issue[0] && outcome.issue[0].code == 'not-found'
+
 exports.not_found = (id)->
   resourceType: "OperationOutcome"
   issue: [

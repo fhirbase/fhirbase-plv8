@@ -8,9 +8,12 @@ exports.up = (plv8)->
 
   schema.drop_storage(plv8, 'StructureDefinition')
   schema.drop_storage(plv8, 'SearchParameter')
+  schema.drop_storage(plv8, 'OperationDefinition')
 
   schema.create_storage(plv8, 'StructureDefinition')
   schema.create_storage(plv8, 'SearchParameter')
+
+  schema.create_storage(plv8, 'OperationDefinition')
 
   crud.load(plv8, params)
   crud.load(plv8, types)

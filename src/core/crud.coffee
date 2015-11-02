@@ -227,7 +227,7 @@ exports.delete_resource = (plv8, resource)->
 
 exports.delete_resource.plv8_signature = ['json', 'json']
 
-exports.history = (plv8, query)->
+exports.resource_history = (plv8, query)->
   id = query.id
   assert(id, 'query.id')
   assert(query.resourceType, 'query.resourceType')
@@ -243,23 +243,25 @@ exports.history = (plv8, query)->
 
   bundle.history_bundle(resources)
 
-exports.history.plv8_signature = ['json', 'json']
+exports.resource_history.plv8_signature = ['json', 'json']
 
 exports.load = (plv8, bundle)->
   res = []
   for entry in bundle.entry when entry.resource
     resource = entry.resource
-    if resource.id
-      prev = read_resource(plv8, resource)
-      unless prev.status == 'Error'
-        res.push([resource.id, 'udpated'])
-        update_resource(plv8, resource)
+    unless resource.resourceType == 'Conformance'
+      if resource.id
+        prev = read_resource(plv8, resource)
+        if outcome.is_not_found(prev)
+          create_resource(plv8, resource)
+        else if prev.id == resource.id
+          res.push([resource.id, 'udpated'])
+          update_resource(plv8, resource)
+        else
+          throw new Error("Load problem #{JSON.stringify(prev)}")
       else
         res.push([resource.id, 'created'])
         create_resource(plv8, resource)
-    else
-      res.push([resource.id, 'created'])
-      create_resource(plv8, resource)
   res
 
 # TODO: implement load bundle
