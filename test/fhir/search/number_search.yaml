@@ -13,6 +13,9 @@ queries:
   - query: {resourceType: 'Encounter', queryString:  'length=gt20'}
     indexed: true
     total: 2 
+  - query: {resourceType: 'Encounter', queryString:  'length=gt20&length=ne40'}
+    indexed: true
+    total: 1 
   - query: {resourceType: 'Encounter', queryString:  'length=ge20'}
     indexed: true
     total: 3 

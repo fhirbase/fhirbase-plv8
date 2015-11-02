@@ -177,6 +177,7 @@ BUILTINS =
   $gt: infix_operator('>')
   $ge: infix_operator('>=')
   $eq: infix_operator('=')
+  $ne: infix_operator('<>')
   $ilike: infix_operator('ilike')
   "$&&": infix_operator('&&')
   $and: multi_infix_operator('AND')
