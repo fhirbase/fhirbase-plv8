@@ -55,6 +55,18 @@ describe "CORE: CRUD spec", ->
     assert.equal(hx.total, 2)
     assert.equal(hx.entry.length, 2)
 
+    delete to_update.meta
+    to_update.name = 'udpated without meta'
+
+    updated = crud.update_resource(plv8, to_update)
+    assert.equal(updated.name, to_update.name)
+    assert.notEqual(updated.meta.versionId, false)
+    assert.notEqual(updated.meta.versionId, read.meta.versionId)
+
+  it "update unexisting", ->
+    updated = crud.update_resource(plv8, {resourceType: "Users", id: "unexisting"})
+    assert.equal(updated.resourceType, 'OperationOutcome')
+
   it "delete", ->
     created = crud.create_resource(plv8, {resourceType: 'Users', name: 'admin'})
     read = crud.read_resource(plv8, {id: created.id, resourceType: 'Users'})
@@ -65,3 +77,9 @@ describe "CORE: CRUD spec", ->
     hx_deleted  = crud.history(plv8, {id: read.id, resourceType: 'Users'})
     assert.equal(hx_deleted.total, 2)
     assert.equal(hx_deleted.entry.length, 2)
+
+    read_deleted = crud.read_resource(plv8, {id: created.id, resourceType: 'Users'})
+    assert.equal(read_deleted.resourceType, 'OperationOutcome')
+    issue = read_deleted.issue[0]
+    assert.equal(issue.severity, 'error')
+    assert.equal(issue.code, 'not-found')

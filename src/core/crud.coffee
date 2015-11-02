@@ -8,7 +8,20 @@ outcome = require('./outcome')
 
 validate_create_resource = (resource)->
   unless resource.resourceType
-    {status: "Error", message: "resource should have type element"}
+    resourceType: "OperationOutcome"
+    text:{div: "<div>Resource should have [resourceType] element</div>"}
+    issue: [
+      severity: 'error'
+      code: 'structure' 
+    ]
+
+table_not_exists = (resourceType)->
+  resourceType: "OperationOutcome"
+  text: {div: "<div>Storage for #{resourceType} not exists</div>"}
+  issue: [
+    severity: 'error'
+    code: 'not-supported' 
+  ]
 
 assert = (pred, msg)-> throw new Error("Asserted: #{msg}") unless pred
 
@@ -22,7 +35,7 @@ ensure_table = (plv8, resourceType)->
   table_name = namings.table_name(plv8, resourceType)
   hx_table_name = namings.history_table_name(plv8, resourceType)
   unless pg_meta.table_exists(plv8, table_name)
-    return [null, null, {status: "Error", message: "Table #{table_name} for #{resourceType} not exists"}]
+    return [null, null, table_not_exists(resourceType)]
   else
     [table_name, hx_table_name, null]
 
@@ -68,16 +81,11 @@ create_resource = (plv8, resource)->
 exports.create_resource = create_resource
 exports.create_resource.plv8_signature = ['json', 'json']
 
-not_found = (id)->
-  resourceType: "OperationOutcome"
-  issue: [
-    {
-      severity: 'error'
-      code: 'not-found'
-      details: { coding: [{code: 'MSG_NO_EXIST', display: 'Resource Id "%s" does not exist'}]}
-      diagnostics: 'Resource Id \"#{id}\" does not exist'
-    }
-  ]
+resource_is_deleted = (plv8, query)->
+  assert(query.id, 'query.id')
+  assert(query.resourceType, 'query.resourceType')
+  hx_table_name = namings.history_table_name(plv8, query.resourceType)
+
 
 read_resource = (plv8, query)->
   assert(query.id, 'query.id')
@@ -89,7 +97,7 @@ read_resource = (plv8, query)->
   res = utils.exec(plv8, select: sql.raw('*'), from: sql.q(table_name), where: { id: query.id })
   row = res[0]
   unless row
-    return not_found(query.id)
+    return outcome.not_found(query.id)
 
   helpers.postprocess_resource(JSON.parse(row.resource))
 
@@ -113,7 +121,7 @@ exports.vread_resource = (plv8, query)->
   res = utils.exec(plv8,q)
   row = res[0]
   unless row
-    return not_found(query.id)
+    return outcome.not_found(query.id)
 
   helpers.postprocess_resource(JSON.parse(row.resource))
 
@@ -129,11 +137,8 @@ update_resource = (plv8, resource)->
 
   old_version = exports.read_resource(plv8, resource)
 
-  unless old_version
-    return not_found(query.id)
-
-  if not old_version.meta  or not old_version.meta.versionId
-    return {status: "Error", message: "Resource #{resource.resourceType}/#{id}, has broken old version #{JSON.stringify(old_version)}"}
+  if old_version.resourceType == 'OperationOutcome'
+    return old_version
 
   version_id = utils.uuid(plv8)
 
@@ -183,7 +188,7 @@ exports.delete_resource = (plv8, resource)->
   old_version = exports.read_resource(plv8, resource)
 
   unless old_version
-    return not_found(query.id)
+    return outcome.not_found(query.id)
 
   if not old_version.meta  or not old_version.meta.versionId
     return {status: "Error", message: "Resource #{resource.resourceType}/#{id}, has broken old version #{JSON.stringify(old_version)}"}
