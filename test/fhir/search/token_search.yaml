@@ -3,10 +3,20 @@ resources: ['Patient']
 indices:
   - {resourceType: 'Patient', name: 'active'}
   - {resourceType: 'Patient', name: 'identifier'}
+  - {resourceType: 'Patient', name: 'telecom'}
+  - {resourceType: 'Patient', name: 'email'}
+
 fixtures:
   - resourceType: 'Patient'
     name: [{given: ['nicola']}]
     active: true
+    telecom:
+      - system: 'phone'
+        value: '9999'
+      - system: 'fax'
+        value: '8888'
+      - system: 'email'
+        value: 'nicola@mail.com'
     identifier:
       - use: usual
         type:
@@ -81,3 +91,12 @@ queries:
         result: 1 
       - path: ['entry', 0, 'resource', 'name', 0, 'given', 0]
         result: ivan
+  - query: {resourceType: 'Patient', queryString:  'email=nicola@mail.com'}
+    indexed: true
+    total: 1
+  - query: {resourceType: 'Patient', queryString:  'telecom=fax|8888'}
+    indexed: true
+    total: 1
+  - query: {resourceType: 'Patient', queryString:  'telecom=phone|9999'}
+    indexed: true
+    total: 1
