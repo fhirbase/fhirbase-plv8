@@ -1,3 +1,4 @@
+helpers = require('../fhir/search_helpers')
 exports.history_bundle  = (resources)->
   resourceType: "Bundle"
   id: "???"
@@ -7,7 +8,7 @@ exports.history_bundle  = (resources)->
   link: [{ realtion: 'self', url: '???'}]
   entry: resources.map (x)->
     fullUrl: '???'
-    resource: x
+    resource: helpers.postprocess_resource(x)
 
 exports.search_bundle  = (query, resources)->
   resourceType: "Bundle"
@@ -19,4 +20,4 @@ exports.search_bundle  = (query, resources)->
   link: [{ realtion: 'self', url: '???'}]
   entry: resources.map (x)->
     fullUrl: '???'
-    resource: x
+    resource: helpers.postprocess_resource(x)

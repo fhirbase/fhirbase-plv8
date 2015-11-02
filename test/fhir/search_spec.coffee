@@ -51,6 +51,8 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
         res = search.search(plv8, q.query)
         explain = JSON.stringify(search.explain_search(plv8, q.query))
 
+        # console.log(JSON.stringify(res))
+
         plv8.execute "SET enable_seqscan = ON;" if q.indexed
 
         if q.total

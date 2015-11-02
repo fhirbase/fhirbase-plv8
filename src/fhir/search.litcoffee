@@ -19,6 +19,7 @@ so the code split as much as possible  into small modules
 `normalize_operators` unify operators
 
     parser = require('./query_string')
+    helpers = require('./search_helpers')
     expand = require('./expand_params')
     namings = require('../core/namings')
     lisp = require('../lispy')
@@ -81,14 +82,19 @@ Then we are returning  resulting Bundle.
       else
         count = utils.exec(plv8, countize_query(honey))[0].count
 
+      base_url = "#{query.resourceType}/#{query.queryString}"
+
+      resourceType: 'Bunlde'
       type: 'searchset'
       total: count
+      link: helpers.search_links(query, count)
       entry: resources.map(to_entry)
 
 Helper function to convert resource into entry bundle:
 TODO: add links
 
-    to_entry = (row)-> resource: JSON.parse(row.resource)
+    to_entry = (row)->
+      resource: helpers.postprocess_resource(JSON.parse(row.resource))
 
 This function should be visible from postgresql, so
 we have to describe it signature:

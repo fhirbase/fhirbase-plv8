@@ -3,6 +3,7 @@ pg_meta = require('./pg_meta')
 utils = require('./utils')
 sql = require('../honey')
 bundle = require('./bundle')
+helpers = require('../fhir/search_helpers')
 
 validate_create_resource = (resource)->
   unless resource.resourceType
@@ -61,7 +62,7 @@ create_resource = (plv8, resource)->
       valid_from: sql.now
       valid_to: sql.now
 
-  resource
+  helpers.postprocess_resource(resource)
 
 exports.create_resource = create_resource
 exports.create_resource.plv8_signature = ['json', 'json']
@@ -78,7 +79,7 @@ read_resource = (plv8, query)->
   unless row
     return {status: "Error", message: "Not found"}
 
-  JSON.parse(row.resource)
+  helpers.postprocess_resource(JSON.parse(row.resource))
 
 exports.read_resource = read_resource
 exports.read_resource.plv8_signature = ['json', 'json']
@@ -102,7 +103,7 @@ exports.vread_resource = (plv8, query)->
   unless row
     return {status: "Error", message: "Not found"}
 
-  JSON.parse(row.resource)
+  helpers.postprocess_resource(JSON.parse(row.resource))
 
 exports.vread_resource.plv8_signature = ['json', 'json']
 
@@ -153,7 +154,7 @@ update_resource = (plv8, resource)->
       valid_from: sql.now
       valid_to: sql.infinity
 
-  resource
+  helpers.postprocess_resource(resource)
 
 
 exports.update_resource = update_resource
@@ -204,7 +205,7 @@ exports.delete_resource = (plv8, resource)->
       valid_from: sql.now
       valid_to: sql.now
 
-  resource
+  helpers.postprocess_resource(resource)
 
 
 exports.delete_resource.plv8_signature = ['json', 'json']

@@ -41,7 +41,7 @@ describe "CORE: CRUD spec", ->
 
     read_updated = crud.read_resource(plv8, updated)
     assert.equal(read_updated.name, to_update.name)
-    assert.equal(read_updated.meta.request.method, 'PUT')
+    # assert.equal(read_updated.meta.request.method, 'PUT')
 
     hx  = crud.history(plv8, {id: read.id, resourceType: 'Users'})
     assert.equal(hx.total, 2)
@@ -52,7 +52,7 @@ describe "CORE: CRUD spec", ->
     read = crud.read_resource(plv8, {id: created.id, resourceType: 'Users'})
 
     deleted = crud.delete_resource(plv8, {id: read.id, resourceType: 'Users'})
-    assert.equal(deleted.meta.request.method, 'DELETE')
+    # assert.equal(deleted.meta.request.method, 'DELETE')
 
     hx_deleted  = crud.history(plv8, {id: read.id, resourceType: 'Users'})
     assert.equal(hx_deleted.total, 2)
