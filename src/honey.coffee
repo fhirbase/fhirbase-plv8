@@ -198,6 +198,12 @@ BUILTINS =
   "$&&": infix_operator('&&')
   $and: multi_infix_operator('AND')
   $or: multi_infix_operator('OR')
+  $null: (res, [op, expr])->
+    heval(res, expr)
+    res.push("IS NULL")
+  $notnull: (res, [op, expr])->
+    heval(res, expr)
+    res.push("IS NOT NULL")
   $raw: (res, [op, str])->
     res.push(str)
   $inlineString: (res, [op, str])-> res.push("'#{str}'")

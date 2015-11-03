@@ -18,7 +18,7 @@ it should be done in an extensible maner
     exports.extract_as_number = (plv8, resource, path, element_type)->
       data = xpath.get_in(resource, [path])[0] || null
       return unless data
-      if element_type == 'integer'
+      if element_type == 'integer' or element_type == 'positiveInt'
         data
       else if element_type == 'Quantity'
         data.value
@@ -30,7 +30,7 @@ it should be done in an extensible maner
       returns: 'numeric'
       immutable: true
 
-    SUPPORTED_TYPES = ['integer', 'Quantity']
+    SUPPORTED_TYPES = ['integer', 'Quantity', 'positiveInt']
     OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge', 'ne']
 
     extract_expr = (meta, tbl)->

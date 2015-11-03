@@ -1,5 +1,5 @@
 title: Number Search
-resources: ['Encounter']
+resources: ['Encounter', 'Immunization']
 indices:
   - {resourceType: 'Encounter', name: 'length'}
   - {resourceType: 'Immunization', name: 'dose-sequence'}

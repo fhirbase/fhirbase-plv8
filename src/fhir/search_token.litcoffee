@@ -20,42 +20,42 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       res = []
       data = xpath.get_in(resource, [path])
       if element_type == 'boolean'
-        for str in data
+        res = for str in data
           if str.toString() == 'false'
             'false'
           else
             'true'
       else if element_type == 'code' || element_type == 'string'
-        str.toString() for str in data
+        res = (str.toString() for str in data)
       else if element_type == 'Identifier' or element_type == 'ContactPoint'
         for coding in data
             res.push(coding.value)
             res.push("#{coding.system}|#{coding.value}")
-        res
       else if element_type == 'Coding'
         for coding in data
             res.push(coding.code)
             res.push("#{coding.system}|#{coding.code}")
-        res
       else if element_type == 'Quantity'
         for quant in data
             res.push(quant.code)
             res.push(quant.unit)
             res.push("#{quant.system}|#{quant.code}")
             res.push("#{quant.system}|#{quant.unit}")
-        res
       else if element_type == 'CodeableConcept'
         for concept in data
           for coding in (concept.coding || [])
             res.push(coding.code)
             res.push("#{coding.system}|#{coding.code}")
-        res
       else if element_type == 'Reference'
         for ref in data
           res.push(ref.reference)
-        res
       else
         throw new Error("extract_as_token: Not implemented for #{element_type}")
+
+      if res.length == 0
+        ['$NULL']
+      else
+        res
 
     exports.extract_as_token.plv8_signature =
       arguments: ['json', 'json', 'text']
@@ -73,11 +73,16 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
 
 
     OPERATORS =
+      missing: (tbl, meta, value)->
+        op = if value.value == 'false' then '$ne' else '$&&'
+        [op
+          ['$cast', extract_expr(meta, tbl), ":text[]"]
+          ['$cast', ['$array', "$NULL"], ":text[]"]]
+
       eq: (tbl, meta, value)->
         ["$&&"
           ['$cast', extract_expr(meta, tbl), ":text[]"]
-          ['$cast', ['$array', value.value], ":text[]"]
-          value]
+          ['$cast', ['$array', value.value], ":text[]"]]
 
     SUPPORTED_TYPES = [
       'boolean'
@@ -93,6 +98,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
 
     exports.normalize_operator = (meta, value)->
       return 'eq' if not meta.modifier and not value.prefix
+      return 'missing' if meta.modifier == 'missing'
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
     exports.handle = (tbl, meta, value)->

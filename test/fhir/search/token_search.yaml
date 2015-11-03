@@ -5,11 +5,13 @@ indices:
   - {resourceType: 'Patient', name: 'identifier'}
   - {resourceType: 'Patient', name: 'telecom'}
   - {resourceType: 'Patient', name: 'email'}
+  - {resourceType: 'Patient', name: 'gender'}
 
 fixtures:
   - resourceType: 'Patient'
     name: [{given: ['nicola']}]
     active: true
+    gender: 'male'
     telecom:
       - system: 'phone'
         value: '9999'
@@ -99,4 +101,12 @@ queries:
     total: 1
   - query: {resourceType: 'Patient', queryString:  'telecom=phone|9999'}
     indexed: true
+    total: 1
+  - query: {resourceType: 'Patient', queryString:  'gender=male'}
+    indexed: true
+    total: 1 
+  - query: {resourceType: 'Patient', queryString:  'gender:missing=true'}
+    indexed: true
+    total: 3
+  - query: {resourceType: 'Patient', queryString:  'gender:missing=false'}
     total: 1
