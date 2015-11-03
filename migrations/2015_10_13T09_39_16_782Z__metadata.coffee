@@ -6,14 +6,14 @@ exports.up = (plv8)->
   types = require('../fhir/profiles-types.json')
   profiles = require('../fhir/profiles-resources.json')
 
-  schema.drop_storage(plv8, 'StructureDefinition')
-  schema.drop_storage(plv8, 'SearchParameter')
-  schema.drop_storage(plv8, 'OperationDefinition')
+  schema.drop_storage(plv8, resourceType: 'StructureDefinition')
+  schema.drop_storage(plv8, resourceType: 'SearchParameter')
+  schema.drop_storage(plv8, resourceType: 'OperationDefinition')
 
-  schema.create_storage(plv8, 'StructureDefinition')
-  schema.create_storage(plv8, 'SearchParameter')
+  schema.create_storage(plv8, resourceType: 'StructureDefinition')
+  schema.create_storage(plv8, resourceType: 'SearchParameter')
 
-  schema.create_storage(plv8, 'OperationDefinition')
+  schema.create_storage(plv8, resourceType: 'OperationDefinition')
 
   crud.load(plv8, params)
   crud.load(plv8, types)

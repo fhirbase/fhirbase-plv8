@@ -30,8 +30,8 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
     before ->
       plv8.execute("SET plv8.start_proc = 'plv8_init'")
       for res in spec.resources
-        schema.create_storage(plv8, res)
-        schema.truncate_storage(plv8, res)
+        schema.create_storage(plv8, resourceType: res)
+        schema.truncate_storage(plv8, resourceType: res)
 
       for res in spec.fixtures
         crud.create_resource(plv8, res)

@@ -21,8 +21,8 @@ describe 'transaction execution', ->
     plv8.execute("SET plv8.start_proc = 'plv8_init'")
 
     for type, fixtures of transactionExamples.fixtures
-      schema.create_storage(plv8, type)
-      schema.truncate_storage(plv8, type)
+      schema.create_storage(plv8, resourceType: type)
+      schema.truncate_storage(plv8,  resourceType: type)
 
       for res in fixtures
         crud.create_resource(plv8, res)

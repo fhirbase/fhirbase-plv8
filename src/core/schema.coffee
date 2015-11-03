@@ -4,7 +4,8 @@ utils = require('./utils')
 pg_meta = require('./pg_meta')
 
 # TODO: rename to create_storage
-exports.create_storage = (plv8, resource_type)->
+exports.create_storage = (plv8, query)->
+  resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   hx_nm = namings.history_table_name(plv8, resource_type)
   if pg_meta.table_exists(plv8, nm)
@@ -47,8 +48,9 @@ exports.create_storage = (plv8, resource_type)->
 
     {status: 'ok', message: "Table #{nm} was created"}
 
-exports.drop_storage = (plv8, nm)->
-  nm = namings.table_name(plv8, nm)
+exports.drop_storage = (plv8, query)->
+  resource_type = query.resourceType
+  nm = namings.table_name(plv8, resource_type)
   hx_nm = namings.history_table_name(plv8, nm)
   unless pg_meta.table_exists(plv8, nm)
     {status: 'error', message: "Table #{nm} not exists"}
@@ -60,7 +62,8 @@ exports.drop_storage = (plv8, nm)->
       delete plv8.cache["#{hx_nm}"]
     {status: 'ok', message: "Table #{nm} was dropped"}
 
-exports.describe_table = (plv8, resource_type)->
+exports.describe_table = (plv8, query)->
+  resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   hx_nm = namings.history_table_name(plv8, nm)
   columns = utils.exec plv8,
@@ -71,7 +74,8 @@ exports.describe_table = (plv8, resource_type)->
   name: nm
   columns: columns.reduce(((acc, x)-> acc[x.column_name] = x; delete x.column_name; acc),{})
 
-exports.truncate_storage = (plv8, resource_type)->
+exports.truncate_storage = (plv8, query)->
+  resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   hx_nm = namings.history_table_name(plv8, nm)
   utils.exec(plv8, truncate: sql.q(nm))

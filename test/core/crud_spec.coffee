@@ -8,8 +8,8 @@ copy = (x)-> JSON.parse(JSON.stringify(x))
 
 describe "CORE: CRUD spec", ->
   beforeEach ->
-    schema.drop_storage(plv8, 'Users')
-    schema.create_storage(plv8, 'Users')
+    schema.drop_storage(plv8, resourceType: 'Users')
+    schema.create_storage(plv8, resourceType: 'Users')
 
   it "create", ->
     created = crud.create_resource(plv8, {resourceType: 'Users', name: 'admin'})
@@ -106,7 +106,7 @@ describe "CORE: CRUD spec", ->
     assert.deepEqual(res, {_since: '2010-01-01', _count: 10})
 
   it "resource type history", ->
-    schema.truncate_storage(plv8, 'Users')
+    schema.truncate_storage(plv8, resourceType: 'Users')
     crud.create_resource(plv8, {resourceType: 'Users', name: 'u1'})
     crud.create_resource(plv8, {resourceType: 'Users', name: 'u2'})
     crud.create_resource(plv8, {resourceType: 'Users', name: 'u3'})
