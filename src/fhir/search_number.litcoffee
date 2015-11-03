@@ -31,7 +31,7 @@ it should be done in an extensible maner
       immutable: true
 
     SUPPORTED_TYPES = ['integer', 'Quantity', 'positiveInt']
-    OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge', 'ne']
+    OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge', 'ne', 'missing']
 
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
@@ -45,7 +45,9 @@ it should be done in an extensible maner
     exports.normalize_operator = (meta, value)->
       if not meta.modifier and not value.prefix
         return 'eq'
-      if OPERATORS.indexOf(value.prefix) > -1
+      else if meta.modifier == 'missing'
+        return 'missing'
+      else if OPERATORS.indexOf(value.prefix) > -1
         return value.prefix
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
@@ -56,7 +58,12 @@ it should be done in an extensible maner
       # unless OPERATORS.indexOf(meta.operator) > -1
       #   throw new Error("Number Search: Unsupported operator #{meta.operator}")
 
-      ["$#{meta.operator}", extract_expr(meta, tbl), value.value]
+      op = if meta.operator == 'missing'
+        if value.value == 'false' then '$notnull' else '$null'
+      else
+        "$#{meta.operator}"
+
+      [op, extract_expr(meta, tbl), value.value]
 
     exports.index = (plv8, metas)->
       meta = metas[0]
