@@ -50,9 +50,10 @@ We use string functions to implement uri search (see string_search).
 
       op(tbl, meta, value)
 
-    exports.index = (plv8, meta)->
+    exports.index = (plv8, metas)->
+      meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_uri"
-
+      exprs = metas.map((x)-> extract_expr(x))
       [
         name: idx_name
         ddl:
@@ -61,5 +62,5 @@ We use string functions to implement uri search (see string_search).
           using: ':GIN'
           opclass: ':gin_trgm_ops'
           on: meta.resourceType.toLowerCase()
-          expression: extract_expr(meta)
+          expression: exprs
       ]

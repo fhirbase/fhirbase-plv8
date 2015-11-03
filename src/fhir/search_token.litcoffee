@@ -106,8 +106,10 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
 
       op(tbl, meta, value)
 
-    exports.index = (plv8, meta)->
+    exports.index = (plv8, metas)->
+      meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_token"
+      exprs = metas.map((x)-> extract_expr(x))
 
       [
         name: idx_name
@@ -116,5 +118,5 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
           name:  idx_name
           using: ':GIN'
           on: meta.resourceType.toLowerCase()
-          expression: extract_expr(meta)
+          expression: exprs
       ]

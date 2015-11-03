@@ -83,6 +83,17 @@ exports.mapcat = (coll, fn)->
 exports.last = (arr)->
   arr[(arr.length - 1)]
 
+exports.uniq = (arr)->
+  idx = {}
+  arr.reduce((acc, x)->
+    unless idx[x]
+      idx[x] = true
+      acc.push(x)
+      acc
+    else
+      acc
+  , [])
+
 exports.values = (obj)->
   values_recur = (acc, obj)->
     if isArray(obj)

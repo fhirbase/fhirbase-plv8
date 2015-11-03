@@ -96,8 +96,11 @@ handle = (tbl, meta, value)->
 
 exports.handle = handle
 
-exports.index = (plv8, meta)->
+exports.index = (plv8, metas)->
+  meta = metas[0]
   idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_string"
+
+  exprs = metas.map((x)-> extract_expr(x))
 
   [
     name: idx_name
@@ -107,6 +110,6 @@ exports.index = (plv8, meta)->
       using: ':GIN'
       on: meta.resourceType.toLowerCase()
       opclass: ':gin_trgm_ops'
-      expression: extract_expr(meta)
+      expression: exprs
   ]
 

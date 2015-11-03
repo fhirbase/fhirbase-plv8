@@ -264,7 +264,8 @@ CREATE_CLAUSES =
       res.push("USING")
       res.push(name(expr.using))
     parens res, ->
-      heval(res, expr.expression)
+      comma_delimited res, expr.expression, (ex)->
+        heval(res, ex)
       heval(res, expr.opclass) if expr.opclass
   table: (res, expr)->
     res.push("CREATE TABLE")

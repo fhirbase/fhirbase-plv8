@@ -42,6 +42,11 @@ Function to extract element from resource as tstzrange.
       if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
         value = xpath.get_in(resource, [path]).map(str)
         date.to_range(value) if value
+      else if element_type == 'Period'
+        value = xpath.get_in(resource, [path])[0]
+        lower = date.to_lower_date(value.start)
+        upper = if value.end then date.to_upper_date(value.end) else 'infinity'
+        "(#{lower}, #{upper}]"
       else
         throw new Error("extract_as_date: Not implemented for #{element_type}")
 
@@ -119,8 +124,11 @@ and returns honeysql expression.
 
     exports.handle = handle
 
-    exports.index = (plv8, meta)->
+    exports.index = (plv8, metas)->
+      meta = metas[0]
+      tbl = meta.resourceType.toLowerCase()
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_date"
+      exprs = metas.map((x)-> extract_expr(x))
 
       [
         name: idx_name
@@ -129,6 +137,6 @@ and returns honeysql expression.
           name:  idx_name
           using: ':GIST'
           opclass: ':range_ops'
-          on: meta.resourceType.toLowerCase()
-          expression: extract_expr(meta)
+          on: tbl
+          expression:  exprs
       ]

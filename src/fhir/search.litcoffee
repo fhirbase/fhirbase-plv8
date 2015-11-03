@@ -232,11 +232,21 @@ awaiting query.resourceType and query.name - name of parameter
 
     expand_parameter = (plv8, query)->
       idx = ensure_index(plv8)
-      [_, meta] = expand.expand(idx, ['$param', query])
-      meta
+      expr = expand.expand(idx, ['$param', query])
+      if lang.isArray(expr) and expr[0] == '$or'
+        expr[1..-1].map((x)-> x[1])
+      else if expr[0] == '$param'
+        [expr[1]]
+      else
+        throw new Error("Indexing: not supported #{JSON.stringify(expr)}")
 
-    ensure_handler = (plv8, meta)->
-      h = SEARCH_TYPES_TABLE[meta.searchType]
+    ensure_handler = (plv8, metas)->
+
+      uniqtypes = lang.uniq(metas.map((x)-> x.searchType))
+      if uniqtypes.length > 1
+        throw new Error("We do not support such case #{JSON.stringify(uniqtypes)}")
+
+      h = SEARCH_TYPES_TABLE[uniqtypes[0]]
 
       unless h
         throw new Error("Unsupported search type [#{meta.searchType}] #{JSON.stringify(meta)}")
@@ -247,9 +257,9 @@ awaiting query.resourceType and query.name - name of parameter
 
 
     index_parameter = (plv8, query)->
-      meta = expand_parameter(plv8, query)
-      h = ensure_handler(plv8, meta)
-      idx_infos = h.index(plv8, meta)
+      metas = expand_parameter(plv8, query)
+      h = ensure_handler(plv8, metas)
+      idx_infos = h.index(plv8, metas)
 
       for idx_info in idx_infos
         if pg_meta.index_exists(plv8, idx_info.name)

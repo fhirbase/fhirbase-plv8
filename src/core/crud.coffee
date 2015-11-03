@@ -279,7 +279,7 @@ exports.resource_type_history = (plv8, query)->
   [params, errors] = parse_history_params(query.queryString || '')
   return errors if errors
 
-  hsql = 
+  hsql =
     select: sql.raw('*')
     from:   sql.q(hx_table_name)
     order: [':valid_from']

@@ -72,9 +72,11 @@ Only equality operator is implemented.
 
       op(tbl, meta, value)
 
-    exports.index = (plv8, meta)->
+    exports.index = (plv8, metas)->
+      meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_reference"
 
+      exprs = metas.map((x)-> extract_expr(x))
       [
         name: idx_name
         ddl:
@@ -82,5 +84,5 @@ Only equality operator is implemented.
           name:  idx_name
           using: ':GIN'
           on: meta.resourceType.toLowerCase()
-          expression: extract_expr(meta)
+          expression: exprs
       ]

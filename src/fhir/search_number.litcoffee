@@ -58,8 +58,10 @@ it should be done in an extensible maner
 
       ["$#{meta.operator}", extract_expr(meta, tbl), value.value]
 
-    exports.index = (plv8, meta)->
+    exports.index = (plv8, metas)->
+      meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_number"
+      exprs = metas.map((x)-> extract_expr(x))
 
       [
         name: idx_name
@@ -67,5 +69,5 @@ it should be done in an extensible maner
           create: 'index'
           name:  idx_name
           on: meta.resourceType.toLowerCase()
-          expression: extract_expr(meta)
+          expression: exprs
       ]
