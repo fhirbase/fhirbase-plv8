@@ -35,6 +35,7 @@ fixtures:
         postalCode: 17102
         country: USA
   - {resourceType: 'Patient', name: [{given: ['noise1']}]}
+  - {resourceType: 'Patient'}
   - {resourceType: 'Patient', name: [{given: ['noise2']}]}
   - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}]}
   - {resourceType: 'Patient', name: [{given: ['Cheburashka']}]}
@@ -177,3 +178,9 @@ queries:
     probes:
       - path: ['entry',0,'resource', 'address',0, 'postalCode']
         result: '3999'
+
+  - query: {queryString: 'name:missing=true', resourceType: 'Patient'}
+    indexed: true
+    total: 1 
+  - query: {queryString: 'name:missing=false', resourceType: 'Patient'}
+    total:  6

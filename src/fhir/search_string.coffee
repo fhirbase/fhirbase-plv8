@@ -31,9 +31,15 @@ exports.unaccent = unaccent
 
 TODO = -> throw new Error("TODO")
 
+EMPTY_VALUE = "$NULL"
+
 exports.extract_as_string = (plv8, resource, path, element_type)->
   obj = xpath.get_in(resource, [path])
-  ("^^#{unaccent(v)}$$" for v in lang.values(obj)).join(" ")
+  vals = lang.values(obj).filter((x)-> x && x.toString().trim())
+  if vals.length == 0
+    EMPTY_VALUE
+  else
+    ("^^#{unaccent(v)}$$" for v in vals).join(" ")
 
 exports.extract_as_string.plv8_signature =
   arguments: ['json', 'json', 'text']
@@ -60,6 +66,11 @@ OPERATORS =
     ["$ilike", extract_expr(meta, tbl), "%#{normalize_string_value(value.value)}$$%"]
   co: (tbl, meta, value)->
     ["$ilike", extract_expr(meta, tbl), "%#{normalize_string_value(value.value)}%"]
+  missing: (tbl, meta, value)->
+    if value.value == 'false'
+      ["$ne", extract_expr(meta, tbl), EMPTY_VALUE]
+    else
+      ["$ilike", extract_expr(meta, tbl), EMPTY_VALUE]
 
 SUPPORTED_TYPES = [
  'Address'
@@ -76,6 +87,7 @@ OPERATORS_ALIASES =
   ew: 'ew'
   startwith: 'sw'
   endwith: 'ew'
+  missing: 'missing'
 
 exports.normalize_operator = (meta, value)->
   return 'sw' if not meta.modifier and not value.prefix
