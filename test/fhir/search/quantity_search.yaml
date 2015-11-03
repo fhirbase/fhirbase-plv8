@@ -5,28 +5,30 @@ indices:
 
 fixtures:
   - resourceType: 'Observation'
-    valueQuantity: 
+    valueQuantity:
         value: 185
         unit: "lbs"
         system: "http://unitsofmeasure.org"
         code: "[lb_av]"
   - resourceType: 'Observation'
-    valueQuantity: 
+    valueQuantity:
         value: 190
         unit: "lbs"
         system: "http://unitsofmeasure.org"
         code: "[lb_av]"
   - resourceType: 'Observation'
-    valueQuantity: 
+    valueQuantity:
         value: 10
         unit: "mg"
         system: "http://unitsofmeasure.org"
         code: "[mg]"
 
+
+
 queries:
   - query: {resourceType: 'Observation', queryString:  'value-quantity=lt186'}
     indexed: true
-    total: 2 
+    total: 2
   - query: {resourceType: 'Observation', queryString:  'value-quantity=lt186||mg'}
     indexed: true
     total:  1
