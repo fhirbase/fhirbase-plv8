@@ -8,6 +8,7 @@ fixtures:
   - {id: 'nicola', resourceType: 'Patient', name: [{given: ['nicola']}], active: true, birthDate: '1980'}
   - {resourceType: 'Patient', name: [{given: ['noise1']}], birthDate: '1970'}
   - {resourceType: 'Patient', name: [{given: ['noise2']}], birthDate: '1971'}
+  - {resourceType: 'Patient', name: [{given: ['nop']}]}
   - {resourceType: 'Patient', name: [{given: ['ivan']}], active: true , birthDate: '1981'}
   - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}], birthDate: '1988', multipleBirthInteger: 3}
   - {resourceType: 'Patient', name: [{given: ['Cheburashka']}], birthDate: '1972', multipleBirthInteger: 2}
@@ -62,3 +63,7 @@ queries:
     probes:
       - path: ['total']
         result: 2
+  - query: {resourceType: 'Patient', queryString: 'birthdate:missing=true'}
+    total: 1 
+  - query: {resourceType: 'Patient', queryString: 'birthdate:missing=false'}
+    total: 6 

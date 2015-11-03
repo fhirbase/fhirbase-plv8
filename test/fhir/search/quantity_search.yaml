@@ -22,6 +22,8 @@ fixtures:
         unit: "mg"
         system: "http://unitsofmeasure.org"
         code: "[mg]"
+  - resourceType: 'Observation'
+    id: 'ups'
 
 
 
@@ -38,3 +40,9 @@ queries:
   - query: {resourceType: 'Observation', queryString:  'value-quantity=lt186|http://unitsofmeasure.org|[lb_av]'}
     indexed: true
     total:  1
+  - query: {resourceType: 'Observation', queryString:  'value-quantity:missing=true'}
+    indexed: true
+    total:  1
+  - query: {resourceType: 'Observation', queryString:  'value-quantity:missing=false'}
+    indexed: true
+    total:  3

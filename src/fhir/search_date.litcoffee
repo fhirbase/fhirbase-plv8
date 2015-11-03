@@ -40,13 +40,19 @@ Function to extract element from resource as tstzrange.
 
     exports.extract_as_daterange = (plv8, resource, path, element_type)->
       if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
-        value = xpath.get_in(resource, [path]).map(str)
-        date.to_range(value) if value
+        value = xpath.get_in(resource, [path])[0]
+        if value
+          date.to_range(value.toString())
+        else
+          null
       else if element_type == 'Period'
         value = xpath.get_in(resource, [path])[0]
-        lower = date.to_lower_date(value.start)
-        upper = if value.end then date.to_upper_date(value.end) else 'infinity'
-        "(#{lower}, #{upper}]"
+        if value
+          lower = date.to_lower_date(value.start)
+          upper = if value.end then date.to_upper_date(value.end) else 'infinity'
+          "(#{lower}, #{upper}]"
+        else
+          null
       else
         throw new Error("extract_as_date: Not implemented for #{element_type}")
 
@@ -83,6 +89,12 @@ Function to convert query parameter into range.
     not_overlap_expr = (tbl, meta, value)->
       ['$not', ["$&&", extract_expr(meta), value_to_range(meta.operator, value.value)]]
 
+    missing_expr = (tbl, meta, value)->
+      if value.value == 'false'
+        ["$notnull", extract_expr(meta)]
+      else
+        ["$null", extract_expr(meta)]
+
     TODO = -> throw new Error("Date search: unimplemented")
 
     OPERATORS =
@@ -92,6 +104,7 @@ Function to convert query parameter into range.
       lt: overlap_expr
       le: overlap_expr
       ne: not_overlap_expr
+      missing: missing_expr
       # sa: TODO
       # eb: TODO
       # ap: TODO
@@ -101,6 +114,8 @@ Function to convert query parameter into range.
     exports.normalize_operator = (meta, value)->
       if not meta.modifier and not value.prefix
         return 'eq'
+      if meta.modifier == 'missing'
+        return 'missing'
       if OPERATORS[value.prefix]
         return value.prefix
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")

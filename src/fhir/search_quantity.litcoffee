@@ -24,7 +24,7 @@ TODO: later we will add some support for units convertion and search in canonica
     number_s = require('./search_number')
 
     SUPPORTED_TYPES = ['Quantity']
-    OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge']
+    OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge', 'missing']
 
     identity = (x)-> x
 
@@ -44,6 +44,8 @@ TODO: later we will add some support for units convertion and search in canonica
     exports.normalize_operator = (meta, value)->
       if not meta.modifier and not value.prefix
         return 'eq'
+      if meta.modifier == 'missing'
+        return 'missing'
       if OPERATORS.indexOf(value.prefix) > -1
         return value.prefix
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
@@ -58,11 +60,14 @@ TODO: later we will add some support for units convertion and search in canonica
       parts = value.value.split('|')
       numeric_part = parts[0]
 
-      expr = ["$#{meta.operator}",
-        extract_expr(assoc(meta, 'searchType', 'number'), tbl),
-        numeric_part]
+      op = if meta.operator == 'missing'
+          if value.value == 'false' then '$notnull' else '$null'
+        else
+          "$#{meta.operator}"
 
-      if parts.length  == 1
+      expr = [op, extract_expr(assoc(meta, 'searchType', 'number'), tbl), numeric_part]
+
+      if parts.length  == 1 or meta.operator == 'missing'
         expr
       else
         token_part = parts[1..-1].filter(identity).join('|')
