@@ -9,6 +9,8 @@ fixtures:
     url: 'http://acme.org/devices/2'  
   - resourceType: 'Device'
     url: 'http://google.com/devices/000000000000000000000000000001'  
+  - resourceType: 'Device'
+    id: 'withouturl'
 
 queries:
   - query: {resourceType: 'Device', queryString:  'url=http://acme.org/devices/1'}
@@ -23,3 +25,8 @@ queries:
   - query: {resourceType: 'Device', queryString:  'url:below=http://acme.org'}
     indexed: true
     total:  2
+  - query: {resourceType: 'Device', queryString:  'url:missing=true'}
+    indexed: true
+    total: 1 
+  - query: {resourceType: 'Device', queryString:  'url:missing=false'}
+    total: 3 

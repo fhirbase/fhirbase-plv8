@@ -13,6 +13,7 @@ fixtures:
   - {resourceType: 'Encounter', patient: {reference: 'Patient/nicola'}, status: 'planned'}
   - {resourceType: 'Encounter', patient: {reference: 'Patient/noise1'},  status: 'planned'}
   - {resourceType: 'Encounter', patient: {reference: 'Patient/noise2'},  status: 'planned'}
+  - {resourceType: 'Encounter', status: 'planned'}
 
 queries:
   - query: {resourceType: 'Encounter', queryString: 'patient=Patient/nicola'}
@@ -21,6 +22,11 @@ queries:
     probes:
       - path: ['total']
         result: 1
+  - query: {resourceType: 'Encounter', queryString: 'patient:missing=true'}
+    total: 1
+    indexed: true
+  - query: {resourceType: 'Encounter', queryString: 'patient:missing=false'}
+    total: 3
   - query: {resourceType: 'Encounter', queryString: 'patient:Patient.name=nicola'}
     total: 1
     probes:

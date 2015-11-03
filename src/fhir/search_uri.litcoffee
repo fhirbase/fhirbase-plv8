@@ -9,9 +9,18 @@ We use string functions to implement uri search (see string_search).
 
     normalize_value = (x)-> x && x.trim().toLowerCase().replace(/^(http:\/\/|https:\/\/|ftp:\/\/)/, '')
 
+    EMPTY_VALUE = "$$NULL"
+
+    identity = (x)-> x
+
     exports.extract_as_uri = (plv8, resource, path, element_type)->
       obj = xpath.get_in(resource, [path])
-      ("^^#{normalize_value(v)}$$" for v in lang.values(obj)).join(" ")
+      vals = lang.values(obj).map((x)-> x && x.toString().trim()).filter(identity)
+
+      if vals.length == 0
+        EMPTY_VALUE
+      else
+        ("^^#{normalize_value(v)}$$" for v in vals).join(" ")
 
     exports.extract_as_uri.plv8_signature =
       arguments: ['json', 'json', 'text']
@@ -31,6 +40,11 @@ We use string functions to implement uri search (see string_search).
         ["$ilike", extract_expr(meta, tbl), "%^^#{normalize_value(value.value)}$$%"]
       below: (tbl, meta, value)->
         ["$ilike", extract_expr(meta, tbl), "%^^#{normalize_value(value.value)}%"]
+      missing: (tbl, meta, value)->
+        if value.value == 'false'
+          ["$ne", extract_expr(meta, tbl), EMPTY_VALUE]
+        else
+          ["$ilike", extract_expr(meta, tbl), EMPTY_VALUE]
 
     SUPPORTED_TYPES = ['uri']
 

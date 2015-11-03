@@ -18,6 +18,8 @@ Only equality operator is implemented.
 
     TODO = -> throw new Error("TODO")
 
+    EMPTY_VALUE = "$NULL"
+
     exports.extract_as_reference = (plv8, resource, path, element_type)->
       if element_type == 'Reference'
         res = []
@@ -28,7 +30,10 @@ Only equality operator is implemented.
           res.push(parts[(len - 1)])
           res.push("#{parts[(len - 2)]}/#{parts[(len - 1)]}")
           res.push(reference) if len > 2
-        res
+        if res.length == 0
+          [EMPTY_VALUE]
+        else
+          res
       else
         throw new Error("extract_as_reference: Not implemented for #{element_type}")
 
@@ -48,15 +53,20 @@ Only equality operator is implemented.
 
     OPERATORS =
       eq: (tbl, meta, value)->
-
         ["$&&"
           ['$cast', extract_expr(meta, tbl), ":text[]"]
-          ['$cast', ['$array', value.value.toLowerCase()], ":text[]"]
-          value]
+          ['$cast', ['$array', value.value.toLowerCase()], ":text[]"]]
+
+      missing: (tbl, meta, value)->
+        op = if value.value == 'false' then '$ne' else '$eq'
+        [op
+          ['$cast', extract_expr(meta, tbl), ":text[]"]
+          ['$cast', ['$array', EMPTY_VALUE], ":text[]"]]
 
 
     exports.normalize_operator = (meta, value)->
       return 'eq' if not meta.modifier and not value.prefix
+      return 'missing' if meta.modifier == 'missing'
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
     SUPPORTED_TYPES = ['Reference']

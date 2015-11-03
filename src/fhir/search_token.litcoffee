@@ -74,7 +74,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
 
     OPERATORS =
       missing: (tbl, meta, value)->
-        op = if value.value == 'false' then '$ne' else '$&&'
+        op = if value.value == 'false' then '$ne' else '$eq'
         [op
           ['$cast', extract_expr(meta, tbl), ":text[]"]
           ['$cast', ['$array', "$NULL"], ":text[]"]]
