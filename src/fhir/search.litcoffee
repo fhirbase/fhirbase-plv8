@@ -227,7 +227,7 @@ We cache FHIR meta-data index per connection using plv8 object:
 
 ## Indexing
 
-`fhir.index_parameter(query)` this function create index for parameter,
+`index_parameter(query)` this function create index for parameter,
 awaiting query.resourceType and query.name - name of parameter
 
     expand_parameter = (plv8, query)->
@@ -268,6 +268,7 @@ awaiting query.resourceType and query.name - name of parameter
           utils.exec(plv8, idx_info.ddl)
           {status: 'ok', message: "Index #{idx_info.name} was created"}
 
+    index_parameter.plv8_signature = ['json', 'json']
     exports.index_parameter = index_parameter
 
 
@@ -282,6 +283,7 @@ awaiting query.resourceType and query.name - name of parameter
         else
           {status: 'error', message: "Index #{idx_info.name} does not exist"}
 
+    unindex_parameter.plv8_signature = ['json', 'json']
     exports.unindex_parameter = unindex_parameter
 
 ## Maintains

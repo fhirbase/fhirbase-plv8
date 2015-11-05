@@ -3,6 +3,7 @@ schema = require('../../src/core/schema')
 pg_meta = require('../../src/core/pg_meta')
 assert = require('assert')
 
+
 describe "CORE: schema", ()->
   it "drop Users storage", ()->
     schema.drop_storage(plv8, resourceType: 'Users')

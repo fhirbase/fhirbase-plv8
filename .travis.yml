@@ -17,4 +17,4 @@ before_script:
   - psql -c '\dt' -U postgres
   - cd ..
 
-script: export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase && pwd && plpl/bin/plpl migrate && plpl/bin/plpl reload && npm test
+script: export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase && ./build.sh && cat tmp/build.sql | psql fhirbase && npm run test
