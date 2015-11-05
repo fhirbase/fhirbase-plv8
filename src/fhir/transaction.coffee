@@ -134,3 +134,8 @@ execute = (plv8, bundle, strictMode) ->
 exports.makePlan = makePlan
 exports.executePlan = executePlan
 exports.execute = execute
+
+exports.transaction = (plv8, bundle)->
+  execute(plv8, bundle, true)
+
+exports.transaction.plv8_signature = ['json', 'json']

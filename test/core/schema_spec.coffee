@@ -14,7 +14,7 @@ describe "CORE: schema", ()->
     assert.equal(pg_meta.table_exists(plv8, 'users_history'), true)
 
   it "change Users storage name", ()->
-    desc = schema.describe_table(plv8, resourceType: 'users')
+    desc = schema.describe_storage(plv8, resourceType: 'users')
     assert.equal(desc.name, 'users')
 
   it "drop Users storage", ()->

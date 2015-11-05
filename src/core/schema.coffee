@@ -48,6 +48,8 @@ exports.create_storage = (plv8, query)->
 
     {status: 'ok', message: "Table #{nm} was created"}
 
+exports.create_storage.plv8_signature = ['json', 'json']
+
 exports.drop_storage = (plv8, query)->
   resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
@@ -62,7 +64,9 @@ exports.drop_storage = (plv8, query)->
       delete plv8.cache["#{hx_nm}"]
     {status: 'ok', message: "Table #{nm} was dropped"}
 
-exports.describe_table = (plv8, query)->
+exports.drop_storage.plv8_signature = ['json', 'json']
+
+exports.describe_storage = (plv8, query)->
   resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   hx_nm = namings.history_table_name(plv8, nm)
@@ -74,6 +78,8 @@ exports.describe_table = (plv8, query)->
   name: nm
   columns: columns.reduce(((acc, x)-> acc[x.column_name] = x; delete x.column_name; acc),{})
 
+exports.describe_storage.plv8_signature = ['json', 'json']
+
 exports.truncate_storage = (plv8, query)->
   resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
@@ -81,3 +87,5 @@ exports.truncate_storage = (plv8, query)->
   utils.exec(plv8, truncate: sql.q(nm))
   utils.exec(plv8, truncate: sql.q(hx_nm))
   {status: 'ok', message: "Table #{nm} was truncated"}
+
+exports.truncate_storage.plv8_signature = ['json', 'json']

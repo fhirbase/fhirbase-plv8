@@ -76,39 +76,13 @@ you have to issue command (read more [here](http://pgxn.org/dist/plv8/doc/plv8.h
 SET plv8.start_proc = 'plv8_init'
 ```
 
-## Preview
-
-Architecture sketch:
-
-LAYER 0: utils (as separate standalone module)
------------------------------------------
-
-* dev in node / build into pg
-* migrations utils
-* js modules to plv8
-* test in node
-
-LAYER 1: core
-----------------------
-
-This layer is almost FHIR agnostic. 
-It should give convinient primitives to next FHIR related layer.
-
-* schema management for RESOURCES
-* CRUD & HISTORY implementation for Resources
-* Low level SEARCH
-  * element's granular query language
-  * indexing
-* interceptors for CRUD
-* OPERATIONS as a pg function
-
-
 API:
 
 ```
-core.generate_storage('ResourceType') // create tables for resource & history
-core.drop_storage('ResourceType') // drop tables
-core.storages() // meta-data about generated storages
+create_storage('{"resourceType": "Patient"}') // create tables for resource & history
+drop_storage('ResourceType') // drop tables
+
+
 
 core.create(resource)
 core.load(resourcesBundle)
