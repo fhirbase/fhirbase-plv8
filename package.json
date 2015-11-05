@@ -19,10 +19,10 @@
   "dev": {"plpl": "latest"},
   "engines": { "node": ">=0.12" },
   "homepage": "https://github.com/niquola/plpl",
-  "files": ["bin", "lib", "src", "migrations"],
+  "files": ["bin", "lib", "src"],
   "scripts": {
     "publish": "coffee -o lib/ -c src/ && npm publish",
-    "migrate": "plpl/bin/plpl migrate",
+    "migrate": "./build.sh && cat tmp/build.sh | psql $DATABASE_URL",
     "reload": "plpl/bin/plpl reload",
     "test": "node_modules/mocha/bin/mocha --compilers mocha --compilers coffee:coffee-script/register  --recursive"
   }

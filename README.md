@@ -84,9 +84,16 @@ psql -c '\dt' -U postgres
 
 export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase
 
-plpl/bin/plpl migrate
+# build migrations
+coffee  utils/generate_migrations.coffee -n  | psql fhirbase
+
+# change something
+# reload schema
+
 plpl/bin/plpl reload
 npm run test
+
+# goto: change something
 ```
 
 ## Usage
@@ -107,32 +114,32 @@ SET plv8.start_proc = 'plv8_init'
 
 -- work with storage
 
-SELECT create_storage('{"resourceType": "Patient"}'); // create tables for resource & history
-SELECT drop_storage('{"resourceType": "Patient"}'); // drop tables
-SELECT truncate_storage('{"resourceType": "Patient"}'); // delete all resources of specified type
+SELECT create_storage('{"resourceType": "Patient"}');
+SELECT drop_storage('{"resourceType": "Patient"}');
+SELECT truncate_storage('{"resourceType": "Patient"}');
+-- delete all resources of specified type
 
 -- CRUD
 
-SELECT create_resource('{"resourceType": "Patient", id: "smith", "name": [{"given": ["Smith"]}]});
-SELECT read_resource('{"resourceType": "Patient", id: "smith"});
-SELECT vread_resource('{"resourceType": "Patient", versionId: "????"});
-SELECT resource_history('{"resourceType": "Patient", id: "smith"});
-SELECT resource_type('{"resourceType": "Patient"});
-SELECT update_resource('{"resourceType": "Patient", id: "smith", "name": [{"given": ["John"], "family": ["Smith"]}]});
+SELECT create_resource('{"resourceType": "Patient", id: "smith", "name": [{"given": ["Smith"]}]}');
+SELECT read_resource('{"resourceType": "Patient", id: "smith"}');
+SELECT vread_resource('{"resourceType": "Patient", versionId: "????"}');
+SELECT resource_history('{"resourceType": "Patient", id: "smith"}');
+SELECT resource_type('{"resourceType": "Patient"}');
+SELECT update_resource('{"resourceType": "Patient", id: "smith", "name": [{"given": ["John"], "family": ["Smith"]}]}');
 
-SELECT search('{"resourceType": "Patient", queryString: "name=smith"});
+SELECT search('{"resourceType": "Patient", queryString: "name=smith"}');
 
-SELECT index_parameter('{"resourceType": "Patient", name: "name"});
-SELECT unindex_parameter('{"resourceType": "Patient", name: "name"});
+SELECT index_parameter('{"resourceType": "Patient", name: "name"}');
+SELECT unindex_parameter('{"resourceType": "Patient", name: "name"}');
 
-SELECT search_sql('{"resourceType": "Patient", queryString: "name=smith"}); 
+SELECT search_sql('{"resourceType": "Patient", queryString: "name=smith"}'); 
 -- see generated SQL
 
-SELECT explain_search('{"resourceType": "Patient", queryString: "name=smith"});
+SELECT explain_search('{"resourceType": "Patient", queryString: "name=smith"}');
 -- see execution plan
 
-SELECT delete_resource('{"resourceType": "Patient", id: "smith"});
-
+SELECT delete_resource('{"resourceType": "Patient", id: "smith"})';
 ```
 
 ## Contribution
