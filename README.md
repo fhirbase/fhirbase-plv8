@@ -54,7 +54,7 @@ psql -c 'CREATE DATABASE fhirbase;' -U user
 psql -c '\dt' -U postgres
 export DATABASE_URL=postgres://user:password@localhost:5432/fhirbase
 
-wget https://github.com/fhirbase/fhirbase-plv8/releases/download/v0.0.1-alpha/fhirbase-0.0.1.sql.zip
+wget https://github.com/fhirbase/fhirbase-plv8/releases/download/v0.0.1-beta.1/fhirbase-0.0.1.sql.zip
 unzip fhirbase-0.0.1.sql.zip
 
 cat fhirbase-0.0.1.sql | psql fhirbase
