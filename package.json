@@ -3,8 +3,7 @@
   "description": "fhirbase",
   "version": "0.0.1",
   "author": "niquola",
-  "dependencies": {
-  },
+  "dependencies": {},
   "repository": {
     "type": "git",
     "url": "https://github.com/niquola/fhirbase"
@@ -12,22 +11,17 @@
   "devDependencies": {
     "coffee": "latest",
     "coffee-script": "latest",
-    "jasmine-node": "latest",
     "pg-native":"latest",
     "js-yaml": "latest",
-    "codo": "latest",
     "mocha": "latest",
     "jsedn": "latest"
   },
-  "dev": {
-    "plpl": "latest"
-  },
+  "dev": {"plpl": "latest"},
   "engines": { "node": ">=0.12" },
   "homepage": "https://github.com/niquola/plpl",
   "files": ["bin", "lib", "src", "migrations"],
   "scripts": {
     "publish": "coffee -o lib/ -c src/ && npm publish",
-    "docs": "node_modules/codo/bin/codo",
     "migrate": "plpl/bin/plpl migrate",
     "reload": "plpl/bin/plpl reload",
     "test": "node_modules/mocha/bin/mocha --compilers mocha --compilers coffee:coffee-script/register  --recursive"
