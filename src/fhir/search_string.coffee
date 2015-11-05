@@ -33,7 +33,7 @@ TODO = -> throw new Error("TODO")
 
 EMPTY_VALUE = "$NULL"
 
-exports.extract_as_string = (plv8, resource, path, element_type)->
+exports.fhir_extract_as_string = (plv8, resource, path, element_type)->
   obj = xpath.get_in(resource, [path])
   vals = lang.values(obj).filter((x)-> x && x.toString().trim())
   if vals.length == 0
@@ -41,7 +41,7 @@ exports.extract_as_string = (plv8, resource, path, element_type)->
   else
     ("^^#{unaccent(v)}$$" for v in vals).join(" ")
 
-exports.extract_as_string.plv8_signature =
+exports.fhir_extract_as_string.plv8_signature =
   arguments: ['json', 'json', 'text']
   returns: 'text'
   immutable: true
@@ -52,7 +52,7 @@ normalize_string_value = (x)->
 extract_expr = (meta, tbl)->
   from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-  ['$extract_as_string'
+  ['$fhir_extract_as_string'
     ['$cast', from, ':json']
     ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
     ['$quote', meta.elementType]]
@@ -124,4 +124,3 @@ exports.index = (plv8, metas)->
       opclass: ':gin_trgm_ops'
       expression: exprs
   ]
-

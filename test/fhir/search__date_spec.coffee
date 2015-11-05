@@ -23,7 +23,7 @@ extract_specs = [
 describe "extract_as_date", ->
   extract_specs.forEach (spec)->
     it JSON.stringify(spec.path), ->
-      res = search.extract_as_daterange({}, resource, spec.path, spec.elementType)
+      res = search.fhir_extract_as_daterange({}, resource, spec.path, spec.elementType)
       assert.deepEqual(res, spec.result)
 
       

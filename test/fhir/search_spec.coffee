@@ -30,26 +30,26 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
     before ->
       plv8.execute("SET plv8.start_proc = 'plv8_init'")
       for res in spec.resources
-        schema.create_storage(plv8, resourceType: res)
-        schema.truncate_storage(plv8, resourceType: res)
+        schema.fhir_create_storage(plv8, resourceType: res)
+        schema.fhir_truncate_storage(plv8, resourceType: res)
 
       for res in spec.fixtures
-        crud.create_resource(plv8, res)
+        crud.fhir_create_resource(plv8, res)
 
       for idx in (spec.indices or [])
-        # search.unindex_parameter(plv8, idx)
-        search.index_parameter(plv8, idx)
+        search.fhir_unindex_parameter(plv8, idx)
+        search.fhir_index_parameter(plv8, idx)
 
       for res in spec.resources
-        search.analyze_storage(plv8, resourceType: res)
+        search.fhir_analyze_storage(plv8, resourceType: res)
 
     spec.queries.forEach (q)->
       it "#{JSON.stringify(q.query)}", ->
 
         plv8.execute "SET enable_seqscan = OFF;" if q.indexed
 
-        res = search.search(plv8, q.query)
-        explain = JSON.stringify(search.explain_search(plv8, q.query))
+        res = search.fhir_search(plv8, q.query)
+        explain = JSON.stringify(search.fhir_explain_search(plv8, q.query))
 
         # console.log(JSON.stringify(res))
 

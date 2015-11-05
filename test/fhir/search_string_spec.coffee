@@ -57,6 +57,6 @@ specs = [
 describe "extract_as_token", ->
   specs.forEach (spec)->
     it JSON.stringify(spec.path), ->
-      res = search.extract_as_string({}, resource, spec.path, spec.elementType)
+      res = search.fhir_extract_as_string({}, resource, spec.path, spec.elementType)
       for str in spec.result
         assert(res.indexOf(str) > -1, "#{str} not in #{res}")

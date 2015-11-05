@@ -15,7 +15,7 @@ it should be done in an extensible maner
 
     TODO = -> throw new Error("TODO")
 
-    exports.extract_as_number = (plv8, resource, path, element_type)->
+    exports.fhir_extract_as_number = (plv8, resource, path, element_type)->
       data = xpath.get_in(resource, [path])[0] || null
       return unless data
       if element_type == 'integer' or element_type == 'positiveInt'
@@ -25,7 +25,7 @@ it should be done in an extensible maner
       else
         throw new Error("extract_as_number: unsupported element type #{element_type}")
 
-    exports.extract_as_number.plv8_signature =
+    exports.fhir_extract_as_number.plv8_signature =
       arguments: ['json', 'json', 'text']
       returns: 'numeric'
       immutable: true
@@ -36,7 +36,7 @@ it should be done in an extensible maner
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-      ['$extract_as_number'
+      ['$fhir_extract_as_number'
         ['$cast', from, ':json']
         ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
         ['$quote', meta.elementType]]

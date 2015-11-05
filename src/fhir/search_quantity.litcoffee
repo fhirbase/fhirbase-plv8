@@ -31,7 +31,7 @@ TODO: later we will add some support for units convertion and search in canonica
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-      ["$extract_as_#{meta.searchType}"
+      ["$fhir_extract_as_#{meta.searchType}"
         ['$cast', from, ':json']
         ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
         ['$quote', meta.elementType]]

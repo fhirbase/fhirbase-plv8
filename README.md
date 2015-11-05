@@ -114,32 +114,32 @@ SET plv8.start_proc = 'plv8_init'
 
 -- work with storage
 
-SELECT create_storage('{"resourceType": "Patient"}');
-SELECT drop_storage('{"resourceType": "Patient"}');
-SELECT truncate_storage('{"resourceType": "Patient"}');
+SELECT fhir_create_storage('{"resourceType": "Patient"}');
+SELECT fhir_drop_storage('{"resourceType": "Patient"}');
+SELECT fhir_truncate_storage('{"resourceType": "Patient"}');
 -- delete all resources of specified type
 
 -- CRUD
 
-SELECT create_resource('{"resourceType": "Patient", id: "smith", "name": [{"given": ["Smith"]}]}');
-SELECT read_resource('{"resourceType": "Patient", id: "smith"}');
-SELECT vread_resource('{"resourceType": "Patient", versionId: "????"}');
-SELECT resource_history('{"resourceType": "Patient", id: "smith"}');
-SELECT resource_type('{"resourceType": "Patient"}');
-SELECT update_resource('{"resourceType": "Patient", id: "smith", "name": [{"given": ["John"], "family": ["Smith"]}]}');
+SELECT fhir_create_resource('{"resourceType": "Patient", id: "smith", "name": [{"given": ["Smith"]}]}');
+SELECT fhir_read_resource('{"resourceType": "Patient", id: "smith"}');
+SELECT fhir_vread_resource('{"resourceType": "Patient", versionId: "????"}');
+SELECT fhir_resource_history('{"resourceType": "Patient", id: "smith"}');
+SELECT fhir_resource_type('{"resourceType": "Patient"}');
+SELECT fhir_update_resource('{"resourceType": "Patient", id: "smith", "name": [{"given": ["John"], "family": ["Smith"]}]}');
 
-SELECT search('{"resourceType": "Patient", queryString: "name=smith"}');
+SELECT fhir_search('{"resourceType": "Patient", queryString: "name=smith"}');
 
-SELECT index_parameter('{"resourceType": "Patient", name: "name"}');
-SELECT unindex_parameter('{"resourceType": "Patient", name: "name"}');
+SELECT fhir_index_parameter('{"resourceType": "Patient", name: "name"}');
+SELECT fhir_unindex_parameter('{"resourceType": "Patient", name: "name"}');
 
-SELECT search_sql('{"resourceType": "Patient", queryString: "name=smith"}'); 
+SELECT fhir_search_sql('{"resourceType": "Patient", queryString: "name=smith"}'); 
 -- see generated SQL
 
-SELECT explain_search('{"resourceType": "Patient", queryString: "name=smith"}');
+SELECT fhir_explain_search('{"resourceType": "Patient", queryString: "name=smith"}');
 -- see execution plan
 
-SELECT delete_resource('{"resourceType": "Patient", id: "smith"})';
+SELECT fhir_delete_resource('{"resourceType": "Patient", id: "smith"})';
 ```
 
 ## Contribution

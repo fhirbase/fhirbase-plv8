@@ -28,5 +28,5 @@ specs = [
 describe "extract_as_token", ->
   specs.forEach (spec)->
     it JSON.stringify(spec.path), ->
-      res = search.extract_as_number({}, resource, spec.path, spec.elementType)
+      res = search.fhir_extract_as_number({}, resource, spec.path, spec.elementType)
       assert.equal(res, spec.result)

@@ -21,20 +21,20 @@ describe 'transaction execution', ->
     plv8.execute("SET plv8.start_proc = 'plv8_init'")
 
     for type, fixtures of transactionExamples.fixtures
-      schema.create_storage(plv8, resourceType: type)
-      schema.truncate_storage(plv8,  resourceType: type)
+      schema.fhir_create_storage(plv8, resourceType: type)
+      schema.fhir_truncate_storage(plv8,  resourceType: type)
 
       for res in fixtures
-        crud.create_resource(plv8, res)
+        crud.fhir_create_resource(plv8, res)
 
   transactionExamples.examples.forEach (e, index) ->
     it e.desc, ->
       e.before.forEach (i) ->
-        result = search.search(plv8, i.search)
+        result = search.fhir_search(plv8, i.search)
         assert.equal(i.total, result.total)
 
       trResult = transaction.execute(plv8, e.transaction)
 
       e.after.forEach (i) ->
-        result = search.search(plv8, i.search)
+        result = search.fhir_search(plv8, i.search)
         assert.equal(i.total, result.total)

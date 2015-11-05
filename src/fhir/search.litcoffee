@@ -70,7 +70,7 @@ another query for potential results count.
 
 Then we are returning  resulting Bundle.
 
-    exports.search = (plv8, query)->
+    exports.fhir_search = (plv8, query)->
 
       idx_db = ensure_index(plv8)
 
@@ -99,7 +99,7 @@ TODO: add links
 This function should be visible from postgresql, so
 we have to describe it signature:
 
-    exports.search.plv8_signature = ['json', 'json']
+    exports.fhir_search.plv8_signature = ['json', 'json']
 
 
 Building SQL from search parameters
@@ -256,7 +256,7 @@ awaiting query.resourceType and query.name - name of parameter
       h
 
 
-    index_parameter = (plv8, query)->
+    fhir_index_parameter = (plv8, query)->
       metas = expand_parameter(plv8, query)
       h = ensure_handler(plv8, metas)
       idx_infos = h.index(plv8, metas)
@@ -268,11 +268,11 @@ awaiting query.resourceType and query.name - name of parameter
           utils.exec(plv8, idx_info.ddl)
           {status: 'ok', message: "Index #{idx_info.name} was created"}
 
-    index_parameter.plv8_signature = ['json', 'json']
-    exports.index_parameter = index_parameter
+    fhir_index_parameter.plv8_signature = ['json', 'json']
+    exports.fhir_index_parameter = fhir_index_parameter
 
 
-    unindex_parameter = (plv8, query)->
+    fhir_unindex_parameter = (plv8, query)->
       meta = expand_parameter(plv8, query)
       h = ensure_handler(plv8, meta)
       idx_infos = h.index(plv8, meta)
@@ -283,20 +283,20 @@ awaiting query.resourceType and query.name - name of parameter
         else
           {status: 'error', message: "Index #{idx_info.name} does not exist"}
 
-    unindex_parameter.plv8_signature = ['json', 'json']
-    exports.unindex_parameter = unindex_parameter
+    fhir_unindex_parameter.plv8_signature = ['json', 'json']
+    exports.fhir_unindex_parameter = fhir_unindex_parameter
 
 ## Maintains
 
 This function do analyze on resource tables to update pg statistic
 args: query.resourceType
 
-    analyze_storage = (plv8, query)->
+    fhir_analyze_storage = (plv8, query)->
       plv8.execute "ANALYZE #{query.resourceType.toLowerCase()}"
       message: "analyzed"
 
-    exports.analyze_storage = analyze_storage
-    analyze_storage.plv8_signature = ['json', 'json']
+    fhir_analyze_storage.plv8_signature = ['json', 'json']
+    exports.fhir_analyze_storage = fhir_analyze_storage
 
 ## Debuging fhirbase search
 
@@ -304,21 +304,21 @@ args: query.resourceType
 and returning SQL query string. It could be used
 to analyze, what's happening under the hud.
 
-    search_sql = (plv8, query)->
+    fhir_search_sql = (plv8, query)->
       idx_db = ensure_index(plv8)
       sql(_search_sql(plv8, idx_db, query))
 
-    search_sql.plv8_signature = ['json', 'json']
-    exports.search_sql = search_sql
+    fhir_search_sql.plv8_signature = ['json', 'json']
+    exports.fhir_search_sql = fhir_search_sql
 
-    explain_search = (plv8, query)->
+    fhir_explain_search = (plv8, query)->
       idx_db = ensure_index(plv8)
       query = sql(_search_sql(plv8, idx_db, query))
       query[0] = "EXPLAIN ( ANALYZE, FORMAT JSON ) #{query[0]}"
       plv8.execute.call(plv8, query[0], query[1..-1])
 
-    explain_search.plv8_signature = ['json', 'json']
-    exports.explain_search = explain_search
+    fhir_explain_search.plv8_signature = ['json', 'json']
+    exports.fhir_explain_search = fhir_explain_search
 
 ## TODO
 

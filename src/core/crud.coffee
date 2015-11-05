@@ -40,7 +40,7 @@ ensure_table = (plv8, resourceType)->
   else
     [table_name, hx_table_name, null]
 
-create_resource = (plv8, resource)->
+fhir_create_resource = (plv8, resource)->
   errors = validate_create_resource(resource)
   return errors if errors
 
@@ -79,8 +79,8 @@ create_resource = (plv8, resource)->
 
   helpers.postprocess_resource(resource)
 
-exports.create_resource = create_resource
-exports.create_resource.plv8_signature = ['json', 'json']
+exports.fhir_create_resource = fhir_create_resource
+exports.fhir_create_resource.plv8_signature = ['json', 'json']
 
 resource_is_deleted = (plv8, query)->
   assert(query.id, 'query.id')
@@ -88,7 +88,7 @@ resource_is_deleted = (plv8, query)->
   hx_table_name = namings.history_table_name(plv8, query.resourceType)
 
 
-read_resource = (plv8, query)->
+fhir_read_resource = (plv8, query)->
   assert(query.id, 'query.id')
   assert(query.resourceType, 'query.resourceType')
 
@@ -102,10 +102,10 @@ read_resource = (plv8, query)->
 
   helpers.postprocess_resource(JSON.parse(row.resource))
 
-exports.read_resource = read_resource
-exports.read_resource.plv8_signature = ['json', 'json']
+exports.fhir_read_resource = fhir_read_resource
+exports.fhir_read_resource.plv8_signature = ['json', 'json']
 
-exports.vread_resource = (plv8, query)->
+exports.fhir_vread_resource = (plv8, query)->
   assert(query.id, 'query.id')
   version_id = query.versionId || query.meta.versionId
   assert(version_id, 'query.versionId or query.meta.versionId')
@@ -126,9 +126,9 @@ exports.vread_resource = (plv8, query)->
 
   helpers.postprocess_resource(JSON.parse(row.resource))
 
-exports.vread_resource.plv8_signature = ['json', 'json']
+exports.fhir_vread_resource.plv8_signature = ['json', 'json']
 
-update_resource = (plv8, resource)->
+fhir_update_resource = (plv8, resource)->
   id = resource.id
   assert(id, 'resource.id')
   assert(resource.resourceType, 'resource.resourceType')
@@ -136,7 +136,7 @@ update_resource = (plv8, resource)->
   [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
   return errors if errors
 
-  old_version = exports.read_resource(plv8, resource)
+  old_version = exports.fhir_read_resource(plv8, resource)
 
   if old_version.resourceType == 'OperationOutcome'
     return old_version
@@ -175,10 +175,10 @@ update_resource = (plv8, resource)->
   helpers.postprocess_resource(resource)
 
 
-exports.update_resource = update_resource
-exports.update_resource.plv8_signature = ['json', 'json']
+exports.fhir_update_resource = fhir_update_resource
+exports.fhir_update_resource.plv8_signature = ['json', 'json']
 
-exports.delete_resource = (plv8, resource)->
+exports.fhir_delete_resource = (plv8, resource)->
   id = resource.id
   assert(id, 'resource.id')
   assert(resource.resourceType, 'resource.resourceType')
@@ -186,7 +186,7 @@ exports.delete_resource = (plv8, resource)->
   [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
   return errors if errors
 
-  old_version = exports.read_resource(plv8, resource)
+  old_version = exports.fhir_read_resource(plv8, resource)
 
   unless old_version
     return outcome.not_found(query.id)
@@ -226,9 +226,9 @@ exports.delete_resource = (plv8, resource)->
   helpers.postprocess_resource(resource)
 
 
-exports.delete_resource.plv8_signature = ['json', 'json']
+exports.fhir_delete_resource.plv8_signature = ['json', 'json']
 
-exports.resource_history = (plv8, query)->
+exports.fhir_resource_history = (plv8, query)->
   id = query.id
   assert(id, 'query.id')
   assert(query.resourceType, 'query.resourceType')
@@ -244,7 +244,7 @@ exports.resource_history = (plv8, query)->
 
   bundle.history_bundle(resources)
 
-exports.resource_history.plv8_signature = ['json', 'json']
+exports.fhir_resource_history.plv8_signature = ['json', 'json']
 
 parse_history_params = (queryString)->
   parsers =
@@ -268,7 +268,7 @@ parse_history_params = (queryString)->
 
 exports.parse_history_params = parse_history_params
 
-exports.resource_type_history = (plv8, query)->
+exports.fhir_resource_type_history = (plv8, query)->
   id = query.id
   assert(query.resourceType, 'query.resourceType')
 
@@ -295,9 +295,9 @@ exports.resource_type_history = (plv8, query)->
 
   bundle.history_bundle(resources)
 
-exports.resource_type_history.plv8_signature = ['json', 'json']
+exports.fhir_resource_type_history.plv8_signature = ['json', 'json']
 
-exports.load = (plv8, bundle)->
+exports.fhir_load = (plv8, bundle)->
   res = []
   for entry in bundle.entry when entry.resource
     resource = entry.resource
@@ -305,16 +305,18 @@ exports.load = (plv8, bundle)->
       if resource.id
         prev = read_resource(plv8, resource)
         if outcome.is_not_found(prev)
-          create_resource(plv8, resource)
+          fhir_create_resource(plv8, resource)
         else if prev.id == resource.id
           res.push([resource.id, 'udpated'])
-          update_resource(plv8, resource)
+          fhir_update_resource(plv8, resource)
         else
           throw new Error("Load problem #{JSON.stringify(prev)}")
       else
         res.push([resource.id, 'created'])
-        create_resource(plv8, resource)
+        fhir_create_resource(plv8, resource)
   res
+
+exports.fhir_load.plv8_signature = ['json', 'json']
 
 # TODO: implement load bundle
 # TODO: implement merge bundle

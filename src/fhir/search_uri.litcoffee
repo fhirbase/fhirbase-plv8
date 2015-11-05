@@ -13,7 +13,7 @@ We use string functions to implement uri search (see string_search).
 
     identity = (x)-> x
 
-    exports.extract_as_uri = (plv8, resource, path, element_type)->
+    exports.fhir_extract_as_uri = (plv8, resource, path, element_type)->
       obj = xpath.get_in(resource, [path])
       vals = lang.values(obj).map((x)-> x && x.toString().trim()).filter(identity)
 
@@ -22,7 +22,7 @@ We use string functions to implement uri search (see string_search).
       else
         ("^^#{normalize_value(v)}$$" for v in vals).join(" ")
 
-    exports.extract_as_uri.plv8_signature =
+    exports.fhir_extract_as_uri.plv8_signature =
       arguments: ['json', 'json', 'text']
       returns: 'text'
       immutable: true
@@ -30,7 +30,7 @@ We use string functions to implement uri search (see string_search).
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-      ['$extract_as_uri'
+      ['$fhir_extract_as_uri'
         ['$cast', from, ':json']
         ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
         ['$quote', meta.elementType]]

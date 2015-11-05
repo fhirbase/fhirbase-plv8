@@ -3,7 +3,7 @@ namings = require('./namings')
 utils = require('./utils')
 pg_meta = require('./pg_meta')
 
-create_storage_sql = (plv8, query)->
+fhir_create_storage_sql = (plv8, query)->
   resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   hx_nm = namings.history_table_name(plv8, resource_type)
@@ -46,22 +46,22 @@ create_storage_sql = (plv8, query)->
   ].map(sql).join(";\n")
 
 
-exports.create_storage_sql = create_storage_sql
-exports.create_storage_sql.plv8_signature = ['json', 'json']
+exports.fhir_create_storage_sql = fhir_create_storage_sql
+exports.fhir_create_storage_sql.plv8_signature = ['json', 'json']
 
 # TODO: rename to create_storage
-exports.create_storage = (plv8, query)->
+exports.fhir_create_storage = (plv8, query)->
   resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   if pg_meta.table_exists(plv8, nm)
     {status: 'error', message: "Table #{nm} already exists"}
   else
-    plv8.execute(create_storage_sql(plv8, query)) 
+    plv8.execute(fhir_create_storage_sql(plv8, query)) 
     {status: 'ok', message: "Table #{nm} was created"}
 
-exports.create_storage.plv8_signature = ['json', 'json']
+exports.fhir_create_storage.plv8_signature = ['json', 'json']
 
-drop_storage_sql = (plv8, query)->
+fhir_drop_storage_sql = (plv8, query)->
   resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   hx_nm = namings.history_table_name(plv8, nm)
@@ -70,21 +70,21 @@ drop_storage_sql = (plv8, query)->
    {drop: "table", name: sql.key(hx_nm), safe: true}
   ].map(sql).join(";\n")
 
-exports.drop_storage_sql = drop_storage_sql
-exports.drop_storage_sql.plv8_signature = ['json', 'json']
+exports.fhir_drop_storage_sql = fhir_drop_storage_sql
+exports.fhir_drop_storage_sql.plv8_signature = ['json', 'json']
 
-exports.drop_storage = (plv8, query)->
+exports.fhir_drop_storage = (plv8, query)->
   resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   unless pg_meta.table_exists(plv8, nm)
     {status: 'error', message: "Table #{nm} not exists"}
   else
-    plv8.execute(drop_storage_sql(plv8, query))
+    plv8.execute(fhir_drop_storage_sql(plv8, query))
     {status: 'ok', message: "Table #{nm} was dropped"}
 
-exports.drop_storage.plv8_signature = ['json', 'json']
+exports.fhir_drop_storage.plv8_signature = ['json', 'json']
 
-exports.describe_storage = (plv8, query)->
+exports.fhir_describe_storage = (plv8, query)->
   resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   hx_nm = namings.history_table_name(plv8, nm)
@@ -96,9 +96,9 @@ exports.describe_storage = (plv8, query)->
   name: nm
   columns: columns.reduce(((acc, x)-> acc[x.column_name] = x; delete x.column_name; acc),{})
 
-exports.describe_storage.plv8_signature = ['json', 'json']
+exports.fhir_describe_storage.plv8_signature = ['json', 'json']
 
-exports.truncate_storage = (plv8, query)->
+exports.fhir_truncate_storage = (plv8, query)->
   resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   hx_nm = namings.history_table_name(plv8, nm)
@@ -106,4 +106,4 @@ exports.truncate_storage = (plv8, query)->
   utils.exec(plv8, truncate: sql.q(hx_nm))
   {status: 'ok', message: "Table #{nm} was truncated"}
 
-exports.truncate_storage.plv8_signature = ['json', 'json']
+exports.fhir_truncate_storage.plv8_signature = ['json', 'json']

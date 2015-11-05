@@ -18,5 +18,5 @@ specs = [
 describe "extract_as_reference", ->
   specs.forEach (spec)->
     it JSON.stringify(spec.path), ->
-      res = search.extract_as_reference({}, resource, spec.path, spec.elementType)
+      res = search.fhir_extract_as_reference({}, resource, spec.path, spec.elementType)
       assert.deepEqual(res, spec.result)

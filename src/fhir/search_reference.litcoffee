@@ -20,7 +20,7 @@ Only equality operator is implemented.
 
     EMPTY_VALUE = "$NULL"
 
-    exports.extract_as_reference = (plv8, resource, path, element_type)->
+    exports.fhir_extract_as_reference = (plv8, resource, path, element_type)->
       if element_type == 'Reference'
         res = []
         for ref in xpath.get_in(resource, [path]) when ref and ref.reference
@@ -37,7 +37,7 @@ Only equality operator is implemented.
       else
         throw new Error("extract_as_reference: Not implemented for #{element_type}")
 
-    exports.extract_as_reference.plv8_signature =
+    exports.fhir_extract_as_reference.plv8_signature =
       arguments: ['json', 'json', 'text']
       returns: 'text[]'
       immutable: true
@@ -45,7 +45,7 @@ Only equality operator is implemented.
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-      ['$extract_as_reference'
+      ['$fhir_extract_as_reference'
         ['$cast', from, ':json']
         ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
         ['$quote', meta.elementType]]

@@ -38,7 +38,7 @@ Now we support only simple date data-types - i.e. date, dateTime and instant.
 
 Function to extract element from resource as tstzrange. 
 
-    exports.extract_as_daterange = (plv8, resource, path, element_type)->
+    exports.fhir_extract_as_daterange = (plv8, resource, path, element_type)->
       if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
         value = xpath.get_in(resource, [path])[0]
         if value
@@ -54,9 +54,9 @@ Function to extract element from resource as tstzrange.
         else
           null
       else
-        throw new Error("extract_as_date: Not implemented for #{element_type}")
+        throw new Error("fhir_extract_as_date: Not implemented for #{element_type}")
 
-    exports.extract_as_daterange.plv8_signature =
+    exports.fhir_extract_as_daterange.plv8_signature =
       arguments: ['json', 'json', 'text']
       returns: 'tstzrange'
       immutable: true
@@ -78,7 +78,7 @@ Function to convert query parameter into range.
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
-      ['$extract_as_daterange'
+      ['$fhir_extract_as_daterange'
         ['$cast', from, ':json']
         ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
         ['$quote', meta.elementType]]

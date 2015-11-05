@@ -95,19 +95,19 @@ executePlan = (plv8, plan) ->
   plan.map (action) ->
     switch action.type
       when "create"
-        crud.create_resource(plv8, action.resource)
+        crud.fhir_create_resource(plv8, action.resource)
       when "update"
         resource = action.resource
         resource.resourceType = action.resourceType
         resource.id = action.resourceId
 
-        crud.update_resource(plv8, resource)
+        crud.fhir_update_resource(plv8, resource)
       when "delete"
-        crud.delete_resource(plv8, {id: action.resourceId, resourceType: action.resourceType})
+        crud.fhir_delete_resource(plv8, {id: action.resourceId, resourceType: action.resourceType})
       when "read"
-        crud.read_resource(plv8, {id: action.resourceId, resourceType: action.resourceType})
+        crud.fhir_read_resource(plv8, {id: action.resourceId, resourceType: action.resourceType})
       when "vread"
-        crud.vread_resource(plv8, {id: action.resourceId, resourceType: action.resourceType, versionId: action.versionId})
+        crud.fhir_vread_resource(plv8, {id: action.resourceId, resourceType: action.resourceType, versionId: action.versionId})
       else
         "TODO: return operation outcome here!\n#{action.message}"
 
@@ -135,7 +135,7 @@ exports.makePlan = makePlan
 exports.executePlan = executePlan
 exports.execute = execute
 
-exports.transaction = (plv8, bundle)->
+exports.fhir_transaction = (plv8, bundle)->
   execute(plv8, bundle, true)
 
-exports.transaction.plv8_signature = ['json', 'json']
+exports.fhir_transaction.plv8_signature = ['json', 'json']

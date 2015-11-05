@@ -6,19 +6,19 @@ assert = require('assert')
 
 describe "CORE: schema", ()->
   it "drop Users storage", ()->
-    schema.drop_storage(plv8, resourceType: 'Users')
+    schema.fhir_drop_storage(plv8, resourceType: 'Users')
     assert.equal(pg_meta.table_exists(plv8, 'users'), false)
 
   it "create Users storage and history.users", ()->
-    schema.create_storage(plv8, resourceType: 'Users')
+    schema.fhir_create_storage(plv8, resourceType: 'Users')
     assert.equal(pg_meta.table_exists(plv8, 'users'), true)
     assert.equal(pg_meta.table_exists(plv8, 'users_history'), true)
 
   it "change Users storage name", ()->
-    desc = schema.describe_storage(plv8, resourceType: 'users')
+    desc = schema.fhir_describe_storage(plv8, resourceType: 'users')
     assert.equal(desc.name, 'users')
 
   it "drop Users storage", ()->
-    schema.drop_storage(plv8, resourceType: 'Users')
+    schema.fhir_drop_storage(plv8, resourceType: 'Users')
     assert.equal(pg_meta.table_exists(plv8, 'Users'), false)
     assert.equal(pg_meta.table_exists(plv8, 'users_history'), false)

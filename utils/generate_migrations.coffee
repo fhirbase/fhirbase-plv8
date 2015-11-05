@@ -40,12 +40,12 @@ output sql(
   ])
 )
 
-output  schema.create_storage_sql(plv8, resourceType: 'StructureDefinition')
-output  schema.create_storage_sql(plv8, resourceType: 'SearchParameter')
-output  schema.create_storage_sql(plv8, resourceType: 'OperationDefinition')
-output  schema.create_storage_sql(plv8, resourceType: 'ValueSet')
-output  schema.create_storage_sql(plv8, resourceType: 'ConceptMap')
-output  schema.create_storage_sql(plv8, resourceType: 'NamingSystem')
+output  schema.fhir_create_storage_sql(plv8, resourceType: 'StructureDefinition')
+output  schema.fhir_create_storage_sql(plv8, resourceType: 'SearchParameter')
+output  schema.fhir_create_storage_sql(plv8, resourceType: 'OperationDefinition')
+output  schema.fhir_create_storage_sql(plv8, resourceType: 'ValueSet')
+output  schema.fhir_create_storage_sql(plv8, resourceType: 'ConceptMap')
+output  schema.fhir_create_storage_sql(plv8, resourceType: 'NamingSystem')
 
 bundles = [
   require('../fhir/search-parameters.json')
