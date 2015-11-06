@@ -1,14 +1,27 @@
+extract_tz = (date)->
+  tz = ''
+  date_length = date.length
+  if date.indexOf('Z') == date_length - 1 
+    tz = 'Z'
+    date = date.substring(0, date_length - 1)
+  else if date.length > 10 and date.match(/[+|-](0[0-9]|1[0-3])$/)
+    tz = date.substring(date_length - 3, date_length)
+    date = date.substring(0, date_length - 3)
+  [date, tz]
+
 exports.to_lower_date = (date)->
   return null unless date
   date = date.toString()
   return null if date.trim() == ''
   return date if date == '-infinity'
 
+  [date, tz] = extract_tz(date)
+
   switch date.length
     #2010
     when 4
       y = parseInt(date)
-      "#{y}-01-01"
+      "#{y}-01-01#{tz}"
     #2010-02
     when 7
       y1 = y2 = parseInt(date.substring(0, 4))
@@ -21,15 +34,15 @@ exports.to_lower_date = (date)->
       else if m == 12
         m2 = "01"; y2 = y1+1
 
-      "#{y1}-#{m1}-01"
+      "#{y1}-#{m1}-01#{tz}"
     #2010-02-03
-    when 10 then date
+    when 10 then "#{date}#{tz}"
     #2010-02-03T10
-    when 13 then "#{date}:00"
+    when 13 then "#{date}:00#{tz}"
     #2010-03-05T23:50
-    when 16 then date
+    when 16 then "#{date}#{tz}"
     #2010-03-05T23:50:30
-    when 19 then date
+    when 19 then "#{date}#{tz}"
     else
       throw new Error("date.to_range: Don't know how to handle #{date}")
 
@@ -39,11 +52,13 @@ exports.to_upper_date = (date)->
   return null if date.trim() == ''
   return date if date == 'infinity'
 
+  [date, tz] = extract_tz(date)
+
   switch date.length
     #2010
     when 4
       y = parseInt(date)
-      "#{y+1}-01-01"
+      "#{y+1}-01-01#{tz}"
 
     #2010-02
     when 7
@@ -57,19 +72,19 @@ exports.to_upper_date = (date)->
       else if m == 12
         m2 = "01"; y2 = y1+1
 
-      "#{y2}-#{m2}-01"
+      "#{y2}-#{m2}-01#{tz}"
 
     #2010-02-03
-    when 10 then "#{date}T23:59:59.99999"
+    when 10 then "#{date}T23:59:59.99999#{tz}"
 
     #2010-02-03T10
-    when 13 then "#{date}:59:59.99999"
+    when 13 then "#{date}:59:59.99999#{tz}"
 
     #2010-03-05T23:50
-    when 16 then "#{date}:59.99999"
+    when 16 then "#{date}:59.99999#{tz}"
 
     #2010-03-05T23:50:30
-    when 19 then "#{date}.99999"
+    when 19 then "#{date}.99999#{tz}"
 
     else
       throw new Error("date.to_range: Don't know how to handle #{date}")
@@ -79,11 +94,13 @@ exports.to_range = (date)->
   date = date.toString()
   return null if date.trim() == ''
 
+  [date, tz] = extract_tz(date)
+
   switch date.length
     #2010
     when 4
       y = parseInt(date)
-      "[#{y}-01-01,#{y+1}-01-01)"
+      "[#{y}-01-01#{tz},#{y+1}-01-01#{tz})"
 
     #2010-02
     when 7
@@ -97,20 +114,21 @@ exports.to_range = (date)->
       else if m == 12
         m2 = "01"; y2 = y1+1
 
-      "[#{y1}-#{m1}-01,#{y2}-#{m2}-01)"
+      "[#{y1}-#{m1}-01#{tz},#{y2}-#{m2}-01#{tz})"
 
     #2010-02-03
-    when 10 then "[#{date},#{date}T23:59:59.99999]"
+    when 10 then "[#{date}#{tz},#{date}T23:59:59.99999#{tz}]"
 
     #2010-02-03T10
-    when 13 then "[#{date}:00,#{date}:59:59.99999]"
+    when 13 then "[#{date}:00#{tz},#{date}:59:59.99999#{tz}]"
 
     #2010-03-05T23:50
-    when 16 then "[#{date},#{date}:59.99999]"
+    when 16 then "[#{date}#{tz},#{date}:59.99999#{tz}]"
 
     #2010-03-05T23:50:30
-    when 19 then "[#{date},#{date}.99999]"
+    when 19 then "[#{date}#{tz},#{date}.99999#{tz}]"
 
+    # Should we fail on wrong date?
     else
       throw new Error("date.to_range: Don't know how to handle #{date}")
 
@@ -121,3 +139,5 @@ exports.range = (start, ending)->
     "[-infinity, #{to_upper_date(start)}]"
   else
     throw new Error('Unhandled case')
+
+VALID_DATE_REGEX = /^-?[0-9]{4}(-(0[1-9]|1[0-2])(-(0[0-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\.[0-9]+)?(Z|(\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)))?)?)?$/

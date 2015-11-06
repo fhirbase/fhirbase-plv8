@@ -22,6 +22,7 @@ match = (x)->
 # console.log plv8.execute("SET search_path='user1';")
 # console.log plv8.execute("SHOW search_path;")
 
+FILTER = 'date'
 FILTER = 'search'
 
 fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
