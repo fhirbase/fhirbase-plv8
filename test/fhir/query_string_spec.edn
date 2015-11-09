@@ -68,4 +68,8 @@
   {:query "Encounter"
    :include [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})
              (param {:resourceType "Encounter" :name "organization" :target "Organization"} {:value "placeholder"})]}]
+
+ [["Patient" "_revinclude=Encounter:patient"]
+  {:query "Patient"
+   :revinclude [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})]}]
  ]

@@ -15,6 +15,7 @@ Only equality operator is implemented.
 
     sql = require('../honey')
     xpath = require('./xpath')
+    lang = require('../lang')
 
     TODO = -> throw new Error("TODO")
 
@@ -50,12 +51,17 @@ Only equality operator is implemented.
         ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
         ['$quote', meta.elementType]]
 
-
     OPERATORS =
       eq: (tbl, meta, value)->
+        # Support for value as array
+        val = if lang.isArray(value.value)
+            ['$array'].concat(value.value)
+          else
+            ['$array', value.value.toLowerCase()]
+
         ["$&&"
           ['$cast', extract_expr(meta, tbl), ":text[]"]
-          ['$cast', ['$array', value.value.toLowerCase()], ":text[]"]]
+          ['$cast', val, ":text[]"]]
 
       missing: (tbl, meta, value)->
         op = if value.value == 'false' then '$ne' else '$eq'

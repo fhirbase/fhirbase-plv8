@@ -44,3 +44,13 @@ queries:
     probes:
       - path: ['entry', 'length']
         result:  5
+  - query: {resourceType: 'Patient', queryString: '_id=nicola&_revinclude=Encounter:patient'}
+    total: 1 
+    probes:
+      - path: ['entry', 'length']
+        result:  3
+  - query: {resourceType: 'Patient', queryString: '_id=nicola,ivan&_revinclude=Encounter:patient'}
+    total: 2 
+    probes:
+      - path: ['entry', 'length']
+        result:  5

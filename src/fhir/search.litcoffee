@@ -94,6 +94,10 @@ Then we are returning  resulting Bundle.
         includes = search_include.load_includes(plv8, expr.include, resources)
         resources = resources.concat(includes)
 
+      if expr.revinclude && count > 0
+        includes = search_include.load_revincludes(plv8, expr.revinclude, resources)
+        resources = resources.concat(includes)
+
       resourceType: 'Bundle'
       type: 'searchset'
       total: count

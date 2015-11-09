@@ -44,6 +44,36 @@ special_parameters = [
 
 is_special_param = (k)-> special_parameters.indexOf(k) > -1
 
+mk_include = (direction)->
+  (query, left, right)->
+    query[direction] = right.split(',')
+      .map((x)-> x.trim())
+      .filter(identity)
+      .map (x)->
+        parts = x.split(':')
+        if direction == 'include'
+          meta = switch parts.length
+            when 1
+              {resourceType: query.query, name: parts[0]}
+            when 2
+              {resourceType: parts[0], name: parts[1]}
+            when 3
+              {resourceType: parts[0], name: parts[1], target: parts[2]}
+            else
+              throw new Error("Wrong format of _include #{JSON.stringify(parts)}")
+        else if direction == 'revinclude'
+          meta = switch parts.length
+            when 2
+              {resourceType: parts[0], name: parts[1], target: query.query}
+            when 3
+              {resourceType: parts[0], name: parts[1], target: parts[2]}
+            else
+              throw new Error("Wrong format of _include #{JSON.stringify(parts)}")
+        else
+          throw new Error("Guard")
+        ['$param', meta, 'placeholder']
+    query
+
 specials =
   limit: (query, left, right)->
     query.limit = parseInt(right)
@@ -57,23 +87,8 @@ specials =
   id: (query, left, right)->
     query.ids = right.split(',').map((x)-> x.trim()).filter(identity)
     query
-  include: (query, left, right)->
-    query.include = right.split(',')
-      .map((x)-> x.trim())
-      .filter(identity)
-      .map (x)->
-        parts = x.split(':')
-        meta = switch parts.length
-          when 1
-            {resourceType: query.query, name: parts[0]}
-          when 2
-            {resourceType: parts[0], name: parts[1]}
-          when 3
-            {resourceType: parts[0], name: parts[1], target: parts[2]}
-          else
-            throw new Error("Wrong format of _include #{JSON.stringify(parts)}")
-        ['$param', meta, 'placeholder']
-    query
+  include: mk_include('include')
+  revinclude: mk_include('revinclude')
   sort: (query, left, right)->
     key = right
     key = "#{key}:#{left}" if left

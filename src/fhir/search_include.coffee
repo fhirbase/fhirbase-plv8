@@ -2,6 +2,7 @@ xpath = require('./xpath')
 lang = require('../lang')
 utils = require('../core/utils')
 namings = require('../core/namings')
+search_reference = require('./search_reference')
 
 ref_to_type_and_id = (ref)->
   return unless ref && ref.reference
@@ -10,9 +11,10 @@ ref_to_type_and_id = (ref)->
   id = parts[parts.length - 1]
   [tp,id]
 
+second = (x)-> x[1]
+
 get_includes = (includes, resources)->
-  groups = {}
-  for inc in includes.map((x)-> x[1])
+  includes.map(second).reduce(((groups, inc)->
     refs = lang.mapcat resources, (x)-> xpath.get_in(x, [inc.path])
     groups = refs.reduce(((acc, ref)->
       [tp,id] = ref_to_type_and_id(ref)
@@ -21,20 +23,30 @@ get_includes = (includes, resources)->
         acc[tp][id] = true
       acc
     ), groups)
+  ), {})
 
-  groups
-
-load_resources = (plv8, tp, ids)->
-  utils.exec(plv8,
-    select: [':*']
-    from: ":#{namings.table_name(plv8, tp)}"
-    where: ['$in', ':id', ids]
-  ).map((x)-> JSON.parse(x.resource))
+load_resources = (plv8, hsql)->
+  utils.exec(plv8, hsql).map((x)-> JSON.parse(x.resource))
 
 exports.load_includes = (plv8, includes, resources)->
   res = []
   groups = get_includes(includes, resources)
   for tp, ids_map of groups
     ids = lang.keys(ids_map)
-    res = res.concat(load_resources(plv8, tp, ids))
+    ires = load_resources plv8,
+      select: [':*']
+      from: ":#{namings.table_name(plv8, tp)}"
+      where: ['$in', ':id', ids]
+    res = res.concat(ires)
   res
+
+exports.load_revincludes = (plv8, revincludes, resources)->
+  ids = resources.map((x)-> x.id)
+  lang.mapcat revincludes.map((x)-> x[1]), (inc)->
+    inc.operator = 'eq'
+    tbl = namings.table_name(plv8, inc.resourceType)
+    hsql = search_reference.handle(tbl, inc, {value: ids})
+    load_resources plv8,
+      select: [':*']
+      from: ":#{tbl}"
+      where: hsql
