@@ -58,6 +58,21 @@ specials =
     query.ids = right.split(',').map((x)-> x.trim()).filter(identity)
     query
   include: (query, left, right)->
+    query.include = right.split(',')
+      .map((x)-> x.trim())
+      .filter(identity)
+      .map (x)->
+        parts = x.split(':')
+        meta = switch parts.length
+          when 1
+            {resourceType: query.query, name: parts[0]}
+          when 2
+            {resourceType: parts[0], name: parts[1]}
+          when 3
+            {resourceType: parts[0], name: parts[1], target: parts[2]}
+          else
+            throw new Error("Wrong format of _include #{JSON.stringify(parts)}")
+        ['$param', meta, 'placeholder']
     query
   sort: (query, left, right)->
     key = right
@@ -105,9 +120,16 @@ exports.parse = (resourceType, str) ->
   expr = grouping(result, pairs)
   forms =
     $param: (l, r)->
-      left = parse_param_left(l)
-      left.resourceType = resourceType
-      right = parse_right(r)
+      if lang.isObject(l)
+        left = l
+      else
+        left = parse_param_left(l)
+        left.resourceType = resourceType
+      if lang.isObject(r)
+        right = r
+      else
+        right = parse_right(r)
+
       if right.length == 1
         ['$param', left, right[0]]
       else

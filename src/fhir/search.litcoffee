@@ -70,19 +70,29 @@ another query for potential results count.
 
 Then we are returning  resulting Bundle.
 
+    search_include = require('./search_include')
+
     exports.fhir_search = (plv8, query)->
 
       idx_db = ensure_index(plv8)
 
-      honey = _search_sql(plv8, idx_db, query)
-      resources = utils.exec(plv8, honey)
+      res = _search_sql(plv8, idx_db, query)
+      honey = res.hsql
+      expr = res.query
 
-      if !honey.limit or (honey.limit && resources.length < honey.limit)
-        count = resources.length
+      resource_rows = utils.exec(plv8, honey)
+      resources = resource_rows.map((x)-> JSON.parse(x.resource))
+
+      if !honey.limit or (honey.limit && resource_rows.length < honey.limit)
+        count = resource_rows.length
       else
         count = utils.exec(plv8, countize_query(honey))[0].count
 
       base_url = "#{query.resourceType}/#{query.queryString}"
+
+      if expr.include && count > 0
+        includes = search_include.load_includes(plv8, expr.include, resources)
+        resources = resources.concat(includes)
 
       resourceType: 'Bundle'
       type: 'searchset'
@@ -93,8 +103,8 @@ Then we are returning  resulting Bundle.
 Helper function to convert resource into entry bundle:
 TODO: add links
 
-    to_entry = (row)->
-      resource: helpers.postprocess_resource(JSON.parse(row.resource))
+    to_entry = (resource)->
+      resource: helpers.postprocess_resource(resource)
 
 This function should be visible from postgresql, so
 we have to describe it signature:
@@ -161,7 +171,7 @@ To build search query we need to
           hsql.join = lang.mapcat expr.joins, (x)->
             mk_join(plv8, alias, next_alias, x)
 
-        hsql
+        {hsql: hsql, query: expr}
 
       exports._search_sql = _search_sql
 
@@ -319,14 +329,14 @@ to analyze, what's happening under the hud.
 
     fhir_search_sql = (plv8, query)->
       idx_db = ensure_index(plv8)
-      sql(_search_sql(plv8, idx_db, query))
+      sql(_search_sql(plv8, idx_db, query).hsql)
 
     fhir_search_sql.plv8_signature = ['json', 'json']
     exports.fhir_search_sql = fhir_search_sql
 
     fhir_explain_search = (plv8, query)->
       idx_db = ensure_index(plv8)
-      query = sql(_search_sql(plv8, idx_db, query))
+      query = sql(_search_sql(plv8, idx_db, query).hsql)
       query[0] = "EXPLAIN ( ANALYZE, FORMAT JSON ) #{query[0]}"
       plv8.execute.call(plv8, query[0], query[1..-1])
 

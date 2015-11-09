@@ -69,10 +69,7 @@ exports.clone = clone
 
 
 exports.keys = (obj)->
-  res = []
-  for k,v of obj
-    res.push(k)
-  res
+  (k for k,v of obj)
 
 exports.mapcat = (coll, fn)->
   res = []

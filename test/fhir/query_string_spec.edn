@@ -50,4 +50,22 @@
  [["Patient" "name=a%20b"]
   {:query "Patient"
    :where (and
-            (param {:resourceType "Patient" :name "name"} {:value "a b"}))}]]
+           (param {:resourceType "Patient" :name "name"} {:value "a b"}))}]
+
+ [["Encounter" "_include=patient"]
+  {:query "Encounter"
+   :include [(param {:resourceType "Encounter" :name "patient"} {:value "placeholder"})]}]
+
+ [["Encounter" "_include=Encounter:patient"]
+  {:query "Encounter"
+   :include [(param {:resourceType "Encounter" :name "patient"} {:value "placeholder"})]}]
+
+ [["Encounter" "_include=Encounter:patient:Patient"]
+  {:query "Encounter"
+   :include [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})]}]
+
+ [["Encounter" "_include=Encounter:patient:Patient,Encounter:organization:Organization"]
+  {:query "Encounter"
+   :include [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})
+             (param {:resourceType "Encounter" :name "organization" :target "Organization"} {:value "placeholder"})]}]
+ ]

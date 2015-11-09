@@ -1,17 +1,46 @@
 title: Includes
-resources: ['patient', 'encounter']
+resources: ['patient', 'encounter', 'practitioner', 'relatedperson']
 indices:
   - {resourceType: 'Encounter', name: 'patient'}
 
 fixtures:
+  - {id: 'pract-1', resourceType: 'Practitioner'}
+  - {id: 'pract-2', resourceType: 'Practitioner'}
+  - {id: 'rel-1', resourceType: 'RelatedPerson'}
   - {id: 'nicola', resourceType: 'Patient', name: [{given: ['nicola']}], active: true, birthDate: '1980'}
   - {id: 'ivan', resourceType: 'Patient', name: [{given: ['ivan']}], active: true , birthDate: '1981'}
-  - {id: 'nicola-enc-1', resourceType: 'Encounter', patient: {reference: 'Patient/nicola'}}
-  - {id: 'nicola-enc-2', resourceType: 'Encounter', patient: {reference: 'Patient/nicola'}}
-  - {id: 'ivan-enc-1', resourceType: 'Encounter', patient: {reference: 'Patient/ivan'}}
+  - id: 'nicola-enc-1'
+    resourceType: 'Encounter'
+    patient: {reference: 'Patient/nicola'}
+    participant:
+      - individual: {reference: 'Practitioner/pract-2'}
+  - id: 'nicola-enc-2'
+    resourceType: 'Encounter'
+    patient: {reference: 'Patient/nicola'}
+    participant:
+      - individual: {reference: 'Practitioner/pract-1'}
+      - individual: {reference: 'RelatedPerson/rel-1'}
+  - id: 'ivan-enc-1'
+    resourceType: 'Encounter'
+    patient: {reference: 'Patient/ivan'}
 
 queries:
   # - query: {resourceType: 'Encounter', queryString: 'patient=Patient/nicola'}
   #   total: 2
-  - query: {resourceType: 'Encounter', queryString: '_id=nicola-enc-1,nicola-enc-2&_include=Encounter:patient'}
-    total: 1
+  - query: {resourceType: 'Encounter', queryString: '_id=nicola-enc-1&_include=Encounter:patient'}
+    total: 1 
+    probes:
+      - path: ['entry', 'length']
+        result: 2 
+      - path: ['entry', 1, 'resource', 'id']
+        result: 'nicola'
+  - query: {resourceType: 'Encounter', queryString: '_id=nicola-enc-1,nicola-enc-2&_include=Encounter:patient,Encounter:practitioner'}
+    total: 2 
+    probes:
+      - path: ['entry', 'length']
+        result:  6
+  - query: {resourceType: 'Encounter', queryString: '_id=nicola-enc-1,nicola-enc-2&_include=Encounter:patient,Encounter:practitioner:Practitioner'}
+    total: 2 
+    probes:
+      - path: ['entry', 'length']
+        result:  5

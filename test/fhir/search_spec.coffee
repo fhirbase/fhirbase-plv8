@@ -14,8 +14,7 @@ get_in = (obj, path)->
   cur = cur[item] for item in path when cur
   cur
 
-match = (x)->
-  (y)-> y.indexOf(x) > -1
+match = (x)-> (y)-> y.indexOf(x) > -1
 
 # plv8.debug = true
 
@@ -23,8 +22,8 @@ match = (x)->
 # console.log plv8.execute("SHOW search_path;")
 
 FILTER = 'date'
+FILTER = 'inc'
 FILTER = 'search'
-FILTER = 'id'
 
 fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
   spec = test.loadYaml("#{__dirname}/search/#{yml}")
@@ -60,10 +59,9 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
         if q.total
           assert.equal(res.total, q.total)
 
-        (q.probes || []).forEach (probe)->
-          assert.equal(get_in(res, probe.path), probe.result)
+        (q.probes || []).forEach (probe)-> assert.equal(get_in(res, probe.path), probe.result)
 
-         # console.log(explain)
+        # console.log(explain)
 
         if q.indexed
           assert(explain.indexOf("Index Cond") > -1, "Should be indexed but #{explain}") 
