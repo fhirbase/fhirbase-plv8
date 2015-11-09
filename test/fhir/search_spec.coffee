@@ -24,6 +24,7 @@ match = (x)->
 
 FILTER = 'date'
 FILTER = 'search'
+FILTER = 'id'
 
 fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
   spec = test.loadYaml("#{__dirname}/search/#{yml}")

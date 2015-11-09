@@ -54,6 +54,11 @@ specials =
   page: (query, left, right)->
     query.page = parseInt(right)
     query
+  id: (query, left, right)->
+    query.ids = right.split(',').map((x)-> x.trim()).filter(identity)
+    query
+  include: (query, left, right)->
+    query
   sort: (query, left, right)->
     key = right
     key = "#{key}:#{left}" if left

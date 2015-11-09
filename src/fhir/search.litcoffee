@@ -127,6 +127,16 @@ To build search query we need to
       lisp.eval_with(forms, expr)
 
 
+    merge_where = (hsql, expr)->
+      if hsql.where
+        if hsql.where[0] == '$and'
+          hsql.where.push(expr)
+        else
+          hsql.where = ['$and', hsql.where, expr]
+      else if not hsql.where
+        hsql.where = expr
+      hsql
+
     _search_sql = (plv8, idx, query)->
 
         next_alias = mk_alias()
@@ -138,6 +148,9 @@ To build search query we need to
         expr = normalize_operators(expr)
 
         expr.where = to_hsql(alias, expr.where)
+
+        if expr.ids
+          expr = merge_where(expr, ['$in', ":#{alias}.id", expr.ids])
 
         hsql =
           select: ':*'

@@ -140,6 +140,12 @@ SELECT fhir_explain_search('{"resourceType": "Patient", queryString: "name=smith
 -- see execution plan
 
 SELECT fhir_delete_resource('{"resourceType": "Patient", id: "smith"})';
+
+
+---
+
+SELECT fhir_conformance('{"default": "values"}');
+-- return simple Conformance resource, based on created stores
 ```
 
 ## Contribution

@@ -1,0 +1,12 @@
+title: id search
+resources: ['patient']
+
+fixtures:
+  - {id: 'nicola', resourceType: 'Patient', name: [{given: ['nicola']}], active: true, birthDate: '1980'}
+  - {id: 'ivan', resourceType: 'Patient', name: [{given: ['ivan']}], active: true , birthDate: '1981'}
+
+queries:
+  - query: {resourceType: 'Patient', queryString: '_id=nicola'}
+    total: 1
+  - query: {resourceType: 'Patient', queryString: '_id=nicola,ivan'}
+    total: 2
