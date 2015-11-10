@@ -2,6 +2,13 @@
 
 [![Build Status](https://travis-ci.org/fhirbase/fhirbase-plv8.svg)](https://travis-ci.org/fhirbase/fhirbase-plv8)
 
+## Slack
+
+For interactive communication about fhirbase we use slack.
+Please fill this [form](https://docs.google.com/forms/d/1WDOmVuBoZVToGDro-MP4PSbbRBjDOcIO21B9VKPaXK0/viewform?usp=send_form) and get invitation.
+
+## Features
+
 This is new version of fhirbase, with support of DSTU-2 and planned support many advanced features:
 
 *  Extended query syntax
