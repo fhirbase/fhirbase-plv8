@@ -72,4 +72,10 @@
  [["Patient" "_revinclude=Encounter:patient"]
   {:query "Patient"
    :revinclude [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})]}]
- ]
+
+ [["Patient" "_elements=name,birthdate"]
+  {:query "Patient"
+   :elements ["name", "birthdate"]}]
+
+ [["Patient" "_summary=true"]
+  {:query "Patient" :summary true}]]

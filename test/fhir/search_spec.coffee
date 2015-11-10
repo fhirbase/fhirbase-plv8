@@ -22,7 +22,7 @@ match = (x)-> (y)-> y.indexOf(x) > -1
 # console.log plv8.execute("SHOW search_path;")
 
 FILTER = 'date'
-FILTER = 'inc'
+FILTER = 'elem'
 FILTER = 'search'
 
 fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->

@@ -71,6 +71,17 @@ another query for potential results count.
 Then we are returning  resulting Bundle.
 
     search_include = require('./search_include')
+    search_elements = require('./search_elements')
+
+    mask_resources = (plv8, expr, idx_db, resources)->
+      sel = if expr.elements
+        search_elements.paths_to_selector(expr.elements)
+      else if expr.summary
+        idx_db.summary_selector(expr.query)
+      else
+        throw new Error("Unexpected guard")
+
+      resources.map((res)-> search_elements.elements(res, sel))
 
     exports.fhir_search = (plv8, query)->
 
@@ -90,6 +101,9 @@ Then we are returning  resulting Bundle.
 
       base_url = "#{query.resourceType}/#{query.queryString}"
 
+      if expr.summary or expr.elements
+        resources = mask_resources(plv8, expr, idx_db, resources)
+
       if expr.include && count > 0
         includes = search_include.load_includes(plv8, expr.include, resources)
         resources = resources.concat(includes)
@@ -97,6 +111,7 @@ Then we are returning  resulting Bundle.
       if expr.revinclude && count > 0
         includes = search_include.load_revincludes(plv8, expr.revinclude, resources)
         resources = resources.concat(includes)
+
 
       resourceType: 'Bundle'
       type: 'searchset'

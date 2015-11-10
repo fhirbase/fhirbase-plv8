@@ -2,6 +2,9 @@
 # for quick access to elements meta information
 # handle [x] elements and complex types
 xpath = require('./xpath')
+
+search_elements = require('./search_elements')
+
 lang = require('../lang')
 
 FIELDS = ['path', 'min','max','type','isSummary']
@@ -55,10 +58,17 @@ index_elements = (idx, structure_definition)->
 # getter(name)-> StructureDefinition
 module.exports.new = (plv8, getter)->
   elements = {}
+  summaries = {}
   params = {}
 
   elements: elements
   params: params
+  summaries: summaries
+  summary_selector: (rt)->
+    unless summaries[rt]
+      sd = getter(plv8, 'StructureDefinition', {name: rt})
+      summaries[rt] = search_elements.summary_selector(sd)
+    summaries[rt]
   get: (rt, query)->
     if rt == 'StructureDefinition'
       unless elements[query.name]
@@ -74,7 +84,6 @@ module.exports.new = (plv8, getter)->
     else
       throw new Error("unexpected call")
 
-
 element = (idx, path)->
   cur = idx.get('StructureDefinition', name: path[0])
   for p in path[1..] when cur
@@ -88,6 +97,7 @@ element = (idx, path)->
       else
         cur = null
   cur
+
 module.exports.element = element
 
 module.exports.parameter = (idx, path)->

@@ -1,0 +1,28 @@
+title:  _elements search
+resources: ['patient']
+
+fixtures:
+  - {id: 'nicola', resourceType: 'Patient', photo: 'ups'}
+
+queries:
+  - query: {resourceType: 'Patient', queryString: ''}
+    total: 1
+    probes:
+      - path: ['entry', '0', 'resource', 'photo']
+        result: 'ups'
+      - path: ['entry', '0', 'resource', 'id']
+        result: 'nicola'
+  - query: {resourceType: 'Patient', queryString: '_elements=id'}
+    total: 1
+    probes:
+      - path: ['entry', '0', 'resource', 'photo']
+        result: null
+      - path: ['entry', '0', 'resource', 'id']
+        result: 'nicola'
+  - query: {resourceType: 'Patient', queryString: '_summary=true'}
+    total: 1
+    probes:
+      - path: ['entry', '0', 'resource', 'photo']
+        result: null
+      - path: ['entry', '0', 'resource', 'id']
+        result: 'nicola'

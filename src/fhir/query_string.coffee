@@ -84,6 +84,12 @@ specials =
   page: (query, left, right)->
     query.page = parseInt(right)
     query
+  elements: (query, left, right)->
+    query.elements = right.split(',').map((x)-> x.trim()).filter(identity)
+    query
+  summary: (query, left, right)->
+    query.summary = true
+    query
   id: (query, left, right)->
     query.ids = right.split(',').map((x)-> x.trim()).filter(identity)
     query

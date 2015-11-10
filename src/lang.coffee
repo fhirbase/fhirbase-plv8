@@ -77,6 +77,9 @@ exports.mapcat = (coll, fn)->
     Array.prototype.push.apply(res, fn(x))
   res
 
+exports.capitalize = (str)->
+  str and str[0].toUpperCase() + str.slice(1)
+
 exports.last = (arr)->
   arr[(arr.length - 1)]
 
