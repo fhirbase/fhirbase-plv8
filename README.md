@@ -137,8 +137,8 @@ SELECT fhir_update_resource('{"resourceType": "Patient", "id": "smith", "name": 
 
 SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith"}');
 
-SELECT fhir_index_parameter('{"resourceType": "Patient", name: "name"}');
-SELECT fhir_unindex_parameter('{"resourceType": "Patient", name: "name"}');
+SELECT fhir_index_parameter('{"resourceType": "Patient", "name": "name"}');
+SELECT fhir_unindex_parameter('{"resourceType": "Patient", "name": "name"}');
 
 SELECT fhir_search_sql('{"resourceType": "Patient", "queryString": "name=smith"}'); 
 -- see generated SQL
@@ -146,7 +146,7 @@ SELECT fhir_search_sql('{"resourceType": "Patient", "queryString": "name=smith"}
 SELECT fhir_explain_search('{"resourceType": "Patient", "queryString": "name=smith"}');
 -- see execution plan
 
-SELECT fhir_delete_resource('{"resourceType": "Patient", "id": "smith"})';
+SELECT fhir_delete_resource('{"resourceType": "Patient", "id": "smith"}');
 
 
 ---
