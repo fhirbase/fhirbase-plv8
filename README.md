@@ -111,13 +111,13 @@ you have to issue following command (read more [here](http://pgxn.org/dist/plv8/
 
 
 ```sql
-SET plv8.start_proc = 'plv8_init'
+SET plv8.start_proc = 'plv8_init';
 ```
 
 
 ```sql
 
-SET plv8.start_proc = 'plv8_init'
+SET plv8.start_proc = 'plv8_init';
 
 -- work with storage
 
@@ -128,25 +128,25 @@ SELECT fhir_truncate_storage('{"resourceType": "Patient"}');
 
 -- CRUD
 
-SELECT fhir_create_resource('{"resourceType": "Patient", id: "smith", "name": [{"given": ["Smith"]}]}');
-SELECT fhir_read_resource('{"resourceType": "Patient", id: "smith"}');
-SELECT fhir_vread_resource('{"resourceType": "Patient", versionId: "????"}');
-SELECT fhir_resource_history('{"resourceType": "Patient", id: "smith"}');
+SELECT fhir_create_resource('{"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}');
+SELECT fhir_read_resource('{"resourceType": "Patient", "id": "smith"}');
+SELECT fhir_vread_resource('{"resourceType": "Patient", "versionId": "????"}');
+SELECT fhir_resource_history('{"resourceType": "Patient", "id": "smith"}');
 SELECT fhir_resource_type('{"resourceType": "Patient"}');
-SELECT fhir_update_resource('{"resourceType": "Patient", id: "smith", "name": [{"given": ["John"], "family": ["Smith"]}]}');
+SELECT fhir_update_resource('{"resourceType": "Patient", "id": "smith", "name": [{"given": ["John"], "family": ["Smith"]}]}');
 
-SELECT fhir_search('{"resourceType": "Patient", queryString: "name=smith"}');
+SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith"}');
 
 SELECT fhir_index_parameter('{"resourceType": "Patient", name: "name"}');
 SELECT fhir_unindex_parameter('{"resourceType": "Patient", name: "name"}');
 
-SELECT fhir_search_sql('{"resourceType": "Patient", queryString: "name=smith"}'); 
+SELECT fhir_search_sql('{"resourceType": "Patient", "queryString": "name=smith"}'); 
 -- see generated SQL
 
-SELECT fhir_explain_search('{"resourceType": "Patient", queryString: "name=smith"}');
+SELECT fhir_explain_search('{"resourceType": "Patient", "queryString": "name=smith"}');
 -- see execution plan
 
-SELECT fhir_delete_resource('{"resourceType": "Patient", id: "smith"})';
+SELECT fhir_delete_resource('{"resourceType": "Patient", "id": "smith"})';
 
 
 ---
