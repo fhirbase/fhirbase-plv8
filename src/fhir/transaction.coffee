@@ -1,4 +1,4 @@
-crud = require('../core/crud.coffee')
+crud = require('./crud.coffee')
 
 RES_TYPE_RE = "([A-Za-z]+)"
 ID_RE = "([A-Za-z0-9\\-]+)"
@@ -124,6 +124,7 @@ execute = (plv8, bundle, strictMode) ->
   result = executePlan(plv8, plan)
 
   resourceType: "Bundle"
+  type: 'transaction-response'
   entry: result
 
 exports.execute = execute

@@ -1,11 +1,11 @@
-namings = require('./namings')
-pg_meta = require('./pg_meta')
-utils = require('./utils')
+namings = require('../core/namings')
+pg_meta = require('../core/pg_meta')
+utils = require('../core/utils')
 sql = require('../honey')
 bundle = require('./bundle')
-helpers = require('../fhir/search_helpers')
-outcome = require('./outcome')
-date = require('../fhir/date')
+helpers = require('./search_helpers')
+outcome = require('../core/outcome')
+date = require('./date')
 
 validate_create_resource = (resource)->
   unless resource.resourceType

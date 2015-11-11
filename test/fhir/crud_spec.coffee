@@ -1,5 +1,5 @@
 plv8 = require('../../plpl/src/plv8')
-crud = require('../../src/core/crud')
+crud = require('../../src/fhir/crud')
 schema = require('../../src/core/schema')
 
 assert = require('assert')

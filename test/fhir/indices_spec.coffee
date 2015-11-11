@@ -1,6 +1,6 @@
 search = require('../../src/fhir/search')
 schema = require('../../src/core/schema')
-crud = require('../../src/core/crud')
+crud = require('../../src/fhir/crud')
 honey = require('../../src/honey')
 plv8 = require('../../plpl/src/plv8')
 fs = require('fs')

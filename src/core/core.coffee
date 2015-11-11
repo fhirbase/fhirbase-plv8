@@ -1,4 +1,3 @@
-require('./crud')
 require('./namings')
 require('./pg_meta')
 require('./schema')

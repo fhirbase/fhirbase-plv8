@@ -3,7 +3,7 @@ transaction = require('../../src/fhir/transaction')
 assert = require('assert')
 helpers = require('../helpers.coffee')
 search = require('../../src/fhir/search')
-crud = require('../../src/core/crud')
+crud = require('../../src/fhir/crud')
 schema = require('../../src/core/schema')
 
 planExamples = helpers.loadYaml("#{__dirname}/fixtures/transaction_plans.yml")

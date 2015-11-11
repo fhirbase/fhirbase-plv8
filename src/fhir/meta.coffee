@@ -1,5 +1,5 @@
 schema = require('../core/schema')
-crud = require('../core/crud')
+crud = require('./crud')
 
 exports.load = (plv8, bundle)->
   for entry in bundle.entry
