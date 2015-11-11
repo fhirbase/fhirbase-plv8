@@ -25,7 +25,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
             'false'
           else
             'true'
-      else if element_type == 'code' || element_type == 'string'
+      else if element_type == 'code' || element_type == 'string' || element_type == 'uri'
         res = (str.toString() for str in data)
       else if element_type == 'Identifier' or element_type == 'ContactPoint'
         for coding in data
@@ -64,9 +64,10 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
 
     exports.fhir_sort_as_token = (plv8, resource, path, element_type)->
       data = xpath.get_in(resource, [path])[0]
+      return null unless data
       if element_type == 'boolean'
         if data.toString() == 'false' then 'false' else 'true'
-      else if element_type == 'code' || element_type == 'string'
+      else if element_type == 'code' || element_type == 'string' || element_type == 'uri'
         data.toString()
       else if element_type == 'Identifier' or element_type == 'ContactPoint'
         [data.system, data.value].join('0').toLowerCase()
@@ -113,6 +114,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
           ['$cast', ['$array', value.value], ":text[]"]]
 
     SUPPORTED_TYPES = [
+      'uri'
       'boolean'
       'code'
       'string'

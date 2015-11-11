@@ -6,6 +6,7 @@ We use string functions to implement uri search (see string_search).
 
     lang = require('../lang')
     xpath = require('./xpath')
+    search_token = require('./search_token')
 
     normalize_value = (x)-> x && x.trim().toLowerCase().replace(/^(http:\/\/|https:\/\/|ftp:\/\/)/, '')
 
@@ -63,6 +64,9 @@ We use string functions to implement uri search (see string_search).
         throw new Error("Uri Search: Unsupported operator #{JSON.stringify(meta)}")
 
       op(tbl, meta, value)
+
+    exports.order_expression = (tbl, meta)->
+      search_token.order_expression(tbl, meta)
 
     exports.index = (plv8, metas)->
       meta = metas[0]

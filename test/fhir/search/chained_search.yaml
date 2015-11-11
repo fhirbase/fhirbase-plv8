@@ -10,7 +10,7 @@ fixtures:
   - {id: 'ivan', resourceType: 'Patient', name: [{given: ['ivan']}], active: true , birthDate: '1981'}
   - {id: 'linc', resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}], birthDate: '1988', multipleBirthInteger: 3}
   - {id: 'cheb', resourceType: 'Patient', name: [{given: ['Cheburashka']}], birthDate: '1972', multipleBirthInteger: 2}
-  - {resourceType: 'Encounter', patient: {reference: 'Patient/nicola'}, status: 'planned'}
+  - {id: 'enc-1', resourceType: 'Encounter', patient: {reference: 'Patient/nicola'}, status: 'planned'}
   - {resourceType: 'Encounter', patient: {reference: 'Patient/noise1'},  status: 'planned'}
   - {resourceType: 'Encounter', patient: {reference: 'Patient/noise2'},  status: 'planned'}
   - {resourceType: 'Encounter', status: 'planned'}
@@ -32,3 +32,15 @@ queries:
     probes:
       - path: ['total']
         result: 1
+
+  - query: {resourceType: 'Encounter', queryString: '_sort=patient'}
+    total: 4
+    probes:
+      - path: ['entry', '0', 'resource', 'id']
+        result: 'enc-1'
+
+  - query: {resourceType: 'Encounter', queryString: '_sort:desc=patient'}
+    total: 4
+    probes:
+      - path: ['entry', '3', 'resource', 'id']
+        result: 'enc-1'

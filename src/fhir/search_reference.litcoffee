@@ -16,6 +16,7 @@ Only equality operator is implemented.
     sql = require('../honey')
     xpath = require('./xpath')
     lang = require('../lang')
+    search_token = require('./search_token')
 
     TODO = -> throw new Error("TODO")
 
@@ -87,6 +88,9 @@ Only equality operator is implemented.
         throw new Error("Reference Search: Unsupported operator #{JSON.stringify(meta)}")
 
       op(tbl, meta, value)
+
+    exports.order_expression = (tbl, meta)->
+      search_token.order_expression(tbl, meta)
 
     exports.index = (plv8, metas)->
       meta = metas[0]

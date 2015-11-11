@@ -4,6 +4,7 @@ indices:
   - {resourceType: 'Device', name: 'url'}
 fixtures:
   - resourceType: 'Device'
+    id: dev-1
     url: 'http://acme.org/devices/1'  
   - resourceType: 'Device'
     url: 'http://acme.org/devices/2'  
@@ -30,3 +31,14 @@ queries:
     total: 1 
   - query: {resourceType: 'Device', queryString:  'url:missing=false'}
     total: 3 
+
+  - query: {resourceType: 'Device', queryString:  '_sort=url'}
+    total: 4 
+    probes:
+      - path: ['entry', '0', 'resource', 'id']
+        result: 'dev-1'
+  - query: {resourceType: 'Device', queryString:  '_sort:desc=url'}
+    total: 4 
+    probes:
+      - path: ['entry', '3', 'resource', 'id']
+        result: 'dev-1'
