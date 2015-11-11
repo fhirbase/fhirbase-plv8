@@ -42,6 +42,7 @@ ensure_table = (plv8, resourceType)->
 
 fhir_create_resource = (plv8, query)->
   resource = query.resource
+  throw new Error("expected arguments {resource: ...}") unless resource 
   errors = validate_create_resource(resource)
   return errors if errors
 
@@ -131,6 +132,7 @@ exports.fhir_vread_resource.plv8_signature = ['json', 'json']
 
 fhir_update_resource = (plv8, query)->
   resource = query.resource
+  throw new Error("expected arguments {resource: ...}") unless resource 
   id = resource.id
   assert(id, 'resource.id')
   assert(resource.resourceType, 'resource.resourceType')
