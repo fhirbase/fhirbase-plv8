@@ -6,6 +6,7 @@ bundle = require('./bundle')
 helpers = require('./search_helpers')
 outcome = require('./outcome')
 date = require('./date')
+search = require('./search')
 
 validate_create_resource = (resource)->
   unless resource.resourceType
@@ -49,6 +50,13 @@ fhir_create_resource = (plv8, query)->
 
   [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
   return errors if errors
+
+  if query.ifNotExist
+    result = search.fhir_search(plv8, {resourceType: resource.resourceType, queryString: query.ifNotExist})
+    if result.entry.length == 1
+      return result.entry[0].resource
+    else if result.entry.length > 1
+      return outcome.non_selective(query.ifNotExist)
 
 
   id = resource.id || utils.uuid(plv8)

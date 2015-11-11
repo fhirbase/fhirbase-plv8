@@ -170,6 +170,8 @@ To build search query we need to
       hsql
 
     _search_sql = (plv8, idx, query)->
+        unless query.resourceType
+          throw new Error("Expected query.resourceType attribute")
 
         next_alias = mk_alias()
 

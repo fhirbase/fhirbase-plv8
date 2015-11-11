@@ -9,14 +9,38 @@ copy = (x)-> JSON.parse(JSON.stringify(x))
 
 describe "CORE: CRUD spec", ->
   beforeEach ->
+
+    plv8.execute("SET plv8.start_proc = 'plv8_init'")
     schema.fhir_drop_storage(plv8, resourceType: 'Users')
+    schema.fhir_drop_storage(plv8, resourceType: 'Patient')
     schema.fhir_create_storage(plv8, resourceType: 'Users')
+    schema.fhir_create_storage(plv8, resourceType: 'Patient')
 
   it "create", ->
     created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})
     assert.notEqual(created.id , false)
     assert.notEqual(created.meta.versionId, undefined)
     assert.equal(created.name, 'admin')
+
+  it "conditional create", ->
+    noise = crud.fhir_create_resource(plv8, resource: {resourceType: 'Patient', active: true})
+    created = crud.fhir_create_resource(plv8,
+      ifNotExist: 'identifier=007'
+      resource: {resourceType: 'Patient', identifier: [{value: '007'}], name: [{given: ['bond']}], active: true}
+    )
+    assert.notEqual(created.id , false)
+
+    same = crud.fhir_create_resource(plv8,
+      ifNotExist: 'identifier=007'
+      resource: {resourceType: 'Patient', identifier: [{value: '007'}], name: [{given: ['bond']}]}
+    )
+    assert.equal(same.id, created.id)
+
+    outcome = crud.fhir_create_resource(plv8,
+      ifNotExist: 'active=true'
+      resource: {resourceType: 'Patient', identifier: [{value: '007'}], name: [{given: ['bond']}]}
+    )
+    assert.equal(outcome.resourceType, 'OperationOutcome')
 
 
   it "read", ->

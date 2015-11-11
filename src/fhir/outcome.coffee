@@ -28,4 +28,13 @@ exports.not_found = (id)->
       diagnostics: "Resource Id \"#{id}\" does not exist"
     }
   ]
-# console.log(exports.error(code: 'invalid', diagnostics: 'Ups'))
+
+exports.non_selective = (msg)->
+  resourceType: "OperationOutcome"
+  issue: [
+    {
+      severity: 'error'
+      code: '412'
+      diagnostics: "Precondition Failed error indicating the client's criteria were not selective enough. #{msg}"
+    }
+  ]
