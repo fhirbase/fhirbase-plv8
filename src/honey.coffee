@@ -248,6 +248,12 @@ BUILTINS =
     res.push("(")
     res.add_param(JSON.stringify(json))
     res.push(")::jsonb")
+  $asc: (res, [op, expr])->
+    heval(res, expr)
+    res.push("ASC")
+  $desc: (res, [op, expr])->
+    heval(res, expr)
+    res.push("DESC")
 
 
 CREATE_CLAUSES =

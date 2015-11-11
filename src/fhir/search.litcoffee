@@ -146,8 +146,11 @@ To build search query we need to
           unless handler.normalize_operator
             throw new Error("NORMALIZE: Not implemented noramalize_operator for [#{meta.searchType}]")
 
-          op = handler.normalize_operator(meta, value)
-          meta.operator = op
+          meta.operator = if meta.modifier == 'asc' or meta.modifier == 'desc'
+              meta.modifier
+            else
+              handler.normalize_operator(meta, value)
+
           delete meta.modifier
           delete value.prefix
 
@@ -176,15 +179,20 @@ To build search query we need to
         expr = expand.expand(idx, expr)
         expr = normalize_operators(expr)
 
+
         expr.where = to_hsql(alias, expr.where)
 
         if expr.ids
           expr = merge_where(expr, ['$in', ":#{alias}.id", expr.ids])
 
+        if expr.sort
+          ordering = order_hsql(alias, expr.sort)
+
         hsql =
           select: ':*'
           from: ['$alias', ['$q', namings.table_name(plv8, expr.query)], alias]
           where: expr.where
+          order: ordering
 
         if expr.joins
           hsql.join = lang.mapcat expr.joins, (x)->
@@ -201,18 +209,29 @@ To build search query we need to
 To build search expressions, we dispatch to
 implementation based on searchType
 
+    get_search_module = (searchType)->
+      h = SEARCH_TYPES_TABLE[searchType]
+      unless h
+        throw new Error("Unsupported search type [#{searchType}]}")
+      h
+
     to_hsql = (tbl, expr)->
       forms =
         $param: (left, right)->
-          h = SEARCH_TYPES_TABLE[left.searchType]
-          unless h
-            throw new Error("Unsupported search type [#{left.searchType}] #{JSON.stringify(left)}")
+          h = get_search_module(left.searchType)
           unless h.handle
             throw new Error("Search type does not exports handle fn: [#{left.searchType}] #{JSON.stringify(left)}")
           h.handle(tbl, left, right)
       lisp.eval_with(forms, expr)
 
-    exports.to_hsql
+    exports.to_hsql = to_hsql
+
+    order_hsql = (tbl, params)->
+      for meta in params.map((x)-> x[1])
+        h = get_search_module(meta.searchType)
+        unless h.order_expression
+          throw new Error("Search type does not exports order_expression fn: [#{meta.searchType}] #{JSON.stringify(meta)}")
+        h.order_expression(tbl, meta)
 
 
 ###  Handling chained parameters

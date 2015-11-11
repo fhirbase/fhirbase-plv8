@@ -46,6 +46,37 @@ exports.fhir_extract_as_string.plv8_signature =
   returns: 'text'
   immutable: true
 
+exports.fhir_sort_as_string = (plv8, resource, path, element_type)->
+  obj = xpath.get_in(resource, [path])[0]
+  return null unless obj
+  res = switch element_type
+    when 'string'
+      obj.toString().toLowerCase()
+    when 'HumanName'
+      lang.values(obj).filter((x)-> x && x.toString().trim().toLowerCase()).join('0')
+      [(obj.family || []).join('0'),(obj.given || []).join('0'),(obj.middle || []).join('0'), obj.text].join('0')
+    when 'Coding'
+      [obj.system, obj.code, obj.display].join('0')
+    when 'Address'
+      [obj.country, obj.city, obj.state, obj.district, (obj.line || []).join('0'), obj.postalCode, obj.text].join('0')
+    when 'ContactPoint'
+      [obj.system, obj.value].join('0')
+    when 'CodeableConcept'
+      coding = obj.coding && obj.coding[0]
+      if coding
+        [coding.system, coding.code, coding.display, obj.text].join('0')
+      else
+        obj.text
+    else
+      lang.values(obj).filter((x)-> x && x.toString().trim()).join('0')
+
+  res && res.toLowerCase()
+
+exports.fhir_sort_as_string.plv8_signature =
+  arguments: ['json', 'json', 'text']
+  returns: 'text'
+  immutable: true
+
 normalize_string_value = (x)->
   x && x.trim().toLowerCase()
 
@@ -107,6 +138,17 @@ handle = (tbl, meta, value)->
   op(tbl, meta, value)
 
 exports.handle = handle
+
+exports.order_expression = (tbl, meta)->
+  unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
+    throw new Error("String Search: unsuported type #{JSON.stringify(meta)}")
+  op = if meta.operator == 'desc' then '$desc' else '$asc'
+  [op,
+    ['$fhir_sort_as_string'
+      ['$cast', ['$q',":#{tbl}", ':resource'] , ':json']
+      ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
+      ['$quote', meta.elementType]]]
+
 
 exports.index = (plv8, metas)->
   meta = metas[0]

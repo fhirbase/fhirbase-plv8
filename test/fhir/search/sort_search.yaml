@@ -1,0 +1,24 @@
+title: id search
+resources: ['patient']
+
+fixtures:
+  - {id: 'd', resourceType: 'Patient', name: [{family: ['d'], given: ['a']}], birthDate: '1997'}
+  - {id: 'c', resourceType: 'Patient', name: [{family: ['c'], given: ['b']}], birthDate: '1998'}
+  - {id: 'b', resourceType: 'Patient', name: [{family: ['b'], given: ['c']}], birthDate: '1999'}
+  - {id: 'a', resourceType: 'Patient', name: [{family: ['a'], given: ['d']}], birthDate: '2000'}
+
+queries:
+  - query: {resourceType: 'Patient', queryString: '_sort=name'}
+    total: 4
+    probes:
+      - path: ['entry', '0', 'resource', 'id']
+        result: 'a'
+      - path: ['entry', '1', 'resource', 'id']
+        result: 'b'
+  - query: {resourceType: 'Patient', queryString: '_sort:desc=name'}
+    total: 4
+    probes:
+      - path: ['entry', '0', 'resource', 'id']
+        result: 'd'
+      - path: ['entry', '1', 'resource', 'id']
+        result: 'c'
