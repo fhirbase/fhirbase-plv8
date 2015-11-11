@@ -1,11 +1,16 @@
 title: id search
-resources: ['patient']
+resources: ['patient', 'encounter']
 
 fixtures:
   - {id: 'd', resourceType: 'Patient', gender: 'female', name: [{family: ['d'], given: ['a']}], birthDate: '1997'}
   - {id: 'c', resourceType: 'Patient', gender: 'male', name: [{family: ['c'], given: ['b']}], birthDate: '1998'}
   - {id: 'b', resourceType: 'Patient', gender: 'male', name: [{family: ['b'], given: ['c']}], birthDate: '1999'}
   - {id: 'a', resourceType: 'Patient', gender: 'male', name: [{family: ['a'], given: ['d']}], birthDate: '2000'}
+
+  - {id: 'd', resourceType: 'Encounter', length: {value: 10}}
+  - {id: 'c', resourceType: 'Encounter', length: {value: 20}}
+  - {id: 'b', resourceType: 'Encounter', length: {value: 30}}
+  - {id: 'a', resourceType: 'Encounter', length: {value: 40}}
 
 queries:
   - query: {resourceType: 'Patient', queryString: '_sort=name'}
@@ -46,3 +51,15 @@ queries:
     probes:
       - path: ['entry', '3', 'resource', 'id']
         result: 'd'
+
+  - query: {resourceType: 'Encounter', queryString: '_sort=length'}
+    total: 4
+    probes:
+      - path: ['entry', '0', 'resource', 'id']
+        result: 'd'
+
+  - query: {resourceType: 'Encounter', queryString: '_sort:desc=length'}
+    total: 4
+    probes:
+      - path: ['entry', '0', 'resource', 'id']
+        result: 'a'

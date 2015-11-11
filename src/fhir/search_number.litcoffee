@@ -65,6 +65,12 @@ it should be done in an extensible maner
 
       [op, extract_expr(meta, tbl), value.value]
 
+    exports.order_expression = (tbl, meta)->
+      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
+        throw new Error("String Search: unsuported type #{JSON.stringify(meta)}")
+      op = if meta.operator == 'desc' then '$desc' else '$asc'
+      [op,extract_expr(meta, tbl)]
+
     exports.index = (plv8, metas)->
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_number"

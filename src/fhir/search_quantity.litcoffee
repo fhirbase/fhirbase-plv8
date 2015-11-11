@@ -78,7 +78,11 @@ TODO: later we will add some support for units convertion and search in canonica
             extract_expr(assoc(meta, 'searchType', 'token'), tbl),
             ['$cast', ['$array', token_part], ":text[]"]]]
 
+    exports.order_expression = (tbl, meta)->
+      number_s.order_expression(tbl, assoc(meta, 'searchType', 'number'))
+
     exports.index = (plv8, metas)->
       number_part = number_s.index(plv8, metas.map((meta)-> assoc(meta, 'searchType', 'number')))
       token_part = token_s.index(plv8, metas.map((meta)-> assoc(meta, 'searchType', 'token')))
       number_part.concat(token_part)
+
