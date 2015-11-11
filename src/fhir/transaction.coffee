@@ -3,93 +3,90 @@ crud = require('../core/crud.coffee')
 RES_TYPE_RE = "([A-Za-z]+)"
 ID_RE = "([A-Za-z0-9\\-]+)"
 
-ROUTES =
-  resource_instance: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}$")
-  resource_instance_rev: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}/_history/#{ID_RE}$")
-  resource_instance_hist: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}/_history$")
-  resource: new RegExp("^/#{RES_TYPE_RE}$")
-  resource_hist: new RegExp("^/#{RES_TYPE_RE}/_history$")
-  hist: new RegExp("^/_history$")
+HANDLERS = [
+  {
+    name: 'Instance'
+    test: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}$")
+    GET: (match, entry)->
+      type: 'read'
+      resourceId: match[2]
+      resourceType: match[1]
+
+    PUT: (match, entry)->
+      type: 'update'
+      resourceId: match[2]
+      resourceType: match[1]
+      resource: entry.resource
+
+    DELETE: (match, entry)->
+      type: 'delete'
+      resourceId: match[2]
+      resourceType: match[1]
+  }
+  {
+    name: 'Revision'
+    test: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}/_history/#{ID_RE}$")
+    GET: (match, entry)->
+      type: 'vread'
+      resourceId: match[2]
+      resourceType: match[1]
+      versionId: match[3]
+  }
+  {
+    name: 'Instance History'
+    test: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}/_history$")
+    GET: (match, entry)->
+      type: 'history'
+      resourceType: match[1]
+      resourceId: match[2]
+  }
+  {
+    name: 'Resource Type History'
+    test: new RegExp("^/#{RES_TYPE_RE}$")
+    POST: (match, entry)->
+      type: 'create'
+      resource: entry.resource
+      resourceType: match[1]
+  }
+  {
+    name: 'History'
+    test: new RegExp("^/#{RES_TYPE_RE}/_history$")
+    GET: (match, entry)->
+      type: 'history'
+      resourceType: match[1]
+  }
+  {
+    test: new RegExp("^/_history$")
+    GET: (match, entry)->
+      type: 'history'
+  }
+]
 
 # TODO:
 # - conditional update
 # - conditional delete
+
+find = (coll, pred)->
+  for x in coll
+    return x if pred(x)
+  null
+
 makePlan = (bundle) ->
   bundle.entry.map (entry) ->
     url = entry.request.url
     method = entry.request.method
-    action = null
-    match = null
-    matchType = null
 
-    for type, re of ROUTES
-      match = url.match(re)
+    handler = find HANDLERS, (h)-> url.match(h.test) && h[method]
 
-      if match
-        matchType = type
-        break
+    if handler and handler[method]
+      match = url.match(handler.test)
+      action = handler[method]
+      action(match, entry)
+    else
+      type: 'error'
+      message: "Cannot determine action for request #{method} #{url}"
 
-    if match && matchType
-      switch matchType
-        when 'resource_instance'
-          if method == 'GET'
-            action =
-              type: 'read'
-              resourceId: match[2]
-              resourceType: match[1]
-
-          else if method == 'PUT'
-            action =
-              type: 'update'
-              resourceId: match[2]
-              resourceType: match[1]
-              resource: entry.resource
-
-          else if method == 'DELETE'
-            action =
-              type: 'delete'
-              resourceId: match[2]
-              resourceType: match[1]
-
-        when 'resource_instance_rev'
-          if method == 'GET'
-            action =
-              type: 'vread'
-              resourceId: match[2]
-              resourceType: match[1]
-              versionId: match[3]
-
-        when 'resource'
-          if method == 'POST'
-            action =
-              type: 'create'
-              resource: entry.resource
-              resourceType: match[1]
-
-        when 'resource_instance_hist'
-          if method == 'GET'
-            action =
-              type: 'history'
-              resourceType: match[1]
-              resourceId: match[2]
-
-        when 'resource_hist'
-          if method == 'GET'
-            action =
-              type: 'history'
-              resourceType: match[1]
-
-        when 'hist'
-          if method == 'GET'
-            action =
-              type: 'history'
-
-    if !action
-      action =
-        type: 'error'
-        message: "Cannot determine action for request #{method} #{url}"
-
-    action
+exports.makePlan = makePlan
 
 executePlan = (plv8, plan) ->
   plan.map (action) ->
@@ -110,6 +107,7 @@ executePlan = (plv8, plan) ->
         crud.fhir_vread_resource(plv8, {id: action.resourceId, resourceType: action.resourceType, versionId: action.versionId})
       else
         "TODO: return operation outcome here!\n#{action.message}"
+exports.executePlan = executePlan
 
 execute = (plv8, bundle, strictMode) ->
   plan = makePlan(bundle)
@@ -118,24 +116,19 @@ execute = (plv8, bundle, strictMode) ->
     errors = plan.filter (i) -> i.type == 'error'
 
     if errors.length > 0
-      oo =
+      return {
         resourceType: "OperationOutcome"
         message: "TODO: make correct operation outcome here!\nThere were incorrect requests within transaction"
-
-      return oo
+      }
 
   result = executePlan(plv8, plan)
-  bundle =
-    resourceType: "Bundle"
-    entry: result
 
-  return bundle
+  resourceType: "Bundle"
+  entry: result
 
-exports.makePlan = makePlan
-exports.executePlan = executePlan
 exports.execute = execute
 
-exports.fhir_transaction = (plv8, bundle)->
-  execute(plv8, bundle, true)
+
+exports.fhir_transaction = (plv8, bundle)-> execute(plv8, bundle, true)
 
 exports.fhir_transaction.plv8_signature = ['json', 'json']
