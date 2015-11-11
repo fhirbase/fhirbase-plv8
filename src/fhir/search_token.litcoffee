@@ -62,6 +62,34 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       returns: 'text[]'
       immutable: true
 
+    exports.fhir_sort_as_token = (plv8, resource, path, element_type)->
+      data = xpath.get_in(resource, [path])[0]
+      if element_type == 'boolean'
+        if data.toString() == 'false' then 'false' else 'true'
+      else if element_type == 'code' || element_type == 'string'
+        data.toString()
+      else if element_type == 'Identifier' or element_type == 'ContactPoint'
+        [data.system, data.value].join('0').toLowerCase()
+      else if element_type == 'Coding'
+        [data.system, data.code, data.display].join('0').toLowerCase()
+      else if element_type == 'Quantity'
+        [data.system, data.unit, data.code].join('0').toLowerCase()
+      else if element_type == 'CodeableConcept'
+        coding = data.coding && data.coding[0]
+        if coding
+          [coding.system, coding.code, coding.display].join('0').toLowerCase()
+        else
+          data.text || JSON.stringify(data)
+      else if element_type == 'Reference'
+        data.reference
+      else
+        throw new Error("fhir_extract_as_token: Not implemented for #{element_type}")
+
+    exports.fhir_sort_as_token.plv8_signature =
+      arguments: ['json', 'json', 'text']
+      returns: 'text'
+      immutable: true
+
 
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
@@ -111,6 +139,16 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
         throw new Error("Token Search: Unsupported operator #{JSON.stringify(meta)}")
 
       op(tbl, meta, value)
+
+    exports.order_expression = (tbl, meta)->
+      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
+        throw new Error("String Search: unsuported type #{JSON.stringify(meta)}")
+      op = if meta.operator == 'desc' then '$desc' else '$asc'
+      [op,
+        ['$fhir_sort_as_token'
+          ['$cast', ['$q',":#{tbl}", ':resource'] , ':json']
+          ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
+          ['$quote', meta.elementType]]]
 
     exports.index = (plv8, metas)->
       meta = metas[0]

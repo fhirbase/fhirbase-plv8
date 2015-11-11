@@ -61,6 +61,27 @@ Function to extract element from resource as tstzrange.
       returns: 'tstzrange'
       immutable: true
 
+    exports.fhir_sort_as_date = (plv8, resource, path, element_type)->
+      if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
+        value = xpath.get_in(resource, [path])[0]
+        if value
+          date.to_lower_date(value.toString())
+        else
+          null
+      else if element_type == 'Period'
+        value = xpath.get_in(resource, [path])[0]
+        if value
+          date.to_lower_date(value.start || value.end)
+        else
+          null
+      else
+        throw new Error("fhir_sort_as_date: Not implemented for #{element_type}")
+
+    exports.fhir_sort_as_date.plv8_signature =
+      arguments: ['json', 'json', 'text']
+      returns: 'timestamptz'
+      immutable: true
+
 Function to convert query parameter into range.
 
     value_to_range = (operator, value)->
@@ -138,6 +159,16 @@ and returns honeysql expression.
       op(tbl, meta, value)
 
     exports.handle = handle
+
+    exports.order_expression = (tbl, meta)->
+      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
+        throw new Error("String Search: unsuported type #{JSON.stringify(meta)}")
+      op = if meta.operator == 'desc' then '$desc' else '$asc'
+      [op,
+        ['$fhir_sort_as_date'
+          ['$cast', ['$q',":#{tbl}", ':resource'] , ':json']
+          ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
+          ['$quote', meta.elementType]]]
 
     exports.index = (plv8, metas)->
       meta = metas[0]

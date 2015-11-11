@@ -34,46 +34,55 @@ specs = [
     path: ['Resource', 'active']
     elementType: 'boolean'
     result: ['true']
+    order: 'true'
   }
   {
     path: ['Resource', 'identifier']
     elementType: 'Identifier'
     result: ['1', 'ssn|1', '2', 'mrn|2']
+    order: 'ssn01'
   }
   {
     path: ['Resource', 'gender']
     elementType: 'code'
     result: ['male']
+    order: 'male'
   }
   {
     path: ['Resource', 'gender']
     elementType: 'string'
     result: ['male']
+    order: 'male'
   }
   {
     path: ['Resource', 'type']
     elementType: 'Coding'
     result: ['ups', 'dups|ups']
+    order: 'dups0ups0'
   }
   {
     path: ['Resource', 'communication', 'language']
     elementType: 'CodeableConcept'
     result: ['us', 'lang|us', 'en', 'world|en']
+    order: 'lang0us0'
   }
   {
     path: ['Resource', 'provider']
     elementType: 'Reference'
     result: ['Provider/1']
+    order: 'Provider/1'
   }
   {
     path: ['Resource', 'telecom']
     elementType: 'ContactPoint'
     result: ['444', 'phone|444', 'a@b.com', 'email|a@b.com']
+    order: 'phone0444'
   }
   {
     path: ['Resource', 'value']
     elementType: 'Quantity'
     result: ['[mg]', 'mg', 'http://unitsofmeasure.org|[mg]', 'http://unitsofmeasure.org|mg']
+    order: 'http://unitsofmeasure.org0mg0[mg]'
   }
 ]
 
@@ -82,3 +91,5 @@ describe "extract_as_token", ->
     it JSON.stringify(spec.path), ->
       res = search.fhir_extract_as_token({}, resource, spec.path, spec.elementType)
       assert.deepEqual(res, spec.result)
+      order = search.fhir_sort_as_token({}, resource, spec.path, spec.elementType)
+      assert.deepEqual(order, spec.order)

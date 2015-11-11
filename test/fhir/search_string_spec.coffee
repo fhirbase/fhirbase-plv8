@@ -41,22 +41,27 @@ specs = [
     path: ['Patient', 'name']
     elementType: 'HumanName'
     result: ['^^Niccolo$$', '^^Great$$', '^^Music$$', '^^Paganini$$', '^^Niky$$', '^^Pogy$$']
+    order: 'paganini0niccolò0great0music0'
   }
   {
     path: ['Patient', 'address', 'city']
     elementType: 'string'
     result: ['^^PleasantVille$$','^^Xtown$$']
+    order: 'pleasantville'
   }
   {
     path: ['Patient', 'address']
     elementType: 'Address'
     result: ['^^Vic$$', '^^PleasantVille$$', '^^Rainbow$$', '^^534 Erewhon St$$']
+    order: '0pleasantville0vic0rainbow0534 erewhon st039990'
   }
 ]
 
-describe "extract_as_token", ->
+describe "extract_as_string", ->
   specs.forEach (spec)->
     it JSON.stringify(spec.path), ->
       res = search.fhir_extract_as_string({}, resource, spec.path, spec.elementType)
       for str in spec.result
         assert(res.indexOf(str) > -1, "#{str} not in #{res}")
+      order = search.fhir_sort_as_string({}, resource, spec.path, spec.elementType)
+      assert.deepEqual(order, spec.order)
