@@ -1,5 +1,6 @@
 plv8 = require('../../plpl/src/plv8')
 crud = require('../../src/fhir/crud')
+history = require('../../src/fhir/history')
 schema = require('../../src/core/schema')
 
 assert = require('assert')
@@ -51,7 +52,7 @@ describe "CORE: CRUD spec", ->
     assert.equal(read_updated.name, to_update.name)
     # assert.equal(read_updated.meta.request.method, 'PUT')
 
-    hx  = crud.fhir_resource_history(plv8, {id: read.id, resourceType: 'Users'})
+    hx  = history.fhir_resource_history(plv8, {id: read.id, resourceType: 'Users'})
     assert.equal(hx.total, 2)
     assert.equal(hx.entry.length, 2)
 
@@ -74,7 +75,7 @@ describe "CORE: CRUD spec", ->
     deleted = crud.fhir_delete_resource(plv8, {id: read.id, resourceType: 'Users'})
     # assert.equal(deleted.meta.request.method, 'DELETE')
 
-    hx_deleted  = crud.fhir_resource_history(plv8, {id: read.id, resourceType: 'Users'})
+    hx_deleted  = history.fhir_resource_history(plv8, {id: read.id, resourceType: 'Users'})
     assert.equal(hx_deleted.total, 2)
     assert.equal(hx_deleted.entry.length, 2)
 
@@ -91,7 +92,7 @@ describe "CORE: CRUD spec", ->
     deleted = crud.fhir_delete_resource(plv8, {id: read.id, resourceType: 'Users'})
     # assert.equal(deleted.meta.request.method, 'DELETE')
 
-    hx_deleted  = crud.fhir_resource_history(plv8, {id: read.id, resourceType: 'Users'})
+    hx_deleted  = history.fhir_resource_history(plv8, {id: read.id, resourceType: 'Users'})
     assert.equal(hx_deleted.total, 2)
     assert.equal(hx_deleted.entry.length, 2)
 
@@ -102,7 +103,7 @@ describe "CORE: CRUD spec", ->
     assert.equal(issue.code, 'not-found')
 
   it "parse_history_params", ->
-    [res, errors] = crud.parse_history_params('_since=2010&_count=10')
+    [res, errors] = history.parse_history_params('_since=2010&_count=10')
     assert.deepEqual(res, {_since: '2010-01-01', _count: 10})
 
   it "resource type history", ->
@@ -111,8 +112,8 @@ describe "CORE: CRUD spec", ->
     crud.fhir_create_resource(plv8, {resourceType: 'Users', name: 'u2'})
     crud.fhir_create_resource(plv8, {resourceType: 'Users', name: 'u3'})
 
-    res = crud.fhir_resource_type_history(plv8, resourceType: 'Users')
+    res = history.fhir_resource_type_history(plv8, resourceType: 'Users')
     assert.equal(res.total, 3)
 
-    res = crud.fhir_resource_type_history(plv8, resourceType: 'Users', queryString: "_count=2&_since=2015-11")
+    res = history.fhir_resource_type_history(plv8, resourceType: 'Users', queryString: "_count=2&_since=2015-11")
     assert.equal(res.total, 2)

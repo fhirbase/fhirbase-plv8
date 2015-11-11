@@ -4,7 +4,7 @@ utils = require('../core/utils')
 sql = require('../honey')
 bundle = require('./bundle')
 helpers = require('./search_helpers')
-outcome = require('../core/outcome')
+outcome = require('./outcome')
 date = require('./date')
 
 validate_create_resource = (resource)->
@@ -225,77 +225,7 @@ exports.fhir_delete_resource = (plv8, resource)->
 
   helpers.postprocess_resource(resource)
 
-
 exports.fhir_delete_resource.plv8_signature = ['json', 'json']
-
-exports.fhir_resource_history = (plv8, query)->
-  id = query.id
-  assert(id, 'query.id')
-  assert(query.resourceType, 'query.resourceType')
-
-  [table_name, hx_table_name, errors] = ensure_table(plv8, query.resourceType)
-  return errors if errors
-
-  resources = utils.exec( plv8,
-    select: sql.raw('*')
-    from:   sql.q(hx_table_name)
-    where:  {id: query.id}
-  ).map((x)-> JSON.parse(x.resource))
-
-  bundle.history_bundle(resources)
-
-exports.fhir_resource_history.plv8_signature = ['json', 'json']
-
-parse_history_params = (queryString)->
-  parsers =
-    _since: date.to_lower_date
-    _count: parseInt
-
-  reduce_fn = (acc, [k,v])->
-    parser = parsers[k]
-    if parser
-      acc[k] = parser(v)
-      acc
-    else
-      acc
-
-  params = queryString
-    .split('&')
-    .map((x)-> x.split('='))
-    .reduce(reduce_fn, {})
-
-  [params, null]
-
-exports.parse_history_params = parse_history_params
-
-exports.fhir_resource_type_history = (plv8, query)->
-  id = query.id
-  assert(query.resourceType, 'query.resourceType')
-
-
-  [table_name, hx_table_name, errors] = ensure_table(plv8, query.resourceType)
-  return errors if errors
-
-  [params, errors] = parse_history_params(query.queryString || '')
-  return errors if errors
-
-  hsql =
-    select: sql.raw('*')
-    from:   sql.q(hx_table_name)
-    order: [':valid_from']
-
-  if params._count
-    hsql.limit = params._count
-
-  if params._since
-    hsql.where = ['$ge', ':valid_from', params._since]
-
-  resources = utils.exec( plv8, hsql)
-    .map((x)-> JSON.parse(x.resource))
-
-  bundle.history_bundle(resources)
-
-exports.fhir_resource_type_history.plv8_signature = ['json', 'json']
 
 exports.fhir_load = (plv8, bundle)->
   res = []
