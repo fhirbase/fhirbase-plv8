@@ -40,7 +40,8 @@ ensure_table = (plv8, resourceType)->
   else
     [table_name, hx_table_name, null]
 
-fhir_create_resource = (plv8, resource)->
+fhir_create_resource = (plv8, query)->
+  resource = query.resource
   errors = validate_create_resource(resource)
   return errors if errors
 
@@ -128,7 +129,8 @@ exports.fhir_vread_resource = (plv8, query)->
 
 exports.fhir_vread_resource.plv8_signature = ['json', 'json']
 
-fhir_update_resource = (plv8, resource)->
+fhir_update_resource = (plv8, query)->
+  resource = query.resource
   id = resource.id
   assert(id, 'resource.id')
   assert(resource.resourceType, 'resource.resourceType')

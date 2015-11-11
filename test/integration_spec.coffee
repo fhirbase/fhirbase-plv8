@@ -9,7 +9,7 @@ describe "Integration",->
     plv8.execute("select fhir_drop_storage($1)", [JSON.stringify(resourceType: "Patient")])
     plv8.execute("select fhir_create_storage($1)", [JSON.stringify(resourceType: "Patient")])
     plv8.execute("select fhir_index_parameter($1)", [JSON.stringify(resourceType: "Patient", name: "name")])
-    plv8.execute("select fhir_create_resource($1)", [JSON.stringify(resourceType: "Patient", name: [{given: "nicola"}])])
+    plv8.execute("select fhir_create_resource($1)", [JSON.stringify(resource: {resourceType: "Patient", name: [{given: "nicola"}]})])
     res = plv8.execute("select fhir_search($1)", [JSON.stringify(resourceType: "Patient", queryString: 'name=nicola')])
     bundle = JSON.parse(res[0].fhir_search)
     assert.equal(bundle.total, 1)

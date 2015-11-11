@@ -13,14 +13,14 @@ describe "CORE: CRUD spec", ->
     schema.fhir_create_storage(plv8, resourceType: 'Users')
 
   it "create", ->
-    created = crud.fhir_create_resource(plv8, {resourceType: 'Users', name: 'admin'})
+    created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})
     assert.notEqual(created.id , false)
     assert.notEqual(created.meta.versionId, undefined)
     assert.equal(created.name, 'admin')
 
 
   it "read", ->
-    created = crud.fhir_create_resource(plv8, {resourceType: 'Users', name: 'admin'})
+    created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users', name: 'admin'})
     read = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users'})
     assert.equal(read.id, created.id)
 
@@ -37,12 +37,12 @@ describe "CORE: CRUD spec", ->
 
 
   it "update", ->
-    created = crud.fhir_create_resource(plv8, {resourceType: 'Users', name: 'admin'})
+    created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users', name: 'admin'})
     read = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users'})
     to_update = copy(read)
     to_update.name = 'changed'
 
-    updated = crud.fhir_update_resource(plv8, to_update)
+    updated = crud.fhir_update_resource(plv8, resource: to_update)
     assert.equal(updated.name, to_update.name)
     assert.notEqual(updated.meta.versionId, false)
     assert.notEqual(updated.meta.versionId, read.meta.versionId)
@@ -59,17 +59,17 @@ describe "CORE: CRUD spec", ->
     delete to_update.meta
     to_update.name = 'udpated without meta'
 
-    updated = crud.fhir_update_resource(plv8, to_update)
+    updated = crud.fhir_update_resource(plv8, resource: to_update)
     assert.equal(updated.name, to_update.name)
     assert.notEqual(updated.meta.versionId, false)
     assert.notEqual(updated.meta.versionId, read.meta.versionId)
 
   it "update unexisting", ->
-    updated = crud.fhir_update_resource(plv8, {resourceType: "Users", id: "unexisting"})
+    updated = crud.fhir_update_resource(plv8, resource: {resourceType: "Users", id: "unexisting"})
     assert.equal(updated.resourceType, 'OperationOutcome')
 
   it "delete", ->
-    created = crud.fhir_create_resource(plv8, {resourceType: 'Users', name: 'admin'})
+    created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})
     read = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users'})
 
     deleted = crud.fhir_delete_resource(plv8, {id: read.id, resourceType: 'Users'})
@@ -86,7 +86,7 @@ describe "CORE: CRUD spec", ->
     assert.equal(issue.code, 'not-found')
 
   it "history", ->
-    created = crud.fhir_create_resource(plv8, {resourceType: 'Users', name: 'admin'})
+    created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})
     read = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users'})
 
     deleted = crud.fhir_delete_resource(plv8, {id: read.id, resourceType: 'Users'})
@@ -108,9 +108,9 @@ describe "CORE: CRUD spec", ->
 
   it "resource type history", ->
     schema.fhir_truncate_storage(plv8, resourceType: 'Users')
-    crud.fhir_create_resource(plv8, {resourceType: 'Users', name: 'u1'})
-    crud.fhir_create_resource(plv8, {resourceType: 'Users', name: 'u2'})
-    crud.fhir_create_resource(plv8, {resourceType: 'Users', name: 'u3'})
+    crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'u1'})
+    crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'u2'})
+    crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'u3'})
 
     res = history.fhir_resource_type_history(plv8, resourceType: 'Users')
     assert.equal(res.total, 3)

@@ -92,13 +92,13 @@ executePlan = (plv8, plan) ->
   plan.map (action) ->
     switch action.type
       when "create"
-        crud.fhir_create_resource(plv8, action.resource)
+        crud.fhir_create_resource(plv8, resource: action.resource)
       when "update"
         resource = action.resource
         resource.resourceType = action.resourceType
         resource.id = action.resourceId
 
-        crud.fhir_update_resource(plv8, resource)
+        crud.fhir_update_resource(plv8, resource: resource)
       when "delete"
         crud.fhir_delete_resource(plv8, {id: action.resourceId, resourceType: action.resourceType})
       when "read"

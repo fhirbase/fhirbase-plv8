@@ -25,7 +25,7 @@ describe 'transaction execution', ->
       schema.fhir_truncate_storage(plv8,  resourceType: type)
 
       for res in fixtures
-        crud.fhir_create_resource(plv8, res)
+        crud.fhir_create_resource(plv8, resource: res)
 
   transactionExamples.examples.forEach (e, index) ->
     it e.desc, ->
