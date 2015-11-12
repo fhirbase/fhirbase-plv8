@@ -38,3 +38,13 @@ exports.non_selective = (msg)->
       diagnostics: "Precondition Failed error indicating the client's criteria were not selective enough. #{msg}"
     }
   ]
+
+exports.conflict = (msg)->
+  resourceType: "OperationOutcome"
+  issue: [
+    {
+      severity: 'error'
+      code: '409'
+      diagnostics: msg
+    }
+  ]

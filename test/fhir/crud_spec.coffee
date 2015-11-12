@@ -92,6 +92,41 @@ describe "CORE: CRUD spec", ->
     updated = crud.fhir_update_resource(plv8, resource: {resourceType: "Users", id: "unexisting"})
     assert.equal(updated.resourceType, 'OperationOutcome')
 
+  it "conditional update", ->
+    noise = crud.fhir_create_resource(plv8, resource: {resourceType: 'Patient', active: true})
+    created = crud.fhir_update_resource(plv8,
+      resource:  {resourceType: 'Patient', identifier: [{value: '007'}]}
+      queryString: 'identifier=007'
+    )
+    assert.equal(created.identifier[0].value, '007')
+    assert.notEqual(noise.id, created.id)
+    updated = crud.fhir_update_resource(plv8,
+      resource:  {resourceType: 'Patient', identifier: [{value: '007'}], active: true}
+      queryString: 'identifier=007'
+    )
+    assert.equal(created.id, updated.id)
+    assert.equal(updated.active, true)
+
+    outcome = crud.fhir_update_resource(plv8,
+      resource:  {resourceType: 'Patient', identifier: [{value: '007'}], active: true}
+      queryString: 'active=true'
+    )
+    assert.equal(outcome.resourceType, 'OperationOutcome')
+
+  it "Update Resource Contention", ->
+    created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Patient', identifier: [{value: '007'}]})
+    updated = crud.fhir_update_resource(plv8,
+      resource:  {id: created.id, resourceType: 'Patient', identifier: [{value: '007'}], active: true}
+      ifMatch: created.meta.versionId
+    )
+    assert.equal(updated.resourceType, 'Patient')
+    assert.equal(updated.active, true)
+    outcome = crud.fhir_update_resource(plv8,
+      resource:  {id: created.id, resourceType: 'Patient', identifier: [{value: '007'}], active: true}
+      ifMatch: created.meta.versionId
+    )
+    assert.equal(outcome.resourceType, 'OperationOutcome')
+
   it "delete", ->
     created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})
     read = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users'})

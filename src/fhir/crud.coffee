@@ -141,17 +141,33 @@ exports.fhir_vread_resource.plv8_signature = ['json', 'json']
 fhir_update_resource = (plv8, query)->
   resource = query.resource
   throw new Error("expected arguments {resource: ...}") unless resource 
-  id = resource.id
-  assert(id, 'resource.id')
-  assert(resource.resourceType, 'resource.resourceType')
 
   [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
   return errors if errors
 
-  old_version = exports.fhir_read_resource(plv8, resource)
+  if query.queryString
+    result = search.fhir_search(plv8, {resourceType: resource.resourceType, queryString: query.queryString})
+    if result.entry.length == 0
+      return fhir_create_resource(plv8, resource: resource)
+    else if result.entry.length == 1
+      old_version = result.entry[0].resource
+      resource.id = old_version.id
+      id = resource.id
+    else if result.entry.length > 1
+      return outcome.non_selective(query.ifNotExist)
+  else
+    id = resource.id
+    assert(id, 'resource.id')
+    assert(resource.resourceType, 'resource.resourceType')
+    old_version = exports.fhir_read_resource(plv8, resource)
 
   if old_version.resourceType == 'OperationOutcome'
     return old_version
+
+  throw new Error("Unexpected behavior, no id") unless id
+
+  if query.ifMatch && old_version.meta.versionId != query.ifMatch
+    return outcome.conflict("Newer then [#{query.ifMatch}] version available [#{old_version.meta.versionId}]")
 
   version_id = utils.uuid(plv8)
 
