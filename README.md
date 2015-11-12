@@ -129,11 +129,25 @@ SELECT fhir_truncate_storage('{"resourceType": "Patient"}');
 -- CRUD
 
 SELECT fhir_create_resource('{"resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
+
+-- conditional create
+SELECT fhir_create_resource('{"ifNotExist": "identifier=007", "resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
+
 SELECT fhir_read_resource('{"resourceType": "Patient", "id": "smith"}');
+
 SELECT fhir_vread_resource('{"resourceType": "Patient", "versionId": "????"}');
+
 SELECT fhir_resource_history('{"resourceType": "Patient", "id": "smith"}');
-SELECT fhir_resource_type('{"resourceType": "Patient"}');
+
+SELECT fhir_resource_type_history('{"resourceType": "Patient", "queryString": "_count=2&_since=2015-11"}');
+
 SELECT fhir_update_resource('{"resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["John"], "family": ["Smith"]}]}}');
+
+-- conditional update
+SELECT fhir_update_resource('{"ifNotExist": "identifier=007", "resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
+
+-- update with contention guard
+SELECT fhir_update_resource('{"ifMatch": "..versionid..", "resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
 
 SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith"}');
 
