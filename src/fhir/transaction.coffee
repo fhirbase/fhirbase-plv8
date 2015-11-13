@@ -1,4 +1,4 @@
-crud = require('./crud.coffee')
+crud = require('./crud')
 
 RES_TYPE_RE = "([A-Za-z]+)"
 ID_RE = "([A-Za-z0-9\\-]+)"
@@ -42,7 +42,7 @@ HANDLERS = [
   }
   {
     name: 'Resource Type History'
-    test: new RegExp("^/#{RES_TYPE_RE}$")
+    test: new RegExp("^/?#{RES_TYPE_RE}/?$")
     POST: (match, entry)->
       type: 'create'
       resource: entry.resource
@@ -106,7 +106,7 @@ executePlan = (plv8, plan) ->
       when "vread"
         crud.fhir_vread_resource(plv8, {id: action.resourceId, resourceType: action.resourceType, versionId: action.versionId})
       else
-        "TODO: return operation outcome here!\n#{action.message}"
+        "request.type is not supported - \n#{JSON.stringify(action)}"
 exports.executePlan = executePlan
 
 execute = (plv8, bundle, strictMode) ->
@@ -118,7 +118,7 @@ execute = (plv8, bundle, strictMode) ->
     if errors.length > 0
       return {
         resourceType: "OperationOutcome"
-        message: "TODO: make correct operation outcome here!\nThere were incorrect requests within transaction"
+        message: "There were incorrect requests within transaction. #{JSON.stringify(errors)}"
       }
 
   result = executePlan(plv8, plan)
