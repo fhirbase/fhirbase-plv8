@@ -12,9 +12,17 @@ fixtures:
   - {id: 'b', resourceType: 'Encounter', length: {value: 30}}
   - {id: 'a', resourceType: 'Encounter', length: {value: 40}}
 
+index_order:
+  - query: {resourceType: "Patient", name: "name"}
+  - query: {resourceType: "Patient", name: "birthdate"}
+  - query: {resourceType: "Patient", name: "gender"}
+  - query: {resourceType: "Encounter", name: "length"}
+
+
 queries:
   - query: {resourceType: 'Patient', queryString: '_sort=name'}
     total: 4
+    indexed_order: true
     probes:
       - path: ['entry', '0', 'resource', 'id']
         result: 'a'
@@ -22,6 +30,7 @@ queries:
         result: 'b'
   - query: {resourceType: 'Patient', queryString: '_sort:desc=name'}
     total: 4
+    indexed_order: true
     probes:
       - path: ['entry', '0', 'resource', 'id']
         result: 'd'
@@ -29,6 +38,7 @@ queries:
         result: 'c'
   - query: {resourceType: 'Patient', queryString: '_sort=birthdate'}
     total: 4
+    indexed_order: true
     probes:
       - path: ['entry', '0', 'resource', 'id']
         result: 'd'
@@ -36,6 +46,7 @@ queries:
         result: 'c'
   - query: {resourceType: 'Patient', queryString: '_sort:desc=birthdate'}
     total: 4
+    indexed_order: true
     probes:
       - path: ['entry', '0', 'resource', 'id']
         result: 'a'
@@ -43,23 +54,27 @@ queries:
         result: 'b'
   - query: {resourceType: 'Patient', queryString: '_sort=gender'}
     total: 4
+    indexed_order: true
     probes:
       - path: ['entry', '0', 'resource', 'id']
         result: 'd'
   - query: {resourceType: 'Patient', queryString: '_sort:desc=gender'}
     total: 4
+    indexed_order: true
     probes:
       - path: ['entry', '3', 'resource', 'id']
         result: 'd'
 
   - query: {resourceType: 'Encounter', queryString: '_sort=length'}
     total: 4
+    indexed_order: true
     probes:
       - path: ['entry', '0', 'resource', 'id']
         result: 'd'
 
   - query: {resourceType: 'Encounter', queryString: '_sort:desc=length'}
     total: 4
+    indexed_order: true
     probes:
       - path: ['entry', '0', 'resource', 'id']
         result: 'a'

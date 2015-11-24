@@ -12,6 +12,7 @@ TODO: handle units normalization
 it should be done in an extensible maner
 
     xpath = require('./xpath')
+    search_common = require('./search_common')
 
     TODO = -> throw new Error("TODO")
 
@@ -33,14 +34,15 @@ it should be done in an extensible maner
     SUPPORTED_TYPES = ['integer', 'Quantity', 'positiveInt']
     OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge', 'ne', 'missing']
 
-    extract_expr = (meta, tbl)->
-      from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
+    sf = search_common.get_search_functions({
+      extract:'fhir_extract_as_number',
+      sort:'fhir_extract_as_number',
+      SUPPORTED_TYPES:SUPPORTED_TYPES
+    })
+    extract_expr = sf.extract_expr
 
-      ['$fhir_extract_as_number'
-        ['$cast', from, ':json']
-        ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-        ['$quote', meta.elementType]]
-
+    exports.order_expression = sf.order_expression
+    exports.index_order = sf.index_order
 
     exports.normalize_operator = (meta, value)->
       if not meta.modifier and not value.prefix
@@ -53,7 +55,7 @@ it should be done in an extensible maner
 
     exports.handle = (tbl, meta, value)->
       unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Number Search: unsuported type #{JSON.stringify(meta)}")
+        throw new Error("Number Search: unsupported type #{JSON.stringify(meta)}")
 
       # unless OPERATORS.indexOf(meta.operator) > -1
       #   throw new Error("Number Search: Unsupported operator #{meta.operator}")
@@ -65,11 +67,6 @@ it should be done in an extensible maner
 
       [op, extract_expr(meta, tbl), value.value]
 
-    exports.order_expression = (tbl, meta)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("String Search: unsuported type #{JSON.stringify(meta)}")
-      op = if meta.operator == 'desc' then '$desc' else '$asc'
-      [op,extract_expr(meta, tbl)]
 
     exports.index = (plv8, metas)->
       meta = metas[0]

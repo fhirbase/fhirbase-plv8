@@ -22,6 +22,7 @@ See it for more details.
 
     date = require('./date')
     xpath = require('./xpath')
+    search_common = require('./search_common')
 
 
 Now we support only simple date data-types - i.e. date, dateTime and instant.
@@ -33,6 +34,11 @@ Now we support only simple date data-types - i.e. date, dateTime and instant.
       'Period'
       'Timing'
     ]
+    sf = search_common.get_search_functions({extract:'fhir_extract_as_daterange', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
+    extract_expr = sf.extract_expr
+
+    exports.order_expression = sf.order_expression
+    exports.index_order = sf.index_order
 
     str = (x)-> x.toString()
 
@@ -96,14 +102,6 @@ Function to convert query parameter into range.
 
     exports.value_to_range = value_to_range
 
-    extract_expr = (meta, tbl)->
-      from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
-
-      ['$fhir_extract_as_daterange'
-        ['$cast', from, ':json']
-        ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-        ['$quote', meta.elementType]]
-
     overlap_expr = (tbl, meta, value)->
       ["$&&", extract_expr(meta), value_to_range(meta.operator, value.value)]
 
@@ -159,16 +157,6 @@ and returns honeysql expression.
       op(tbl, meta, value)
 
     exports.handle = handle
-
-    exports.order_expression = (tbl, meta)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("String Search: unsuported type #{JSON.stringify(meta)}")
-      op = if meta.operator == 'desc' then '$desc' else '$asc'
-      [op,
-        ['$fhir_sort_as_date'
-          ['$cast', ['$q',":#{tbl}", ':resource'] , ':json']
-          ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-          ['$quote', meta.elementType]]]
 
     exports.index = (plv8, metas)->
       meta = metas[0]

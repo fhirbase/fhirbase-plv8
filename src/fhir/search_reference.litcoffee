@@ -80,7 +80,7 @@ Only equality operator is implemented.
 
     exports.handle = (tbl, meta, value)->
       unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Reference Search: unsuported type #{JSON.stringify(meta)}")
+        throw new Error("Reference Search: unsupported type #{JSON.stringify(meta)}")
 
       op = OPERATORS[meta.operator]
 

@@ -39,6 +39,10 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
       for idx in (spec.indices or [])
         search.fhir_unindex_parameter(plv8, idx)
         search.fhir_index_parameter(plv8, idx)
+        
+      for idx_ord in (spec.index_order or [])
+        search.fhir_unindex_order(plv8, idx_ord.query)
+        search.fhir_index_order(plv8, idx_ord.query)
 
       for res in spec.resources
         search.fhir_analyze_storage(plv8, resourceType: res)
@@ -46,14 +50,14 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
     spec.queries.forEach (q)->
       it "#{JSON.stringify(q.query)}", ->
 
-        plv8.execute "SET enable_seqscan = OFF;" if q.indexed
+        plv8.execute "SET enable_seqscan = OFF;" if (q.indexed or q.indexed_order)
 
         res = search.fhir_search(plv8, q.query)
         explain = JSON.stringify(search.fhir_explain_search(plv8, q.query))
 
         # console.log(JSON.stringify(res))
 
-        plv8.execute "SET enable_seqscan = ON;" if q.indexed
+        plv8.execute "SET enable_seqscan = ON;" if (q.indexed or q.indexed_order)
 
         if q.total
           assert.equal(res.total, q.total)
@@ -63,4 +67,6 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
         # console.log(explain)
 
         if q.indexed
-          assert(explain.indexOf("Index Cond") > -1, "Should be indexed but #{explain}") 
+          assert(explain.indexOf("Index Cond") > -1, "Should be indexed but #{explain}")
+        if q.indexed_order
+          assert((explain.indexOf("Index Scan") > -1) && (explain.indexOf("Scan Direction") > -1), "Should be indexed but #{explain}")

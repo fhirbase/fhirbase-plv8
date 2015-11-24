@@ -1,7 +1,11 @@
 title: Quantity Search
 resources: ['Observation']
-indices:
-  - {resourceType: 'Observation', name: 'value-quantity'}
+# indices:
+#  - {resourceType: 'Observation', name: 'value-quantity'}
+
+
+index_order:
+  - query: {resourceType: "Observation", name: "value-quantity"}
 
 fixtures:
   - resourceType: 'Observation'
@@ -49,11 +53,13 @@ queries:
     total:  3
   - query: {resourceType: 'Observation', queryString:  '_sort=value-quantity'}
     total:  4
+    indexed_order: true
     probes:
       - path: ['entry', '0', 'resource', 'id']
         result: 'obs-3'
   - query: {resourceType: 'Observation', queryString:  '_sort:desc=value-quantity'}
     total:  4
+    indexed_order: true
     probes:
       - path: ['entry', '3', 'resource', 'id']
         result: 'obs-3'
