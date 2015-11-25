@@ -14,7 +14,7 @@ validate_create_resource = (resource)->
     text:{div: "<div>Resource should have [resourceType] element</div>"}
     issue: [
       severity: 'error'
-      code: 'structure' 
+      code: 'structure'
     ]
 
 table_not_exists = (resourceType)->
@@ -22,7 +22,7 @@ table_not_exists = (resourceType)->
   text: {div: "<div>Storage for #{resourceType} not exists</div>"}
   issue: [
     severity: 'error'
-    code: 'not-supported' 
+    code: 'not-supported'
   ]
 
 assert = (pred, msg)-> throw new Error("Asserted: #{msg}") unless pred
@@ -43,7 +43,7 @@ ensure_table = (plv8, resourceType)->
 
 fhir_create_resource = (plv8, query)->
   resource = query.resource
-  throw new Error("expected arguments {resource: ...}") unless resource 
+  throw new Error("expected arguments {resource: ...}") unless resource
   errors = validate_create_resource(resource)
   return errors if errors
 
@@ -58,11 +58,22 @@ fhir_create_resource = (plv8, query)->
     else if result.entry.length > 1
       return outcome.non_selective(query.ifNotExist)
 
+  # create or update
+  if resource.id
+    q =
+      select: sql.raw('id')
+      from: sql.q(hx_table_name)
+      where: {id: resource.id}
+
+    res = utils.exec(plv8,q)
+    row = res[0]
+
+    if row
+      return fhir_update_resource(plv8, query)
 
   id = resource.id || utils.uuid(plv8)
   resource.id = id
   version_id = (resource.meta && resource.meta.versionId) ||  utils.uuid(plv8)
-
 
   ensure_meta resource,
     versionId: version_id
@@ -140,7 +151,7 @@ exports.fhir_vread_resource.plv8_signature = ['json', 'json']
 
 fhir_update_resource = (plv8, query)->
   resource = query.resource
-  throw new Error("expected arguments {resource: ...}") unless resource 
+  throw new Error("expected arguments {resource: ...}") unless resource
 
   [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
   return errors if errors

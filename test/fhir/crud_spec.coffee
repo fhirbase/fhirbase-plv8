@@ -36,12 +36,17 @@ describe "CORE: CRUD spec", ->
     )
     assert.equal(same.id, created.id)
 
-    outcome = crud.fhir_create_resource(plv8,
-      ifNotExist: 'active=true'
-      resource: {resourceType: 'Patient', identifier: [{value: '007'}], name: [{given: ['bond']}]}
-    )
-    assert.equal(outcome.resourceType, 'OperationOutcome')
+  it "create or update", ->
+    noise = crud.fhir_create_resource(plv8, resource: {resourceType: 'Patient', active: true, id: "foobar"})
 
+    created = crud.fhir_create_resource(plv8,
+      resource: {resourceType: 'Patient', active: false, id: "foobar"}
+    )
+    assert.equal(created.id , "foobar")
+    assert.equal(created.resourceType , "Patient")
+
+    read = crud.fhir_read_resource(plv8, {id: "foobar", resourceType: 'Patient'})
+    assert.equal(read.active, false)
 
   it "read", ->
     created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users', name: 'admin'})
