@@ -15,7 +15,6 @@ assert = (x, msg)-> throw new Error(x) unless x
 exports.isFn = (v)->
   typeof v == "function"
 
-exports
 isObject = (v)->
   !!v && not Array.isArray(v) && v.constructor == Object
 

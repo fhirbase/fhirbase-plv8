@@ -50,6 +50,7 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
 
         res = search.fhir_search(plv8, q.query)
         explain = JSON.stringify(search.fhir_explain_search(plv8, q.query))
+        # console.log(JSON.stringify(search.fhir_search_sql(plv8, q.query)))
 
         # console.log(JSON.stringify(res))
 
