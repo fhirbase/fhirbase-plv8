@@ -1,5 +1,6 @@
 # .travis.yml
 language: node_js
+dist: trusty
 node_js:
     - "0.12"
 addons:
