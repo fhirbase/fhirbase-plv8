@@ -51,7 +51,10 @@ bundles = [
   require('../fhir/search-parameters.json')
   require('../fhir/profiles-types.json')
   require('../fhir/profiles-resources.json')
-  require('../fhir/valuesets.json')
+  if process.env.TRAVIS
+    require('../fhir/valuesets-minified.json')
+  else
+    require('../fhir/valuesets.json')
   require('../fhir/v3-codesystems.json')
   require('../fhir/v2-tables.json')
 ]
