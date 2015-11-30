@@ -1,6 +1,6 @@
 mkdir -p tmp
 coffee  utils/generate_migrations.coffee -n > tmp/schema.sql
-coffee  utils/patch_3.coffee -n > tmp/patch_3.sql
+cp utils/patch_3.sql tmp/patch_3.sql
 plpl/bin/plpl compile tmp/code.sql
 cat tmp/schema.sql > tmp/build.sql
 cat tmp/patch_3.sql >> tmp/build.sql
