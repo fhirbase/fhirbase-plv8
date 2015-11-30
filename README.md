@@ -13,7 +13,7 @@ This is new version of fhirbase, with support of DSTU-2 and planned support many
 
 *  Extended query syntax
 *  Terminologies
-*  Profile validation 
+*  Profile validation
 *  References validateion
 *  ValueSet validateion
 
@@ -154,7 +154,7 @@ SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith"}');
 SELECT fhir_index_parameter('{"resourceType": "Patient", "name": "name"}');
 SELECT fhir_unindex_parameter('{"resourceType": "Patient", "name": "name"}');
 
-SELECT fhir_search_sql('{"resourceType": "Patient", "queryString": "name=smith"}'); 
+SELECT fhir_search_sql('{"resourceType": "Patient", "queryString": "name=smith"}');
 -- see generated SQL
 
 SELECT fhir_explain_search('{"resourceType": "Patient", "queryString": "name=smith"}');
@@ -162,6 +162,8 @@ SELECT fhir_explain_search('{"resourceType": "Patient", "queryString": "name=smi
 
 SELECT fhir_delete_resource('{"resourceType": "Patient", "id": "smith"}');
 
+-- expand valueset
+SELECT fhir_valueset_expand('{"id": "issue-types", "filter": "err"}');
 
 ---
 
