@@ -36,17 +36,30 @@ describe "CORE: CRUD spec", ->
     )
     assert.equal(same.id, created.id)
 
-  it "create or update", ->
+  it "create with id", ->
     noise = crud.fhir_create_resource(plv8, resource: {resourceType: 'Patient', active: true, id: "foobar"})
 
     created = crud.fhir_create_resource(plv8,
-      resource: {resourceType: 'Patient', active: false, id: "foobar"}
+      resource: {resourceType: 'Patient', active: false, id: "test_id"}
     )
-    assert.equal(created.id , "foobar")
+    assert.equal(created.id , "test_id")
     assert.equal(created.resourceType , "Patient")
 
-    read = crud.fhir_read_resource(plv8, {id: "foobar", resourceType: 'Patient'})
+    read = crud.fhir_read_resource(plv8, {id: "test_id", resourceType: 'Patient'})
     assert.equal(read.active, false)
+
+  it "create on update", ->
+    noise = crud.fhir_update_resource(plv8, resource: {resourceType: 'Patient', active: true, id: "foobar"})
+
+    created = crud.fhir_update_resource(plv8,
+      resource: {resourceType: 'Patient', active: false, id: "pt_id"}
+    )
+    assert.equal(created.id , "pt_id")
+    assert.equal(created.resourceType , "Patient")
+
+    read = crud.fhir_read_resource(plv8, {id: "pt_id", resourceType: 'Patient'})
+    assert.equal(read.active, false)
+
 
   it "read", ->
     created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users', name: 'admin'})
@@ -95,7 +108,7 @@ describe "CORE: CRUD spec", ->
 
   it "update unexisting", ->
     updated = crud.fhir_update_resource(plv8, resource: {resourceType: "Users", id: "unexisting"})
-    assert.equal(updated.resourceType, 'OperationOutcome')
+    assert.equal(updated.id, 'unexisting')
 
   it "conditional update", ->
     noise = crud.fhir_create_resource(plv8, resource: {resourceType: 'Patient', active: true})
@@ -133,6 +146,8 @@ describe "CORE: CRUD spec", ->
     assert.equal(outcome.resourceType, 'OperationOutcome')
 
   it "delete", ->
+    noise = crud.fhir_delete_resource(plv8, {id: 'fake_id', resourceType: 'Users'})
+
     created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})
     read = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users'})
 

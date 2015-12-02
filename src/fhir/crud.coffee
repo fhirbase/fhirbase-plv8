@@ -67,9 +67,7 @@ fhir_create_resource = (plv8, query)->
 
     res = utils.exec(plv8,q)
     row = res[0]
-
-    if row
-      return fhir_update_resource(plv8, query)
+    throw new Error("resource with given id already exist ") if row
 
   id = resource.id || utils.uuid(plv8)
   resource.id = id
@@ -167,6 +165,15 @@ fhir_update_resource = (plv8, query)->
     else if result.entry.length > 1
       return outcome.non_selective(query.ifNotExist)
   else
+    q =
+      select: sql.raw('*')
+      from: sql.q(hx_table_name)
+      where: {id: resource.id}
+    res = utils.exec(plv8,q)
+    row = res[0]
+    unless row
+      return fhir_create_resource(plv8, query)
+
     id = resource.id
     assert(id, 'resource.id')
     assert(resource.resourceType, 'resource.resourceType')
