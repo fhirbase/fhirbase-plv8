@@ -71,4 +71,7 @@ describe "terminology", ->
     res = vs.expansion.contains
     assert.equal(res.length, 1)
 
-    crud.fhir_terminate_resource(plv8, {resourceType: 'ValueSet', id: TEST_VS.id})
+    crud.fhir_delete_resource(plv8, {resourceType: 'ValueSet', id: TEST_VS.id})
+
+    res = expand(id: "mytestvs")
+    assert.equal(res.resourceType, 'OperationOutcome')

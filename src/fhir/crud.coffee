@@ -228,6 +228,10 @@ fhir_update_resource = (plv8, query)->
       valid_from: sql.now
       valid_to: sql.infinity
 
+  hooks = AFTER_HOOKS[resource.resourceType]
+  for hook in (hooks || []) when hook
+    hook(plv8, resource)
+
   helpers.postprocess_resource(resource)
 
 
@@ -278,6 +282,10 @@ exports.fhir_delete_resource = (plv8, resource)->
       resource: sql.jsonb(resource)
       valid_from: sql.now
       valid_to: sql.now
+
+  hooks = AFTER_HOOKS[resource.resourceType]
+  for hook in (hooks || []) when hook
+    hook(plv8, resource)
 
   helpers.postprocess_resource(resource)
 
