@@ -13,7 +13,7 @@ fixtures:
   - {resourceType: 'Patient', name: [{given: ['ivan']}], active: true , birthDate: '1981'}
   - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}], birthDate: '1988', multipleBirthInteger: 3}
   - {resourceType: 'Patient', name: [{given: ['Cheburashka']}], birthDate: '1972', multipleBirthInteger: 2}
-  - {resourceType: "Procedure", performedPeriod : { start : "2014-12-01 09:00:00",  end : "2014-12-01 10:00:00"}}
+  - {resourceType: "Procedure", performedPeriod : { start : "2014-12-01 09:00:00.555",  end : "2014-12-01 10:00:00"}}
   - {resourceType: "Procedure", performedPeriod : { start : "2014-12-02 00:00:00",  end : "2014-12-02 10:00:00"}}
   - {resourceType: "Encounter", period : { start : "2014-12-02T10:00:00+11",  end : "2014-12-02T11:00:00+11"}}
 
@@ -72,6 +72,8 @@ queries:
   - query: {resourceType: 'Encounter', queryString: 'date=2014-12-02T11:00:00+11'}
     total: 1 
   - query: {resourceType: 'Encounter', queryString: 'date=2014-12-02T00:00:00Z'}
+    total: 1 
+  - query: {resourceType: 'Encounter', queryString: 'date=2014-12-02T00:00:00.555Z'}
     total: 1 
   - query: {resourceType: 'Encounter', queryString: 'date=2014-12-02T05:00:00+05'}
     total: 1 
