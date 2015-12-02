@@ -8,6 +8,12 @@ outcome = require('./outcome')
 date = require('./date')
 search = require('./search')
 
+term = require('./terminology')
+
+AFTER_HOOKS = {
+  ValueSet: [term.fhir_valueset_after_changed]
+}
+
 validate_create_resource = (resource)->
   unless resource.resourceType
     resourceType: "OperationOutcome"
@@ -95,6 +101,10 @@ fhir_create_resource = (plv8, query)->
       resource: sql.jsonb(resource)
       valid_from: sql.now
       valid_to: sql.now
+
+  hooks = AFTER_HOOKS[resource.resourceType]
+  for hook in (hooks || []) when hook
+    hook(plv8, resource)
 
   helpers.postprocess_resource(resource)
 
@@ -272,6 +282,29 @@ exports.fhir_delete_resource = (plv8, resource)->
   helpers.postprocess_resource(resource)
 
 exports.fhir_delete_resource.plv8_signature = ['json', 'json']
+
+exports.fhir_terminate_resource = (plv8, resource)->
+  id = resource.id
+  assert(id, 'resource.id')
+  assert(resource.resourceType, 'resource.resourceType')
+
+  [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
+  return errors if errors
+
+  res = []
+  res.push utils.exec plv8,
+    delete: sql.q(table_name)
+    where: { id: id }
+    returning: '*'
+
+  res.push utils.exec plv8,
+    delete: sql.q(hx_table_name)
+    where: { id: id }
+    returning: '*'
+
+  res
+
+exports.fhir_terminate_resource.plv8_signature = ['json', 'json']
 
 exports.fhir_load = (plv8, bundle)->
   res = []

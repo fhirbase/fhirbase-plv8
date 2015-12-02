@@ -48,3 +48,13 @@ exports.conflict = (msg)->
       diagnostics: msg
     }
   ]
+
+exports.valueset_not_found = (id)->
+  resourceType: "OperationOutcome"
+  issue: [
+    {
+      severity: 'error'
+      code: 'not-found'
+      diagnostics: "ValueSet with id \"#{id}\" does not exist or not supported"
+    }
+  ]
