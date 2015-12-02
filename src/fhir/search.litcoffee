@@ -378,7 +378,7 @@ to analyze, what's happening under the hud.
       idx_db = ensure_index(plv8)
       query = sql(_search_sql(plv8, idx_db, query).hsql)
       query[0] = "EXPLAIN ( ANALYZE, FORMAT JSON ) #{query[0]}"
-      plv8.execute.call(plv8, query[0], query[1..-1])
+      plv8.execute(query[0], query[1..-1])
 
     fhir_explain_search.plv8_signature = ['json', 'json']
     exports.fhir_explain_search = fhir_explain_search
