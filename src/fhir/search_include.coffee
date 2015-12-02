@@ -1,5 +1,6 @@
 xpath = require('./xpath')
 lang = require('../lang')
+compat = require('../compat')
 utils = require('../core/utils')
 namings = require('../core/namings')
 search_reference = require('./search_reference')
@@ -26,7 +27,7 @@ get_includes = (includes, resources)->
   ), {})
 
 load_resources = (plv8, hsql)->
-  utils.exec(plv8, hsql).map((x)-> JSON.parse(x.resource))
+  utils.exec(plv8, hsql).map((x)-> compat.parse(plv8, x.resource))
 
 exports.load_includes = (plv8, includes, resources)->
   res = []

@@ -1,4 +1,5 @@
 utils = require('../core/utils')
+compat = require('../compat')
 
 SYSTEM_HOOKS = {
 
@@ -55,4 +56,4 @@ exports.wrap_hook = (plv8, hook, data)->
   for h in (hook || [])
     rows = plv8.execute("SELECT #{h.hook_function_name}($1::json) res", [JSON.stringify(current)])
     current = rows[0] && rows[0].res
-  JSON.parse(current) if current
+  compat.parse(plv8, current) if current

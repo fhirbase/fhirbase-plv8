@@ -7,6 +7,7 @@ helpers = require('./search_helpers')
 outcome = require('./outcome')
 date = require('./date')
 search = require('./search')
+compat = require('../compat')
 
 term = require('./terminology')
 
@@ -129,7 +130,7 @@ fhir_read_resource = (plv8, query)->
   unless row
     return outcome.not_found(query.id)
 
-  helpers.postprocess_resource(JSON.parse(row.resource))
+  helpers.postprocess_resource(compat.parse(plv8, row.resource))
 
 exports.fhir_read_resource = fhir_read_resource
 exports.fhir_read_resource.plv8_signature = ['json', 'json']
@@ -153,7 +154,7 @@ exports.fhir_vread_resource = (plv8, query)->
   unless row
     return outcome.not_found(query.id)
 
-  helpers.postprocess_resource(JSON.parse(row.resource))
+  helpers.postprocess_resource(compat.parse(plv8, row.resource))
 
 exports.fhir_vread_resource.plv8_signature = ['json', 'json']
 

@@ -1,6 +1,7 @@
 utils = require('../core/utils')
 sql = require('../honey')
 namings = require('../core/namings')
+compat = require('../compat')
 
 exports.getter = (plv8, rt, query)->
   tbl_name = namings.table_name(plv8, rt)
@@ -21,4 +22,4 @@ exports.getter = (plv8, rt, query)->
   if res.length < 1
     throw new Error("Not found #{rt} #{JSON.stringify(query)}")
 
-  res[0] && JSON.parse(res[0].resource)
+  res[0] && compat.parse(plv8, res[0].resource)
