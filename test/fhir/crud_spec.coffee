@@ -49,17 +49,23 @@ describe "CORE: CRUD spec", ->
     assert.equal(read.active, false)
 
   it "create on update", ->
-    noise = crud.fhir_update_resource(plv8, resource: {resourceType: 'Patient', active: true, id: "foobar"})
-
     created = crud.fhir_update_resource(plv8,
       resource: {resourceType: 'Patient', active: false, id: "pt_id"}
     )
     assert.equal(created.id , "pt_id")
     assert.equal(created.resourceType , "Patient")
+    
+    crud.fhir_delete_resource(plv8, {id: 'pt_id', resourceType: 'Patient'})
+
+    t = crud.fhir_update_resource(plv8,
+      resource: {resourceType: 'Patient', active: true, id: "pt_id"}
+    )
+
+    assert.equal(t.id , "pt_id")
+    assert.equal(t.resourceType , "Patient")
 
     read = crud.fhir_read_resource(plv8, {id: "pt_id", resourceType: 'Patient'})
-    assert.equal(read.active, false)
-
+    assert.equal(read.active, true)
 
   it "read", ->
     created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users', name: 'admin'})

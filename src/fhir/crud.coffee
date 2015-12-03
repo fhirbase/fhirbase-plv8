@@ -62,7 +62,7 @@ fhir_create_resource = (plv8, query)->
   if resource.id
     q =
       select: sql.raw('id')
-      from: sql.q(hx_table_name)
+      from: sql.q(table_name)
       where: {id: resource.id}
 
     res = utils.exec(plv8,q)
@@ -167,7 +167,7 @@ fhir_update_resource = (plv8, query)->
   else
     q =
       select: sql.raw('*')
-      from: sql.q(hx_table_name)
+      from: sql.q(table_name)
       where: {id: resource.id}
     res = utils.exec(plv8,q)
     row = res[0]
