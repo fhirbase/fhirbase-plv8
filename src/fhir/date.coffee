@@ -9,6 +9,12 @@ extract_tz = (date)->
     date = date.substring(0, date_length - 3)
   [date, tz]
 
+extract_msecs = (date, pad_with)->
+  msecs = date.match(/[.][0-9]+$/)
+  return [date, ".#{pad_with.substring(0,5)}"] unless msecs
+  msecs = msecs[0]
+  [date.replace(msecs, ''), msecs + pad_with.substring(0, 6 - msecs.length)]
+
 exports.to_lower_date = (date)->
   return null unless date
   date = date.toString()
@@ -16,6 +22,11 @@ exports.to_lower_date = (date)->
   return date if date == '-infinity'
 
   [date, tz] = extract_tz(date)
+
+  if date.length > 16
+    [date, ms] = extract_msecs(date, "00000")
+  else
+    ms = ''
 
   switch date.length
     #2010
@@ -40,9 +51,9 @@ exports.to_lower_date = (date)->
     #2010-02-03T10
     when 13 then "#{date}:00#{tz}"
     #2010-03-05T23:50
-    when 16 then "#{date}#{tz}"
+    when 16 then "#{date}:00.00000#{tz}"
     #2010-03-05T23:50:30
-    when 19 then "#{date}#{tz}"
+    when 19 then "#{date}#{ms}#{tz}"
     else
       throw new Error("date.to_range: Don't know how to handle #{date}")
 
@@ -53,6 +64,9 @@ exports.to_upper_date = (date)->
   return date if date == 'infinity'
 
   [date, tz] = extract_tz(date)
+  ms = ''
+  if date.length > 16
+    [date, ms] = extract_msecs(date, "99999")
 
   switch date.length
     #2010
@@ -84,8 +98,7 @@ exports.to_upper_date = (date)->
     when 16 then "#{date}:59.99999#{tz}"
 
     #2010-03-05T23:50:30
-    when 19 then "#{date}.99999#{tz}"
-
+    when 19 then "#{date}#{ms}#{tz}"
     else
       throw new Error("date.to_range: Don't know how to handle #{date}")
 
@@ -95,6 +108,11 @@ exports.to_range = (date)->
   return null if date.trim() == ''
 
   [date, tz] = extract_tz(date)
+  hms = ''
+  lms = ''
+  if date.length > 16
+    [date, hms] = extract_msecs(date, "99999")
+    lms = hms.replace(/9/g, '0')
 
   switch date.length
     #2010
@@ -123,10 +141,10 @@ exports.to_range = (date)->
     when 13 then "[#{date}:00#{tz},#{date}:59:59.99999#{tz}]"
 
     #2010-03-05T23:50
-    when 16 then "[#{date}#{tz},#{date}:59.99999#{tz}]"
+    when 16 then "[#{date}:00.00000#{tz},#{date}:59.99999#{hms}#{tz}]"
 
     #2010-03-05T23:50:30
-    when 19 then "[#{date}#{tz},#{date}.99999#{tz}]"
+    when 19 then "[#{date}#{lms}#{tz},#{date}#{hms}#{tz}]"
 
     # Should we fail on wrong date?
     else

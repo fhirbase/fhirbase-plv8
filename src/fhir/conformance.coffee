@@ -1,4 +1,5 @@
 utils = require('../core/utils')
+compat = require('../compat')
 
 exports.fhir_conformance = (plv8, base)->
   base.resourceType = 'Conformance'
@@ -21,7 +22,7 @@ exports.fhir_conformance = (plv8, base)->
     select: ':*'
     from: ':structuredefinition'
     where: ['$in', ':lower(id)', resources]
-  ).map((x)-> JSON.parse(x.resource))
+  ).map((x)-> compat.parse(plv8, x.resource))
 
   base.rest = [
     mode: 'server'

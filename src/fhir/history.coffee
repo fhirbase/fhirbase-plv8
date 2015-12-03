@@ -2,6 +2,7 @@ namings = require('../core/namings')
 pg_meta = require('../core/pg_meta')
 utils = require('../core/utils')
 sql = require('../honey')
+compat = require('../compat')
 bundle = require('./bundle')
 outcome = require('./outcome')
 date = require('./date')
@@ -51,7 +52,7 @@ exports.fhir_resource_history = (plv8, query)->
     select: sql.raw('*')
     from:   sql.q(hx_table_name)
     where:  {id: query.id}
-  ).map((x)-> JSON.parse(x.resource))
+  ).map((x)-> compat.parse(plv8, x.resource))
 
   bundle.history_bundle(resources)
 
@@ -102,7 +103,7 @@ exports.fhir_resource_type_history = (plv8, query)->
     hsql.where = ['$ge', ':valid_from', params._since]
 
   resources = utils.exec( plv8, hsql)
-    .map((x)-> JSON.parse(x.resource))
+    .map((x)-> compat.parse(plv8, x.resource))
 
   bundle.history_bundle(resources)
 

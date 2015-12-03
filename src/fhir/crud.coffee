@@ -7,6 +7,13 @@ helpers = require('./search_helpers')
 outcome = require('./outcome')
 date = require('./date')
 search = require('./search')
+compat = require('../compat')
+
+term = require('./terminology')
+
+AFTER_HOOKS = {
+  ValueSet: [term.fhir_valueset_after_changed]
+}
 
 validate_create_resource = (resource)->
   unless resource.resourceType
@@ -96,6 +103,10 @@ fhir_create_resource = (plv8, query)->
       valid_from: sql.now
       valid_to: sql.now
 
+  hooks = AFTER_HOOKS[resource.resourceType]
+  for hook in (hooks || []) when hook
+    hook(plv8, resource)
+
   helpers.postprocess_resource(resource)
 
 exports.fhir_create_resource = fhir_create_resource
@@ -119,7 +130,7 @@ fhir_read_resource = (plv8, query)->
   unless row
     return outcome.not_found(query.id)
 
-  helpers.postprocess_resource(JSON.parse(row.resource))
+  helpers.postprocess_resource(compat.parse(plv8, row.resource))
 
 exports.fhir_read_resource = fhir_read_resource
 exports.fhir_read_resource.plv8_signature = ['json', 'json']
@@ -143,7 +154,7 @@ exports.fhir_vread_resource = (plv8, query)->
   unless row
     return outcome.not_found(query.id)
 
-  helpers.postprocess_resource(JSON.parse(row.resource))
+  helpers.postprocess_resource(compat.parse(plv8, row.resource))
 
 exports.fhir_vread_resource.plv8_signature = ['json', 'json']
 
@@ -218,6 +229,10 @@ fhir_update_resource = (plv8, query)->
       valid_from: sql.now
       valid_to: sql.infinity
 
+  hooks = AFTER_HOOKS[resource.resourceType]
+  for hook in (hooks || []) when hook
+    hook(plv8, resource)
+
   helpers.postprocess_resource(resource)
 
 
@@ -269,9 +284,36 @@ exports.fhir_delete_resource = (plv8, resource)->
       valid_from: sql.now
       valid_to: sql.now
 
+  hooks = AFTER_HOOKS[resource.resourceType]
+  for hook in (hooks || []) when hook
+    hook(plv8, resource)
+
   helpers.postprocess_resource(resource)
 
 exports.fhir_delete_resource.plv8_signature = ['json', 'json']
+
+exports.fhir_terminate_resource = (plv8, resource)->
+  id = resource.id
+  assert(id, 'resource.id')
+  assert(resource.resourceType, 'resource.resourceType')
+
+  [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
+  return errors if errors
+
+  res = []
+  res.push utils.exec plv8,
+    delete: sql.q(table_name)
+    where: { id: id }
+    returning: '*'
+
+  res.push utils.exec plv8,
+    delete: sql.q(hx_table_name)
+    where: { id: id }
+    returning: '*'
+
+  res
+
+exports.fhir_terminate_resource.plv8_signature = ['json', 'json']
 
 exports.fhir_load = (plv8, bundle)->
   res = []

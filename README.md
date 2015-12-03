@@ -160,7 +160,11 @@ SELECT fhir_search_sql('{"resourceType": "Patient", "queryString": "name=smith"}
 SELECT fhir_explain_search('{"resourceType": "Patient", "queryString": "name=smith"}');
 -- see execution plan
 
+-- mark resource as deleted (i.e. keep history)
 SELECT fhir_delete_resource('{"resourceType": "Patient", "id": "smith"}');
+
+-- completely delete resource and it history
+SELECT fhir_terminate_resource('{"resourceType": "Patient", "id": "smith"}');
 
 -- expand valueset
 SELECT fhir_valueset_expand('{"id": "issue-types", "filter": "err"}');

@@ -30,6 +30,7 @@ so the code split as much as possible  into small modules
     pg_meta = require('../core/pg_meta')
     sql = require('../honey')
     lang = require('../lang')
+    compat = require('../compat')
 
 
 For every search type we have dedicated module,
@@ -92,7 +93,7 @@ Then we are returning  resulting Bundle.
       expr = res.query
 
       resource_rows = utils.exec(plv8, honey)
-      resources = resource_rows.map((x)-> JSON.parse(x.resource))
+      resources = resource_rows.map((x)-> compat.parse(plv8, x.resource))
 
       if !honey.limit or (honey.limit && resource_rows.length < honey.limit)
         count = resource_rows.length

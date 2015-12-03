@@ -1,11 +1,23 @@
 drop table if exists  _valueset_expansion;
 create table _valueset_expansion  (
-  id serial primary key,
-  valueset_id text not null,
-  parent_code text,
-  system text,
-  code text not null,
-  display text
+    id serial primary key,
+    valueset_id text not null,
+    parent_code text,
+    system text,
+    code text not null,
+    display text
+);
+
+
+-- just experiment
+drop table if exists  _fhirbase_hook;
+create table _fhirbase_hook  (
+    id serial primary key,
+    function_name text not null,
+    system boolean default false,
+    phase text not null,
+    hook_function_name text not null,
+    weight integer
 );
 
 WITH RECURSIVE concepts(vid, system, parent_code, concept, children) AS (
@@ -59,3 +71,6 @@ INSERT INTO _valueset_expansion (valueset_id, system, parent_code, code, display
 SELECT
   vid, system, parent_code, concept->>'code' as code, concept->>'display' as display
 FROM concepts;
+
+CREATE INDEX idx_valueset_expansion_ilike ON _valueset_expansion  USING GIN (name, display gin_trgm_ops);
+CREATE INDEX idx_valueset_valuset_id ON _valueset_expansion (valueset_id);

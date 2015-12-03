@@ -1,15 +1,33 @@
 utils = require('../core/utils')
+outcome = require('./outcome')
 
 exports.fhir_expand_valueset = (plv8, query)->
   cond = ['$and', ['$eq',':valueset_id',query.id]]
 
-  if query.filter
-    cond.push ['$ilike', ':display', "%#{query.filter}%"]
-
-  rows = utils.exec plv8,
-    select: ':*'
+  existance = utils.exec plv8,
+    select: [':valueset_id']
     from: ':_valueset_expansion'
     where: cond
+    limit: 1
+
+  unless existance.length == 1
+    return outcome.valueset_not_found(query.id)
+
+  if query.filter
+    cond.push ['$or', ['$ilike', ':display', "%#{query.filter}%"]
+                      ['$ilike', ':code', "%#{query.filter}%"]]
+
+
+  rows = utils.exec plv8,
+    select: [':code', ':display', ':system']
+    from: ':_valueset_expansion'
+    where: cond
+    order: [':system', ':parent_code', ':code']
+
+  id: query.id
+  resourceType: 'ValueSet'
+  expansion:
+    contains: rows
 
 exports.fhir_expand_valueset.plv8_signature = ['json', 'json']
 
@@ -25,7 +43,7 @@ EXPAND_CODE_SYSTEMS_SQL = """
           jsonb_array_elements(resource#>'{codeSystem,concept}') as concept
         FROM valueset
         WHERE jsonb_typeof(resource#>'{codeSystem}') IS NOT NULL
-        AND id = ?
+        AND id = $1
       ) _
 
       UNION ALL
@@ -58,7 +76,7 @@ EXPAND_INCLUDES_SQL = """
               jsonb_array_elements(resource#>'{compose,include}') as include
             FROM valueset
             WHERE jsonb_typeof(resource#>'{compose,include}') IS NOT NULL
-            AND id = ?
+            AND id = $1
           ) _
       ) _
   )
@@ -68,9 +86,10 @@ EXPAND_INCLUDES_SQL = """
   FROM concepts
 """
 
-exports.fhir_valueset_after_created = (plv8, resource)->
+exports.fhir_valueset_after_changed = (plv8, resource)->
   return unless resource.id
-  res = plv8.execute EXPAND_CODE_SYSTEMS_SQL, resource.id
-  res = plv8.execute EXPAND_INCLUDES_SQL, resource.id
+  res = plv8.execute "DELETE FROM _valueset_expansion WHERE valueset_id = $1", [resource.id]
+  res = plv8.execute EXPAND_CODE_SYSTEMS_SQL, [resource.id]
+  res = plv8.execute EXPAND_INCLUDES_SQL, [resource.id]
 
-exports.fhir_valueset_after_created.plv8_signature = ['json', 'json']
+exports.fhir_valueset_after_changed.plv8_signature = ['json', 'json']

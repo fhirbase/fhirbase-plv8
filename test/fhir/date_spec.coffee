@@ -14,6 +14,5 @@ specs.forEach ([meth, tests])->
         for _ in [0..10000]
           date[meth](k)
         d2 = new Date()
-
         console.log "#{meth}(#{k}) Time of 10K ops #{(d2-d1)} ms"
 
