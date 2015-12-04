@@ -72,5 +72,5 @@ SELECT
   vid, system, parent_code, concept->>'code' as code, concept->>'display' as display
 FROM concepts;
 
-CREATE INDEX idx_valueset_expansion_ilike ON _valueset_expansion  USING GIN (name, display gin_trgm_ops);
+CREATE INDEX idx_valueset_expansion_ilike ON _valueset_expansion  USING GIN (code gin_trgm_ops, display gin_trgm_ops);
 CREATE INDEX idx_valueset_valuset_id ON _valueset_expansion (valueset_id);
