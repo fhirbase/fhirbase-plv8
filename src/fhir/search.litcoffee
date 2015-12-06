@@ -170,6 +170,34 @@ To build search query we need to
         hsql.where = expr
       hsql
 
+    _order_sql = (plv8, idx, query)->
+      unless query.resourceType
+        throw new Error("Expected query.resourceType attribute")
+
+      next_alias = mk_alias()
+
+      alias = next_alias()
+
+      expr = parser.parse(query.resourceType, query.queryString || "")
+      expr = expand.expand(idx, expr)
+      expr = normalize_operators(expr)
+
+      ordering = ''
+      if expr.sort
+        ordering = order_hsql(alias, expr.sort)
+
+      hsql =
+        select: ':*'
+        from: ['$alias', ['$q', namings.table_name(plv8, expr.query)], alias]
+        where: expr.where
+        order: ordering
+
+      if expr.joins
+        hsql.join = lang.mapcat expr.joins, (x)->
+          mk_join(plv8, alias, next_alias, x)
+
+      {hsql: hsql, query: expr}
+
     _search_sql = (plv8, idx, query)->
         unless query.resourceType
           throw new Error("Expected query.resourceType attribute")
@@ -335,6 +363,23 @@ awaiting query.resourceType and query.name - name of parameter
     fhir_index_parameter.plv8_signature = ['json', 'json']
     exports.fhir_index_parameter = fhir_index_parameter
 
+`fhir_index_order(query)` function creates index for parameter sort,
+awaiting query.resourceType and query.name - name of parameter
+
+    fhir_index_order = (plv8, query)->
+      metas = expand_parameter(plv8, query)
+      h = ensure_handler(plv8, metas)
+      idx_infos = h.index_order(plv8, metas)
+
+      for idx_info in idx_infos
+       if pg_meta.index_exists(plv8, idx_info.name)
+         {status: 'error', message: "Index #{idx_info.name} already exists"}
+       else
+         utils.exec(plv8, idx_info.ddl)
+         {status: 'ok', message: "Index #{idx_info.name} was created"}
+
+    fhir_index_order.plv8_signature = ['json', 'json']
+    exports.fhir_index_order = fhir_index_order
 
     fhir_unindex_parameter = (plv8, query)->
       meta = expand_parameter(plv8, query)
@@ -349,6 +394,20 @@ awaiting query.resourceType and query.name - name of parameter
 
     fhir_unindex_parameter.plv8_signature = ['json', 'json']
     exports.fhir_unindex_parameter = fhir_unindex_parameter
+
+    fhir_unindex_order = (plv8, query)->
+      meta = expand_parameter(plv8, query)
+      h = ensure_handler(plv8, meta)
+      idx_infos = h.index_order(plv8, meta)
+      for idx_info in idx_infos
+        if pg_meta.index_exists(plv8, idx_info.name)
+          utils.exec(plv8, drop: 'index', name: ":#{idx_info.name}")
+          {status: 'ok', message: "Index #{idx_info.name} was dropped"}
+        else
+          {status: 'error', message: "Index #{idx_info.name} does not exist"}
+
+    fhir_unindex_order.plv8_signature = ['json', 'json']
+    exports.fhir_unindex_order = fhir_unindex_order
 
 ## Maintains
 

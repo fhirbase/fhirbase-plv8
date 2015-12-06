@@ -13,6 +13,26 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
     sql = require('../honey')
     lang = require('../lang')
     xpath = require('./xpath')
+    search_common = require('./search_common')
+
+    SUPPORTED_TYPES = [
+      'uri'
+      'boolean'
+      'code'
+      'string'
+      'CodeableConcept'
+      'Coding'
+      'ContactPoint'
+      'Identifier'
+      'Reference'
+      'Quantity'
+    ]
+
+    sf = search_common.get_search_functions({extract:'fhir_extract_as_token', sort:'fhir_sort_as_token',SUPPORTED_TYPES:SUPPORTED_TYPES})
+    extract_expr = sf.extract_expr
+
+    exports.order_expression = sf.order_expression
+    exports.index_order = sf.index_order
 
     TODO = -> throw new Error("TODO")
 
@@ -91,16 +111,6 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       returns: 'text'
       immutable: true
 
-
-    extract_expr = (meta, tbl)->
-      from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
-
-      ['$fhir_extract_as_token'
-        ['$cast', from, ':json']
-        ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-        ['$quote', meta.elementType]]
-
-
     OPERATORS =
       missing: (tbl, meta, value)->
         op = if value.value == 'false' then '$ne' else '$eq'
@@ -113,18 +123,6 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
           ['$cast', extract_expr(meta, tbl), ":text[]"]
           ['$cast', ['$array', value.value], ":text[]"]]
 
-    SUPPORTED_TYPES = [
-      'uri'
-      'boolean'
-      'code'
-      'string'
-      'CodeableConcept'
-      'Coding'
-      'ContactPoint'
-      'Identifier'
-      'Reference'
-      'Quantity'
-    ]
 
     exports.normalize_operator = (meta, value)->
       return 'eq' if not meta.modifier and not value.prefix
@@ -133,7 +131,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
 
     exports.handle = (tbl, meta, value)->
       unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Token Search: unsuported type #{JSON.stringify(meta)}")
+        throw new Error("Token Search: unsupported type #{JSON.stringify(meta)}")
 
       op = OPERATORS[meta.operator]
 
@@ -141,16 +139,6 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
         throw new Error("Token Search: Unsupported operator #{JSON.stringify(meta)}")
 
       op(tbl, meta, value)
-
-    exports.order_expression = (tbl, meta)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("String Search: unsuported type #{JSON.stringify(meta)}")
-      op = if meta.operator == 'desc' then '$desc' else '$asc'
-      [op,
-        ['$fhir_sort_as_token'
-          ['$cast', ['$q',":#{tbl}", ':resource'] , ':json']
-          ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-          ['$quote', meta.elementType]]]
 
     exports.index = (plv8, metas)->
       meta = metas[0]

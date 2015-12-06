@@ -22,9 +22,18 @@ TODO: later we will add some support for units convertion and search in canonica
 
     token_s = require('./search_token')
     number_s = require('./search_number')
+    search_common = require('./search_common')
 
     SUPPORTED_TYPES = ['Quantity']
     OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge', 'missing']
+
+    sf = search_common.get_search_functions({
+      extract:'fhir_extract_as_number',
+      sort:'fhir_extract_as_number',
+      SUPPORTED_TYPES:SUPPORTED_TYPES
+    })
+    exports.index_order = sf.index_order
+
 
     identity = (x)-> x
 
@@ -52,7 +61,7 @@ TODO: later we will add some support for units convertion and search in canonica
 
     exports.handle = (tbl, meta, value)->
       unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Quantity Search: unsuported type #{JSON.stringify(meta)}")
+        throw new Error("Quantity Search: unsupported type #{JSON.stringify(meta)}")
 
       unless OPERATORS.indexOf(meta.operator) > -1
         throw new Error("Quantity Search: Unsupported operator #{meta.operator}")

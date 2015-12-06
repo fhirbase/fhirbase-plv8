@@ -250,10 +250,10 @@ BUILTINS =
     res.push(")::jsonb")
   $asc: (res, [op, expr])->
     heval(res, expr)
-    res.push("ASC")
+    res.push("ASC NULLS LAST")
   $desc: (res, [op, expr])->
     heval(res, expr)
-    res.push("DESC")
+    res.push("DESC NULLS FIRST")
 
 
 CREATE_CLAUSES =

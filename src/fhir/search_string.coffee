@@ -1,6 +1,7 @@
 lang = require('../lang')
 sql = require('../honey')
 xpath = require('./xpath')
+search_common = require('./search_common')
 
 UNACCENT_MAP =
   'é': 'e'
@@ -54,11 +55,11 @@ exports.fhir_sort_as_string = (plv8, resource, path, element_type)->
       obj.toString().toLowerCase()
     when 'HumanName'
       lang.values(obj).filter((x)-> x && x.toString().trim().toLowerCase()).join('0')
-      [(obj.family || []).join('0'),(obj.given || []).join('0'),(obj.middle || []).join('0'), obj.text].join('0')
+      [[].concat(obj.family || []).join('0'),[].concat(obj.given || []).join('0'),[].concat(obj.middle || []).join('0'), obj.text].join('0')
     when 'Coding'
       [obj.system, obj.code, obj.display].join('0')
     when 'Address'
-      [obj.country, obj.city, obj.state, obj.district, (obj.line || []).join('0'), obj.postalCode, obj.text].join('0')
+      [obj.country, obj.city, obj.state, obj.district, [].concat(obj.line || []).join('0'), obj.postalCode, obj.text].join('0')
     when 'ContactPoint'
       [obj.system, obj.value].join('0')
     when 'CodeableConcept'
@@ -80,13 +81,18 @@ exports.fhir_sort_as_string.plv8_signature =
 normalize_string_value = (x)->
   x && x.trim().toLowerCase()
 
-extract_expr = (meta, tbl)->
-  from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
+SUPPORTED_TYPES = [
+  'Address'
+  'ContactPoint'
+  'HumanName'
+  'string'
+]
 
-  ['$fhir_extract_as_string'
-    ['$cast', from, ':json']
-    ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-    ['$quote', meta.elementType]]
+sf = search_common.get_search_functions({extract:'fhir_extract_as_string', sort:'fhir_sort_as_string',SUPPORTED_TYPES:SUPPORTED_TYPES})
+extract_expr = sf.extract_expr
+
+exports.order_expression = sf.order_expression
+exports.index_order = sf.index_order
 
 OPERATORS =
   eq: (tbl, meta, value)->
@@ -103,12 +109,7 @@ OPERATORS =
     else
       ["$ilike", extract_expr(meta, tbl), EMPTY_VALUE]
 
-SUPPORTED_TYPES = [
- 'Address'
- 'ContactPoint'
- 'HumanName'
- 'string'
-]
+
 
 
 OPERATORS_ALIASES =
@@ -128,7 +129,7 @@ exports.normalize_operator = (meta, value)->
 
 handle = (tbl, meta, value)->
   unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-    throw new Error("String Search: unsuported type #{JSON.stringify(meta)}")
+    throw new Error("String Search: unsupported type #{JSON.stringify(meta)}")
 
   op = OPERATORS[meta.operator]
 
@@ -138,17 +139,6 @@ handle = (tbl, meta, value)->
   op(tbl, meta, value)
 
 exports.handle = handle
-
-exports.order_expression = (tbl, meta)->
-  unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-    throw new Error("String Search: unsuported type #{JSON.stringify(meta)}")
-  op = if meta.operator == 'desc' then '$desc' else '$asc'
-  [op,
-    ['$fhir_sort_as_string'
-      ['$cast', ['$q',":#{tbl}", ':resource'] , ':json']
-      ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-      ['$quote', meta.elementType]]]
-
 
 exports.index = (plv8, metas)->
   meta = metas[0]
