@@ -5,6 +5,10 @@ node_js:
     - "0.12"
 addons:
   postgresql: "9.4"
+  apt:
+    packages:
+      - postgresql-contrib-9.4
+      - postgresql-9.4-plv8
 notifications:
     slack: healthsamurai:lKl1jXV360NHMSzV2nwndkOv
     slack: fhirbase:isitOv0KvPgaMzrccuAzVUwB
