@@ -1,5 +1,6 @@
 # .travis.yml
 language: node_js
+sudo: false
 node_js:
     - "0.12"
 addons:
@@ -8,8 +9,8 @@ notifications:
     slack: healthsamurai:lKl1jXV360NHMSzV2nwndkOv
     slack: fhirbase:isitOv0KvPgaMzrccuAzVUwB
 
+#  - sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
 before_script:
-  - sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
   - npm install && cd plpl && npm install
   - npm install -g mocha && npm install -g coffee-script
   - psql -c "CREATE USER fb WITH PASSWORD 'fb'"
