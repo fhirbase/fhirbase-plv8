@@ -12,6 +12,7 @@ fixtures:
     name: [{given: ['nicola']}]
     active: true
     gender: 'male'
+    deceasedBoolean: true
     telecom:
       - system: 'phone'
         value: '9999'
@@ -37,6 +38,7 @@ fixtures:
   - resourceType: 'Patient'
     name: [{given: ['ivan']}]
     active: true
+    deceasedDateTime: '2112'
     identifier:
       - use: usual
         type:
@@ -110,3 +112,5 @@ queries:
     total: 3
   - query: {resourceType: 'Patient', queryString:  'gender:missing=false'}
     total: 1
+  - query: {resourceType: 'Patient', queryString:  'deceased=true'}
+    total: 2 

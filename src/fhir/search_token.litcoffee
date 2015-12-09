@@ -26,6 +26,8 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       'Identifier'
       'Reference'
       'Quantity'
+      'dateTime'
+      'date'
     ]
 
     sf = search_common.get_search_functions({extract:'fhir_extract_as_token', sort:'fhir_sort_as_token',SUPPORTED_TYPES:SUPPORTED_TYPES})
@@ -45,6 +47,11 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
             'false'
           else
             'true'
+      else if element_type == 'dateTime' or element_type == 'date'
+        res = if data.filter((x)-> x).length > 0
+          ['true']
+        else
+          ['false']
       else if element_type == 'code' || element_type == 'string' || element_type == 'uri'
         res = (str.toString() for str in data)
       else if element_type == 'Identifier' or element_type == 'ContactPoint'
