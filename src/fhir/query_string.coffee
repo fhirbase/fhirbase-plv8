@@ -46,7 +46,7 @@ is_special_param = (k)-> special_parameters.indexOf(k) > -1
 
 mk_include = (direction)->
   (query, left, right)->
-    query[direction] = right.split(',')
+    includes = right.split(',')
       .map((x)-> x.trim())
       .filter(identity)
       .map (x)->
@@ -63,7 +63,7 @@ mk_include = (direction)->
               throw new Error("Wrong format of _include #{JSON.stringify(parts)}")
         else if direction == 'revinclude'
           meta = switch parts.length
-            when 2
+           when 2
               {resourceType: parts[0], name: parts[1], target: query.query}
             when 3
               {resourceType: parts[0], name: parts[1], target: parts[2]}
@@ -72,6 +72,8 @@ mk_include = (direction)->
         else
           throw new Error("Guard")
         ['$param', meta, 'placeholder']
+    query[direction] = query[direction] || []
+    Array.prototype.push.apply(query[direction], includes)
     query
 
 specials =

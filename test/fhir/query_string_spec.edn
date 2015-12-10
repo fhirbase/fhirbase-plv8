@@ -69,9 +69,19 @@
    :include [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})
              (param {:resourceType "Encounter" :name "organization" :target "Organization"} {:value "placeholder"})]}]
 
+ [["Encounter" "_include=Encounter:patient:Patient&_include=Encounter:organization:Organization"]
+  {:query "Encounter"
+   :include [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})
+             (param {:resourceType "Encounter" :name "organization" :target "Organization"} {:value "placeholder"})]}]
+
  [["Patient" "_revinclude=Encounter:patient"]
   {:query "Patient"
    :revinclude [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})]}]
+
+ [["Encounter" "_revinclude=Encounter:patient:Patient&_revinclude=Encounter:organization:Organization"]
+  {:query "Encounter"
+   :revinclude [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})
+                (param {:resourceType "Encounter" :name "organization" :target "Organization"} {:value "placeholder"})]}]
 
  [["Patient" "_elements=name,birthdate"]
   {:query "Patient"
