@@ -78,7 +78,7 @@ fhir_create_resource = (plv8, query)->
 
   id = resource.id || utils.uuid(plv8)
   resource.id = id
-  version_id = (resource.meta && resource.meta.versionId) ||  utils.uuid(plv8)
+  version_id = utils.uuid(plv8)
 
   ensure_meta resource,
     versionId: version_id
@@ -165,6 +165,9 @@ fhir_update_resource = (plv8, query)->
   [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
   return errors if errors
 
+  old_version = null
+  id = null
+
   if query.queryString
     result = search.fhir_search(plv8, {resourceType: resource.resourceType, queryString: query.queryString})
     if result.entry.length == 0
@@ -176,19 +179,24 @@ fhir_update_resource = (plv8, query)->
     else if result.entry.length > 1
       return outcome.non_selective(query.ifNotExist)
   else
+    unless resource.id
+      return outcome.bad_request("Could not update resource without id")
+
+    unless resource.resourceType
+      return outcome.bad_request("Could not update resource without resourceType")
+
     q =
       select: sql.raw('*')
       from: sql.q(table_name)
       where: {id: resource.id}
     res = utils.exec(plv8,q)
-    row = res[0]
-    unless row
+    if res.length == 0 
       return fhir_create_resource(plv8, query)
-
-    id = resource.id
-    assert(id, 'resource.id')
-    assert(resource.resourceType, 'resource.resourceType')
-    old_version = exports.fhir_read_resource(plv8, resource)
+    else if res.length == 1
+      old_version = compat.parse(plv8, res[0].resource)
+      id = resource.id
+    else
+      throw new Error("Unexpected many resources for one id")
 
   if old_version.resourceType == 'OperationOutcome'
     return old_version

@@ -151,6 +151,15 @@ describe "CORE: CRUD spec", ->
     )
     assert.equal(outcome.resourceType, 'OperationOutcome')
 
+  it "Update without id", ->
+    outcome = crud.fhir_update_resource(plv8, resource:  {resourceType: 'Patient'})
+    assert.equal(outcome.resourceType, 'OperationOutcome')
+    assert.equal(outcome.issue[0].code, '400')
+
+  it "Update with non existing id and meta should not fail", ->
+    created = crud.fhir_update_resource(plv8, resource:  {id: 'nooonexisting', resourceType: 'Patient', meta: {versionId: 'dummy'}})
+    assert.notEqual(created.meta.versionId, 'dummy')
+
   it "delete", ->
     noise = crud.fhir_delete_resource(plv8, {id: 'fake_id', resourceType: 'Users'})
 

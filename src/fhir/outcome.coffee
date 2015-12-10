@@ -58,3 +58,13 @@ exports.valueset_not_found = (id)->
       diagnostics: "ValueSet with id \"#{id}\" does not exist or not supported"
     }
   ]
+
+exports.bad_request = (msg)->
+  resourceType: "OperationOutcome"
+  issue: [
+    {
+      severity: 'error'
+      code: '400'
+      diagnostics: (msg || "Bad Request")
+    }
+  ]
