@@ -30,7 +30,7 @@ describe "extract_as_date", ->
 value_specs = [
   {
     args:   ['lt', '1980']
-    result: ['$tstzrange', '-infinity', '1981-01-01', '()']
+    result: ['$tstzrange', '-infinity', '1980-01-01', '()']
   }
   {
     args:   ['le', '1980']
@@ -38,7 +38,7 @@ value_specs = [
   }
   {
     args:   ['gt', '1980']
-    result: ['$tstzrange', '1980-01-01', 'infinity', '[)']
+    result: ['$tstzrange', '1981-01-01', 'infinity', '[)']
   }
   {
     args:   ['ge', '1980']

@@ -19,6 +19,14 @@ fixtures:
 
 queries:
   - query: {resourceType: 'Patient', queryString:  'birthdate=gt1980'}
+    total: 2
+    indexed: true
+    probes:
+      - path: ['total']
+        result: 2
+      - path: ['entry', 'length']
+        result: 2
+  - query: {resourceType: 'Patient', queryString:  'birthdate=ge1980'}
     total: 3
     indexed: true
     probes:
@@ -27,44 +35,34 @@ queries:
       - path: ['entry', 'length']
         result: 3
   - query: {resourceType: 'Patient', queryString:  'birthdate=gt1980&birthdate=ne1981'}
+    total: 1 
+    indexed: true
+  - query: {resourceType: 'Patient', queryString:  'birthdate=ge1980&birthdate=ne1981'}
     total: 2 
     indexed: true
   - query: {resourceType: 'Patient', queryString: 'birthdate=gt1985'}
     total: 1
     indexed: true
-    probes:
-      - path: ['total']
-        result: 1
   - query: {resourceType: 'Patient', queryString: 'birthdate=lt1970-05'}
     total: 1
     indexed: true
-    probes:
-      - path: ['total']
-        result: 1
   - query: {resourceType: 'Patient', queryString: 'birthdate=lt1970-05'}
     total: 1
     indexed: true
-    probes:
-      - path: ['total']
-        result: 1
   - query: {resourceType: 'Procedure', queryString: 'date=2014-12-01'}
     total: 1
     indexed: true
-    probes:
-      - path: ['total']
-        result: 1
   - query: {resourceType: 'Procedure', queryString: 'date=2014-12-02'}
     total: 1
     indexed: true
-    probes:
-      - path: ['total']
-        result: 1
-  - query: {resourceType: 'Procedure', queryString: 'date=gt2014-11-01'}
+  - query: {resourceType: 'Patient', queryString: 'birthdate=lt1971'}
+    total: 1 
+    indexed: true
+  - query: {resourceType: 'Patient', queryString: 'birthdate=le1971'}
     total: 2 
     indexed: true
-    probes:
-      - path: ['total']
-        result: 2
+  - query: {resourceType: 'Patient', queryString: 'birthdate=gt1980'}
+    total: 2 
   - query: {resourceType: 'Patient', queryString: 'birthdate:missing=true'}
     total: 1 
   - query: {resourceType: 'Patient', queryString: 'birthdate:missing=false'}

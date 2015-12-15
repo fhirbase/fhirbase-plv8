@@ -91,9 +91,13 @@ Function to extract element from resource as tstzrange.
 Function to convert query parameter into range.
 
     value_to_range = (operator, value)->
-      if operator == 'lt' || operator == 'le'
+      if operator == 'lt'
+        ['$tstzrange', '-infinity', date.to_lower_date(value), '()']
+      else if operator == 'le'
         ['$tstzrange', '-infinity', date.to_upper_date(value), '()']
-      else if operator == 'gt' || operator == 'ge'
+      else if operator == 'gt'
+        ['$tstzrange', date.to_upper_date(value), 'infinity', '[)']
+      else if operator == 'ge'
         ['$tstzrange', date.to_lower_date(value), 'infinity', '[)']
       else if operator == 'eq' or operator = 'ne'
         ['$tstzrange', date.to_lower_date(value), date.to_upper_date(value), '[)']
