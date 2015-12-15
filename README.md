@@ -135,7 +135,7 @@ SELECT fhir_create_resource('{"ifNotExist": "identifier=007", "resource": {"reso
 
 SELECT fhir_read_resource('{"resourceType": "Patient", "id": "smith"}');
 
-SELECT fhir_vread_resource('{"resourceType": "Patient", "versionId": "????"}');
+SELECT fhir_vread_resource('{"resourceType": "Patient", "id": "????", "versionId": "????"}');
 
 SELECT fhir_resource_history('{"resourceType": "Patient", "id": "smith"}');
 
