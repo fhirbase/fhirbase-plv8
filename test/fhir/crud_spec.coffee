@@ -26,13 +26,13 @@ describe "CORE: CRUD spec", ->
   it "conditional create", ->
     noise = crud.fhir_create_resource(plv8, resource: {resourceType: 'Patient', active: true})
     created = crud.fhir_create_resource(plv8,
-      ifNotExist: 'identifier=007'
+      ifNoneExist: 'identifier=007'
       resource: {resourceType: 'Patient', identifier: [{value: '007'}], name: [{given: ['bond']}], active: true}
     )
     assert.notEqual(created.id , false)
 
     same = crud.fhir_create_resource(plv8,
-      ifNotExist: 'identifier=007'
+      ifNoneExist: 'identifier=007'
       resource: {resourceType: 'Patient', identifier: [{value: '007'}], name: [{given: ['bond']}]}
     )
     assert.equal(same.id, created.id)

@@ -3,24 +3,33 @@ crud = require('./crud')
 RES_TYPE_RE = "([A-Za-z]+)"
 ID_RE = "([A-Za-z0-9\\-]+)"
 
+strip = (obj)->
+  res = {}
+  for k,v of obj when v
+    res[k] = v
+  res
+
+
 HANDLERS = [
   {
     name: 'Instance'
     test: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}$")
     GET: (match, entry)->
       type: 'read'
-      resourceId: match[2]
+      id: match[2]
       resourceType: match[1]
 
     PUT: (match, entry)->
-      type: 'update'
-      resourceId: match[2]
-      resourceType: match[1]
-      resource: entry.resource
+      strip
+        type: 'update'
+        queryString: entry.request.queryString
+        id: match[2]
+        resourceType: match[1]
+        resource: entry.resource
 
     DELETE: (match, entry)->
       type: 'delete'
-      resourceId: match[2]
+      id: match[2]
       resourceType: match[1]
   }
   {
@@ -28,7 +37,7 @@ HANDLERS = [
     test: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}/_history/#{ID_RE}$")
     GET: (match, entry)->
       type: 'vread'
-      resourceId: match[2]
+      id: match[2]
       resourceType: match[1]
       versionId: match[3]
   }
@@ -38,15 +47,17 @@ HANDLERS = [
     GET: (match, entry)->
       type: 'history'
       resourceType: match[1]
-      resourceId: match[2]
+      id: match[2]
   }
   {
     name: 'Resource Type History'
     test: new RegExp("^/?#{RES_TYPE_RE}/?$")
     POST: (match, entry)->
-      type: 'create'
-      resource: entry.resource
-      resourceType: match[1]
+      strip
+        type: 'create'
+        ifNoneExist: entry.request.ifNoneExist
+        resource: entry.resource
+        resourceType: match[1]
   }
   {
     name: 'History'
@@ -92,19 +103,16 @@ executePlan = (plv8, plan) ->
   plan.map (action) ->
     switch action.type
       when "create"
-        crud.fhir_create_resource(plv8, resource: action.resource)
+        crud.fhir_create_resource(plv8, action)
       when "update"
-        resource = action.resource
-        resource.resourceType = action.resourceType
-        resource.id = action.resourceId
-
-        crud.fhir_update_resource(plv8, resource: resource)
+        action.resource.id = action.resource.id || (!action.queryString && action.id)
+        crud.fhir_update_resource(plv8, action)
       when "delete"
-        crud.fhir_delete_resource(plv8, {id: action.resourceId, resourceType: action.resourceType})
+        crud.fhir_delete_resource(plv8, {id: action.id, resourceType: action.resourceType})
       when "read"
-        crud.fhir_read_resource(plv8, {id: action.resourceId, resourceType: action.resourceType})
+        crud.fhir_read_resource(plv8, {id: action.id, resourceType: action.resourceType})
       when "vread"
-        crud.fhir_vread_resource(plv8, {id: action.resourceId, resourceType: action.resourceType, versionId: action.versionId})
+        crud.fhir_vread_resource(plv8, {id: action.id, resourceType: action.resourceType, versionId: action.versionId})
       else
         "request.type is not supported - \n#{JSON.stringify(action)}"
 exports.executePlan = executePlan

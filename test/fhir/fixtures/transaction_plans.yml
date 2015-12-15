@@ -41,20 +41,20 @@
 
     - type: update
       resourceType: Patient
-      resourceId: "123"
+      id: "123"
       resource: *pt2
 
     - type: delete
       resourceType: Patient
-      resourceId: "123"
+      id: "123"
 
     - type: history
       resourceType: Patient
-      resourceId: "123"
+      id: "123"
 
     - type: vread
       resourceType: Patient
-      resourceId: "123"
+      id: "123"
       versionId: "456"
 
     - type: history

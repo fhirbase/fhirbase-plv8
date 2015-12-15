@@ -7,6 +7,16 @@ fixtures:
         - given: ["Bob"]
 
     - resourceType: Patient
+      id: candy
+      name:
+        - given: ["Candy"]
+
+    - resourceType: Patient
+      id: ucond
+      name:
+        - given: ["ucond"]
+
+    - resourceType: Patient
       id: update-me-please
       name:
         - given: ["UNKNOWN"]
@@ -55,7 +65,7 @@ examples:
     before:
       - search:
           resourceType: Patient
-          queryString: name=UNKNOWN
+          queryString: name=unknown
         total: 1
 
 
@@ -76,3 +86,50 @@ examples:
           resourceType: Patient
           queryString: name=Duck
         total: 1
+
+  - desc: conditional create
+    before:
+      - search:
+          resourceType: Patient
+          queryString: name=candy
+        total: 1
+
+    transaction:
+      entry:
+        - request:
+            url: /Patient/
+            method: POST
+            ifNoneExist: name=candy
+          resource:
+            resourceType: Patient
+            name:
+              - given: ["Candy"]
+
+    after:
+      - search:
+          resourceType: Patient
+          queryString: name=candy
+        total: 1
+  - desc: conditional update
+    before:
+      - search:
+          resourceType: Patient
+          queryString: name=ucond
+        total: 1 
+
+    transaction:
+      entry:
+        - request:
+            url: /Patient/ups
+            method: PUT
+            queryString: name=ucond
+          resource:
+            resourceType: Patient
+            name:
+              - family: ["Alef"]
+
+    after:
+      - search:
+          resourceType: Patient
+          queryString: name=ucond
+        total: 0

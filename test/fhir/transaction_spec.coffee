@@ -27,14 +27,15 @@ describe 'transaction execution', ->
       for res in fixtures
         crud.fhir_create_resource(plv8, resource: res)
 
+  # plv8.debug = true
   transactionExamples.examples.forEach (e, index) ->
     it e.desc, ->
       e.before.forEach (i) ->
         result = search.fhir_search(plv8, i.search)
-        assert.equal(i.total, result.total)
+        assert.equal(i.total, result.total, 'before:' + JSON.stringify(i))
 
       trResult = transaction.execute(plv8, e.transaction)
 
       e.after.forEach (i) ->
         result = search.fhir_search(plv8, i.search)
-        assert.equal(i.total, result.total)
+        assert.equal(i.total, result.total, 'after:' + JSON.stringify(i))

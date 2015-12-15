@@ -93,12 +93,12 @@ wrap_hooks = (fn)->
 wrap_if_not_exists = (fn)->
   (plv8, query)->
     resourceType = query.resource.resourceType
-    if query.ifNotExist
-      result = search.fhir_search(plv8, {resourceType: resourceType, queryString: query.ifNotExist})
+    if query.ifNoneExist
+      result = search.fhir_search(plv8, {resourceType: resourceType, queryString: query.ifNoneExist})
       if result.entry.length == 1
         return result.entry[0].resource
       else if result.entry.length > 1
-        return outcome.non_selective(query.ifNotExist)
+        return outcome.non_selective(query.ifNoneExist)
     fn(plv8, query)
 
 wrap_ensure_not_exists = (fn)->
@@ -229,7 +229,7 @@ fhir_update_resource = _build [
       resource.id = old_version.id
       id = resource.id
     else if result.entry.length > 1
-      return outcome.non_selective(query.ifNotExist)
+      return outcome.non_selective(query.ifNoneExist)
   else
     unless resource.id
       return outcome.bad_request("Could not update resource without id")
