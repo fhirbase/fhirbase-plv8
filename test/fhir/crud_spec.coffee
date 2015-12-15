@@ -8,13 +8,14 @@ assert = require('assert')
 copy = (x)-> JSON.parse(JSON.stringify(x))
 
 describe "CORE: CRUD spec", ->
-  beforeEach ->
-
-    plv8.execute("SET plv8.start_proc = 'plv8_init'")
-    schema.fhir_drop_storage(plv8, resourceType: 'Users')
-    schema.fhir_drop_storage(plv8, resourceType: 'Patient')
+  before ->
     schema.fhir_create_storage(plv8, resourceType: 'Users')
     schema.fhir_create_storage(plv8, resourceType: 'Patient')
+
+  beforeEach ->
+    plv8.execute("SET plv8.start_proc = 'plv8_init'")
+    schema.fhir_truncate_storage(plv8, resourceType: 'Users')
+    schema.fhir_truncate_storage(plv8, resourceType: 'Patient')
 
   it "create", ->
     created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})
@@ -72,6 +73,7 @@ describe "CORE: CRUD spec", ->
     read = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users'})
     assert.equal(read.id, created.id)
 
+    read.versionId = read.meta.versionId
     vread = crud.fhir_vread_resource(plv8, read)
     assert.equal(read.id, vread.id)
     assert.equal(read.meta.versionId, vread.meta.versionId)
@@ -161,8 +163,6 @@ describe "CORE: CRUD spec", ->
     assert.notEqual(created.meta.versionId, 'dummy')
 
   it "delete", ->
-    noise = crud.fhir_delete_resource(plv8, {id: 'fake_id', resourceType: 'Users'})
-
     created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})
     read = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users'})
 
@@ -178,6 +178,11 @@ describe "CORE: CRUD spec", ->
     issue = read_deleted.issue[0]
     assert.equal(issue.severity, 'error')
     assert.equal(issue.code, 'not-found')
+
+  it "delete unexisting", ->
+    outcome = crud.fhir_delete_resource(plv8, {id: 'unexisting_id', resourceType: 'Users'})
+    assert.equal(outcome.resourceType, 'OperationOutcome')
+    assert.equal(outcome.issue[0].code, 'not-found')
 
   it "history", ->
     created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})

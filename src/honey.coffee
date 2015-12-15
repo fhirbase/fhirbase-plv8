@@ -107,6 +107,11 @@ _delete = (res, expr)->
   heval(res, expr.delete)
   if expr.where
     where_clause(res, expr.where)
+  ret = expr.returning
+  if ret
+    res.push("RETURNING")
+    ret = [ret] unless lang.isArray(ret)
+    comma_delimited res, ret, (x)-> heval(res, x)
 
 update = (res, expr)->
   res.push("UPDATE")
@@ -119,6 +124,11 @@ update = (res, expr)->
     heval(res, v)
   if expr.where
     where_clause(res, expr.where)
+  ret = expr.returning
+  if ret
+    res.push("RETURNING")
+    ret = [ret] unless lang.isArray(ret)
+    comma_delimited res, ret, (x)-> heval(res, x)
 
 insert = (res, expr)->
   res.push("INSERT INTO")

@@ -4,11 +4,9 @@ test = require('../helpers.coffee')
 plv8 = require('../../plpl/src/plv8')
 
 assert = require('assert')
-log = (x)->
-  console.log(JSON.stringify(x, null, " "))
+log = (x)-> console.log(JSON.stringify(x, null, " "))
 
 expand = (q)-> term.fhir_expand_valueset(plv8, q)
-
 
 TEST_VS = {
   id: 'mytestvs'

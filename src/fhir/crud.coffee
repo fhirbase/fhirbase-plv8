@@ -48,34 +48,86 @@ ensure_table = (plv8, resourceType)->
   else
     [table_name, hx_table_name, null]
 
-fhir_create_resource = (plv8, query)->
+_get_in = (obj, path)->
+ cur = obj
+ for step in path
+   cur = cur[step] if cur
+ cur
+
+_build =  (mws, handler)->
+  cur = handler
+  for mw in mws.reverse()
+    cur = mw[0](cur, mw[1])
+  cur
+
+wrap_ensure_table = (fn)->
+  (plv8, query)->
+    resourceType = query.resourceType || (query.resource && query.resource.resourceType )
+    table_name = namings.table_name(plv8, resourceType)
+    hx_table_name = namings.history_table_name(plv8, resourceType)
+    unless pg_meta.table_exists(plv8, table_name)
+      return table_not_exists(resourceType)
+    else
+      query.table_name = table_name
+      query.hx_table_name = hx_table_name
+      fn(plv8, query)
+
+wrap_required_attributes = (fn, attrs)->
+  (plv8, query)->
+    issue = []
+    for attr in attrs
+      unless _get_in(query, attr)
+        issue.push(severity: 'error', code: 'structure', diagnostics: "expected attribute #{attr}") 
+    if issue.length > 0
+      return {resourceType: "OperationOutcome", issue: issue }
+    fn(plv8, query)
+
+wrap_hooks = (fn)->
+  (plv8, query)->
+    result = fn(plv8, query)
+    hooks = AFTER_HOOKS[result.resourceType]
+    for hook in (hooks || []) when hook
+      hook(plv8, result)
+    return result
+
+wrap_if_not_exists = (fn)->
+  (plv8, query)->
+    resourceType = query.resource.resourceType
+    if query.ifNotExist
+      result = search.fhir_search(plv8, {resourceType: resourceType, queryString: query.ifNotExist})
+      if result.entry.length == 1
+        return result.entry[0].resource
+      else if result.entry.length > 1
+        return outcome.non_selective(query.ifNotExist)
+    fn(plv8, query)
+
+wrap_ensure_not_exists = (fn)->
+  (plv8, query)->
+    resource = query.resource
+    if resource.id
+      res = utils.exec plv8,
+        select: sql.raw('id')
+        from: sql.q(query.table_name)
+        where: {id: resource.id}
+      if res.length > 0
+        return outcome.error(code: 'invalid', diagnostics: "resource with given id already exist ")
+    fn(plv8, query)
+
+wrap_postprocess = (fn)->
+  (plv8, query)->
+    res = fn(plv8, query)
+    helpers.postprocess_resource(res)
+
+fhir_create_resource = _build [
+    [wrap_required_attributes, [['resource'], ['resource', 'resourceType']]]
+    [wrap_ensure_table]
+    [wrap_if_not_exists]
+    [wrap_ensure_not_exists]
+    [wrap_hooks]
+    [wrap_postprocess]
+  ], (plv8, query)->
+
   resource = query.resource
-  throw new Error("expected arguments {resource: ...}") unless resource
-  errors = validate_create_resource(resource)
-  return errors if errors
-
-
-  [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
-  return errors if errors
-
-  if query.ifNotExist
-    result = search.fhir_search(plv8, {resourceType: resource.resourceType, queryString: query.ifNotExist})
-    if result.entry.length == 1
-      return result.entry[0].resource
-    else if result.entry.length > 1
-      return outcome.non_selective(query.ifNotExist)
-
-  # create or update
-  if resource.id
-    q =
-      select: sql.raw('id')
-      from: sql.q(table_name)
-      where: {id: resource.id}
-
-    res = utils.exec(plv8,q)
-    row = res[0]
-    throw new Error("resource with given id already exist ") if row
-
   id = resource.id || utils.uuid(plv8)
   resource.id = id
   version_id = utils.uuid(plv8)
@@ -86,7 +138,7 @@ fhir_create_resource = (plv8, query)->
     request: { method: 'POST', url: resource.resourceType }
 
   utils.exec plv8,
-    insert: sql.q(table_name)
+    insert: sql.q(query.table_name)
     values:
       id: id
       version_id: version_id
@@ -95,7 +147,7 @@ fhir_create_resource = (plv8, query)->
       updated_at: sql.now
 
   utils.exec plv8,
-    insert: sql.q(hx_table_name)
+    insert: sql.q(query.hx_table_name)
     values:
       id: id
       version_id: version_id
@@ -103,11 +155,7 @@ fhir_create_resource = (plv8, query)->
       valid_from: sql.now
       valid_to: sql.now
 
-  hooks = AFTER_HOOKS[resource.resourceType]
-  for hook in (hooks || []) when hook
-    hook(plv8, resource)
-
-  helpers.postprocess_resource(resource)
+  resource
 
 exports.fhir_create_resource = fhir_create_resource
 exports.fhir_create_resource.plv8_signature = ['json', 'json']
@@ -116,54 +164,58 @@ resource_is_deleted = (plv8, query)->
   assert(query.id, 'query.id')
   assert(query.resourceType, 'query.resourceType')
   hx_table_name = namings.history_table_name(plv8, query.resourceType)
+  # TODO??
 
 
-fhir_read_resource = (plv8, query)->
-  assert(query.id, 'query.id')
-  assert(query.resourceType, 'query.resourceType')
+fhir_read_resource = _build [
+    [wrap_required_attributes, [['id'], ['resourceType']]]
+    [wrap_ensure_table]
+    [wrap_postprocess]
+  ],(plv8, query)->
 
-  [table_name, hx_table_name, errors] = ensure_table(plv8, query.resourceType)
-  return errors if errors
+  res = utils.exec plv8,
+    select: ':*'
+    from: sql.q(query.table_name)
+    where: { id: query.id }
 
-  res = utils.exec(plv8, select: sql.raw('*'), from: sql.q(table_name), where: { id: query.id })
   row = res[0]
+
   unless row
     return outcome.not_found(query.id)
 
-  helpers.postprocess_resource(compat.parse(plv8, row.resource))
+  compat.parse(plv8, row.resource)
 
 exports.fhir_read_resource = fhir_read_resource
 exports.fhir_read_resource.plv8_signature = ['json', 'json']
 
-exports.fhir_vread_resource = (plv8, query)->
-  assert(query.id, 'query.id')
-  version_id = query.versionId || query.meta.versionId
-  assert(version_id, 'query.versionId or query.meta.versionId')
-  assert(query.resourceType, 'query.resourceType')
+exports.fhir_vread_resource = _build [
+    [wrap_required_attributes, [['id'], ['resourceType'], ['versionId']]]
+    [wrap_ensure_table]
+    [wrap_postprocess]
+  ], (plv8, query)->
 
-  [table_name, hx_table_name, errors] = ensure_table(plv8, query.resourceType)
-  return errors if errors
+  res = utils.exec plv8,
+    select: ':*'
+    from: sql.q(query.hx_table_name)
+    where: {id: query.id, version_id: query.versionId}
 
-  q =
-    select: sql.raw('*')
-    from: sql.q(hx_table_name)
-    where: {id: query.id, version_id: version_id}
-
-  res = utils.exec(plv8,q)
   row = res[0]
+
   unless row
     return outcome.not_found(query.id)
 
-  helpers.postprocess_resource(compat.parse(plv8, row.resource))
+  compat.parse(plv8, row.resource)
 
 exports.fhir_vread_resource.plv8_signature = ['json', 'json']
 
-fhir_update_resource = (plv8, query)->
-  resource = query.resource
-  throw new Error("expected arguments {resource: ...}") unless resource
+fhir_update_resource = _build [
+    [wrap_required_attributes, [['resource']]]
+    [wrap_ensure_table]
+    [wrap_postprocess]
+    [wrap_hooks]
+  ], (plv8, query)->
 
-  [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
-  return errors if errors
+  resource = query.resource
 
   old_version = null
   id = null
@@ -185,18 +237,18 @@ fhir_update_resource = (plv8, query)->
     unless resource.resourceType
       return outcome.bad_request("Could not update resource without resourceType")
 
-    q =
+    res = utils.exec plv8,
       select: sql.raw('*')
-      from: sql.q(table_name)
+      from: sql.q(query.table_name)
       where: {id: resource.id}
-    res = utils.exec(plv8,q)
-    if res.length == 0 
+
+    if res.length == 0
       return fhir_create_resource(plv8, query)
     else if res.length == 1
       old_version = compat.parse(plv8, res[0].resource)
       id = resource.id
     else
-      throw new Error("Unexpected many resources for one id")
+      return outcome.error(code: 'invalid', diagnostics: "Unexpected many resources for one id")
 
   if old_version.resourceType == 'OperationOutcome'
     return old_version
@@ -216,7 +268,7 @@ fhir_update_resource = (plv8, query)->
       url: resource.resourceType
 
   utils.exec plv8,
-    update: sql.q(table_name)
+    update: sql.q(query.table_name)
     where: {id: id}
     values:
       version_id: version_id
@@ -224,12 +276,12 @@ fhir_update_resource = (plv8, query)->
       updated_at: sql.now
 
   utils.exec plv8,
-    update: sql.q(hx_table_name)
+    update: sql.q(query.hx_table_name)
     where: {id: id, version_id: old_version.meta.versionId}
     values: {valid_to: sql.now}
 
   utils.exec plv8,
-    insert: sql.q(hx_table_name)
+    insert: sql.q(query.hx_table_name)
     values:
       id: id
       version_id: version_id
@@ -237,31 +289,30 @@ fhir_update_resource = (plv8, query)->
       valid_from: sql.now
       valid_to: sql.infinity
 
-  hooks = AFTER_HOOKS[resource.resourceType]
-  for hook in (hooks || []) when hook
-    hook(plv8, resource)
-
-  helpers.postprocess_resource(resource)
+  resource
 
 
 exports.fhir_update_resource = fhir_update_resource
 exports.fhir_update_resource.plv8_signature = ['json', 'json']
 
-exports.fhir_delete_resource = (plv8, resource)->
-  id = resource.id
-  assert(id, 'resource.id')
-  assert(resource.resourceType, 'resource.resourceType')
+exports.fhir_delete_resource = _build [
+    [wrap_required_attributes, [['id'], ['resourceType']]]
+    [wrap_ensure_table]
+    [wrap_postprocess]
+    [wrap_hooks]
+  ], (plv8, query)->
 
-  [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
-  return errors if errors
-
-  old_version = exports.fhir_read_resource(plv8, resource)
+  id = query.id
+  old_version = exports.fhir_read_resource(plv8, query)
 
   unless old_version
     return outcome.not_found(query.id)
 
+  if old_version.resourceType == 'OperationOutcome'
+    return old_version
+
   if not old_version.meta  or not old_version.meta.versionId
-    return {status: "Error", message: "Resource #{resource.resourceType}/#{id}, has broken old version #{JSON.stringify(old_version)}"}
+    return outcome.error(code: 'invalid', diagnostics: "Resource #{query.resourceType}/#{query.id}, has broken old version #{JSON.stringify(old_version)}")
 
   resource = utils.copy(old_version)
 
@@ -272,19 +323,19 @@ exports.fhir_delete_resource = (plv8, resource)->
     lastUpdated: new Date()
     request:
       method: 'DELETE'
-      url: resource.resourceType
+      url: query.resourceType
 
   utils.exec plv8,
-    delete: sql.q(table_name)
+    delete: sql.q(query.table_name)
     where: { id: id }
 
   utils.exec plv8,
-    update: sql.q(hx_table_name)
+    update: sql.q(query.hx_table_name)
     where: {id: id, version_id: old_version.meta.versionId}
     values: {valid_to: sql.now }
 
   utils.exec plv8,
-    insert: sql.q(hx_table_name)
+    insert: sql.q(query.hx_table_name)
     values:
       id: id
       version_id: version_id
@@ -292,34 +343,27 @@ exports.fhir_delete_resource = (plv8, resource)->
       valid_from: sql.now
       valid_to: sql.now
 
-  hooks = AFTER_HOOKS[resource.resourceType]
-  for hook in (hooks || []) when hook
-    hook(plv8, resource)
-
-  helpers.postprocess_resource(resource)
+  resource
 
 exports.fhir_delete_resource.plv8_signature = ['json', 'json']
 
-exports.fhir_terminate_resource = (plv8, resource)->
-  id = resource.id
-  assert(id, 'resource.id')
-  assert(resource.resourceType, 'resource.resourceType')
+exports.fhir_terminate_resource = _build [
+   [wrap_required_attributes, [['id'], ['resourceType']]]
+   [wrap_ensure_table]
+  ],(plv8, query)->
 
-  [table_name, hx_table_name, errors] = ensure_table(plv8, resource.resourceType)
-  return errors if errors
+  res = utils.exec plv8,
+    delete: sql.q(query.hx_table_name)
+    where: { id: query.id }
+    returning: ':*'
 
-  res = []
-  res.push utils.exec plv8,
-    delete: sql.q(table_name)
-    where: { id: id }
-    returning: '*'
+  curr = utils.exec plv8,
+    delete: sql.q(query.table_name)
+    where: { id: query.id }
+    returning: ':*'
 
-  res.push utils.exec plv8,
-    delete: sql.q(hx_table_name)
-    where: { id: id }
-    returning: '*'
-
-  res
+  res = res.concat(curr)
+  res.map((x)-> x.resource)
 
 exports.fhir_terminate_resource.plv8_signature = ['json', 'json']
 
