@@ -57,7 +57,14 @@ describe "CORE: CRUD spec", ->
     assert.equal(outcome.resourceType, 'OperationOutcome')
     assert.equal(outcome.issue[0].code, '400')
 
-  it "create on update", ->
+  it "handle version id, issue #57", ->
+    res = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', meta: {versionId: 'ups', lastUpdated: '1900-01-01'}})
+    assert.notEqual(res.meta.versionId, 'ups')
+    assert.notEqual(res.meta.lastUpdated, '1900-01-01')
+    # just should not throw error
+    crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', meta: {versionId: 'ups'}})
+
+  it "create by update", ->
     created = crud.fhir_update_resource(plv8,
       resource: {resourceType: 'Patient', active: false, id: "pt_id"}
     )
@@ -66,12 +73,12 @@ describe "CORE: CRUD spec", ->
     
     crud.fhir_delete_resource(plv8, {id: 'pt_id', resourceType: 'Patient'})
 
-    t = crud.fhir_update_resource(plv8,
+    updated = crud.fhir_update_resource(plv8,
       resource: {resourceType: 'Patient', active: true, id: "pt_id"}
     )
 
-    assert.equal(t.id , "pt_id")
-    assert.equal(t.resourceType , "Patient")
+    assert.equal(updated.id , "pt_id")
+    assert.equal(updated.resourceType , "Patient")
 
     read = crud.fhir_read_resource(plv8, {id: "pt_id", resourceType: 'Patient'})
     assert.equal(read.active, true)
