@@ -12,7 +12,10 @@ compat = require('../compat')
 term = require('./terminology')
 
 AFTER_HOOKS = {
-  ValueSet: [term.fhir_valueset_after_changed]
+  ValueSet:
+    created: [term.fhir_valueset_after_changed]
+    updated: [term.fhir_valueset_after_changed]
+    deleted: [term.fhir_valueset_after_deleted]
 }
 
 validate_create_resource = (resource)->
@@ -82,10 +85,10 @@ wrap_required_attributes = (fn, attrs)->
       return {resourceType: "OperationOutcome", issue: issue }
     fn(plv8, query)
 
-wrap_hooks = (fn)->
+wrap_hooks = (fn, phase)->
   (plv8, query)->
     result = fn(plv8, query)
-    hooks = AFTER_HOOKS[result.resourceType]
+    hooks = (AFTER_HOOKS[result.resourceType] && AFTER_HOOKS[result.resourceType][phase])
     for hook in (hooks || []) when hook
       hook(plv8, result)
     return result
@@ -123,7 +126,7 @@ fhir_create_resource = _build [
     [wrap_ensure_table]
     [wrap_if_not_exists]
     [wrap_ensure_not_exists]
-    [wrap_hooks]
+    [wrap_hooks, 'created']
     [wrap_postprocess]
   ], (plv8, query)->
 
@@ -212,7 +215,7 @@ fhir_update_resource = _build [
     [wrap_required_attributes, [['resource']]]
     [wrap_ensure_table]
     [wrap_postprocess]
-    [wrap_hooks]
+    [wrap_hooks, 'updated']
   ], (plv8, query)->
 
   resource = query.resource
@@ -299,7 +302,7 @@ exports.fhir_delete_resource = _build [
     [wrap_required_attributes, [['id'], ['resourceType']]]
     [wrap_ensure_table]
     [wrap_postprocess]
-    [wrap_hooks]
+    [wrap_hooks, 'deleted']
   ], (plv8, query)->
 
   id = query.id

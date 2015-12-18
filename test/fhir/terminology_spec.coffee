@@ -37,11 +37,17 @@ TEST_VS = {
     ]
 }
 
-describe "terminology", ->
+big_valueset = require('./fixtures/valueset-ucum-common.json')
+big_valueset.id = 'bigone'
 
-  before ->
+describe "terminology", ->
+  @timeout(50000)
+
+  before (done)->
     crud.fhir_terminate_resource(plv8, {resourceType: 'ValueSet', id: TEST_VS.id})
+    crud.fhir_terminate_resource(plv8, {resourceType: 'ValueSet', id: big_valueset.id})
     crud.fhir_create_resource(plv8, {resourceType: 'ValueSet', resource: TEST_VS})
+    done()
 
   it "expand", ->
     vs =  expand(id: "administrative-gender")
@@ -69,7 +75,31 @@ describe "terminology", ->
     res = vs.expansion.contains
     assert.equal(res.length, 1)
 
+    crud.fhir_update_resource plv8,
+      resource:
+        resourceType: 'ValueSet'
+        id: TEST_VS.id
+        codeSystem:
+          system: 'updated'
+          concept: [{code: 'updated', display: 'updated'}]
+
+    vs =  expand(id: "mytestvs")
+    assert.equal(vs.expansion.contains.length, 1)
+
+    vs =  expand(id: "mytestvs", filter: 'display')
+    assert.equal(vs.expansion.contains.length, 0)
+
+    vs =  expand(id: "mytestvs", filter: 'updated')
+    assert.equal(vs.expansion.contains.length, 1)
+
     crud.fhir_delete_resource(plv8, {resourceType: 'ValueSet', id: TEST_VS.id})
 
     res = expand(id: "mytestvs")
     assert.equal(res.resourceType, 'OperationOutcome')
+
+  # 17 seconds
+  # 0.5
+  it "big valueset", ->
+    crud.fhir_create_resource(plv8, {resourceType: 'ValueSet', resource: big_valueset})
+    vs =  expand(id: big_valueset.id, filter: 'rem')
+    assert(vs.expansion.contains[0].code.match(/rem/i), 'should contain rem')
