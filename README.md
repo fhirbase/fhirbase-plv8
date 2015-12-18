@@ -128,7 +128,10 @@ SELECT fhir_truncate_storage('{"resourceType": "Patient"}');
 
 -- CRUD
 
-SELECT fhir_create_resource('{"resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
+SELECT fhir_create_resource('{"resource": {"resourceType": "Patient", "name": [{"given": ["Smith"]}]}}');
+
+-- create will fail if id provided, to create with predefined id pass [allowId] option or use fhir_update_resource
+SELECT fhir_create_resource('{"allowId": true, "resource": {"resourceType": "Patient", "id": "smith"}}');
 
 -- conditional create
 SELECT fhir_create_resource('{"ifNotExist": "identifier=007", "resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');

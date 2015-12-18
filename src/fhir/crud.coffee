@@ -130,7 +130,15 @@ fhir_create_resource = _build [
     [wrap_postprocess]
   ], (plv8, query)->
 
+
   resource = query.resource
+
+  if resource.id and not query.allowId
+    return outcome.error(
+      code: '400'
+      diagnostics: "id is not allowed, use update operation to create with predefined id"
+    )
+
   id = resource.id || utils.uuid(plv8)
   resource.id = id
   version_id = utils.uuid(plv8)
@@ -226,7 +234,7 @@ fhir_update_resource = _build [
   if query.queryString
     result = search.fhir_search(plv8, {resourceType: resource.resourceType, queryString: query.queryString})
     if result.entry.length == 0
-      return fhir_create_resource(plv8, resource: resource)
+      return fhir_create_resource(plv8, allowId: true, resource: resource)
     else if result.entry.length == 1
       old_version = result.entry[0].resource
       resource.id = old_version.id
@@ -246,6 +254,7 @@ fhir_update_resource = _build [
       where: {id: resource.id}
 
     if res.length == 0
+      query.allowId = true
       return fhir_create_resource(plv8, query)
     else if res.length == 1
       old_version = compat.parse(plv8, res[0].resource)
@@ -378,7 +387,7 @@ exports.fhir_load = (plv8, bundle)->
       if resource.id
         prev = read_resource(plv8, resource)
         if outcome.is_not_found(prev)
-          fhir_create_resource(plv8, resource)
+          fhir_create_resource(plv8, allowId: true, resource: resource)
         else if prev.id == resource.id
           res.push([resource.id, 'udpated'])
           fhir_update_resource(plv8, resource)

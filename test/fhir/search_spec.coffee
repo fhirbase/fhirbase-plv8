@@ -35,7 +35,7 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
         schema.fhir_truncate_storage(plv8, resourceType: res)
 
       for res in spec.fixtures
-        crud.fhir_create_resource(plv8, resource: res)
+        crud.fhir_create_resource(plv8, allowId: true, resource: res)
 
       for idx in (spec.indices or [])
         search.fhir_unindex_parameter(plv8, idx)

@@ -46,7 +46,7 @@ describe "terminology", ->
   before (done)->
     crud.fhir_terminate_resource(plv8, {resourceType: 'ValueSet', id: TEST_VS.id})
     crud.fhir_terminate_resource(plv8, {resourceType: 'ValueSet', id: big_valueset.id})
-    crud.fhir_create_resource(plv8, {resourceType: 'ValueSet', resource: TEST_VS})
+    crud.fhir_create_resource(plv8, {resourceType: 'ValueSet', allowId: true, resource: TEST_VS})
     done()
 
   it "expand", ->
@@ -100,6 +100,6 @@ describe "terminology", ->
   # 17 seconds
   # 0.5
   it "big valueset", ->
-    crud.fhir_create_resource(plv8, {resourceType: 'ValueSet', resource: big_valueset})
+    crud.fhir_create_resource(plv8, {resourceType: 'ValueSet', allowId: true, resource: big_valueset})
     vs =  expand(id: big_valueset.id, filter: 'rem')
     assert(vs.expansion.contains[0].code.match(/rem/i), 'should contain rem')

@@ -17,11 +17,13 @@ describe "CORE: CRUD spec", ->
     schema.fhir_truncate_storage(plv8, resourceType: 'Users')
     schema.fhir_truncate_storage(plv8, resourceType: 'Patient')
 
+
   it "create", ->
     created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})
     assert.notEqual(created.id , false)
     assert.notEqual(created.meta.versionId, undefined)
     assert.equal(created.name, 'admin')
+
 
   it "conditional create", ->
     noise = crud.fhir_create_resource(plv8, resource: {resourceType: 'Patient', active: true})
@@ -37,10 +39,11 @@ describe "CORE: CRUD spec", ->
     )
     assert.equal(same.id, created.id)
 
-  it "create with id", ->
-    noise = crud.fhir_create_resource(plv8, resource: {resourceType: 'Patient', active: true, id: "foobar"})
+  it "create with allowed id", ->
+    noise = crud.fhir_create_resource(plv8, resource: {resourceType: 'Patient', active: true})
 
     created = crud.fhir_create_resource(plv8,
+      allowId: true
       resource: {resourceType: 'Patient', active: false, id: "test_id"}
     )
     assert.equal(created.id , "test_id")
@@ -48,6 +51,11 @@ describe "CORE: CRUD spec", ->
 
     read = crud.fhir_read_resource(plv8, {id: "test_id", resourceType: 'Patient'})
     assert.equal(read.active, false)
+
+  it "create with not allowed id", ->
+    outcome = crud.fhir_create_resource(plv8, resource: {id: 'customid', resourceType: 'Users'})
+    assert.equal(outcome.resourceType, 'OperationOutcome')
+    assert.equal(outcome.issue[0].code, '400')
 
   it "create on update", ->
     created = crud.fhir_update_resource(plv8,
