@@ -32,7 +32,8 @@ proc history_sql(_cfg_ jsonb, _resource_type_ text, _id_ text, _parmas_ text) RE
   _offset_ integer;
   _eid_ text;
   _since_ text;
-  _since_sql_ text := '';
+  _before_ text;
+  _timeframe_sql_ text := '';
   BEGIN
     _eid_ := fhirbase_crud._extract_id(_id_);
     _count_ := COALESCE((this._extract_param(_parmas_, '_count'))[1]);
@@ -43,7 +44,13 @@ proc history_sql(_cfg_ jsonb, _resource_type_ text, _id_ text, _parmas_ text) RE
 
     _since_ := this._extract_param(_parmas_,'_since');
     IF _since_ IS NOT NULL THEN
-      _since_sql_ = format('WHERE updated >= %L', _since_);
+      _timeframe_sql_ = format('WHERE updated >= %L', _since_);
+    END IF;
+
+    _before_ := this._extract_param(_parmas_,'_before');
+    IF _before_ IS NOT NULL THEN
+      _timeframe_sql_ = format('WHERE updated <= %L', _before_);
+
     END IF;
     -- i'm not sure about efficency
     -- may be move limit and offset into deepest query
@@ -64,7 +71,7 @@ proc history_sql(_cfg_ jsonb, _resource_type_ text, _id_ text, _parmas_ text) RE
       _eid_,
       (lower(_resource_type_) || '_history'),
       _eid_,
-      _since_sql_,
+      _timeframe_sql_,
       _count_,
       _offset_
      );
@@ -79,7 +86,8 @@ proc history_sql(_cfg_ jsonb, _resource_type_ text, _parmas_ text) RETURNS text
   _count_ integer;
   _offset_ integer;
   _since_ text;
-  _since_sql_ text := '';
+  _before_ text;
+  _timeframe_sql_ text := '';
   BEGIN
     _count_ := COALESCE((this._extract_param(_parmas_, '_count'))[1]);
     _count_ := COALESCE(_count_, 100);
@@ -88,9 +96,13 @@ proc history_sql(_cfg_ jsonb, _resource_type_ text, _parmas_ text) RETURNS text
     _offset_ := COALESCE(_offset_, 0) * _count_;
 
     _since_ := this._extract_param(_parmas_,'_since');
-
     IF _since_ IS NOT NULL THEN
-      _since_sql_ = format('WHERE updated >= %L', _since_);
+      _timeframe_sql_ = format('WHERE updated >= %L', _since_);
+    END IF;
+    
+    _before_ := this._extract_param(_parmas_,'_before');
+    IF _before_ IS NOT NULL THEN
+      _timeframe_sql_ = format('WHERE updated <= %L', _before_);
     END IF;
 
     -- i'm not sure about efficency
@@ -108,7 +120,7 @@ proc history_sql(_cfg_ jsonb, _resource_type_ text, _parmas_ text) RETURNS text
     $SQL$,
       lower(_resource_type_),
       (lower(_resource_type_) || '_history'),
-      _since_sql_,
+      _timeframe_sql_,
       _count_,
       _offset_
      );
@@ -123,7 +135,8 @@ proc history_sql(_cfg_ jsonb, _parmas_ text) RETURNS text
   _count_ integer;
   _offset_ integer;
   _since_ text;
-  _since_sql_ text := '';
+  _before_ text;
+  _timeframe_sql_ text := '';
   BEGIN
     _count_ := COALESCE((this._extract_param(_parmas_, '_count'))[1]);
     _count_ := COALESCE(_count_, 100);
@@ -133,7 +146,12 @@ proc history_sql(_cfg_ jsonb, _parmas_ text) RETURNS text
 
     _since_ := this._extract_param(_parmas_,'_since');
     IF _since_ IS NOT NULL THEN
-      _since_sql_ = format('WHERE updated >= %L', _since_);
+      _timeframe_sql_ = format('WHERE updated >= %L', _since_);
+    END IF;
+    
+    _before_ := this._extract_param(_parmas_,'_before');
+    IF _before_ IS NOT NULL THEN
+      _timeframe_sql_ = format('WHERE updated <= %L', _before_);
     END IF;
     -- i'm not sure about efficency
     -- may be move limit and offset into deepest query
@@ -145,7 +163,7 @@ proc history_sql(_cfg_ jsonb, _parmas_ text) RETURNS text
           ORDER BY r.updated desc
           LIMIT %s OFFSET %s
         ) _
-    $SQL$, _since_sql_, _count_, _offset_);
+    $SQL$, _timeframe_sql_, _count_, _offset_);
 
 proc! history(_cfg_ jsonb,  _parmas_ text) RETURNS jsonb
   _result_ jsonb;
