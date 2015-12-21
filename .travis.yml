@@ -1,13 +1,13 @@
 # .travis.yml
 addons:
   postgresql: "9.4"
+  apt:
+    packages:
+      - postgresql-contrib-9.4
+      - postgresql-9.4-plv8
+
 notifications:
   slack: healthsamurai:711fu4qu2Pz0uWrc8JMQ6Bz7
-before_script:
-  - sudo apt-get remove postgresql postgresql-9.1 -qq --purge
-  - sudo apt-get remove postgresql postgresql-9.2 -qq --purge
-  - sudo apt-get remove postgresql postgresql-9.3 -qq --purge
-  - sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
 
 script: sudo su $USER -c "env PGUSER=postgres DB=test ./runme integrate"
 after_success: ./build/release.sh
