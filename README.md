@@ -93,6 +93,7 @@ export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase
 
 # build migrations
 coffee  utils/generate_migrations.coffee -n  | psql fhirbase
+cat utils/patch_3.sql | psql fhirbase
 
 # change something
 # reload schema
