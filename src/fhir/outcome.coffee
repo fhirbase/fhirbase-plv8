@@ -24,8 +24,33 @@ exports.not_found = (id)->
     {
       severity: 'error'
       code: 'not-found'
-      details: { coding: [{code: 'MSG_NO_EXIST', display: 'Resource Id "%s" does not exist'}]}
+      details: {
+        coding: [
+          {
+            code: 'MSG_NO_EXIST',
+            display: "Resource Id \"#{id}\" does not exist"
+          }
+        ]
+      }
       diagnostics: "Resource Id \"#{id}\" does not exist"
+    }
+  ]
+
+exports.version_not_found = (id, versionId)->
+  resourceType: 'OperationOutcome'
+  issue: [
+    {
+      severity: 'error'
+      code: 'not-found'
+      details: {
+        coding: [
+          {
+            code: 'MSG_NO_EXIST',
+            display: "Resource Id \"#{id}\" does not exist"
+          }
+        ]
+      }
+      diagnostics: "Resource Id \"#{id}\" with versionId \"#{versionId}\" does not exist"
     }
   ]
 

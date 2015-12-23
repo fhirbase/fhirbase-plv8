@@ -99,7 +99,35 @@ describe "CORE: CRUD spec", ->
     issue = read.issue[0]
     assert.equal(issue.severity, 'error')
     assert.equal(issue.code, 'not-found')
+    assert.equal(issue.details.coding[0].code, 'MSG_NO_EXIST')
+    assert.equal(
+      issue.details.coding[0].display,
+      'Resource Id "unexisting" does not exist'
+    )
+    assert.equal(issue.diagnostics, 'Resource Id "unexisting" does not exist')
 
+  it "vread unexisting", ->
+    vread = crud.fhir_vread_resource(
+      plv8,
+      {
+        id: 'unexistingId',
+        versionId: 'unexistingVersionId',
+        resourceType: 'Users'
+      }
+    )
+    assert.equal(vread.resourceType, 'OperationOutcome')
+    issue = vread.issue[0]
+    assert.equal(issue.severity, 'error')
+    assert.equal(issue.code, 'not-found')
+    assert.equal(issue.details.coding[0].code, 'MSG_NO_EXIST')
+    assert.equal(
+      issue.details.coding[0].display,
+      'Resource Id "unexistingId" does not exist'
+    )
+    assert.equal(
+      issue.diagnostics,
+      'Resource Id "unexistingId" with versionId "unexistingVersionId" does not exist'
+    )
 
   it "update", ->
     created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users', name: 'admin'})

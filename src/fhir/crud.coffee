@@ -213,7 +213,7 @@ exports.fhir_vread_resource = _build [
   row = res[0]
 
   unless row
-    return outcome.not_found(query.id)
+    return outcome.version_not_found(query.id, query.versionId)
 
   compat.parse(plv8, row.resource)
 
