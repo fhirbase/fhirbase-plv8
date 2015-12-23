@@ -148,7 +148,7 @@ SELECT fhir_resource_type_history('{"resourceType": "Patient", "queryString": "_
 SELECT fhir_update_resource('{"resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["John"], "family": ["Smith"]}]}}');
 
 -- conditional update
-SELECT fhir_update_resource('{"ifNotExist": "identifier=007", "resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
+SELECT fhir_update_resource('{"ifNoneExist": "identifier=007", "resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
 
 -- update with contention guard
 SELECT fhir_update_resource('{"ifMatch": "..versionid..", "resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
