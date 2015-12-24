@@ -22,7 +22,7 @@ match = (x)-> (y)-> y.indexOf(x) > -1
 # console.log plv8.execute("SHOW search_path;")
 
 FILTER = 'uri'
-FILTER = 'date'
+FILTER = 'incl'
 FILTER = 'search'
 
 fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
@@ -40,7 +40,7 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
       for idx in (spec.indices or [])
         search.fhir_unindex_parameter(plv8, idx)
         search.fhir_index_parameter(plv8, idx)
-        
+
       for idx_ord in (spec.index_order or [])
         search.fhir_unindex_order(plv8, idx_ord.query)
         search.fhir_index_order(plv8, idx_ord.query)

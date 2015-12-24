@@ -18,7 +18,9 @@ get_includes = (includes, resources)->
   includes.map(second).reduce(((groups, inc)->
     refs = lang.mapcat resources, (x)-> xpath.get_in(x, [inc.path])
     groups = refs.reduce(((acc, ref)->
-      [tp,id] = ref_to_type_and_id(ref)
+      tp_and_id = ref_to_type_and_id(ref)
+      return acc unless tp_and_id
+      [tp,id] = tp_and_id
       if !inc.target || inc.target.toLowerCase() == tp.toLowerCase()
         acc[tp] = acc[tp] || {}
         acc[tp][id] = true
