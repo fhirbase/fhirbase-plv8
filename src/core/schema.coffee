@@ -2,6 +2,7 @@ sql =  require('../honey')
 namings = require('./namings')
 utils = require('./utils')
 pg_meta = require('./pg_meta')
+outcome = require('../fhir/outcome')
 
 fhir_create_storage_sql = (plv8, query)->
   resource_type = query.resourceType
@@ -102,8 +103,13 @@ exports.fhir_truncate_storage = (plv8, query)->
   resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   hx_nm = namings.history_table_name(plv8, nm)
-  utils.exec(plv8, truncate: sql.q(nm))
-  utils.exec(plv8, truncate: sql.q(hx_nm))
-  {status: 'ok', message: "Table #{nm} was truncated"}
+
+  if pg_meta.table_exists(plv8, nm)
+    result = utils.exec(plv8, truncate: sql.q(nm))
+    utils.exec(plv8, truncate: sql.q(hx_nm))
+    # outcome.truncate_storage_done(resource_type, JSON.stringify(result))
+    outcome.truncate_storage_done(resource_type, 0)
+  else
+    outcome.unknown_type(resource_type)
 
 exports.fhir_truncate_storage.plv8_signature = ['json', 'json']

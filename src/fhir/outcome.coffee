@@ -93,3 +93,42 @@ exports.bad_request = (msg)->
       diagnostics: (msg || "Bad Request")
     }
   ]
+
+exports.unknown_type = (resourceType)->
+  resourceType: 'OperationOutcome'
+  issue: [
+    {
+      severity: 'error'
+      code: 'not-found'
+      details: {
+        coding: [
+          {
+            code: 'MSG_UNKNOWN_TYPE',
+            display: "Resource Type \"#{resourceType}\" not recognised"
+          }
+        ]
+      }
+      diagnostics: "Resource Type \"#{resourceType}\" not recognised." +
+        " Try create \"#{resourceType}\" resource:" +
+        " `SELECT fhir_create_storage('{\"resourceType\": \"#{resourceType}\"}');`"
+    }
+  ]
+
+exports.truncate_storage_done = (resourceType, count)->
+  resourceType: 'OperationOutcome'
+  issue: [
+    {
+      severity: 'information'
+      code: 'informational'
+      details: {
+        coding: [
+          {
+            code: 'MSG_DELETED_DONE',
+            display: "Resource deleted"
+          }
+        ]
+      }
+      diagnostics: "Resource type \"#{resourceType}\" has been truncated." +
+        " #{count} rows affected."
+    }
+  ]
