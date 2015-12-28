@@ -1,4 +1,4 @@
 *sw?
-node_modules
-tmp/
-releases
+/node_modules
+/releases
+/tmp
