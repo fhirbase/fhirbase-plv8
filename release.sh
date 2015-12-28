@@ -1,25 +1,35 @@
+#! /bin/bash
+
 set -e
 
-export PREV_FBVERSION="fhirbase-0.0.1-betta.3"
-export FBVERSION="fhirbase-0.0.1-betta.4"
+# You should assign DATABASE_URL variable!
+# Like this:
+# DATABASE_URL=postgres://your_user_name:your_password@localhost:5432/fhirbase_build
+# WARNING: `fhirbase_build` database will be destroed and recreated!
 
-export DATABASE_URL=postgres://root:root@localhost:5432/build
+export PREV_FBVERSION="fhirbase-0.0.1-beta.4"
+export FBVERSION="fhirbase-0.0.1-beta.5"
+
 PGOPTIONS='--client-min-messages=warning'
-loadcmd="psql -X -q -a -1 -v ON_ERROR_STOP=1 --pset pager=off"
+loadcmd="psql --no-psqlrc --quiet --echo-all --single-transaction \
+              --set=ON_ERROR_STOP=1 --pset=pager=off"
 
-psql postgres -c 'drop database if exists build' && \
-psql postgres -c "create database build" && \
+# We should temporary connect to `postgres` database
+# because `fhirbase_build` database will be droped.
+OTHER_DATABASE_URL="${DATABASE_URL/%\/fhirbase_build/\/postgres}"
+
+psql "$OTHER_DATABASE_URL" --command='DROP DATABASE if exists fhirbase_build' && \
+psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' && \
 bash build.sh && \
-cat tmp/build.sql  | $loadcmd build  > /dev/null && \
+cat tmp/build.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
 npm run test && \
 
-psql postgres -c 'drop database if exists build' && \
-psql postgres -c "create database build" && \
+psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' && \
+psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' && \
 bash build.sh && \
-cat releases/$PREV_FBVERSION.sql  | $loadcmd build > /dev/null && \
-time cat tmp/patch.sql | $loadcmd build > /dev/null && \
+cat releases/$PREV_FBVERSION.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
+time cat tmp/patch.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
 npm run test && \
-
 
 cp tmp/build.sql  releases/$FBVERSION.sql && \
 cp tmp/patch.sql  releases/$FBVERSION-patch.sql && \
@@ -27,6 +37,3 @@ cd releases && \
 
 zip -r $FBVERSION.sql.zip zip $FBVERSION.sql && \
 zip -r $FBVERSION-patch.sql.zip $FBVERSION-patch.sql
-
-
-
