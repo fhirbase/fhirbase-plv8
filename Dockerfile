@@ -13,6 +13,8 @@ ENV LANG en_US.UTF-8
 RUN apt-get -y update
 RUN apt-get -y upgrade
 
+# Add PostgreSQL 9.4 apt repository
+# <http://www.postgresql.org/download/linux/ubuntu/>.
 RUN apt-get install -y curl
 RUN echo 'deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main' \
     > /etc/apt/sources.list.d/pgdg.list
@@ -22,13 +24,13 @@ RUN curl --silent https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
 RUN apt-get -y update
 RUN apt-get -y upgrade
 
+# Install PostgreSQL.
 ENV PG_MAJOR 9.4
 
 RUN apt-get install -y postgresql-$PG_MAJOR
 
-# In case of plv8 compilation issues address to README in
-# <https://github.com/clkao/docker-postgres-plv8>.
-
+# Install plv8 (in case of plv8 compilation issues address to
+# README in <https://github.com/clkao/docker-postgres-plv8>).
 RUN apt-get install -y git build-essential libv8-dev postgresql-server-dev-$PG_MAJOR
 RUN apt-get install -y nodejs-dev
 
