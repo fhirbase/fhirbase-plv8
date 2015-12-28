@@ -67,6 +67,13 @@ unzip fhirbase-0.0.1.sql.zip
 cat fhirbase-0.0.1.sql | psql fhirbase
 ```
 
+## Run test suite in docker container
+
+```sh
+git clone https://github.com/fhirbase/fhirbase-plv8 fhirbase
+cd fhirbase
+docker build .
+```
 
 ## Development Installation
 
