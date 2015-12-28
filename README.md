@@ -67,14 +67,6 @@ unzip fhirbase-0.0.1.sql.zip
 cat fhirbase-0.0.1.sql | psql fhirbase
 ```
 
-## Run test suite in docker container
-
-```sh
-git clone https://github.com/fhirbase/fhirbase-plv8 fhirbase
-cd fhirbase
-docker build .
-```
-
 ## Development Installation
 
 Development installation requires node 0.12 and npm,
@@ -109,6 +101,14 @@ plpl/bin/plpl reload
 npm run test
 
 # goto: change something
+```
+
+## Run test suite in docker container
+
+```sh
+git clone https://github.com/fhirbase/fhirbase-plv8 fhirbase
+cd fhirbase
+docker build .
 ```
 
 ## Usage
