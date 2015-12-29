@@ -30,20 +30,19 @@ describe "CORE: schema", ()->
     assert.equal(createOutcome.status, 'error')
     assert.equal(createOutcome.message, 'Table users already exists')
 
-  # it 'truncate Users storage', ()->
-  #   schema.fhir_create_storage(plv8, resourceType: 'Users')
-  #   c = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'John Doe'})
-  #   assert.equal(JSON.stringify(c), 'c')
-  #   truncateOutcome = schema.fhir_truncate_storage(plv8, resourceType: 'Users')
-  #   issue = truncateOutcome.issue[0]
-  #   assert.equal(issue.severity, 'information')
-  #   assert.equal(issue.code, 'informational')
-  #   assert.equal(issue.details.coding[0].code, 'MSG_DELETED_DONE')
-  #   assert.equal(issue.details.coding[0].display, 'Resource deleted')
-  #   assert.equal(
-  #     issue.diagnostics,
-  #     'Resource type "Users" has been truncated. 1 rows affected.'
-  #   )
+  it 'truncate Users storage', ()->
+    schema.fhir_create_storage(plv8, resourceType: 'Users')
+    crud.fhir_create_resource(
+      plv8,
+      resource: {resourceType: 'Users', name: 'John Doe'}
+    )
+    truncateOutcome = schema.fhir_truncate_storage(plv8, resourceType: 'Users')
+    issue = truncateOutcome.issue[0]
+    assert.equal(issue.severity, 'information')
+    assert.equal(issue.code, 'informational')
+    assert.equal(issue.details.coding[0].code, 'MSG_DELETED_DONE')
+    assert.equal(issue.details.coding[0].display, 'Resource deleted')
+    assert.equal(issue.diagnostics, 'Resource type "Users" has been truncated')
 
   it 'truncate unexisting storage', ()->
     schema.fhir_drop_storage(plv8, resourceType: 'Users')

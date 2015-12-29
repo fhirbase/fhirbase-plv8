@@ -105,10 +105,9 @@ exports.fhir_truncate_storage = (plv8, query)->
   hx_nm = namings.history_table_name(plv8, nm)
 
   if pg_meta.table_exists(plv8, nm)
-    result = utils.exec(plv8, truncate: sql.q(nm))
+    utils.exec(plv8, truncate: sql.q(nm))
     utils.exec(plv8, truncate: sql.q(hx_nm))
-    # outcome.truncate_storage_done(resource_type, JSON.stringify(result))
-    outcome.truncate_storage_done(resource_type, 0)
+    outcome.truncate_storage_done(resource_type)
   else
     outcome.unknown_type(resource_type)
 

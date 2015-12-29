@@ -114,7 +114,7 @@ exports.unknown_type = (resourceType)->
     }
   ]
 
-exports.truncate_storage_done = (resourceType, count)->
+exports.truncate_storage_done = (resourceType)->
   resourceType: 'OperationOutcome'
   issue: [
     {
@@ -128,7 +128,6 @@ exports.truncate_storage_done = (resourceType, count)->
           }
         ]
       }
-      diagnostics: "Resource type \"#{resourceType}\" has been truncated." +
-        " #{count} rows affected."
+      diagnostics: "Resource type \"#{resourceType}\" has been truncated"
     }
   ]
