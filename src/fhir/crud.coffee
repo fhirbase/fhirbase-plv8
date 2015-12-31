@@ -147,6 +147,13 @@ fhir_create_resource = _build [
     versionId: version_id
     lastUpdated: new Date()
     request: { method: 'POST', url: resource.resourceType }
+    extension: [{
+      url: 'http://hl7.org/fhir/operation-outcome',
+      valueCodeableConcept: {
+        code: 'MSG_CREATED',
+        display: 'New resource created'
+      }
+    }]
 
   utils.exec plv8,
     insert: sql.q(query.table_name)
@@ -278,6 +285,13 @@ fhir_update_resource = _build [
     request:
       method: 'PUT'
       url: resource.resourceType
+    extension: [{
+      url: 'http://hl7.org/fhir/operation-outcome',
+      valueCodeableConcept: {
+        code: 'MSG_UPDATED',
+        display: 'existing resource updated'
+      }
+    }]
 
   utils.exec plv8,
     update: sql.q(query.table_name)
@@ -336,6 +350,13 @@ exports.fhir_delete_resource = _build [
     request:
       method: 'DELETE'
       url: query.resourceType
+    extension: [{
+      url: 'http://hl7.org/fhir/operation-outcome',
+      valueCodeableConcept: {
+        code: 'MSG_DELETED',
+        display: 'This resource has been deleted'
+      }
+    }]
 
   utils.exec plv8,
     delete: sql.q(query.table_name)

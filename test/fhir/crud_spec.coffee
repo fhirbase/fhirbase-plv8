@@ -244,6 +244,22 @@ describe "CORE: CRUD spec", ->
     assert.equal(issue.severity, 'error')
     assert.equal(issue.code, 'not-found')
 
+  it 'vread deleted', ->
+    created = crud.fhir_create_resource(
+      plv8,
+      resource: {resourceType: 'Users', name: 'John Doe'}
+    )
+    deleted = crud.fhir_delete_resource(plv8, {id: created.id, resourceType: 'Users'})
+    deleted.versionId = deleted.meta.versionId
+    vread = crud.fhir_vread_resource(plv8, deleted)
+    vread_deleted = (vread.meta.extension.filter (e) ->
+      e.url == 'http://hl7.org/fhir/operation-outcome')[0]
+    assert.equal(vread_deleted.valueCodeableConcept.code, 'MSG_DELETED')
+    assert.equal(
+      vread_deleted.valueCodeableConcept.display,
+      'This resource has been deleted'
+    )
+
   it "parse_history_params", ->
     [res, errors] = history.parse_history_params('_since=2010&_count=10')
     assert.deepEqual(res, {_since: '2010-01-01', _count: 10})
