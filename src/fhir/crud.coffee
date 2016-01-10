@@ -146,13 +146,12 @@ fhir_create_resource = _build [
   ensure_meta resource,
     versionId: version_id
     lastUpdated: new Date()
-    request: { method: 'POST', url: resource.resourceType }
     extension: [{
-      url: 'http://hl7.org/fhir/operation-outcome',
-      valueCodeableConcept: {
-        code: 'MSG_CREATED',
-        display: 'New resource created'
-      }
+      url: 'fhir-request-method',
+      valueString: 'POST'
+    }, {
+      url: 'fhir-request-uri',
+      valueUri: resource.resourceType
     }]
 
   utils.exec plv8,
@@ -282,15 +281,12 @@ fhir_update_resource = _build [
   ensure_meta resource,
     versionId: version_id
     lastUpdated: new Date()
-    request:
-      method: 'PUT'
-      url: resource.resourceType
     extension: [{
-      url: 'http://hl7.org/fhir/operation-outcome',
-      valueCodeableConcept: {
-        code: 'MSG_UPDATED',
-        display: 'existing resource updated'
-      }
+      url: 'fhir-request-method',
+      valueString: 'PUT'
+    }, {
+      url: 'fhir-request-uri',
+      valueUri: resource.resourceType
     }]
 
   utils.exec plv8,
@@ -347,15 +343,12 @@ exports.fhir_delete_resource = _build [
   ensure_meta resource,
     versionId: version_id
     lastUpdated: new Date()
-    request:
-      method: 'DELETE'
-      url: query.resourceType
     extension: [{
-      url: 'http://hl7.org/fhir/operation-outcome',
-      valueCodeableConcept: {
-        code: 'MSG_DELETED',
-        display: 'This resource has been deleted'
-      }
+      url: 'fhir-request-method',
+      valueString: 'DELETE'
+    }, {
+      url: 'fhir-request-uri',
+      valueUri: query.resourceType
     }]
 
   utils.exec plv8,

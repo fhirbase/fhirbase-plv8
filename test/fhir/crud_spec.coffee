@@ -129,6 +129,26 @@ describe "CORE: CRUD spec", ->
       'Resource Id "unexistingId" with versionId "unexistingVersionId" does not exist'
     )
 
+  it 'vread created', ->
+    created = crud.fhir_create_resource(
+      plv8,
+      resource: {resourceType: 'Users', name: 'John Doe'}
+    )
+    created.versionId = created.meta.versionId
+    vread = crud.fhir_vread_resource(plv8, created)
+    assert.equal(
+      (
+        vread.meta.extension.filter (e) -> e.url == 'fhir-request-method'
+      )[0].valueString,
+      'POST'
+    )
+    assert.equal(
+      (
+        vread.meta.extension.filter (e) -> e.url == 'fhir-request-uri'
+      )[0].valueUri,
+      'Users'
+    )
+
   it "update", ->
     created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users', name: 'admin'})
     read = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users'})
@@ -205,6 +225,32 @@ describe "CORE: CRUD spec", ->
     created = crud.fhir_update_resource(plv8, resource:  {id: 'nooonexisting', resourceType: 'Patient', meta: {versionId: 'dummy'}})
     assert.notEqual(created.meta.versionId, 'dummy')
 
+  it 'vread updated', ->
+    created = crud.fhir_create_resource(
+      plv8,
+      resource: {resourceType: 'Users', name: 'John Doe'}
+    )
+
+    read = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users'})
+    to_update = copy(read)
+    to_update.name = 'changed'
+
+    updated = crud.fhir_update_resource(plv8, resource: to_update)
+    updated.versionId = updated.meta.versionId
+    vread = crud.fhir_vread_resource(plv8, updated)
+    assert.equal(
+      (
+        vread.meta.extension.filter (e) -> e.url == 'fhir-request-method'
+      )[0].valueString,
+      'PUT'
+    )
+    assert.equal(
+      (
+        vread.meta.extension.filter (e) -> e.url == 'fhir-request-uri'
+      )[0].valueUri,
+      'Users'
+    )
+
   it "delete", ->
     created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})
     read = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users'})
@@ -249,15 +295,23 @@ describe "CORE: CRUD spec", ->
       plv8,
       resource: {resourceType: 'Users', name: 'John Doe'}
     )
-    deleted = crud.fhir_delete_resource(plv8, {id: created.id, resourceType: 'Users'})
+    deleted = crud.fhir_delete_resource(
+      plv8,
+      {id: created.id, resourceType: 'Users'}
+    )
     deleted.versionId = deleted.meta.versionId
     vread = crud.fhir_vread_resource(plv8, deleted)
-    vread_deleted = (vread.meta.extension.filter (e) ->
-      e.url == 'http://hl7.org/fhir/operation-outcome')[0]
-    assert.equal(vread_deleted.valueCodeableConcept.code, 'MSG_DELETED')
     assert.equal(
-      vread_deleted.valueCodeableConcept.display,
-      'This resource has been deleted'
+      (
+        vread.meta.extension.filter (e) -> e.url == 'fhir-request-method'
+      )[0].valueString,
+      'DELETE'
+    )
+    assert.equal(
+      (
+        vread.meta.extension.filter (e) -> e.url == 'fhir-request-uri'
+      )[0].valueUri,
+      'Users'
     )
 
   it "parse_history_params", ->

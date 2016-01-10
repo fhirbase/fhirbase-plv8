@@ -1,0 +1,5 @@
+2016-01-10  Danil Kutkevich  <danil@kutkevich.org>
+
+        * fhir/crud.coffee (fhir_create_resource, fhir_update_resource)
+        (fhir_delete_resource): Logging of resources changes in meta-extensions:
+        "fhir-request-method" and "fhir-request-uri" (#65).

@@ -35,6 +35,4 @@ exports.search_links = (query, total)->
   res
 
 exports.postprocess_resource = (resource)->
-  if resource.meta && resource.meta.request
-    delete resource.meta.request
   resource
