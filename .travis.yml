@@ -23,4 +23,4 @@ before_script:
   - psql -c '\dt' -U postgres
   - cd ..
 
-script: export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase && env TRAVIS=true ./build.sh && cat tmp/build.sql | psql fhirbase && npm run test
+script: export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase && export TRAVIS=true && ./build.sh && cat tmp/build.sql | psql fhirbase && npm run test
