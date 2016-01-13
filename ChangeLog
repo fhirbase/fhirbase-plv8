@@ -1,3 +1,9 @@
+2016-01-13  Danil Kutkevich  <danil@kutkevich.org>
+
+        * src/honey.coffee: Multi-tenant friendly database should hold all
+        extensions-related-functions in one convientional schema
+        "pg_catalog" (#75).
+
 2016-01-10  Danil Kutkevich  <danil@kutkevich.org>
 
         * fhir/crud.coffee (fhir_create_resource, fhir_update_resource)
