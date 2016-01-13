@@ -58,7 +58,7 @@
  [{:create :extension
    :name :plv8
    :safe true}
-  ["CREATE EXTENSION IF NOT EXISTS plv8"]]
+  ["CREATE EXTENSION IF NOT EXISTS plv8 WITH SCHEMA pg_catalog"]]
 
  [{:create :table
    :name :users

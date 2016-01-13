@@ -271,6 +271,10 @@ CREATE_CLAUSES =
     res.push("CREATE EXTENSION")
     res.push("IF NOT EXISTS") if expr.safe
     res.push(name(expr.name))
+    # Multi-tenant friendly database should hold all
+    # extensions-related-functions in one convientional schema (fixes #75)
+    # <http://www.postgresql.org/docs/current/static/sql-createextension.html>.
+    res.push('WITH SCHEMA pg_catalog')
   schema: (res, expr)->
     res.push("CREATE SCHEMA")
     res.push("IF NOT EXISTS") if expr.safe

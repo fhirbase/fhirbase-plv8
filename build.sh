@@ -5,7 +5,7 @@ plpl/bin/plpl compile tmp/code.sql
 
 FB_SCHEMA=${FB_SCHEMA:-public}
 schema_statement="CREATE SCHEMA IF NOT EXISTS $FB_SCHEMA;"
-schema_statement="$schema_statement"' SET search_path TO "$user",'"$FB_SCHEMA;"
+schema_statement="$schema_statement SET search_path TO $FB_SCHEMA;"
 
 echo "$schema_statement" > tmp/build.sql
 cat tmp/schema.sql >> tmp/build.sql
