@@ -194,6 +194,6 @@ SELECT fhir_conformance('{"default": "values"}');
 
 ## License
 
-Copyright © 2014 health samurai.
+Copyright © 2016 health samurai.
 
 fhirbase is released under the terms of the MIT License.
