@@ -7,8 +7,8 @@ set -e
 # DATABASE_URL=postgres://your_user_name:your_password@localhost:5432/fhirbase_build
 # WARNING: `fhirbase_build` database will be destroed and recreated!
 
-export PREV_FBVERSION="fhirbase-0.0.1-beta.4"
-export FBVERSION="fhirbase-0.0.1-beta.5"
+PREV_FBVERSION="fhirbase-0.0.1-beta.4"
+FBVERSION="fhirbase-0.0.1-beta.5"
 
 PGOPTIONS='--client-min-messages=warning'
 loadcmd="psql --no-psqlrc --quiet --echo-all --single-transaction \
@@ -18,32 +18,32 @@ loadcmd="psql --no-psqlrc --quiet --echo-all --single-transaction \
 # because `fhirbase_build` database will be droped.
 OTHER_DATABASE_URL="${DATABASE_URL/%\/fhirbase_build/\/postgres}"
 
-psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' && \
-psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' && \
+psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' || exit 1
+psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' || exit 1
 
-FB_SCHEMA=public bash build.sh && \
-cat releases/$PREV_FBVERSION.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
-time cat tmp/patch.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
-FB_SCHEMA=public npm run test && \
+FB_SCHEMA=public bash build.sh || exit 1
+cat releases/$PREV_FBVERSION.sql | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
+time cat tmp/patch.sql | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
+FB_SCHEMA=public npm run test || exit 1
 
-psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' && \
-psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' && \
+psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' || exit 1
+psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' || exit 1
 
-FB_SCHEMA=foo bash build.sh && \
-cat tmp/build.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
-FB_SCHEMA=foo npm run test && \
+FB_SCHEMA=foo bash build.sh || exit 1
+cat tmp/build.sql | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
+FB_SCHEMA=foo npm run test || exit 1
 
-FB_SCHEMA=bar bash build.sh && \
-cat tmp/build.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
-FB_SCHEMA=bar npm run test && \
+FB_SCHEMA=bar bash build.sh || exit 1
+cat tmp/build.sql | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
+FB_SCHEMA=bar npm run test || exit 1
 
-FB_SCHEMA=public bash build.sh && \
-cat tmp/build.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
-FB_SCHEMA=public npm run test && \
+FB_SCHEMA=public bash build.sh || exit 1
+cat tmp/build.sql | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
+FB_SCHEMA=public npm run test || exit 1
 
-cp tmp/build.sql  releases/$FBVERSION.sql && \
-cp tmp/patch.sql  releases/$FBVERSION-patch.sql && \
-cd releases && \
+cp tmp/build.sql  releases/$FBVERSION.sql || exit 1
+cp tmp/patch.sql  releases/$FBVERSION-patch.sql || exit 1
+cd releases || exit 1
 
-zip -r $FBVERSION.sql.zip zip $FBVERSION.sql && \
+zip -r $FBVERSION.sql.zip zip $FBVERSION.sql || exit 1
 zip -r $FBVERSION-patch.sql.zip $FBVERSION-patch.sql
