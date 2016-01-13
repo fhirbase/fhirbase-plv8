@@ -18,18 +18,28 @@ loadcmd="psql --no-psqlrc --quiet --echo-all --single-transaction \
 # because `fhirbase_build` database will be droped.
 OTHER_DATABASE_URL="${DATABASE_URL/%\/fhirbase_build/\/postgres}"
 
-psql "$OTHER_DATABASE_URL" --command='DROP DATABASE if exists fhirbase_build' && \
+psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' && \
 psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' && \
-bash build.sh && \
-cat tmp/build.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
-npm run test && \
+
+FB_SCHEMA=public bash build.sh && \
+cat releases/$PREV_FBVERSION.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
+time cat tmp/patch.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
+FB_SCHEMA=public npm run test && \
 
 psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' && \
 psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' && \
-bash build.sh && \
-cat releases/$PREV_FBVERSION.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
-time cat tmp/patch.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
-npm run test && \
+
+FB_SCHEMA=foo bash build.sh && \
+cat tmp/build.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
+FB_SCHEMA=foo npm run test && \
+
+FB_SCHEMA=bar bash build.sh && \
+cat tmp/build.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
+FB_SCHEMA=bar npm run test && \
+
+FB_SCHEMA=public bash build.sh && \
+cat tmp/build.sql | $loadcmd "$DATABASE_URL" > /dev/null && \
+FB_SCHEMA=public npm run test && \
 
 cp tmp/build.sql  releases/$FBVERSION.sql && \
 cp tmp/patch.sql  releases/$FBVERSION-patch.sql && \
