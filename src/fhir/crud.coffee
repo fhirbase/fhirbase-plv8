@@ -221,7 +221,15 @@ exports.fhir_vread_resource = _build [
   unless row
     return outcome.version_not_found(query.id, query.versionId)
 
-  compat.parse(plv8, row.resource)
+  resource = compat.parse(plv8, row.resource)
+  requestMethod = resource.meta.extension.filter(
+    (e) -> e.url == 'fhir-request-method'
+  )[0].valueString
+
+  if requestMethod == 'DELETE'
+    outcome.version_deleted(query.id, query.versionId)
+  else
+    resource
 
 exports.fhir_vread_resource.plv8_signature = ['json', 'json']
 

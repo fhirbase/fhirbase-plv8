@@ -293,25 +293,27 @@ describe "CORE: CRUD spec", ->
   it 'vread deleted', ->
     created = crud.fhir_create_resource(
       plv8,
-      resource: {resourceType: 'Users', name: 'John Doe'}
+      allowId: true
+      resource: {id: 'toBeDeleted', resourceType: 'Users', name: 'John Doe'}
     )
     deleted = crud.fhir_delete_resource(
       plv8,
-      {id: created.id, resourceType: 'Users'}
+      {id: 'toBeDeleted', resourceType: 'Users'}
     )
     deleted.versionId = deleted.meta.versionId
     vread = crud.fhir_vread_resource(plv8, deleted)
+    assert.equal(vread.resourceType, 'OperationOutcome')
+    issue = vread.issue[0]
+    assert.equal(issue.severity, 'error')
+    assert.equal(issue.code, 'not-found')
+    assert.equal(issue.details.coding[0].code, 'MSG_DELETED_ID')
     assert.equal(
-      (
-        vread.meta.extension.filter (e) -> e.url == 'fhir-request-method'
-      )[0].valueString,
-      'DELETE'
+      issue.details.coding[0].display,
+      'The resource "toBeDeleted" has been deleted'
     )
     assert.equal(
-      (
-        vread.meta.extension.filter (e) -> e.url == 'fhir-request-uri'
-      )[0].valueUri,
-      'Users'
+      issue.diagnostics
+      "Resource Id \"toBeDeleted\" with versionId \"#{deleted.versionId}\" has been deleted"
     )
 
   it "parse_history_params", ->

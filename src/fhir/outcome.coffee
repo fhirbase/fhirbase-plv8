@@ -54,6 +54,24 @@ exports.version_not_found = (id, versionId)->
     }
   ]
 
+exports.version_deleted = (id, versionId)->
+  resourceType: 'OperationOutcome'
+  issue: [
+    {
+      severity: 'error'
+      code: 'not-found'
+      details: {
+        coding: [
+          {
+            code: 'MSG_DELETED_ID',
+            display: "The resource \"#{id}\" has been deleted"
+          }
+        ]
+      }
+      diagnostics: "Resource Id \"#{id}\" with versionId \"#{versionId}\" has been deleted"
+    }
+  ]
+
 exports.non_selective = (msg)->
   resourceType: "OperationOutcome"
   issue: [
