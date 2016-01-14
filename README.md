@@ -53,7 +53,6 @@ Here is the list of PostgreSQL features that we use:
 
 To install fhirbase you need postgresql-9.4 and plv8 extension.
 
-
 ```sh
 sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
 psql -c "CREATE USER user WITH PASSWORD 'password'"
@@ -61,10 +60,21 @@ psql -c 'CREATE DATABASE fhirbase;' -U user
 psql -c '\dt' -U postgres
 export DATABASE_URL=postgres://user:password@localhost:5432/fhirbase
 
-wget https://github.com/fhirbase/fhirbase-plv8/releases/download/v0.0.1-beta.1/fhirbase-0.0.1.sql.zip
-unzip fhirbase-0.0.1.sql.zip
+wget https://github.com/fhirbase/fhirbase-plv8/releases/download/v<version of the fhirbase>/fhirbase-<version of the fhirbase>.sql.zip
+unzip fhirbase-<version of the fhirbase>.sql.zip
 
-cat fhirbase-0.0.1.sql | psql fhirbase
+cat fhirbase-<version of the fhirbase>.sql | psql fhirbase
+```
+
+## Upgrade
+
+```sh
+export DATABASE_URL=postgres://user:password@localhost:5432/fhirbase
+
+wget https://github.com/fhirbase/fhirbase-plv8/releases/download/v<version of the fhirbase>/fhirbase-<version of the fhirbase>-patch.sql.zip
+unzip fhirbase-<version of the fhirbase>-patch.sql.zip
+
+cat fhirbase-<version of the fhirbase>-patch.sql | psql fhirbase
 ```
 
 ## Development Installation
