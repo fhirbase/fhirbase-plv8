@@ -1,3 +1,8 @@
+2016-01-17  Danil Kutkevich  <danil@kutkevich.org>
+
+        * src/fhir/history.coffee (fhir_resource_history):
+        `fhir_resource_history` respects `_count` and `_since` params (#63).
+
 2016-01-13  Danil Kutkevich  <danil@kutkevich.org>
 
         * src/honey.coffee: Multi-tenant friendly database should hold all

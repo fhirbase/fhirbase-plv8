@@ -290,6 +290,30 @@ describe "CORE: CRUD spec", ->
     assert.equal(issue.severity, 'error')
     assert.equal(issue.code, 'not-found')
 
+  it 'history with _count', ->
+    schema.fhir_truncate_storage(plv8, resourceType: 'Users')
+    created = crud.fhir_create_resource(plv8, resource:  {
+      resourceType: 'Users', name: 'John Doe'
+    })
+    readed = crud.fhir_read_resource(plv8, {
+      id: created.id, resourceType: 'Users'
+    })
+    crud.fhir_update_resource(plv8, resource: copy(readed))
+    crud.fhir_update_resource(plv8, resource: copy(readed))
+
+    fullHistory = history.fhir_resource_history(plv8, {
+      id: readed.id, resourceType: 'Users'
+    })
+    assert.equal(fullHistory.total, 3)
+    assert.equal(fullHistory.entry.length, 3)
+    limitedHistory = history.fhir_resource_history(plv8, {
+      id: readed.id,
+      resourceType: 'Users',
+      queryString: "_count=2"
+    })
+    assert.equal(limitedHistory.total, 2)
+    assert.equal(limitedHistory.entry.length, 2)
+
   it 'vread deleted', ->
     created = crud.fhir_create_resource(
       plv8,

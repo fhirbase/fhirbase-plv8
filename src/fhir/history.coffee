@@ -48,11 +48,22 @@ exports.fhir_resource_history = (plv8, query)->
   [table_name, hx_table_name, errors] = ensure_table(plv8, query.resourceType)
   return errors if errors
 
-  resources = utils.exec( plv8,
+  [params, errors] = parse_history_params(query.queryString || '')
+  return errors if errors
+
+  hsql =
     select: sql.raw('*')
     from:   sql.q(hx_table_name)
     where:  {id: query.id}
-  ).map((x)-> compat.parse(plv8, x.resource))
+
+  if params._count
+    hsql.limit = params._count
+
+  if params._since
+    hsql.where = ['$ge', ':valid_from', params._since]
+
+  resources = utils.exec(plv8, hsql)
+    .map((x)-> compat.parse(plv8, x.resource))
 
   bundle.history_bundle(resources)
 
