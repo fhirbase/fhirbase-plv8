@@ -252,7 +252,9 @@ describe "CORE: CRUD spec", ->
     )
 
   it "delete", ->
-    created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})
+    created = crud.fhir_create_resource(plv8, allowId: true, resource: {
+      id: 'toBeDeleted', resourceType: 'Users'
+    })
     read = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users'})
 
     deleted = crud.fhir_delete_resource(plv8, {id: read.id, resourceType: 'Users'})
@@ -267,6 +269,15 @@ describe "CORE: CRUD spec", ->
     issue = read_deleted.issue[0]
     assert.equal(issue.severity, 'error')
     assert.equal(issue.code, 'not-found')
+    assert.equal(issue.details.coding[0].code, 'MSG_DELETED_ID')
+    assert.equal(
+      issue.details.coding[0].display,
+      'The resource "toBeDeleted" has been deleted'
+    )
+    assert.equal(
+      issue.diagnostics
+      "Resource Id \"toBeDeleted\" with versionId \"#{deleted.versionId}\" has been deleted"
+    )
 
   it "delete unexisting", ->
     outcome = crud.fhir_delete_resource(plv8, {id: 'unexisting_id', resourceType: 'Users'})

@@ -3,6 +3,11 @@
         * fhir/crud.coffee (fhir_delete_resource, fhir_vread_resource):
         Makes "delete" more FHIR compliant (#65).
 
+        * fhir/crud.coffee (fhir_read_resource): Read of the deleted
+        resource returns OperationOutcome.
+        Relying on this OperationOutcome's coding server can return the
+        appropriate http status code (#65).
+
 2016-01-17  Danil Kutkevich  <danil@kutkevich.org>
 
         * src/fhir/history.coffee (fhir_resource_history):

@@ -198,6 +198,14 @@ fhir_read_resource = _build [
   row = res[0]
 
   unless row
+    deletionHistory = utils.exec plv8,
+      select: ':*'
+      from: sql.q(query.hx_table_name)
+      where: {id: query.id, resource: '{}'}
+
+    if deletionHistory.length > 0
+      return outcome.version_deleted(query.id, query.versionId) #this means that the resource is deleted (#65)
+
     return outcome.not_found(query.id)
 
   compat.parse(plv8, row.resource)
