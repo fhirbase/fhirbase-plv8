@@ -222,11 +222,12 @@ exports.fhir_vread_resource = _build [
     return outcome.version_not_found(query.id, query.versionId)
 
   resource = compat.parse(plv8, row.resource)
-  requestMethod = resource.meta.extension.filter(
-    (e) -> e.url == 'fhir-request-method'
-  )[0].valueString
+  # requestMethod = resource.meta.extension.filter(
+  #   (e) -> e.url == 'fhir-request-method'
+  # )[0].valueString
 
-  if requestMethod == 'DELETE'
+  # if requestMethod == 'DELETE'
+  if Object.keys(resource).length == 0
     outcome.version_deleted(query.id, query.versionId)
   else
     resource
@@ -373,7 +374,8 @@ exports.fhir_delete_resource = _build [
     values:
       id: id
       version_id: version_id
-      resource: sql.jsonb(resource)
+      # resource: sql.jsonb(resource)
+      resource: sql.jsonb({})
       valid_from: sql.now
       valid_to: sql.now
 
