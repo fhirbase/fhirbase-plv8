@@ -92,9 +92,7 @@ parse_history_params = (queryString)->
 exports.parse_history_params = parse_history_params
 
 exports.fhir_resource_type_history = (plv8, query)->
-  id = query.id
   assert(query.resourceType, 'query.resourceType')
-
 
   [table_name, hx_table_name, errors] = ensure_table(plv8, query.resourceType)
   return errors if errors
