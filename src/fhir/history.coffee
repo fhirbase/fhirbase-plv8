@@ -62,6 +62,9 @@ exports.fhir_resource_history = (plv8, query)->
   if params._since
     hsql.where = ['$ge', ':valid_from', params._since]
 
+  if params._before
+    hsql.where = ['$le', ':valid_from', params._before]
+
   resources = utils.exec(plv8, hsql)
     .map((x)-> compat.parse(plv8, x.resource))
 
@@ -73,6 +76,7 @@ parse_history_params = (queryString)->
   parsers =
     _since: date.to_lower_date
     _count: parseInt
+    _before: date.to_lower_date
 
   reduce_fn = (acc, [k,v])->
     parser = parsers[k]
@@ -110,6 +114,9 @@ exports.fhir_resource_type_history = (plv8, query)->
 
   if params._since
     hsql.where = ['$ge', ':valid_from', params._since]
+
+  if params._before
+    hsql.where = ['$le', ':valid_from', params._before]
 
   resources = utils.exec( plv8, hsql)
     .map((x)-> compat.parse(plv8, x.resource))

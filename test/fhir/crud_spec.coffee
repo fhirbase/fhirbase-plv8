@@ -302,7 +302,6 @@ describe "CORE: CRUD spec", ->
     assert.equal(issue.code, 'not-found')
 
   it 'history with _count', ->
-    schema.fhir_truncate_storage(plv8, resourceType: 'Users')
     created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users'})
     readed = crud.fhir_read_resource(plv8, {
       id: created.id, resourceType: 'Users'
@@ -323,19 +322,12 @@ describe "CORE: CRUD spec", ->
     assert.equal(limitedHistory.total, 1)
     assert.equal(limitedHistory.entry.length, 1)
 
-  it 'history with _since', ->
-    schema.fhir_truncate_storage(plv8, resourceType: 'Users')
+  it 'history _since and _before', ->
     created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users'})
     readed = crud.fhir_read_resource(plv8, {
       id: created.id, resourceType: 'Users'
     })
     crud.fhir_update_resource(plv8, resource: copy(readed))
-
-    fullHistory = history.fhir_resource_history(plv8, {
-      id: readed.id, resourceType: 'Users'
-    })
-    assert.equal(fullHistory.total, 2)
-    assert.equal(fullHistory.entry.length, 2)
 
     plv8.execute(
       "UPDATE users_history
@@ -344,6 +336,13 @@ describe "CORE: CRUD spec", ->
     )
 
     crud.fhir_update_resource(plv8, resource: copy(readed))
+
+    fullHistory = history.fhir_resource_history(plv8, {
+      id: readed.id, resourceType: 'Users'
+    })
+    assert.equal(fullHistory.total, 3)
+    assert.equal(fullHistory.entry.length, 3)
+
     historySince = history.fhir_resource_history(plv8, {
       id: readed.id,
       resourceType: 'Users',
@@ -351,6 +350,14 @@ describe "CORE: CRUD spec", ->
     })
     assert.equal(historySince.total, 1)
     assert.equal(historySince.entry.length, 1)
+
+    historyBefore = history.fhir_resource_history(plv8, {
+      id: readed.id,
+      resourceType: 'Users',
+      queryString: '_before=2016-01-01'
+    })
+    assert.equal(historyBefore.total, 2)
+    assert.equal(historyBefore.entry.length, 2)
 
   it 'vread deleted', ->
     created = crud.fhir_create_resource(
@@ -393,3 +400,34 @@ describe "CORE: CRUD spec", ->
 
     res = history.fhir_resource_type_history(plv8, resourceType: 'Users', queryString: "_count=2&_since=2015-11")
     assert.equal(res.total, 2)
+
+  it 'resource type history _since and _before', ->
+    crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'u1'})
+    crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'u2'})
+
+    plv8.execute(
+      "UPDATE users_history
+       SET valid_from = '01-Jan-1970'::timestamp with time zone"
+    )
+
+    crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'u3'})
+
+    fullHistory = history.fhir_resource_type_history(plv8, {
+      resourceType: 'Users'
+    })
+    assert.equal(fullHistory.total, 3)
+    assert.equal(fullHistory.entry.length, 3)
+
+    historySince = history.fhir_resource_type_history(plv8, {
+      resourceType: 'Users',
+      queryString: '_since=2016-01-01'
+    })
+    assert.equal(historySince.total, 1)
+    assert.equal(historySince.entry.length, 1)
+
+    historyBefore = history.fhir_resource_type_history(plv8, {
+      resourceType: 'Users',
+      queryString: '_before=2016-01-01'
+    })
+    assert.equal(historyBefore.total, 2)
+    assert.equal(historyBefore.entry.length, 2)
