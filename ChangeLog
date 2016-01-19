@@ -1,3 +1,11 @@
+2016-01-19  Danil Kutkevich  <danil@kutkevich.org>
+
+        * build.sh, release.sh: More respect to multitenancy (#80).
+        Build and release scripts do not rely on setting schema definition
+        in final sql file.
+        Move `SET search_path TO schema_name` from sql file
+        to release script.
+
 2016-01-18  Danil Kutkevich  <danil@kutkevich.org>
 
         * fhir/crud.coffee (fhir_delete_resource, fhir_vread_resource):
