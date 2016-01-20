@@ -1,3 +1,10 @@
+2016-01-20  Danil Kutkevich  <danil@kutkevich.org>
+
+        * fhir/crud.coffee, fhir/bundle.coffee (fhir_read_resource,
+        fhir_delete_resource, fhir_vread_resource)
+        (history_bundle):
+        History of "deleted" resources even more FHIR compliant (#65).
+
 2016-01-19  Danil Kutkevich  <danil@kutkevich.org>
 
         * build.sh, release.sh: More respect to multitenancy (#80).

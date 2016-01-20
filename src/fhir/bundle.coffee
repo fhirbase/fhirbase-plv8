@@ -5,8 +5,25 @@ exports.history_bundle  = (resources)->
   meta: {lastUpdated: new Date()}
   type: 'history'
   entry: resources.map (x)->
-    resource: helpers.postprocess_resource(x)
+    requestMethod = x.meta.extension.filter(
+      (e) -> e.url == 'fhir-request-method'
+    )[0].valueString
 
+    requestUri = x.meta.extension.filter(
+      (e) -> e.url == 'fhir-request-uri'
+    )[0].valueUri
+
+    entry = {
+      request: {
+        method: requestMethod,
+        url: requestUri
+      }
+    }
+
+    if requestMethod != 'DELETE'
+      entry.resource = helpers.postprocess_resource(x)
+
+    entry
 
 # exports.search_bundle  = (query, resources)->
 #   resourceType: "Bundle"

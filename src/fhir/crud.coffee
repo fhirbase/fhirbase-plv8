@@ -8,6 +8,7 @@ outcome = require('./outcome')
 date = require('./date')
 search = require('./search')
 compat = require('../compat')
+history = require('./history')
 
 term = require('./terminology')
 
@@ -198,10 +199,9 @@ fhir_read_resource = _build [
   row = res[0]
 
   unless row
-    deletionHistory = utils.exec plv8,
-      select: ':*'
-      from: sql.q(query.hx_table_name)
-      where: {id: query.id, resource: '{}'}
+    deletionHistory = history.fhir_resource_history(plv8, {
+      id: query.id, resourceType: query.resourceType
+    }).entry.filter((entry) -> entry.request.method == 'DELETE')
 
     if deletionHistory.length > 0
       return outcome.version_deleted(query.id, query.versionId) #this means that the resource is deleted (#65)
@@ -230,12 +230,11 @@ exports.fhir_vread_resource = _build [
     return outcome.version_not_found(query.id, query.versionId)
 
   resource = compat.parse(plv8, row.resource)
-  # requestMethod = resource.meta.extension.filter(
-  #   (e) -> e.url == 'fhir-request-method'
-  # )[0].valueString
+  requestMethod = resource.meta.extension.filter(
+    (e) -> e.url == 'fhir-request-method'
+  )[0].valueString
 
-  # if requestMethod == 'DELETE'
-  if Object.keys(resource).length == 0
+  if requestMethod == 'DELETE'
     outcome.version_deleted(query.id, query.versionId)
   else
     resource
@@ -382,8 +381,7 @@ exports.fhir_delete_resource = _build [
     values:
       id: id
       version_id: version_id
-      # resource: sql.jsonb(resource)
-      resource: sql.jsonb({})
+      resource: sql.jsonb(resource)
       valid_from: sql.now
       valid_to: sql.now
 
