@@ -113,6 +113,12 @@ npm run test
 # goto: change something
 ```
 
+If you have permissions to edit PostgreSQL config, add directive for auto setting plv8 parameter for every connection. It will make your debugging and development much easier:
+
+```
+echo "plv8.start_proc='plv8_init'" >> /etc/postgresql/9.4/main/postgresql.conf
+```
+
 ## Run test suite in docker container
 
 ```sh
