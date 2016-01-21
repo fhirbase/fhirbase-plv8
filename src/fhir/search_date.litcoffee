@@ -42,7 +42,7 @@ Now we support only simple date data-types - i.e. date, dateTime and instant.
 
     str = (x)-> x.toString()
 
-Function to extract element from resource as tstzrange. 
+Function to extract element from resource as tstzrange.
 
     exports.fhir_extract_as_daterange = (plv8, resource, path, element_type)->
       if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
@@ -96,9 +96,9 @@ Function to convert query parameter into range.
       else if operator == 'le'
         ['$tstzrange', '-infinity', date.to_upper_date(value), '()']
       else if operator == 'gt'
-        ['$tstzrange', date.to_upper_date(value), 'infinity', '[)']
+        ['$tstzrange', date.to_upper_date(value), 'infinity', '()']
       else if operator == 'ge'
-        ['$tstzrange', date.to_lower_date(value), 'infinity', '[)']
+        ['$tstzrange', date.to_lower_date(value), 'infinity', '()']
       else if operator == 'eq' or operator = 'ne'
         ['$tstzrange', date.to_lower_date(value), date.to_upper_date(value), '[)']
       else

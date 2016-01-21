@@ -10,6 +10,7 @@ fixtures:
   - {resourceType: 'Patient', name: [{given: ['noise1']}], birthDate: '1970'}
   - {resourceType: 'Patient', name: [{given: ['noise2']}], birthDate: '1971'}
   - {resourceType: 'Patient', name: [{given: ['nop']}]}
+  - {resourceType: 'Patient', name: [{given: ['Finn']}], birthDate: '2005-05-01 10:00:01'}
   - {resourceType: 'Patient', name: [{given: ['ivan']}], active: true , birthDate: '1981'}
   - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}], birthDate: '1988', multipleBirthInteger: 3}
   - {resourceType: 'Patient', name: [{given: ['Cheburashka']}], birthDate: '1972', multipleBirthInteger: 2}
@@ -19,14 +20,6 @@ fixtures:
 
 queries:
   - query: {resourceType: 'Patient', queryString:  'birthdate=gt1980'}
-    total: 2
-    indexed: true
-    probes:
-      - path: ['total']
-        result: 2
-      - path: ['entry', 'length']
-        result: 2
-  - query: {resourceType: 'Patient', queryString:  'birthdate=ge1980'}
     total: 3
     indexed: true
     probes:
@@ -34,18 +27,38 @@ queries:
         result: 3
       - path: ['entry', 'length']
         result: 3
+  - query: {resourceType: 'Patient', queryString:  'birthdate=ge1980'}
+    total: 4
+    indexed: true
+    probes:
+      - path: ['total']
+        result: 4
+      - path: ['entry', 'length']
+        result: 4
   - query: {resourceType: 'Patient', queryString:  'birthdate=gt1980&birthdate=ne1981'}
-    total: 1 
+    total: 2
     indexed: true
   - query: {resourceType: 'Patient', queryString:  'birthdate=ge1980&birthdate=ne1981'}
-    total: 2 
+    total: 3
     indexed: true
   - query: {resourceType: 'Patient', queryString: 'birthdate=gt1985'}
+    total: 2
+    indexed: true
+
+
+  - query: {resourceType: 'Patient', queryString: 'birthdate=gt2005-05-01 10:00:01&name=Finn'}
+    total: 0
+    indexed: true
+  - query: {resourceType: 'Patient', queryString: 'birthdate=lt2005-05-01 10:00:01&name=Finn'}
+    total: 0
+    indexed: true
+  - query: {resourceType: 'Patient', queryString: 'birthdate=ge2005-05-01 10:00:01&name=Finn'}
     total: 1
     indexed: true
-  - query: {resourceType: 'Patient', queryString: 'birthdate=lt1970-05'}
+  - query: {resourceType: 'Patient', queryString: 'birthdate=le2005-05-01 10:00:01&name=Finn'}
     total: 1
     indexed: true
+
   - query: {resourceType: 'Patient', queryString: 'birthdate=lt1970-05'}
     total: 1
     indexed: true
@@ -56,26 +69,26 @@ queries:
     total: 1
     indexed: true
   - query: {resourceType: 'Patient', queryString: 'birthdate=lt1971'}
-    total: 1 
+    total: 1
     indexed: true
   - query: {resourceType: 'Patient', queryString: 'birthdate=le1971'}
-    total: 2 
+    total: 2
     indexed: true
   - query: {resourceType: 'Patient', queryString: 'birthdate=gt1980'}
-    total: 2 
+    total: 3
   - query: {resourceType: 'Patient', queryString: 'birthdate:missing=true'}
-    total: 1 
+    total: 1
   - query: {resourceType: 'Patient', queryString: 'birthdate:missing=false'}
-    total: 6 
+    total: 7
   - query: {resourceType: 'Encounter', queryString: 'date=2014-12-02T11:00:00+11'}
-    total: 1 
+    total: 1
   - query: {resourceType: 'Encounter', queryString: 'date=2014-12-02T00:00:00Z'}
-    total: 1 
+    total: 1
   - query: {resourceType: 'Encounter', queryString: 'date=2014-12-02T00:00:00.555Z'}
-    total: 1 
+    total: 1
   - query: {resourceType: 'Encounter', queryString: 'date=2014-12-02T05:00:00+05'}
-    total: 1 
+    total: 1
   - query: {resourceType: 'Encounter', queryString: 'date=2014-12-01T19:00:00-05'}
-    total: 1 
+    total: 1
   - query: {resourceType: 'Encounter', queryString: 'date=2014-12-02T11:00:00'}
-    total: 0 
+    total: 0

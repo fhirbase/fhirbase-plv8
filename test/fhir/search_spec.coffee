@@ -61,7 +61,7 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
 
         plv8.execute "SET enable_seqscan = ON;" if (q.indexed or q.indexed_order)
 
-        if q.total
+        if q.total || q.total == 0
           assert.equal(res.total, q.total)
 
         (q.probes || []).forEach (probe)-> assert.equal(get_in(res, probe.path), probe.result)
