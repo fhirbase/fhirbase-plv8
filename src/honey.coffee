@@ -167,7 +167,7 @@ raw = (res, expr)->
   res.push(expr.replace(/^:/, ''))
 
 ignore = (res, expr)->
- console.log('ignore', expr)
+  console.log('ignore', expr)
 
 isSymbol = (x)-> x && x.indexOf && x.indexOf('$') == 0
 
