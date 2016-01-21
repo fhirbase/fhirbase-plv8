@@ -26,7 +26,7 @@ describe "extract_as_date", ->
       res = search.fhir_extract_as_daterange({}, resource, spec.path, spec.elementType)
       assert.deepEqual(res, spec.result)
 
-      
+
 value_specs = [
   {
     args:   ['lt', '1980']
@@ -38,11 +38,11 @@ value_specs = [
   }
   {
     args:   ['gt', '1980']
-    result: ['$tstzrange', '1981-01-01', 'infinity', '[)']
+    result: ['$tstzrange', '1981-01-01', 'infinity', '()']
   }
   {
     args:   ['ge', '1980']
-    result: ['$tstzrange', '1980-01-01', 'infinity', '[)']
+    result: ['$tstzrange', '1980-01-01', 'infinity', '()']
   }
   {
     args:   ['eq', '1980']
