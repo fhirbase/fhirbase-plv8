@@ -6,16 +6,16 @@ This module is responsible for FHIR search implementation.
 
 Search API is specified on
 
-* [http://hl7-fhir.github.io/search.html]  
-* [http://hl7-fhir.github.io/search_filter.html]  
+* [http://hl7-fhir.github.io/search.html]
+* [http://hl7-fhir.github.io/search_filter.html]
 
 pages.
 
 This is a most sofistiacted part of fhirbase,
 so the code split as much as possible  into small modules
 
-`query_string` module parse query string into {query: 'ResourceType', where: [params], joins: [params]} form 
-`expand_params` walk throw it and add required FHIR meta-data to each parameter 
+`query_string` module parse query string into {query: 'ResourceType', where: [params], joins: [params]} form
+`expand_params` walk throw it and add required FHIR meta-data to each parameter
 `normalize_operators` unify operators
 
     parser = require('./query_string')
@@ -51,6 +51,9 @@ appropriate elements from resource by path
       number: require('./search_number')
       quantity: require('./search_quantity')
       uri: require('./search_uri')
+
+
+    DEFAULT_RESOURCES_PER_PAGE = 10
 
 This is main function:
 
@@ -94,11 +97,7 @@ Then we are returning  resulting Bundle.
 
       resource_rows = utils.exec(plv8, honey)
       resources = resource_rows.map((x)-> compat.parse(plv8, x.resource))
-
-      if !honey.limit or (honey.limit && resource_rows.length < honey.limit)
-        count = resource_rows.length
-      else
-        count = utils.exec(plv8, countize_query(honey))[0].count
+      count = utils.exec(plv8, countize_query(honey))[0].count
 
       base_url = "#{query.resourceType}/#{query.queryString}"
 
@@ -117,7 +116,7 @@ Then we are returning  resulting Bundle.
       resourceType: 'Bundle'
       type: 'searchset'
       total: count
-      link: helpers.search_links(query, count)
+      link: helpers.search_links(query, expr, count)
       entry: resources.map(to_entry)
 
 Helper function to convert resource into entry bundle:
@@ -210,7 +209,6 @@ To build search query we need to
         expr = expand.expand(idx, expr)
         expr = normalize_operators(expr)
 
-
         expr.where = to_hsql(alias, expr.where)
 
         if expr.ids
@@ -224,6 +222,12 @@ To build search query we need to
           from: ['$alias', ['$q', namings.table_name(plv8, expr.query)], alias]
           where: expr.where
           order: ordering
+
+        if expr.count != null || expr.page != null
+          hsql.limit = expr.count || DEFAULT_RESOURCES_PER_PAGE
+
+        if expr.page != null
+          hsql.offset = (expr.count || DEFAULT_RESOURCES_PER_PAGE) * expr.page
 
         if expr.joins
           hsql.join = lang.mapcat expr.joins, (x)->
@@ -276,7 +280,7 @@ This tricky function converts chained parameters into SQL joins.
         meta = param[1]
         joined_resource = meta.join
         joined_table = namings.table_name(plv8, joined_resource)
-        join_alias = next_alias() 
+        join_alias = next_alias()
         value = {value: ":'#{joined_resource}/' || #{join_alias}.id"}
 
         on_expr = to_hsql(current_alias, ['$param', meta, value])
@@ -295,7 +299,7 @@ This tricky function converts chained parameters into SQL joins.
 Helper function to  generate aliases for joins:
 
     mk_alias = ()->
-      tbl_cnt = 0 
+      tbl_cnt = 0
       ()->
         tbl_cnt += 1
         "tbl#{tbl_cnt}"
