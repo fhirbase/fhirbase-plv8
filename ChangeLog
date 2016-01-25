@@ -1,3 +1,8 @@
+2016-01-25  Danil Kutkevich  <danil@kutkevich.org>
+
+        * core/schema.coffee (fhir_drop_storage, fhir_drop_storage_sql):
+        respects PostgreSQL reserved keywords (#77).
+
 2016-01-20  Danil Kutkevich  <danil@kutkevich.org>
 
         * fhir/crud.coffee, fhir/bundle.coffee (fhir_read_resource,

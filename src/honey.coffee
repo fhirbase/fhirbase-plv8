@@ -372,10 +372,13 @@ heval = (res, expr)->
 
 sql = (expr)-> heval(mk_result(), expr)
 
+quoteIdent = (string)->
+  "\"#{string}\""
+
 sql.key = (s)-> ":#{s}"
 sql.symbol = (s)-> "$#{s}"
 sql.expr = (s, args...)-> ["$#{s}"].concat(args)
-sql.q = (args...)-> ["$q"].concat(args)
+sql.q = (args...)-> ["$q"].concat(args.map((a) -> quoteIdent(a)))
 sql.inlineString = (x)-> ["$inlineString", x]
 sql.json = (x)-> ["$json", x]
 sql.jsonb = (x)-> ["$jsonb", x]

@@ -67,8 +67,8 @@ fhir_drop_storage_sql = (plv8, query)->
   nm = namings.table_name(plv8, resource_type)
   hx_nm = namings.history_table_name(plv8, nm)
   [
-   {drop: "table", name: sql.key(nm), safe: true}
-   {drop: "table", name: sql.key(hx_nm), safe: true}
+   {drop: "table", name: sql.q(nm), safe: true}
+   {drop: "table", name: sql.q(hx_nm), safe: true}
   ].map(sql).join(";\n")
 
 exports.fhir_drop_storage_sql = fhir_drop_storage_sql
