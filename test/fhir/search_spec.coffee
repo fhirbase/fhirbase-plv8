@@ -56,6 +56,7 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
         plv8.execute "SET enable_seqscan = OFF;" if (q.indexed or q.indexed_order)
 
         res = search.fhir_search(plv8, q.query)
+        # console.log(JSON.stringify(res))
         explain = JSON.stringify(search.fhir_explain_search(plv8, q.query))
         # console.log(JSON.stringify(search.fhir_search_sql(plv8, q.query)))
 

@@ -2,45 +2,47 @@ lang = require('../lang')
 sql = require('../honey')
 xpath = require('./xpath')
 search_common = require('./search_common')
-
-UNACCENT_MAP =
-  'é': 'e'
-  'á': 'a'
-  'ű': 'u'
-  'ő': 'o'
-  'ú': 'u'
-  'ö': 'o'
-  'ü': 'u'
-  'ó': 'o'
-  'í': 'i'
-  'É': 'E'
-  'Á': 'A'
-  'Ű': 'U'
-  'Ő': 'O'
-  'Ú': 'U'
-  'Ö': 'O'
-  'Ü': 'U'
-  'Ó': 'O'
-  'Í': 'I'
-  'ò': 'o'
-
-UNACCENT_RE = new RegExp("[" + (k for k,_ of UNACCENT_MAP).join('') + "]" , 'g');
-unaccent_fn = (match) -> UNACCENT_MAP[match]
-
-unaccent = (s) -> s.toString().replace(UNACCENT_RE, unaccent_fn)
+unaccent = require('../unaccent').unaccent
 exports.unaccent = unaccent
 
 TODO = -> throw new Error("TODO")
 
 EMPTY_VALUE = "$NULL"
 
+INDEXABLE_ATTRIBUTES =
+  HumanName: ['family', 'given', 'prefix', 'suffix', 'text']
+
 exports.fhir_extract_as_string = (plv8, resource, path, element_type)->
   obj = xpath.get_in(resource, [path])
-  vals = lang.values(obj).filter((x)-> x && x.toString().trim())
+  vals = []
+
+  if INDEXABLE_ATTRIBUTES[element_type]
+    collectValsFn = (o) ->
+      result = []
+      for k, v of o
+        if INDEXABLE_ATTRIBUTES[element_type].indexOf(k) >= 0
+          if Array.isArray(v)
+            result = result.concat(v)
+          else
+            result.push(v)
+      result
+
+    if Array.isArray(obj)
+      for v in obj
+        vals = vals.concat(collectValsFn(v))
+    else
+      vals = collectValsFn(obj)
+  else
+    vals = lang.values(obj)
+
+  # console.log "!!!!!! #{JSON.stringify(obj)}, #{element_type} => #{JSON.stringify(vals)}"
+
+  vals = vals.filter((x)-> x && x.toString().trim().length > 0)
+
   if vals.length == 0
     EMPTY_VALUE
   else
-    ("^^#{unaccent(v)}$$" for v in vals).join(" ")
+    ("^^#{unaccent(v.toString())}$$" for v in vals).join(" ")
 
 exports.fhir_extract_as_string.plv8_signature =
   arguments: ['json', 'json', 'text']
@@ -50,12 +52,21 @@ exports.fhir_extract_as_string.plv8_signature =
 exports.fhir_sort_as_string = (plv8, resource, path, element_type)->
   obj = xpath.get_in(resource, [path])[0]
   return null unless obj
+
   res = switch element_type
     when 'string'
       obj.toString().toLowerCase()
     when 'HumanName'
-      lang.values(obj).filter((x)-> x && x.toString().trim().toLowerCase()).join('0')
-      [[].concat(obj.family || []).join('0'),[].concat(obj.given || []).join('0'),[].concat(obj.middle || []).join('0'), obj.text].join('0')
+      result = []
+      for k in INDEXABLE_ATTRIBUTES["HumanName"]
+        v = obj[k]
+        if v
+          if Array.isArray(v)
+            result = result.concat(v)
+          else
+            result.push(v)
+
+      result.join('0')
     when 'Coding'
       [obj.system, obj.code, obj.display].join('0')
     when 'Address'
@@ -79,7 +90,7 @@ exports.fhir_sort_as_string.plv8_signature =
   immutable: true
 
 normalize_string_value = (x)->
-  x && x.trim().toLowerCase()
+  x && unaccent(x.trim().toLowerCase().toString())
 
 SUPPORTED_TYPES = [
   'Address'
@@ -108,8 +119,6 @@ OPERATORS =
       ["$ne", extract_expr(meta, tbl), EMPTY_VALUE]
     else
       ["$ilike", extract_expr(meta, tbl), EMPTY_VALUE]
-
-
 
 
 OPERATORS_ALIASES =

@@ -9,7 +9,7 @@ resource =
     {
       given: ['Niccolò', 'Great']
       family: ['Paganini']
-      middle: ['Music']
+      prefix: ['Music']
     }
     {
       given: ['Niky']
@@ -41,7 +41,7 @@ specs = [
     path: ['Patient', 'name']
     elementType: 'HumanName'
     result: ['^^Niccolo$$', '^^Great$$', '^^Music$$', '^^Paganini$$', '^^Niky$$', '^^Pogy$$']
-    order: 'paganini0niccolò0great0music0'
+    order: 'paganini0niccolò0great0music'
   }
   {
     path: ['Patient', 'address', 'city']
