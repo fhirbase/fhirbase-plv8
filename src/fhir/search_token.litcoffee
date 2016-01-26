@@ -97,11 +97,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       data = xpath.get_in(resource, [path])[0]
       return null unless data
       if element_type == 'boolean'
-        if data
-          if data.toString() == 'false' then 'false' else 'true'
-        else
-          '$NULL'
-
+        if data.toString() == 'false' then 'false' else 'true'
       else if element_type == 'code' || element_type == 'string' || element_type == 'uri'
         data.toString()
       else if element_type == 'Identifier' or element_type == 'ContactPoint'
