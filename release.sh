@@ -7,8 +7,8 @@ set -e
 # DATABASE_URL=postgres://your_user_name:your_password@localhost:5432/fhirbase_build
 # WARNING: `fhirbase_build` database will be destroed and recreated!
 
-PREV_FBVERSION="0.0.1-beta.12"
-FBVERSION="0.0.1-beta.13"
+PREV_FBVERSION="0.0.1-beta.13"
+FBVERSION="0.0.1-beta.14"
 
 PGOPTIONS='--client-min-messages=warning'
 loadcmd="psql --no-psqlrc --quiet --echo-all --single-transaction \
