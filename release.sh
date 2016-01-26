@@ -62,5 +62,9 @@ cp tmp/build.sql releases/fhirbase-$FBVERSION.sql || exit 1
 cp tmp/patch.sql releases/fhirbase-$FBVERSION-patch.sql || exit 1
 cd releases || exit 1
 
+sed --in-place \
+    --expression="s/$PREV_FBVERSION/$FBVERSION/" \
+    ./src/core/version.coffee || exit 1
+
 zip -r fhirbase-$FBVERSION.sql.zip zip fhirbase-$FBVERSION.sql || exit 1
-zip -r fhirbase-$FBVERSION-patch.sql.zip fhirbase-$FBVERSION-patch.sql
+zip -r fhirbase-$FBVERSION-patch.sql.zip fhirbase-$FBVERSION-patch.sql || exit 1

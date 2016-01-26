@@ -1,3 +1,7 @@
+2016-01-26  Danil Kutkevich  <danil@kutkevich.org>
+
+        * src/core/version.coffee (fhirbase_version): fhirbase version (#83).
+
 2016-01-25  Danil Kutkevich  <danil@kutkevich.org>
 
         * core/schema.coffee (fhir_drop_storage, fhir_drop_storage_sql):
