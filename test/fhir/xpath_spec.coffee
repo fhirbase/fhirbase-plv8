@@ -16,3 +16,7 @@ describe "fhir.xpath: get_in", ()->
   for  spec in specs.extracts
     it "#{spec.query.join('/')}", ()->
       assert.deepEqual(xpath.get_in(specs.patient, [spec.query]), spec.result)
+
+describe "get_in false value", () ->
+  it "should return array containing false value", () ->
+    assert.deepEqual([false], xpath.get_in(specs.patient, [["Patient", "active"]]))

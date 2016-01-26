@@ -82,7 +82,12 @@ get_by_path_recur = (acc, node, path)->
   next_node = node[next_path_item]
   next_path = path[1...]
 
-  unless next_node
+  # console.log "!!! #{JSON.stringify(node)}", path, next_node, acc
+
+  if next_node == false
+    acc.push(next_node)
+    return acc
+  else if next_node == null || next_node == undefined
     return acc
   else if next_path.length == 0
     if lang.isArray(next_node)

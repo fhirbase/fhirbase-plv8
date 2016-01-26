@@ -54,6 +54,16 @@ fixtures:
               code: SSN
         system: ssn
         value: 64321
+
+  - resourceType: 'Patient'
+    name: [{given: ['Finn'], family: ['The Boy']}]
+    active: false
+    gender: 'male'
+
+  - resourceType: 'Patient'
+    name: [{given: ['Jake'], family: ['The Dog']}]
+    gender: 'male'
+
   - {resourceType: 'Patient', name: [{given: ['noise1']}], birthDate: '1970'}
   - {resourceType: 'Patient', name: [{given: ['noise2']}], birthDate: '1971'}
 
@@ -65,12 +75,24 @@ queries:
       - path: ['entry', 'length']
         result: 2
 
+  - query: {resourceType: 'Patient', queryString:  'active=false'}
+    indexed: true
+    total: 1
+
+  - query: {resourceType: 'Patient', queryString:  'active:missing=true'}
+    indexed: false
+    total: 3
+
+  - query: {resourceType: 'Patient', queryString:  'active:missing=false'}
+    indexed: false
+    total: 3
+
   - query: {resourceType: 'Patient', queryString:  'identifier=12345'}
     indexed: true
     total: 1
     probes:
       - path: ['entry', 'length']
-        result: 1 
+        result: 1
       - path: ['entry', 0, 'resource', 'name', 0, 'given', 0]
         result: nicola
 
@@ -79,7 +101,7 @@ queries:
     total: 1
     probes:
       - path: ['entry', 'length']
-        result: 1 
+        result: 1
       - path: ['entry', 0, 'resource', 'name', 0, 'given', 0]
         result: ivan
 
@@ -92,7 +114,7 @@ queries:
     total: 1
     probes:
       - path: ['entry', 'length']
-        result: 1 
+        result: 1
       - path: ['entry', 0, 'resource', 'name', 0, 'given', 0]
         result: ivan
   - query: {resourceType: 'Patient', queryString:  'email=nicola@mail.com'}
@@ -106,11 +128,11 @@ queries:
     total: 1
   - query: {resourceType: 'Patient', queryString:  'gender=male'}
     indexed: true
-    total: 1 
+    total: 3
   - query: {resourceType: 'Patient', queryString:  'gender:missing=true'}
     indexed: true
     total: 3
   - query: {resourceType: 'Patient', queryString:  'gender:missing=false'}
-    total: 1
+    total: 3
   - query: {resourceType: 'Patient', queryString:  'deceased=true'}
-    total: 2 
+    total: 2

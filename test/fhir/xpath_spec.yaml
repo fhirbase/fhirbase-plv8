@@ -24,6 +24,8 @@ extracts:
     result: ['12345', '777']
   - query: [['Patient','name', ['use', 'official']], 'given']
     result: [ 'Peter', 'James' ]
+  - query: ['Patient', 'active']
+    result: [false]
   - query: [['Patient','identifier', [['type','coding','code'], 'SSN']], 'value']
     result: ['777']
   - query: ['Patient',['identifier', [['type','coding','code'], 'MR']], 'value']
@@ -58,7 +60,7 @@ patient:
         start: "2001-05-06"
       assigner:
         display: "Acme Healthcare"
-  active: true
+  active: false
   name:
     - use: "official"
       family:

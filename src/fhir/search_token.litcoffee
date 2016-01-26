@@ -41,6 +41,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
     exports.fhir_extract_as_token = (plv8, resource, path, element_type)->
       res = []
       data = xpath.get_in(resource, [path])
+
       if element_type == 'boolean'
         res = for str in data
           if str.toString() == 'false'
@@ -79,6 +80,9 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       else
         throw new Error("fhir_extract_as_token: Not implemented for #{element_type}")
 
+      # console.log("!!!! #{JSON.stringify(data)} #{JSON.stringify(path)} => #{JSON.stringify(res)}")
+
+
       if res.length == 0
         ['$NULL']
       else
@@ -93,7 +97,11 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       data = xpath.get_in(resource, [path])[0]
       return null unless data
       if element_type == 'boolean'
-        if data.toString() == 'false' then 'false' else 'true'
+        if data
+          if data.toString() == 'false' then 'false' else 'true'
+        else
+          '$NULL'
+
       else if element_type == 'code' || element_type == 'string' || element_type == 'uri'
         data.toString()
       else if element_type == 'Identifier' or element_type == 'ContactPoint'
