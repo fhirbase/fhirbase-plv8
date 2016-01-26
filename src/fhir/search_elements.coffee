@@ -25,17 +25,17 @@ exports.paths_to_selector = paths_to_selector
 parse_elements = (elements)->
   paths_to_selector(elements.split(',').map(trim).filter(identity))
 
-exports.parse_elements = parse_elements 
+exports.parse_elements = parse_elements
 
 
 summary_elements = (structure_definition)->
   name = structure_definition.name
   elems = structure_definition.snapshot.element
   res = ['resourceType']
-  for el in elems when el.isSummary  and el.path 
+  for el in elems when el.isSummary  and el.path
     parts = el.path.split('.')[1..-1]
     last = parts[parts.length - 1]
-    if last.indexOf('[x]') > -1 
+    if last.indexOf('[x]') > -1
       for tp in el.type
         ppath = parts[1..-1]
         typed = last.replace('[x]', lang.capitalize(tp.code))
