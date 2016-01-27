@@ -42,23 +42,27 @@ fixtures:
     identifier:
       - use: usual
         type:
-        coding:
-            - system: http://hl7.org/fhir/v2/0203
-              code: MR
+          coding:
+              - system: http://hl7.org/fhir/v2/0203
+                code: MR
         system: urn:oid:1.2.36.146.595.217.0.1
         value: 12346
       - use: usual
         type:
-        coding:
-            - system: http://hl7.org/fhir/v2/0203
-              code: SSN
+          coding:
+              - system: http://hl7.org/fhir/v2/0203
+                code: SSN
         system: ssn
         value: 64321
 
   - resourceType: 'Patient'
-    name: [{given: ['Finn'], family: ['The Boy']}]
+    name: [{given: ['Finn'], family: ['The Human']}]
     active: false
     gender: 'male'
+    identifier:
+      - use: usual
+        system: ssn
+        value: abc-456
 
   - resourceType: 'Patient'
     name: [{given: ['Jake'], family: ['The Dog']}]
@@ -136,3 +140,22 @@ queries:
     total: 3
   - query: {resourceType: 'Patient', queryString:  'deceased=true'}
     total: 2
+
+  # case insensitivity tests
+  - query: {resourceType: 'Patient', queryString:  'identifier=abc-456'}
+    total: 1
+    probes: &finn-probes
+      - path: ['entry', 0, 'resource', 'name', 0, 'given', 0]
+        result: Finn
+
+  - query: {resourceType: 'Patient', queryString:  'identifier=ABC-456'}
+    total: 1
+    probes: *finn-probes
+
+  - query: {resourceType: 'Patient', queryString:  'identifier=SSN|abc-456'}
+    total: 1
+    probes: *finn-probes
+
+  - query: {resourceType: 'Patient', queryString:  'identifier=ssn|ABC-456'}
+    total: 1
+    probes: *finn-probes

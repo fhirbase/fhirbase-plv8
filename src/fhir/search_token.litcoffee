@@ -54,23 +54,23 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
         res = (str.toString() for str in data)
       else if element_type == 'Identifier' or element_type == 'ContactPoint'
         for coding in data
-            res.push(coding.value)
-            res.push("#{coding.system}|#{coding.value}")
+            res.push(coding.value.toString().toLowerCase()) if coding.value
+            res.push("#{coding.system}|#{coding.value}".toLowerCase())
       else if element_type == 'Coding'
         for coding in data
-            res.push(coding.code)
-            res.push("#{coding.system}|#{coding.code}")
+            res.push(coding.code.toString().toLowerCase()) if coding.code
+            res.push("#{coding.system}|#{coding.code}".toLowerCase())
       else if element_type == 'Quantity'
         for quant in data
-            res.push(quant.code)
-            res.push(quant.unit)
-            res.push("#{quant.system}|#{quant.code}")
-            res.push("#{quant.system}|#{quant.unit}")
+            res.push(quant.code.toString().toLowerCase()) if quant.code
+            res.push(quant.unit.toString().toLowerCase()) if quant.unit
+            res.push("#{quant.system}|#{quant.code}".toLowerCase())
+            res.push("#{quant.system}|#{quant.unit}".toLowerCase())
       else if element_type == 'CodeableConcept'
         for concept in data
           for coding in (concept.coding || [])
-            res.push(coding.code)
-            res.push("#{coding.system}|#{coding.code}")
+            res.push(coding.code.toString().toLowerCase()) if coding.code
+            res.push("#{coding.system}|#{coding.code}".toLowerCase())
       else if element_type == 'Reference'
         for ref in data
           res.push(ref.reference)
@@ -129,7 +129,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       eq: (tbl, meta, value)->
         ["$&&"
           ['$cast', extract_expr(meta, tbl), ":text[]"]
-          ['$cast', ['$array', value.value], ":text[]"]]
+          ['$cast', ['$array', value.value.toString().toLowerCase()], ":text[]"]]
 
 
     exports.normalize_operator = (meta, value)->
