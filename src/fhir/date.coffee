@@ -7,8 +7,7 @@ extract_tz = (date)->
   else if date.length > 10 and date.match(/[+|-](0[0-9]|1[0-3])$/)
     tz = date.substring(date_length - 3, date_length)
     date = date.substring(0, date_length - 3)
-  # fix #72 <https://github.com/fhirbase/fhirbase-plv8/issues/72>
-  else if date.length > 10 and date.match(/[+|-](0[0-9]|1[0-3]):[034][05]$/)
+  else if date.length > 10 and date.match(/[+|-](0[0-9]|1[0-3]):[034][05]$/) # fix #72 <https://github.com/fhirbase/fhirbase-plv8/issues/72>
     tz = date.substring(date_length - 6, date_length)
     date = date.substring(0, date_length - 6)
   [date, tz]
