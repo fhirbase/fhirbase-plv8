@@ -34,11 +34,10 @@ psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' ||
 psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' || exit 1
 
 FB_SCHEMA=public bash build.sh || exit 1
-curl --location \
-     --output ./releases/fhirbase-$PREV_FBVERSION.sql.zip \
-     https://github.com/fhirbase/fhirbase-plv8/releases/download/v$PREV_FBVERSION/fhirbase-$PREV_FBVERSION.sql.zip || exit 1
-unzip ./releases/fhirbase-$PREV_FBVERSION.sql.zip -d ./releases/ || exit 1
-{ echo $(schema_statement "public"); cat releases/fhirbase-$PREV_FBVERSION.sql; } \
+{ echo $(schema_statement "public"); \
+  curl --location \
+       https://github.com/fhirbase/fhirbase-plv8/releases/download/v$PREV_FBVERSION/fhirbase-$PREV_FBVERSION.sql.zip \
+       | funzip; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 { echo $(schema_statement "public"); cat tmp/patch.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
