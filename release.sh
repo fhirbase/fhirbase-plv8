@@ -52,9 +52,15 @@ FB_SCHEMA=bar bash build.sh || exit 1
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 FB_SCHEMA=bar npm run test || exit 1
 
-sed --in-place \
-    --expression="s/$PREV_FBVERSION/$FBVERSION/" \
-    ./src/core/version.coffee || exit 1
+version_sensitive_files="
+./src/core/version.coffee
+./vagrant/provision/provision-environment.sh"
+
+for file in $version_sensitive_files; do
+    sed --in-place \
+        --expression="s/$PREV_FBVERSION/$FBVERSION/g" \
+        $file || exit 1
+done
 
 FB_SCHEMA=public bash build.sh || exit 1
 { echo $(schema_statement "public") ; cat tmp/build.sql; } \
