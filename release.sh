@@ -26,10 +26,6 @@ function schema_statement {
     echo -n "$statement"
 }
 
-sed --in-place \
-    --expression="s/$PREV_FBVERSION/$FBVERSION/" \
-    ./src/core/version.coffee || exit 1
-
 psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' || exit 1
 psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' || exit 1
 
@@ -55,6 +51,10 @@ FB_SCHEMA=bar bash build.sh || exit 1
 { echo $(schema_statement "bar") ; cat tmp/build.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 FB_SCHEMA=bar npm run test || exit 1
+
+sed --in-place \
+    --expression="s/$PREV_FBVERSION/$FBVERSION/" \
+    ./src/core/version.coffee || exit 1
 
 FB_SCHEMA=public bash build.sh || exit 1
 { echo $(schema_statement "public") ; cat tmp/build.sql; } \
