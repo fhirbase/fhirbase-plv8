@@ -2,3 +2,4 @@
 /node_modules
 /releases
 /tmp
+/vagrant/.vagrant
