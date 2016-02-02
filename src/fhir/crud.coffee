@@ -9,6 +9,7 @@ date = require('./date')
 search = require('./search')
 compat = require('../compat')
 history = require('./history')
+jsonpatch = require('../vendor/starcounter-jack/json-patch')
 
 term = require('./terminology')
 
@@ -16,6 +17,7 @@ AFTER_HOOKS = {
   ValueSet:
     created: [term.fhir_valueset_after_changed]
     updated: [term.fhir_valueset_after_changed]
+    patched: [term.fhir_valueset_after_changed]
     deleted: [term.fhir_valueset_after_deleted]
 }
 
@@ -332,6 +334,100 @@ fhir_update_resource = _build [
 
 exports.fhir_update_resource = fhir_update_resource
 exports.fhir_update_resource.plv8_signature = ['json', 'json']
+
+fhir_patch_resource = _build [
+    [wrap_required_attributes, [['resource']]]
+    [wrap_ensure_table]
+    [wrap_postprocess]
+    [wrap_hooks, 'patched']
+  ], (plv8, query)->
+    resource = fhir_read_resource(plv8, {
+      resourceType: query.resource.resourceType, id: query.resource.id
+    })
+
+    jsonpatch.apply(resource, [query.patch])
+
+    old_version = null
+    id = null
+
+    if query.queryString
+      result = search.fhir_search(plv8, {resourceType: resource.resourceType, queryString: query.queryString})
+      if result.entry.length == 0
+        return fhir_create_resource(plv8, allowId: true, resource: resource)
+      else if result.entry.length == 1
+        old_version = result.entry[0].resource
+        resource.id = old_version.id
+        id = resource.id
+      else if result.entry.length > 1
+        return outcome.non_selective(query.ifNoneExist)
+    else
+      unless resource.id
+        return outcome.bad_request("Could not patch resource without id")
+
+      unless resource.resourceType
+        return outcome.bad_request("Could not patch resource without resourceType")
+
+      res = utils.exec plv8,
+        select: sql.raw('*')
+        from: sql.q(query.table_name)
+        where: {id: resource.id}
+
+      if res.length == 0
+        query.allowId = true
+        return fhir_create_resource(plv8, query)
+      else if res.length == 1
+        old_version = compat.parse(plv8, res[0].resource)
+        id = resource.id
+      else
+        return outcome.error(code: 'invalid', diagnostics: "Unexpected many resources for one id")
+
+    if old_version.resourceType == 'OperationOutcome'
+      return old_version
+
+    throw new Error("Unexpected behavior, no id") unless id
+
+    if query.ifMatch && old_version.meta.versionId != query.ifMatch
+      return outcome.conflict("Newer then [#{query.ifMatch}] version available [#{old_version.meta.versionId}]")
+
+    version_id = utils.uuid(plv8)
+
+    ensure_meta resource,
+      versionId: version_id
+      lastUpdated: new Date()
+      extension: [{
+        url: 'fhir-request-method',
+        valueString: 'PUT'
+      }, {
+        url: 'fhir-request-uri',
+        valueUri: resource.resourceType
+      }]
+
+    utils.exec plv8,
+      update: sql.q(query.table_name)
+      where: {id: id}
+      values:
+        version_id: version_id
+        resource: sql.jsonb(resource)
+        updated_at: sql.now
+
+    utils.exec plv8,
+      update: sql.q(query.hx_table_name)
+      where: {id: id, version_id: old_version.meta.versionId}
+      values: {valid_to: sql.now}
+
+    utils.exec plv8,
+      insert: sql.q(query.hx_table_name)
+      values:
+        id: id
+        version_id: version_id
+        resource: sql.jsonb(resource)
+        valid_from: sql.now
+        valid_to: sql.infinity
+
+    resource
+
+exports.fhir_patch_resource = fhir_patch_resource
+exports.fhir_patch_resource.plv8_signature = ['json', 'json']
 
 exports.fhir_delete_resource = _build [
     [wrap_required_attributes, [['id'], ['resourceType']]]

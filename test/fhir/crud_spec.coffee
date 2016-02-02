@@ -250,6 +250,31 @@ describe "CORE: CRUD spec", ->
       'Users'
     )
 
+  it 'patch', ->
+    created = crud.fhir_create_resource(plv8, resource:  {
+      resourceType: 'Patient', name: [{given: ['foo']}]
+    })
+
+    patched = crud.fhir_patch_resource(plv8,
+      resource: {
+        id: created.id, resourceType: 'Patient'
+      },
+      patch: {
+        op: 'replace', path: '/name/0/given/0', value: 'bar'
+      })
+    assert.deepEqual(patched.name, [{given: ['bar']}])
+    assert.notEqual(patched.meta.versionId, false)
+    assert.notEqual(patched.meta.versionId, created.meta.versionId)
+
+    read_patched = crud.fhir_read_resource(plv8, patched)
+    assert.deepEqual(read_patched.name, [{given: ['bar']}])
+
+    hx = history.fhir_resource_history(plv8, {
+      id: created.id, resourceType: 'Patient'
+    })
+    assert.equal(hx.total, 2)
+    assert.equal(hx.entry.length, 2)
+
   it "delete", ->
     created = crud.fhir_create_resource(plv8, allowId: true, resource: {
       id: 'toBeDeleted', resourceType: 'Users'

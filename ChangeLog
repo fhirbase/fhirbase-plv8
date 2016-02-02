@@ -1,3 +1,8 @@
+2016-02-02  Danil Kutkevich  <danil@kutkevich.org>
+
+        * src/fhir/crud.coffee (fhir_patch_resource): Add resource
+        patching proof of concept.
+
 2016-01-28  Danil Kutkevich  <danil@kutkevich.org>
 
         * vagrant: backport Vagrant configuration from Fhirbase 1.
