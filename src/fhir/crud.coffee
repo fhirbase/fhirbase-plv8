@@ -9,7 +9,7 @@ date = require('./date')
 search = require('./search')
 compat = require('../compat')
 history = require('./history')
-jsonpatch = require('../vendor/starcounter-jack/json-patch.js')
+jsonpatch = require('../../node_modules/fast-json-patch/src/json-patch.js')
 
 term = require('./terminology')
 
