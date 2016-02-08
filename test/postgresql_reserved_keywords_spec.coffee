@@ -151,32 +151,30 @@ describe 'PostgreSQL reserved key words', ->
         {'url': 'Order', 'method': 'DELETE'}
       ])
 
-  # describe 'Search', ->
-  #   before ->
-  #     schema.fhir_drop_storage(plv8, resourceType: 'Order')
-  #     schema.fhir_create_storage(plv8, resourceType: 'Order')
-  #     # search.fhir_index_parameter(plv8,
-  #     #   resourceType: 'Order', token: 'identifier')
+  describe 'Search', ->
+    before ->
+      schema.fhir_drop_storage(plv8, resourceType: 'Order')
+      schema.fhir_create_storage(plv8, resourceType: 'Order')
 
-  #   beforeEach ->
-  #     schema.fhir_truncate_storage(plv8, resourceType: 'Order')
-  #     crud.fhir_create_resource(plv8, resource: {
-  #       resourceType: 'Order',
-  #       identifier: {
-  #         system: 'http://example.com/OrderIdentifier',
-  #         value: 'foo'
-  #       }
-  #     })
-  #     crud.fhir_create_resource(plv8, resource: {
-  #       resourceType: 'Order',
-  #       identifier: {
-  #         system: 'http://example.com/OrderIdentifier',
-  #         value: 'bar'
-  #       }
-  #     })
+    beforeEach ->
+      schema.fhir_truncate_storage(plv8, resourceType: 'Order')
+      crud.fhir_create_resource(plv8, resource: {
+        resourceType: 'Order',
+        identifier: {
+          system: 'http://example.com/OrderIdentifier',
+          value: 'foo'
+        }
+      })
+      crud.fhir_create_resource(plv8, resource: {
+        resourceType: 'Order',
+        identifier: {
+          system: 'http://example.com/OrderIdentifier',
+          value: 'bar'
+        }
+      })
 
-  #   it 'identifier', ->
-  #     assert.equal(
-  #       search.fhir_search(plv8,
-  #         resourceType: 'Order', queryString: 'identifier=foo').total,
-  #       1)
+    it 'identifier', ->
+      assert.equal(
+        search.fhir_search(plv8,
+          resourceType: 'Order', queryString: 'identifier=foo').total,
+        1)
