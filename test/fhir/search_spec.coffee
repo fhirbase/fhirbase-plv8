@@ -73,3 +73,49 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
           assert(explain.indexOf("Index Cond") > -1, "Should be indexed but #{explain}")
         if q.indexed_order
           assert((explain.indexOf("Index Scan") > -1) && (explain.indexOf("Scan Direction") > -1), "Should be indexed but #{explain}")
+
+describe 'AuditEvent search', ->
+  before ->
+    plv8.execute("SET plv8.start_proc = 'plv8_init'")
+    schema.fhir_drop_storage(plv8, resourceType: 'AuditEvent')
+    schema.fhir_create_storage(plv8, resourceType: 'AuditEvent')
+    search.fhir_index_parameter(plv8,
+      resourceType: 'AuditEvent', name: 'desc', token: 'action')
+
+  beforeEach ->
+    schema.fhir_truncate_storage(plv8, resourceType: 'AuditEvent')
+    crud.fhir_create_resource(plv8, resource: {
+      resourceType: 'AuditEvent',
+      object: {name: 'foo'}
+    })
+    crud.fhir_create_resource(plv8, resource: {
+      resourceType: 'AuditEvent',
+      object: {name: 'bar'},
+      event: {action: 'xyz'}
+    })
+
+  it 'action', ->
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'AuditEvent', queryString: 'action=xyz').total,
+      1)
+
+  it 'desc', ->
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'AuditEvent', queryString: 'desc=foo').total,
+      1)
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'AuditEvent', queryString: 'desc=bar').total,
+      1)
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'AuditEvent', queryString: 'desc=muhaha').total,
+      0)
+
+  it 'desc and action', ->
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'AuditEvent', queryString: 'desc=foo,action=xyz').total,
+      1)
