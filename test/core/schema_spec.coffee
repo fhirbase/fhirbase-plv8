@@ -11,22 +11,10 @@ describe "CORE: schema", ()->
     assert.equal(pg_meta.table_exists(plv8, 'users'), false)
     assert.equal(pg_meta.table_exists(plv8, 'users_history'), false)
 
-  it 'drop storage with PostgreSQL reserved name', ()->
-    schema.fhir_drop_storage(plv8, resourceType: 'Order')
-    assert.equal(pg_meta.table_exists(plv8, 'order'), false)
-    assert.equal(pg_meta.table_exists(plv8, 'order_history'), false)
-
   it "create Users storage and history.users", ()->
     schema.fhir_create_storage(plv8, resourceType: 'Users')
     assert.equal(pg_meta.table_exists(plv8, 'users'), true)
     assert.equal(pg_meta.table_exists(plv8, 'users_history'), true)
-
-  it 'create storage with PostgreSQL reserved name', ()->
-    # PostgreSQL reserved key words
-    # <http://www.postgresql.org/docs/current/static/sql-keywords-appendix.html#KEYWORDS-TABLE>.
-    schema.fhir_create_storage(plv8, resourceType: 'Group')
-    assert.equal(pg_meta.table_exists(plv8, 'group'), true)
-    assert.equal(pg_meta.table_exists(plv8, 'group_history'), true)
 
   it "change Users storage name", ()->
     desc = schema.fhir_describe_storage(plv8, resourceType: 'users')
@@ -75,10 +63,3 @@ describe "CORE: schema", ()->
         " `SELECT fhir_create_storage('{\"resourceType\": \"Users\"}');`"
       'Resource Id "unexistingId" with versionId "unexistingVersionId" does not exist'
     )
-
-  it 'truncate storage with PostgreSQL reserved name', ()->
-    schema.fhir_create_storage(plv8, resourceType: 'Order')
-    crud.fhir_create_resource(plv8, resource: {resourceType: 'Order'})
-    truncateOutcome = schema.fhir_truncate_storage(plv8, resourceType: 'Order')
-    issue = truncateOutcome.issue[0]
-    assert.equal(issue.diagnostics, 'Resource type "Order" has been truncated')
