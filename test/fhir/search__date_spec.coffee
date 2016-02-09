@@ -20,7 +20,7 @@ extract_specs = [
       result: '[2015-01-02,2015-01-02T23:59:59.99999]'
     }
   }
-  {
+  { #related to bugs with PostgreSQL reserved key words <https://github.com/fhirbase/fhirbase-plv8/issues/77>, <https://github.com/fhirbase/fhirbase-plv8/issues/88>, <http://www.postgresql.org/docs/current/static/sql-keywords-appendix.html#KEYWORDS-TABLE>
     resource: {date: '2015-01-02'}
     assert: {
       path: ['Order', 'date']
