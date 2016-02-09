@@ -87,6 +87,18 @@ describe 'PostgreSQL reserved key words', ->
       updated = crud.fhir_update_resource(plv8, resource: to_update)
       assert.equal(updated.name, to_update.name)
 
+    it 'terminate', ->
+      created = crud.fhir_create_resource(plv8, allowId: true, resource: {
+        id: 'toBeTerminated', resourceType: 'Order'
+      })
+      crud.fhir_terminate_resource(plv8, {resourceType: 'Order', id: created.id})
+      readed = crud.fhir_read_resource(plv8, {
+        id: created.id, resourceType: 'Order'
+      })
+      assert.equal(
+        readed.issue[0].diagnostics,
+        'Resource Id "toBeTerminated" does not exist')
+
   describe 'History', ->
     before ->
       schema.fhir_create_storage(plv8, resourceType: 'Order')
