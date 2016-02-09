@@ -187,7 +187,7 @@ To build search query we need to
 
       hsql =
         select: ':*'
-        from: ['$alias', ['$q', "\"#{namings.table_name(plv8, expr.query)}\""], alias]
+        from: ['$alias', ['$q', "#{namings.table_name(plv8, expr.query)}"], alias]
         where: expr.where
         order: ordering
 
@@ -219,7 +219,7 @@ To build search query we need to
 
         hsql =
           select: ':*'
-          from: ['$alias', ['$q', "\"#{namings.table_name(plv8, expr.query)}\""], alias]
+          from: ['$alias', ['$q', "#{namings.table_name(plv8, expr.query)}"], alias]
           where: expr.where
           order: ordering
 
