@@ -3,29 +3,42 @@ test = require('../helpers.coffee')
 
 assert = require('assert')
 
-resource =
-  birthDate: '1980'
-  admitDateTime: '2015-01-02'
-
 extract_specs = [
   {
-    path: ['Patient', 'birthDate']
-    elementType: 'date'
-    result: '[1980-01-01,1981-01-01)'
+    resource: {birthDate: '1980'}
+    assert: {
+      path: ['Patient', 'birthDate']
+      elementType: 'date'
+      result: '[1980-01-01,1981-01-01)'
+    }
   }
   {
-    path: ['Patient', 'admitDateTime']
-    elementType: 'dateTime'
-    result: '[2015-01-02,2015-01-02T23:59:59.99999]'
+    resource: {admitDateTime: '2015-01-02'}
+    assert: {
+      path: ['Patient', 'admitDateTime']
+      elementType: 'dateTime'
+      result: '[2015-01-02,2015-01-02T23:59:59.99999]'
+    }
+  }
+  {
+    resource: {date: '2015-01-02'}
+    assert: {
+      path: ['Order', 'date']
+      elementType: 'dateTime'
+      result: '[2015-01-02,2015-01-02T23:59:59.99999]'
+    }
   }
 ]
 
 describe "extract_as_date", ->
   extract_specs.forEach (spec)->
     it JSON.stringify(spec.path), ->
-      res = search.fhir_extract_as_daterange({}, resource, spec.path, spec.elementType)
-      assert.deepEqual(res, spec.result)
-
+      res = search.fhir_extract_as_daterange(
+        {},
+        spec.resource,
+        spec.assert.path,
+        spec.assert.elementType)
+      assert.deepEqual(res, spec.assert.result)
 
 value_specs = [
   {
