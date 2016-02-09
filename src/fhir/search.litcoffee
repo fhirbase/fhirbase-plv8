@@ -419,7 +419,7 @@ This function do analyze on resource tables to update pg statistic
 args: query.resourceType
 
     fhir_analyze_storage = (plv8, query)->
-      plv8.execute "ANALYZE #{query.resourceType.toLowerCase()}"
+      plv8.execute "ANALYZE \"#{query.resourceType.toLowerCase()}\""
       message: "analyzed"
 
     fhir_analyze_storage.plv8_signature = ['json', 'json']
