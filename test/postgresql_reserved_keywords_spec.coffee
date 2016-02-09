@@ -190,3 +190,9 @@ describe 'PostgreSQL reserved key words', ->
         search.fhir_search(plv8,
           resourceType: 'Order', queryString: 'identifier=foo').total,
         1)
+
+    it 'analyze', ->
+      assert.equal(
+        search.fhir_analyze_storage(plv8, resourceType: 'Order').message,
+        'analyzed'
+      )
