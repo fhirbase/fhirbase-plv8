@@ -29,10 +29,11 @@ exports.fhir_conformance = (plv8, base)->
     resource: profiles.map (p)->
       type: p.name
       versioning: 'versioned'
-      profile: "StructureDefinition/#{p.name}"
+      profile:
+        reference:  "/fhir/StructureDefinition/#{p.name}"
       interaction: ["read","vread","update","delete","history-instance","validate","history-type","create","search-type"].map((tp)-> {code: tp})
   ]
   base
 
 
-exports.fhir_conformance.plv8_signature = ['json', 'json']  
+exports.fhir_conformance.plv8_signature = ['json', 'json']
