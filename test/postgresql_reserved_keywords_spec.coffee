@@ -1,3 +1,4 @@
+conformance = require('../src/fhir/conformance')
 crud = require('../src/fhir/crud')
 history = require('../src/fhir/history')
 pg_meta = require('../src/core/pg_meta')
@@ -17,6 +18,17 @@ copy = (x)-> JSON.parse(JSON.stringify(x))
 describe 'PostgreSQL reserved key words', ->
   before ->
     plv8.execute("SET plv8.start_proc = 'plv8_init'")
+
+  describe 'Conformance', ->
+    it 'should respect Order', ->
+      schema.fhir_create_storage(plv8, resourceType: 'Order')
+      assert.equal(
+        conformance.fhir_conformance(plv8, {somekey: 'somevalue'})
+          .rest[0].resource.filter(
+            (resource)-> resource.type == 'Order'
+          ).length,
+        1
+      )
 
   describe 'Schema storage', ->
     it 'create', ->
