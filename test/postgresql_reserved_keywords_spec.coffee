@@ -215,3 +215,13 @@ describe 'PostgreSQL reserved key words', ->
         search.fhir_analyze_storage(plv8, resourceType: 'Order').message,
         'analyzed'
       )
+
+    it 'explain', ->
+      explain = search.fhir_explain_search(plv8, {
+        queryString: 'identifier=foo', resourceType: 'Order'
+      })
+
+      assert.equal(
+        JSON.parse(explain[0]['QUERY PLAN'])[0].Plan.Plans[0]['Relation Name'],
+        'order'
+      )
