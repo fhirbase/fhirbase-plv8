@@ -48,6 +48,13 @@ describe 'PostgreSQL reserved key words', ->
       issue = truncateOutcome.issue[0]
       assert.equal(issue.diagnostics, 'Resource type "Order" has been truncated')
 
+    it 'describe', ()->
+      schema.fhir_create_storage(plv8, resourceType: 'Order')
+      assert.equal(
+        schema.fhir_describe_storage(plv8, resourceType: 'Order').name,
+        'order'
+      )
+
   describe 'CRUD', ->
     before ->
       schema.fhir_create_storage(plv8, resourceType: 'Order')
