@@ -6,7 +6,7 @@
 
  [{:select [(raw "*")]
    :from   (alias (q :schema :patient) "pt")}
-  ["SELECT * FROM schema.patient pt"]]
+  ["SELECT * FROM \"schema\".\"patient\" pt"]]
 
  [{:select (array 1 2 3)}
   ["SELECT ARRAY[ $1 , $2 , $3 ]" 1 2 3]]
@@ -16,7 +16,7 @@
 
  [{:select (raw "count(*)")
    :from (q :schema :patient)}
-  ["SELECT count(*) FROM schema.patient"]]
+  ["SELECT count(*) FROM \"schema\".\"patient\""]]
 
  [{:select (as (cast (count :*) :integer) :cnt)
    :from :patient}
@@ -144,4 +144,4 @@
                  (cast (quote "[\"Patient\",\"alias\"]") :json)
                  (quote "HumanName"))]}
 
-  ["CREATE INDEX patient_name ON patient USING GIN ( extract_as_string( ( patient.resource )::json , ( '[\"Patient\",\"name\"]' )::json , 'HumanName' ) , extract_as_string( ( patient.resource )::json , ( '[\"Patient\",\"alias\"]' )::json , 'HumanName' ) gin_trgm_ops )"]]]
+  ["CREATE INDEX patient_name ON patient USING GIN ( extract_as_string( ( \"patient\".\"resource\" )::json , ( '[\"Patient\",\"name\"]' )::json , 'HumanName' ) , extract_as_string( ( \"patient\".\"resource\" )::json , ( '[\"Patient\",\"alias\"]' )::json , 'HumanName' ) gin_trgm_ops )"]]]

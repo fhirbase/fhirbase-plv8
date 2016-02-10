@@ -187,7 +187,7 @@ To build search query we need to
 
       hsql =
         select: ':*'
-        from: ['$alias', ['$q', "\"#{namings.table_name(plv8, expr.query)}\""], alias]
+        from: ['$alias', ['$q', "#{namings.table_name(plv8, expr.query)}"], alias]
         where: expr.where
         order: ordering
 
@@ -219,7 +219,7 @@ To build search query we need to
 
         hsql =
           select: ':*'
-          from: ['$alias', ['$q', "\"#{namings.table_name(plv8, expr.query)}\""], alias]
+          from: ['$alias', ['$q', "#{namings.table_name(plv8, expr.query)}"], alias]
           where: expr.where
           order: ordering
 
@@ -419,7 +419,7 @@ This function do analyze on resource tables to update pg statistic
 args: query.resourceType
 
     fhir_analyze_storage = (plv8, query)->
-      plv8.execute "ANALYZE #{query.resourceType.toLowerCase()}"
+      plv8.execute "ANALYZE \"#{query.resourceType.toLowerCase()}\""
       message: "analyzed"
 
     fhir_analyze_storage.plv8_signature = ['json', 'json']

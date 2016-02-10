@@ -237,11 +237,12 @@ BUILTINS =
     heval(res, x)
     res.push("AND")
     heval(res, y)
-  $q: (res, [op, sch, id])->
-    if id
-      res.push "#{name(sch)}.#{name(id)}"
-    else
-      res.push "#{name(sch)}"
+  $q: (res, [op, keywords...])->
+    res.push(
+      keywords.map(
+        (keyword) -> "\"#{name(keyword)}\""
+      ).join('.')
+    )
   $as: (res, [op, expr, as])->
     heval(res, expr)
     res.push("AS")
@@ -372,13 +373,10 @@ heval = (res, expr)->
 
 sql = (expr)-> heval(mk_result(), expr)
 
-quoteIdent = (string)->
-  "\"#{string}\""
-
 sql.key = (s)-> ":#{s}"
 sql.symbol = (s)-> "$#{s}"
 sql.expr = (s, args...)-> ["$#{s}"].concat(args)
-sql.q = (args...)-> ["$q"].concat(args.map((a) -> quoteIdent(a)))
+sql.q = (args...)-> ["$q"].concat(args)
 sql.inlineString = (x)-> ["$inlineString", x]
 sql.json = (x)-> ["$json", x]
 sql.jsonb = (x)-> ["$jsonb", x]
