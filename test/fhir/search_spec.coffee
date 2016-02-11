@@ -119,3 +119,81 @@ describe 'AuditEvent search', ->
       search.fhir_search(plv8,
         resourceType: 'AuditEvent', queryString: 'desc=foo,action=xyz').total,
       1)
+
+describe 'Search normalize', ->
+  before ->
+    plv8.execute("SET plv8.start_proc = 'plv8_init'")
+
+    schema.fhir_create_storage(plv8, resourceType: 'Patient')
+    schema.fhir_create_storage(plv8, resourceType: 'MedicationAdministration')
+
+    search.fhir_index_parameter(plv8, resourceType: 'Patient', name: 'name')
+
+  beforeEach ->
+    schema.fhir_truncate_storage(plv8, resourceType: 'Patient')
+    schema.fhir_truncate_storage(plv8, resourceType: 'MedicationAdministration')
+
+    crud.fhir_create_resource(plv8, allowId: true, resource: {
+      id: 'patient-id', resourceType: 'Patient', name: [{given: ['bar']}]
+    })
+
+    crud.fhir_create_resource(plv8, allowId: true, resource: {
+      id: 'medication-administration-id',
+      resourceType: 'MedicationAdministration',
+      patient: {reference: 'Patient/patient-id'}
+    })
+
+  it 'by id', ->
+    assert.equal(
+      search.fhir_search(
+        plv8,
+        resourceType: 'MedicationAdministration',
+        queryString: '_id=medication-administration-id'
+      ).total,
+      1)
+
+  describe 'by reference', ->
+    it 'as reference', ->
+      assert.equal(
+        search.fhir_search(
+          plv8,
+          resourceType: 'MedicationAdministration',
+          queryString: 'patient=Patient/patient-id'
+        ).total,
+        1)
+
+    it 'as reference beginning with slash', ->
+      assert.equal(
+        search.fhir_search(
+          plv8,
+          resourceType: 'MedicationAdministration',
+          queryString: 'patient=/Patient/patient-id'
+        ).total,
+        1)
+
+    it 'as reference beginning with slash with history', ->
+      assert.equal(
+        search.fhir_search(
+          plv8,
+          resourceType: 'MedicationAdministration',
+          queryString: 'patient=/Patient/patient-id/_history/patient-fake-history-id'
+        ).total,
+        1)
+
+    it 'as URL', ->
+      assert.equal(
+        search.fhir_search(
+          plv8,
+          resourceType: 'MedicationAdministration',
+          queryString: 'patient=http://fhirbase/Patient/patient-id'
+        ).total,
+        1)
+
+    it 'as URL with history', ->
+      assert.equal(
+        search.fhir_search(
+          plv8,
+          resourceType: 'MedicationAdministration',
+          queryString: 'patient=https://fhirbase/Patient/patient-id/_history/patient-fake-history-id'
+        ).total,
+        1)
