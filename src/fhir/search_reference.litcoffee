@@ -87,6 +87,25 @@ Only equality operator is implemented.
       unless op
         throw new Error("Reference Search: Unsupported operator #{JSON.stringify(meta)}")
 
+      # If `value` like /Patient/id or http://fhirbase/Patient/id
+      if typeof(value.value) == 'string' &&
+          (value.value.startsWith('http') || value.value.startsWith('/'))
+
+        a = value.value.split('/')
+
+        if a[a.length - 2] == '_history'
+          # If `value` like this:
+          # "/Patient/id/_history/id"
+          # "https://fhirbase/Patient/id/_history/id"
+          value.value = [a[a.length - 4], a[a.length - 3]]
+        else
+          # If `value` like this:
+          # "/Patient/id"
+          # "http://fhirbase/Patient/id"
+          value.value = [a[a.length - 2], a[a.length - 1]]
+
+        value.value = value.value.join('/')
+
       op(tbl, meta, value)
 
     exports.order_expression = (tbl, meta)->
