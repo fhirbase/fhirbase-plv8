@@ -105,6 +105,8 @@ specials =
     query.sort ||= []
     query.sort.push ['$param', key, '']
     query
+  format:  (query, left, right)->
+    query
 
 grouping = (acc, expr)->
   result = acc
