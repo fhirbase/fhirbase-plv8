@@ -85,6 +85,15 @@ describe "CORE: CRUD spec", ->
           })
         assert.notEqual(created.id , false)
 
+        same = crud.fhir_create_resource(plv8,
+          ifNoneExist: 'http://fhirbase/foo/bar?identifier=007'
+          resource: {
+            resourceType: 'Patient',
+            identifier: [{value: '007'}],
+            name: [{given: ['bond']}]
+          })
+        assert.equal(same.id, created.id)
+
   it "handle version id, issue #57", ->
     res = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', meta: {versionId: 'ups', lastUpdated: '1900-01-01'}})
     assert.notEqual(res.meta.versionId, 'ups')
