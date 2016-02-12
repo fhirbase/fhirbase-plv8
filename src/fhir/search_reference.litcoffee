@@ -89,7 +89,7 @@ Only equality operator is implemented.
 
       # If `value` like /Patient/id or http://fhirbase/Patient/id
       if typeof(value.value) == 'string' &&
-          (value.value.startsWith('http') || value.value.startsWith('/'))
+          (/^http/.test(value.value) || /^\//.test(value.value))
 
         a = value.value.split('/')
 
