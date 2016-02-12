@@ -17,43 +17,73 @@ describe "CORE: CRUD spec", ->
     schema.fhir_truncate_storage(plv8, resourceType: 'Users')
     schema.fhir_truncate_storage(plv8, resourceType: 'Patient')
 
-  it "create", ->
-    created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', name: 'admin'})
-    assert.notEqual(created.id , false)
-    assert.notEqual(created.meta.versionId, undefined)
-    assert.equal(created.name, 'admin')
+  describe 'create', ->
+    it 'create', ->
+      created = crud.fhir_create_resource(plv8, resource: {
+        resourceType: 'Users', name: 'admin'}
+      )
+      assert.notEqual(created.id , false)
+      assert.notEqual(created.meta.versionId, undefined)
+      assert.equal(created.name, 'admin')
 
-  it "conditional create", ->
-    noise = crud.fhir_create_resource(plv8, resource: {resourceType: 'Patient', active: true})
-    created = crud.fhir_create_resource(plv8,
-      ifNoneExist: 'identifier=007'
-      resource: {resourceType: 'Patient', identifier: [{value: '007'}], name: [{given: ['bond']}], active: true}
-    )
-    assert.notEqual(created.id , false)
+    it 'with allowed id', ->
+      noise = crud.fhir_create_resource(plv8, resource: {
+        resourceType: 'Patient', active: true
+      })
 
-    same = crud.fhir_create_resource(plv8,
-      ifNoneExist: 'identifier=007'
-      resource: {resourceType: 'Patient', identifier: [{value: '007'}], name: [{given: ['bond']}]}
-    )
-    assert.equal(same.id, created.id)
+      created = crud.fhir_create_resource(plv8,
+        allowId: true
+        resource: {resourceType: 'Patient', active: false, id: 'test_id'}
+      )
+      assert.equal(created.id , 'test_id')
+      assert.equal(created.resourceType , 'Patient')
 
-  it "create with allowed id", ->
-    noise = crud.fhir_create_resource(plv8, resource: {resourceType: 'Patient', active: true})
+      read = crud.fhir_read_resource(plv8, {
+        id: 'test_id', resourceType: 'Patient'
+      })
+      assert.equal(read.active, false)
 
-    created = crud.fhir_create_resource(plv8,
-      allowId: true
-      resource: {resourceType: 'Patient', active: false, id: "test_id"}
-    )
-    assert.equal(created.id , "test_id")
-    assert.equal(created.resourceType , "Patient")
+    it 'with not allowed id', ->
+      outcome = crud.fhir_create_resource(plv8, resource: {
+        id: 'customid', resourceType: 'Users'
+      })
+      assert.equal(outcome.resourceType, 'OperationOutcome')
+      assert.equal(outcome.issue[0].code, '400')
 
-    read = crud.fhir_read_resource(plv8, {id: "test_id", resourceType: 'Patient'})
-    assert.equal(read.active, false)
+    describe 'conditional', ->
+      it 'conditional', ->
+        noise = crud.fhir_create_resource(plv8, resource: {
+          resourceType: 'Patient', active: true
+        })
+        created = crud.fhir_create_resource(plv8,
+          ifNoneExist: 'identifier=007',
+          resource: {
+            resourceType: 'Patient',
+            identifier: [{value: '007'}],
+            name: [{given: ['bond']}],
+            active: true
+          })
+        assert.notEqual(created.id , false)
 
-  it "create with not allowed id", ->
-    outcome = crud.fhir_create_resource(plv8, resource: {id: 'customid', resourceType: 'Users'})
-    assert.equal(outcome.resourceType, 'OperationOutcome')
-    assert.equal(outcome.issue[0].code, '400')
+        same = crud.fhir_create_resource(plv8,
+          ifNoneExist: 'identifier=007'
+          resource: {
+            resourceType: 'Patient',
+            identifier: [{value: '007'}],
+            name: [{given: ['bond']}]
+          })
+        assert.equal(same.id, created.id)
+
+      it 'with not normalized condiction', ->
+        created = crud.fhir_create_resource(plv8,
+          ifNoneExist: 'http://fhirbase/foo/bar?identifier=007',
+          resource: {
+            resourceType: 'Patient',
+            identifier: [{value: '007'}],
+            name: [{given: ['bond']}],
+            active: true
+          })
+        assert.notEqual(created.id , false)
 
   it "handle version id, issue #57", ->
     res = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users', meta: {versionId: 'ups', lastUpdated: '1900-01-01'}})

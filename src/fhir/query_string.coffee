@@ -93,6 +93,8 @@ specials =
     query.summary = true
     query
   id: (query, left, right)->
+    # console.log 'qqqqqqqqqqqqq'
+    # console.log JSON.stringify(right)
     query.ids = right.split(',').map((x)-> x.trim()).filter(identity)
     query
   include: mk_include('include')
@@ -138,6 +140,12 @@ typed = ([l,r])->
 identity = (x)-> x
 
 exports.parse = (resourceType, str) ->
+  # If `str` like http://fhirbase/foo/bar?identifier=123
+  if typeof(str) == 'string' && /^http/.test(str)
+    a = str.split('?')
+    a.shift()
+    str = a.join('?')
+
   pairs = str.trim().split("&").filter(identity).map((x)-> x.trim().split('=')).map(typed)
   result = {query: resourceType}
   expr = grouping(result, pairs)
