@@ -82,7 +82,7 @@ describe 'Integration',->
       assert.equal(
         plv8.execute('''
           SELECT * from information_schema.tables
-          WHERE table_name = 'order_history'
+          WHERE table_name = 'order_history' AND table_schema = current_schema()
         ''').length,
         1
       )
@@ -102,7 +102,7 @@ describe 'Integration',->
       assert.equal(
         plv8.execute('''
           SELECT * from information_schema.tables
-          WHERE table_name = 'order_history'
+          WHERE table_name = 'order_history' AND table_schema = current_schema()
         ''').length,
         0
       )
