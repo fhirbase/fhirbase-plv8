@@ -143,14 +143,33 @@ describe 'Search normalize', ->
       patient: {reference: 'Patient/patient-id'}
     })
 
-  it 'by id', ->
-    assert.equal(
-      search.fhir_search(
-        plv8,
-        resourceType: 'MedicationAdministration',
-        queryString: '_id=medication-administration-id'
-      ).total,
-      1)
+  describe 'by id', ->
+    it 'as id', ->
+      assert.equal(
+        search.fhir_search(
+          plv8,
+          resourceType: 'Patient',
+          queryString: '_id=patient-id'
+        ).total,
+        1)
+
+    it 'as URL', ->
+      assert.equal(
+        search.fhir_search(
+          plv8,
+          resourceType: 'Patient',
+          queryString: '_id=http://fhirbase/Patient/patient-id'
+        ).total,
+        1)
+
+    it 'as URL with history', ->
+      assert.equal(
+        search.fhir_search(
+          plv8,
+          resourceType: 'Patient',
+          queryString: '_id=http://fhirbase/Patient/patient-id/_history/patient-fake-history-id'
+        ).total,
+        1)
 
   describe 'by reference', ->
     it 'as reference', ->

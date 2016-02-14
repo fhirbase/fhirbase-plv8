@@ -93,9 +93,26 @@ specials =
     query.summary = true
     query
   id: (query, left, right)->
-    # console.log 'qqqqqqqqqqqqq'
-    # console.log JSON.stringify(right)
-    query.ids = right.split(',').map((x)-> x.trim()).filter(identity)
+    ids = right.split(',').map((identifier)->
+      i = identifier.trim()
+
+      # If `identifier` like http://fhirbase/Patient/id
+      if typeof(i) == 'string' && /^http/.test(i)
+        a = i.split('/')
+
+        if a[a.length - 2] == '_history'
+          # If `identifier` like this:
+          # "https://fhirbase/Patient/id/_history/id"
+          i = a[a.length - 3]
+        else
+          # If `identifier` like this:
+          # "http://fhirbase/Patient/id"
+          i = a[a.length - 1]
+
+      i
+    )
+
+    query.ids = ids.filter(identity)
     query
   include: mk_include('include')
   revinclude: mk_include('revinclude')
