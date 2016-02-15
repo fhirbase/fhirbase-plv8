@@ -79,6 +79,6 @@ We use string functions to implement uri search (see string_search).
           name:  idx_name
           using: ':GIN'
           opclass: ':gin_trgm_ops'
-          on: meta.resourceType.toLowerCase()
+          on: ['$q', meta.resourceType.toLowerCase()]
           expression: exprs
       ]

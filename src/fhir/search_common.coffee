@@ -43,7 +43,7 @@ get_search_functions = (obj) ->
           create: 'index'
           name:  idx_name
           using: ':BTREE'
-          on: meta.resourceType.toLowerCase()
+          on: ['$q', meta.resourceType.toLowerCase()]
           expression: exprs
       ]
 

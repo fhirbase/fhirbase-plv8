@@ -175,6 +175,6 @@ and returns honeysql expression.
           name:  idx_name
           using: ':GIST'
           opclass: ':range_ops'
-          on: tbl
+          on: ['$q', tbl]
           expression:  exprs
       ]

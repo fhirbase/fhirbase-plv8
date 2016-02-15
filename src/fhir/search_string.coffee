@@ -161,7 +161,7 @@ exports.index = (plv8, metas)->
       create: 'index'
       name:  idx_name
       using: ':GIN'
-      on: meta.resourceType.toLowerCase()
+      on: ['$q', meta.resourceType.toLowerCase()]
       opclass: ':gin_trgm_ops'
       expression: exprs
   ]

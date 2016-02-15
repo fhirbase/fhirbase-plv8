@@ -384,7 +384,7 @@ describe 'Integration',->
         {'url': 'Order', 'method': 'DELETE'}
       ])
 
-  describe 'Search', ->
+  describe 'Search API', ->
     before ->
       plv8.execute(
         'SELECT fhir_drop_storage($1)',
@@ -421,18 +421,30 @@ describe 'Integration',->
         })]
       )
 
-    it 'identifier', ->
-      searched =
+    describe 'search by', ->
+      it 'identifier', ->
+        searched =
+          JSON.parse(
+            plv8.execute(
+              'SELECT fhir_search($1)',
+              [JSON.stringify(
+                resourceType: 'Order',
+                queryString: 'identifier=foo'
+              )]
+            )[0].fhir_search
+          )
+        assert.equal(searched.total, 1)
+
+    it 'index', ->
+      indexed =
         JSON.parse(
           plv8.execute(
-            'SELECT fhir_search($1)',
-            [JSON.stringify(
-              resourceType: 'Order',
-              queryString: 'identifier=foo'
-            )]
-          )[0].fhir_search
+            'SELECT fhir_index_parameter($1)',
+            [JSON.stringify(resourceType: 'Order', name: 'identifier')]
+          )[0].fhir_index_parameter
         )
-      assert.equal(searched.total, 1)
+      assert.equal(indexed[0].status, 'ok')
+      assert.equal(indexed[0].message, 'Index order_identifier_token was created')
 
     it 'analyze', ->
       analyzed =

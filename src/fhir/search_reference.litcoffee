@@ -122,6 +122,6 @@ Only equality operator is implemented.
           create: 'index'
           name:  idx_name
           using: ':GIN'
-          on: meta.resourceType.toLowerCase()
+          on: ['$q', meta.resourceType.toLowerCase()]
           expression: exprs
       ]
