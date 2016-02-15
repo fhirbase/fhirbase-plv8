@@ -182,7 +182,7 @@ describe 'PostgreSQL reserved key words', ->
         {'url': 'Order', 'method': 'DELETE'}
       ])
 
-  describe 'Search', ->
+  describe 'Search API', ->
     before ->
       schema.fhir_drop_storage(plv8, resourceType: 'Order')
       schema.fhir_create_storage(plv8, resourceType: 'Order')
@@ -204,11 +204,18 @@ describe 'PostgreSQL reserved key words', ->
         }
       })
 
-    it 'identifier', ->
-      assert.equal(
-        search.fhir_search(plv8,
-          resourceType: 'Order', queryString: 'identifier=foo').total,
-        1)
+    describe 'search by', ->
+      it 'identifier', ->
+        assert.equal(
+          search.fhir_search(plv8,
+            resourceType: 'Order', queryString: 'identifier=foo').total,
+          1)
+
+    it 'index', ->
+      indexed = search.fhir_index_parameter(plv8,
+        resourceType: 'Order', name: 'identifier')
+      assert.equal(indexed[0].status, 'ok')
+      assert.equal(indexed[0].message, 'Index order_identifier_token was created')
 
     it 'analyze', ->
       assert.equal(

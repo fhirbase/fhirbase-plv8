@@ -286,7 +286,7 @@ CREATE_CLAUSES =
     res.push(name(expr.name))
     res.push("CONCURRENTLY") if expr.concurrently
     res.push("ON")
-    res.push(name(expr.on))
+    heval(res, expr.on)
     if expr.using
       res.push("USING")
       res.push(name(expr.using))

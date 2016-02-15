@@ -78,6 +78,6 @@ it should be done in an extensible maner
         ddl:
           create: 'index'
           name:  idx_name
-          on: meta.resourceType.toLowerCase()
+          on: ['$q', meta.resourceType.toLowerCase()]
           expression: exprs
       ]
