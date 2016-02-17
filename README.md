@@ -12,7 +12,6 @@ This is new version of fhirbase, with support of DSTU-2 and planned support many
 *  References validateion
 *  ValueSet validateion
 
-
 ## Motivation
 
 While crafting Health IT systems we understand an importance of a
