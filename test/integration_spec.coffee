@@ -264,6 +264,56 @@ describe 'Integration',->
         'Resource Id "toBeTerminated" does not exist'
       )
 
+    it 'patch', ->
+      created =
+        JSON.parse(
+          plv8.execute(
+            'SELECT fhir_create_resource($1)',
+            [JSON.stringify(resource: {resourceType: 'Order', name: 'foo'})]
+          )[0].fhir_create_resource
+        )
+
+      created =
+        JSON.parse(
+          plv8.execute(
+            'SELECT fhir_create_resource($1)',
+            [JSON.stringify(resource: {resourceType: 'Order', name: 'foo'})]
+          )[0].fhir_create_resource
+        )
+
+      patched =
+        JSON.parse(
+          plv8.execute(
+            'SELECT fhir_patch_resource($1)', [JSON.stringify(
+              resource: {id: created.id, resourceType: 'Order'},
+              patch: {op: 'replace', path: '/name', value: 'bar'}
+          )])[0].fhir_patch_resource
+        )
+
+      assert.deepEqual(patched.name, 'bar')
+      assert.notEqual(patched.meta.versionId, false)
+      assert.notEqual(patched.meta.versionId, created.meta.versionId)
+
+      read_patched =
+        JSON.parse(
+          plv8.execute(
+            'SELECT fhir_read_resource($1)',
+            [JSON.stringify(patched)]
+          )[0].fhir_read_resource
+        )
+      assert.deepEqual(read_patched.name, 'bar')
+
+      hx =
+        JSON.parse(
+          plv8.execute(
+            'SELECT fhir_resource_history($1)',
+            [JSON.stringify(id: created.id, resourceType: 'Order')]
+          )[0].fhir_resource_history
+        )
+      assert.deepEqual(read_patched.name, 'bar')
+      assert.equal(hx.total, 2)
+      assert.equal(hx.entry.length, 2)
+
   describe 'History', ->
     before ->
       plv8.execute(
