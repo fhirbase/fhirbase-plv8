@@ -24,6 +24,13 @@ describe 'Integration',->
       1
     )
 
+  it 'fhirbase version', ->
+    version = plv8.execute("SELECT fhirbase_version()")[0].fhirbase_version
+    assert.equal(
+      !!version.match(/.*[0-9]*\.[0-9]*\.[0-9].*/),
+      true
+    )
+
   describe 'Schema storage', ->
     beforeEach ->
       plv8.execute(
