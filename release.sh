@@ -7,8 +7,8 @@ set -e
 # DATABASE_URL=postgres://your_user_name:your_password@localhost:5432/fhirbase_build
 # WARNING: `fhirbase_build` database will be destroed and recreated!
 
-PREV_FBVERSION="0.0.1-beta.16"
-FBVERSION="0.0.1-beta.17"
+PREV_FBVERSION="0.0.1-beta.17"
+FBVERSION="0.0.1-beta.18"
 
 PGOPTIONS='--client-min-messages=warning'
 loadcmd="psql --no-psqlrc --quiet --echo-all --single-transaction \
@@ -25,6 +25,8 @@ function schema_statement {
     statement="$statement SET search_path TO $schema;"
     echo -n "$statement"
 }
+
+npm install
 
 psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' || exit 1
 psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' || exit 1
