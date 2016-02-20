@@ -248,14 +248,6 @@ describe 'Integration',->
           )[0].fhir_create_resource
         )
 
-      created =
-        JSON.parse(
-          plv8.execute(
-            'SELECT fhir_create_resource($1)',
-            [JSON.stringify(resource: {resourceType: 'Order', name: 'foo'})]
-          )[0].fhir_create_resource
-        )
-
       patched =
         JSON.parse(
           plv8.execute(
