@@ -1,0 +1,20 @@
+extract_as_string:
+  - query:
+      resource: {a: 'foo'}
+      path: ['Resource', 'a']
+      element_type: string
+    result: '^^foo$$'
+  - query:
+      resource:
+        name:
+          - {given: ['foo'], family: ['bar']}
+          - {given: ['fooo'], family: ['baar']}
+      path: ['Resource', 'name']
+      element_type: HumanName
+    result: '^^foo$$ ^^bar$$ ^^fooo$$ ^^baar$$'
+extract_as_token:
+  - query:
+      resource: {a: true}
+      path: ['Resource', 'a']
+      element_type: boolean
+    result: ['true']

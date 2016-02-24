@@ -1,0 +1,46 @@
+title: Chained params
+resources: ['patient', 'encounter']
+indices:
+  - {resourceType: 'Encounter', name: 'patient'}
+
+fixtures:
+  - {id: 'nicola', resourceType: 'Patient', name: [{given: ['nicola']}], active: true, birthDate: '1980'}
+  - {id: 'noise1', resourceType: 'Patient', name: [{given: ['noise1']}], birthDate: '1970'}
+  - {id: 'noise2', resourceType: 'Patient', name: [{given: ['noise2']}], birthDate: '1971'}
+  - {id: 'ivan', resourceType: 'Patient', name: [{given: ['ivan']}], active: true , birthDate: '1981'}
+  - {id: 'linc', resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}], birthDate: '1988', multipleBirthInteger: 3}
+  - {id: 'cheb', resourceType: 'Patient', name: [{given: ['Cheburashka']}], birthDate: '1972', multipleBirthInteger: 2}
+  - {id: 'enc-1', resourceType: 'Encounter', patient: {reference: 'Patient/nicola'}, status: 'planned'}
+  - {resourceType: 'Encounter', patient: {reference: 'Patient/noise1'},  status: 'planned'}
+  - {resourceType: 'Encounter', patient: {reference: 'Patient/noise2'},  status: 'planned'}
+  - {resourceType: 'Encounter', status: 'planned'}
+
+queries:
+  - query: {resourceType: 'Encounter', queryString: 'patient=Patient/nicola'}
+    total: 1
+    indexed: true
+    probes:
+      - path: ['total']
+        result: 1
+  - query: {resourceType: 'Encounter', queryString: 'patient:missing=true'}
+    total: 1
+    indexed: true
+  - query: {resourceType: 'Encounter', queryString: 'patient:missing=false'}
+    total: 3
+  - query: {resourceType: 'Encounter', queryString: 'patient:Patient.name=nicola'}
+    total: 1
+    probes:
+      - path: ['total']
+        result: 1
+
+  - query: {resourceType: 'Encounter', queryString: '_sort=patient'}
+    total: 4
+    probes:
+      - path: ['entry', '0', 'resource', 'id']
+        result: 'enc-1'
+
+  - query: {resourceType: 'Encounter', queryString: '_sort:desc=patient'}
+    total: 4
+    probes:
+      - path: ['entry', '3', 'resource', 'id']
+        result: 'enc-1'

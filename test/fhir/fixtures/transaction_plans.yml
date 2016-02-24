@@ -1,0 +1,84 @@
+---
+- bundle:
+    entry:
+      - resource: &pt1
+          resourceType: Patient
+        request:
+          method: POST
+          url: /Patient
+
+      - resource: &pt2
+          resourceType: Patient
+          id: 123
+        request:
+          method: PUT
+          url: /Patient/123
+
+      - request:
+          method: DELETE
+          url: /Patient/123
+
+      - request:
+          method: GET
+          url: /Patient/123/_history
+
+      - request:
+          method: GET
+          url: /Patient/123/_history/456
+
+      - request:
+          method: GET
+          url: /Patient/_history
+
+      - request:
+          method: GET
+          url: /_history
+
+  plan:
+    - type: create
+      resourceType: Patient
+      resource: *pt1
+
+    - type: update
+      resourceType: Patient
+      id: "123"
+      resource: *pt2
+
+    - type: delete
+      resourceType: Patient
+      id: "123"
+
+    - type: history
+      resourceType: Patient
+      id: "123"
+
+    - type: vread
+      resourceType: Patient
+      id: "123"
+      versionId: "456"
+
+    - type: history
+      resourceType: Patient
+
+    - type: history
+
+- bundle:
+    entry:
+      - request:
+          method: POST
+          url: /Patient/foobar/foobarbaz
+
+      - request:
+          method: OPTIONS
+          url: /abc/123
+
+      - request:
+          method: HEAD
+          url: /Patient
+  plan:
+    - type: error
+      message: Cannot determine action for request POST /Patient/foobar/foobarbaz
+    - type: error
+      message: Cannot determine action for request OPTIONS /abc/123
+    - type: error
+      message: Cannot determine action for request HEAD /Patient

@@ -1,15 +1,16 @@
-# FHIRbase
+# fhirbase-plv8
 
-![fhirbase](https://avatars3.githubusercontent.com/u/6482975?v=3&s=400)
+[![Build Status](https://travis-ci.org/fhirbase/fhirbase-plv8.svg)](https://travis-ci.org/fhirbase/fhirbase-plv8)
 
-FHIRbase is an open source relational storage for
-[FHIR](http://hl7.org/implement/standards/fhir/) targeting real production.
+## Features
 
-[![Build Status](https://travis-ci.org/fhirbase/fhirbase.png?branch=master)](https://travis-ci.org/fhirbase/fhirbase)
+This is new version of fhirbase, with support of DSTU-2 and planned support many advanced features:
 
-[![Docker Repository on Quay.io](https://quay.io/repository/fhirbase/fhirbase/status "Docker Repository on Quay.io")](https://quay.io/repository/fhirbase/fhirbase)
-
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/fhirbase/fhirbase?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+*  Extended query syntax
+*  Terminologies
+*  Profile validation
+*  References validateion
+*  ValueSet validateion
 
 ## Motivation
 
@@ -36,65 +37,175 @@ preserving ACID guaranties and richness of SQL query language.
 
 Here is the list of PostgreSQL features that we use:
 
+* [plv8](http://pgxn.org/dist/plv8/doc/plv8.html)
 * [jsonb](http://www.postgresql.org/docs/9.4/static/functions-json.html)
 * [gin & gist](http://www.postgresql.org/docs/9.1/static/textsearch-indexes.html)
 * [inheritance](http://www.postgresql.org/docs/9.4/static/tutorial-inheritance.html)
 
-We actively collaborate with PostgreSQL lead developers to craft
-production ready storage for FHIR.
 
-> Why are we doing this inside a database?
+## Installation
 
-We decided to implement most of FHIR specification inside a database for
-scalability reason (all data operations are done efficiently in a database).
+To install fhirbase you need postgresql-9.4 and plv8 extension.
 
-This approach also gives you a possibility to use FHIRbase from your
-preferred lang/platform (.NET, java, ruby, nodejs etc).
-We have implemented FHIR compliant server in clojure with small amount of
-code - [FHIRPlace](https://github.com/fhirbase/fhirplace/).
+```sh
+sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
+psql -c "CREATE USER user WITH PASSWORD 'password'"
+psql -c 'CREATE DATABASE fhirbase;' -U user
+psql -c '\dt' -U postgres
+export DATABASE_URL=postgres://user:password@localhost:5432/fhirbase
 
-And there is an option to break FHIR specification abstraction (if required) and
-go into the database by generic SQL interface and complete your business task.
+wget https://github.com/fhirbase/fhirbase-plv8/releases/download/v<version of the fhirbase>/fhirbase-<version of the fhirbase>.sql.zip
+unzip fhirbase-<version of the fhirbase>.sql.zip
+
+cat fhirbase-<version of the fhirbase>.sql | psql fhirbase
+```
+
+## Upgrade
+
+```sh
+export DATABASE_URL=postgres://user:password@localhost:5432/fhirbase
+
+wget https://github.com/fhirbase/fhirbase-plv8/releases/download/v<version of the fhirbase>/fhirbase-<version of the fhirbase>-patch.sql.zip
+unzip fhirbase-<version of the fhirbase>-patch.sql.zip
+
+cat fhirbase-<version of the fhirbase>-patch.sql | psql fhirbase
+```
+
+## Development Installation
+
+Development installation requires node 0.12 and npm,
+which could be installed by [nvm](https://github.com/creationix/nvm):
+
+```sh
+# install node < 0.12 by nvm for example
+sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
+
+git clone https://github.com/fhirbase/fhirbase-plv8
+cd fhirbase-plv8
+git submodule init && git submodule update
+
+npm install && cd plpl && npm install
+npm install -g mocha && npm install -g coffee-script
+
+psql -c "CREATE USER fb WITH PASSWORD 'fb'"
+psql -c 'ALTER ROLE fb WITH SUPERUSER'
+psql -c 'CREATE DATABASE fhirbase;' -U postgres
+psql -c '\dt' -U postgres
+
+export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase
+
+# build migrations
+coffee  utils/generate_migrations.coffee -n  | psql fhirbase
+cat utils/patch_3.sql | psql fhirbase
+
+# change something
+# reload schema
+
+plpl/bin/plpl reload
+npm run test
+
+# goto: change something
+```
+
+## Run test suite in docker container
+
+```sh
+git clone https://github.com/fhirbase/fhirbase-plv8 fhirbase
+cd fhirbase
+docker build .
+```
+
+## PostgreSQL Config For Plv8
+
+If you have permissions to edit PostgreSQL config, add directive for auto setting plv8 parameter for every connection. It will make your debugging and development much easier:
+
+```
+echo "plv8.start_proc='plv8_init'" >> /etc/postgresql/9.4/main/postgresql.conf
+```
+
+## Usage
+
+To make fhirbase-plv8 work
+you have to just after opening connection to postgresql
+you have to issue following command (read more [here](http://pgxn.org/dist/plv8/doc/plv8.html#Start-up.procedure)):
 
 
-## Features
+```sql
+SET plv8.start_proc = 'plv8_init';
+```
 
-FHIRbase implements 80% of FHIR specification inside the database as
-procedures:
 
-* meta-data resource storage (StructureDefinition, ValueSet, SearchParameter, etc)
-* CRUD on resources with history
-* search operations with indexing
-* transactions
+```sql
 
-## Documentation
+SET plv8.start_proc = 'plv8_init';
 
-* [Installation Guide](docs/installation.md)
-* [Overview](docs/overview.md)
-* [Development](docs/development.md)
-* [Benchmarks](docs/benchmarks.md)
+-- work with storage
 
-## Roadmap
+SELECT fhir_create_storage('{"resourceType": "Patient"}');
+SELECT fhir_drop_storage('{"resourceType": "Patient"}');
+SELECT fhir_truncate_storage('{"resourceType": "Patient"}');
+-- delete all resources of specified type
 
-* resource validation
-* referential integrity
-* terminology
-* guides for java, .NET, python, ruby, js
+-- CRUD
+
+SELECT fhir_create_resource('{"resource": {"resourceType": "Patient", "name": [{"given": ["Smith"]}]}}');
+
+-- create will fail if id provided, to create with predefined id pass [allowId] option or use fhir_update_resource
+SELECT fhir_create_resource('{"allowId": true, "resource": {"resourceType": "Patient", "id": "smith"}}');
+
+-- conditional create
+SELECT fhir_create_resource('{"ifNotExist": "identifier=007", "resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
+
+SELECT fhir_read_resource('{"resourceType": "Patient", "id": "smith"}');
+
+SELECT fhir_vread_resource('{"resourceType": "Patient", "id": "????", "versionId": "????"}');
+
+SELECT fhir_resource_history('{"resourceType": "Patient", "id": "smith"}');
+
+SELECT fhir_resource_type_history('{"resourceType": "Patient", "queryString": "_count=2&_since=2015-11"}');
+
+SELECT fhir_update_resource('{"resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["John"], "family": ["Smith"]}]}}');
+
+-- conditional update
+SELECT fhir_update_resource('{"ifNoneExist": "identifier=007", "resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
+
+-- update with contention guard
+SELECT fhir_update_resource('{"ifMatch": "..versionid..", "resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
+
+SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith"}');
+
+SELECT fhir_index_parameter('{"resourceType": "Patient", "name": "name"}');
+SELECT fhir_unindex_parameter('{"resourceType": "Patient", "name": "name"}');
+
+SELECT fhir_search_sql('{"resourceType": "Patient", "queryString": "name=smith"}');
+-- see generated SQL
+
+SELECT fhir_explain_search('{"resourceType": "Patient", "queryString": "name=smith"}');
+-- see execution plan
+
+-- mark resource as deleted (i.e. keep history)
+SELECT fhir_delete_resource('{"resourceType": "Patient", "id": "smith"}');
+
+-- completely delete resource and it history
+SELECT fhir_terminate_resource('{"resourceType": "Patient", "id": "smith"}');
+
+-- expand valueset
+SELECT fhir_valueset_expand('{"id": "issue-types", "filter": "err"}');
+
+---
+
+SELECT fhir_conformance('{"default": "values"}');
+-- return simple Conformance resource, based on created stores
+```
 
 ## Contribution
 
 * Star us on GitHub
-* If you encountered a bug, please [make an Issue](https://github.com/fhirbase/fhirplace/issues/new)
-* Contribute to FHIRbase − see [dev/README.md](https://github.com/fhirbase/fhirbase/blob/master/dev/README.md)
-
-## Thxs
-
-Powered by [Health Samurai](http://health-samurai.io/)
-
-Sponsored by: ![choice-hs.com](http://choice-hs.com/Images/Shared/Choice-HSLogo.png)
+* If you encountered a bug, please [make an Issue](https://github.com/fhirbase/fhirbase-plv8/issues/new)
+* Contribute to fhirbase
 
 ## License
 
-Copyright © 2014 health samurai.
+Copyright © 2016 health samurai.
 
-FHIRbase is released under the terms of the MIT License.
+fhirbase is released under the terms of the MIT License.

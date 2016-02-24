@@ -1,0 +1,221 @@
+title: String search
+resources: ['patient']
+indices:
+  - {resourceType: 'Patient', name: 'name'}
+  - {resourceType: 'Patient', name: 'address'}
+  - {resourceType: 'Patient', name: 'address-city'}
+  - {resourceType: 'Patient', name: 'address-country'}
+  - {resourceType: 'Patient', name: 'address-postalcode'}
+  - {resourceType: 'Patient', name: 'given'}
+  - {resourceType: 'Patient', name: 'family'}
+
+fixtures:
+  - resourceType: 'Patient'
+    name: [{given: ['nicola'], family: ['poganini']}]
+    address:
+      - use: home
+        type: both
+        line: ["534 Erewhon St"]
+        city: PleasantVille
+        district: Rainbow
+        state: Vic
+        postalCode: 3999
+        period: {start: "1974-12-25"}
+  - resourceType: Patient
+    name: [{given: ['ivan']}]
+    address:
+      - use: home
+        type: both
+        line:
+          - 123 North 102nd Street
+          - Apt 4d
+        city: Harrisburg
+        state: PA
+        postalCode: 17102
+        country: USA
+  - {resourceType: 'Patient', name: [{given: ['noise1']}]}
+  - {resourceType: 'Patient'}
+  - {resourceType: 'Patient', name: [{given: ['noise2']}]}
+  - {resourceType: 'Patient', "name":[{"use":"nickname","given":["Kaśka"]},{"use":"official","given":["Katarzyna"],"family":["Kowalska"]}]}
+  - {resourceType: 'Patient', "name":[{"use":"official","given":["洋"],"family":["刘"]},{"use":"official","given":["Yáng"],"family":["刘"]},{"use":"nickname","given":["健康"]}]}
+  - {resourceType: 'Patient', name: [{"use":"official","given":["Адам"]}, {"use":"official","given":["Adam"]}]}
+  - {resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}]}
+  - {resourceType: 'Patient', name: [{given: ['Cheburashka']}]}
+
+queries:
+  - query: {queryString: 'name=nicola', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+    probes:
+      - path: ['entry',0,'resource', 'name',0, 'given',0]
+        result: 'nicola'
+      - path: ['total']
+        result: 1
+  - query: {queryString: 'name=noise', resourceType: 'Patient'}
+    indexed: true
+    total: 2
+    probes:
+      - path: ['total']
+        result: 2
+  - query: {queryString: 'name=nicola,ivan', resourceType: 'Patient'}
+    indexed: true
+    total: 2
+    probes:
+      - path: ['total']
+        result: 2
+  - query: {queryString: 'name=lincoln', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+    probes:
+      - path: ['total']
+        result: 1
+      - path: ['entry',0,'resource', 'name',0, 'given',0]
+        result: 'Avraam'
+  - query: {queryString: 'name:contains=inco', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+  - query: {queryString: 'name:exact=nicol', resourceType: 'Patient'}
+    indexed: true
+    total: 0
+  - query: {queryString: 'name:exact=nicola', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+  - query: {queryString: 'name:startwith=nik', resourceType: 'Patient'}
+    indexed: true
+    total: 0
+  - query: {queryString: 'name:startwith=nic', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+  - query: {queryString: 'name:sw=nik', resourceType: 'Patient'}
+    indexed: true
+    total: 0
+  - query: {queryString: 'name:sw=nic', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+  - query: {queryString: 'name:ew=kola', resourceType: 'Patient'}
+    indexed: true
+    total: 0
+  - query: {queryString: 'name:ew=cola', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+  - query: {queryString: 'name:endwith=kola', resourceType: 'Patient'}
+    indexed: true
+    total: 0
+  - query: {queryString: 'name:endwith=cola', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+
+  - query: {queryString: 'name:endwith=kola', resourceType: 'Patient'}
+    indexed: true
+    total: 0
+  - query: {queryString: 'name:endwith=cola', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+
+  - query: {queryString: 'given=nico', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+  - query: {queryString: 'given=poga', resourceType: 'Patient'}
+    indexed: true
+    total: 0
+
+  - query: {queryString: 'family=poga', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+  - query: {queryString: 'family=nico', resourceType: 'Patient'}
+    indexed: true
+    total: 0
+
+  - query: {queryString: 'family=poga&name=nico', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+  - query: {queryString: 'family=nico&name=poga', resourceType: 'Patient'}
+    indexed: true
+    total: 0
+
+  - query: {queryString: 'name=poga&name:contains=nini', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+
+  - query: {queryString: 'address=123%20Nord', resourceType: 'Patient'}
+    indexed: true
+    total: 0
+  - query: {queryString: 'address=123%20North', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+    probes:
+      - path: ['entry',0,'resource', 'address',0, 'city']
+        result: 'Harrisburg'
+
+  - query: {queryString: 'address:contains=enexist', resourceType: 'Patient'}
+    indexed: true
+    total: 0
+  - query: {queryString: 'address:contains=nor', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+    probes:
+      - path: ['entry',0,'resource', 'address',0, 'city']
+        result: 'Harrisburg'
+
+  - query: {queryString: 'address-city=Pleaj', resourceType: 'Patient'}
+    indexed: true
+    total: 0
+  - query: {queryString: 'address-city=PleaSan', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+    probes:
+      - path: ['entry',0,'resource', 'address',0, 'city']
+        result: 'PleasantVille'
+
+  - query: {queryString: 'address-country=usa', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+    probes:
+      - path: ['entry',0,'resource', 'address',0, 'country']
+        result: 'USA'
+
+  - query: {queryString: 'address-postalcode=3999', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+    probes:
+      - path: ['entry',0,'resource', 'address',0, 'postalCode']
+        result: '3999'
+
+  - query: {queryString: 'name:missing=true', resourceType: 'Patient'}
+    indexed: true
+    total: 1
+  - query: {queryString: 'name:missing=false', resourceType: 'Patient'}
+    total: 9
+
+  # name.use = nickname should not be matched during search
+  - query: {queryString: 'name=nickname', resourceType: 'Patient'}
+    indexed: false
+    total: 0
+
+  - query: {queryString: 'name=адам', resourceType: 'Patient'}
+    indexed: false
+    total: 1
+
+  - query: {queryString: 'given:contains=да', resourceType: 'Patient'}
+    indexed: false
+    total: 1
+
+  - query: {queryString: 'given:contains=yang', resourceType: 'Patient'}
+    indexed: false
+    total: 1
+
+  - query: {queryString: 'given:contains=Yáng', resourceType: 'Patient'}
+    indexed: false
+    total: 1
+
+  - query: {queryString: 'given:exact=Kaska', resourceType: 'Patient'}
+    indexed: false
+    total: 1
+
+  - query: {queryString: 'given:exact=Kaśka', resourceType: 'Patient'}
+    indexed: false
+    total: 1
+
+  - query: {queryString: 'given:contains=康', resourceType: 'Patient'}
+    indexed: false
+    total: 1

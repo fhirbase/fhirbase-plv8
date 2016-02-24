@@ -1,0 +1,91 @@
+[[["Patient" "name=ivan"]
+  {:query "Patient"
+   :where (and (param {:resourceType "Patient" :name "name"} {:value "ivan"}))}]
+
+ [["Patient" "name=ivan,nicola"]
+  {:query "Patient"
+   :where (and
+           (or
+            (param {:resourceType "Patient" :name "name"} {:value "ivan"})
+            (param {:resourceType "Patient" :name "name"} {:value "nicola"})))}]
+
+ [["Patient" "_page=12"]
+  {:query "Patient" :page 12}
+  ]
+
+ [["Patient" "name:exact=ivan"]
+  {:query "Patient"
+   :where (and (param {:resourceType "Patient" :name "name" :modifier "exact"} {:value "ivan"}))}]
+
+ [["Patient" "birthdate=lt1980"]
+  {:query "Patient"
+   :where (and
+           (param {:resourceType "Patient" :name "birthdate"} {:value "1980" :prefix "lt"}))}
+  ]
+
+ [["Patient" "_count=11"]
+  {:query "Patient" :count 11}]
+
+ [["Patient" "_page=12"]
+  {:query "Patient" :page 12}]
+
+ [["Patient" "careprovider:Practitioner.name=igor"]
+  {:query "Patient"
+   :joins [(chained
+            (param {:resourceType "Patient" :name "careprovider" :join "Practitioner"} {:value "$id"})
+            (param {:resourceType "Practitioner" :name "name"} {:value "igor"}))]}]
+ 
+ [["Patient" "careprovider:Practitioner.organization:Organization.name=hl7"]
+  {:query "Patient"
+   :joins [(chained
+            (param {:resourceType "Patient" :name "careprovider" :join "Practitioner"} {:value "$id"})
+            (param {:resourceType "Practitioner" :name "organization" :join "Organization"} {:value "$id"})
+            (param {:resourceType "Organization" :name "name"} {:value "hl7"}))]}]
+
+ [["Patient" "_sort:desc=name"]
+  {:query "Patient"
+   :sort [(param {:resourceType "Patient" :name "name" :modifier "desc"} {:value ""})]}]
+
+
+ [["Patient" "name=a%20b"]
+  {:query "Patient"
+   :where (and
+           (param {:resourceType "Patient" :name "name"} {:value "a b"}))}]
+
+ [["Encounter" "_include=patient"]
+  {:query "Encounter"
+   :include [(param {:resourceType "Encounter" :name "patient"} {:value "placeholder"})]}]
+
+ [["Encounter" "_include=Encounter:patient"]
+  {:query "Encounter"
+   :include [(param {:resourceType "Encounter" :name "patient"} {:value "placeholder"})]}]
+
+ [["Encounter" "_include=Encounter:patient:Patient"]
+  {:query "Encounter"
+   :include [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})]}]
+
+ [["Encounter" "_include=Encounter:patient:Patient,Encounter:organization:Organization"]
+  {:query "Encounter"
+   :include [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})
+             (param {:resourceType "Encounter" :name "organization" :target "Organization"} {:value "placeholder"})]}]
+
+ [["Encounter" "_include=Encounter:patient:Patient&_include=Encounter:organization:Organization"]
+  {:query "Encounter"
+   :include [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})
+             (param {:resourceType "Encounter" :name "organization" :target "Organization"} {:value "placeholder"})]}]
+
+ [["Patient" "_revinclude=Encounter:patient"]
+  {:query "Patient"
+   :revinclude [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})]}]
+
+ [["Encounter" "_revinclude=Encounter:patient:Patient&_revinclude=Encounter:organization:Organization"]
+  {:query "Encounter"
+   :revinclude [(param {:resourceType "Encounter" :name "patient" :target "Patient"} {:value "placeholder"})
+                (param {:resourceType "Encounter" :name "organization" :target "Organization"} {:value "placeholder"})]}]
+
+ [["Patient" "_elements=name,birthdate"]
+  {:query "Patient"
+   :elements ["name", "birthdate"]}]
+
+ [["Patient" "_summary=true"]
+  {:query "Patient" :summary true}]]

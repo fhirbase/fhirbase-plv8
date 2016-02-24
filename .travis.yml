@@ -1,13 +1,26 @@
 # .travis.yml
+language: node_js
+sudo: false
+node_js:
+    - "0.12"
 addons:
   postgresql: "9.4"
   apt:
     packages:
       - postgresql-contrib-9.4
       - postgresql-9.4-plv8
-
 notifications:
-  slack: healthsamurai:711fu4qu2Pz0uWrc8JMQ6Bz7
+    slack: healthsamurai:lKl1jXV360NHMSzV2nwndkOv
+    slack: fhirbase:isitOv0KvPgaMzrccuAzVUwB
 
-script: sudo su $USER -c "env PGUSER=postgres DB=test ./runme integrate"
-after_success: ./build/release.sh
+#  - sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
+before_script:
+  - npm install && cd plpl && npm install
+  - npm install -g mocha && npm install -g coffee-script
+  - psql -c "CREATE USER fb WITH PASSWORD 'fb'"
+  - psql -c 'ALTER ROLE fb WITH SUPERUSER'
+  - psql -c 'CREATE DATABASE fhirbase;' -U postgres
+  - psql -c '\dt' -U postgres
+  - cd ..
+
+script: export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase && export TRAVIS=true && FB_SCHEMA=foo ./build.sh && { echo "CREATE SCHEMA IF NOT EXISTS foo; SET search_path TO foo;"; cat tmp/build.sql; } | psql fhirbase && FB_SCHEMA=foo npm run test && FB_SCHEMA=bar ./build.sh && { echo "CREATE SCHEMA IF NOT EXISTS bar; SET search_path TO bar;"; cat tmp/build.sql; } | psql fhirbase && FB_SCHEMA=bar npm run test

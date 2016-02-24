@@ -1,16 +1,19 @@
 #!/bin/bash
-echo -e "postgres\npostgres" | passwd postgres
 
-echo "createuser -s fhir" | sudo -u postgres sh
-echo "psql -d postgres -c 'create database fhir'" | sudo -u postgres sh
+echo -e "postgres\npostgres" | passwd postgres || exit 1
 
-echo "curl https://raw.githubusercontent.com/fhirbase/fhirbase-build/master/fhirbase.sql | psql -d fhir" | sudo -u postgres sh
+echo "createuser -s fhir" | sudo -u postgres sh || exit 1
+echo "psql -d postgres -c 'create database fhir'" \
+    | sudo -u postgres sh || exit 1
 
-echo "psql -d fhir -c 'SELECT fhir.generate_tables()'" | sudo -u postgres sh
+echo "curl --location https://github.com/fhirbase/fhirbase-plv8/releases/download/v0.0.1-beta.19/fhirbase-0.0.1-beta.19.sql.zip | funzip | psql -d fhir" \
+    | sudo -u postgres sh || exit 1
 
-echo "listen_addresses = '*'" >> /etc/postgresql/9.4/main/postgresql.conf
-echo "host all all 0.0.0.0/0 trust" >> /etc/postgresql/9.4/main/pg_hba.conf
+echo "listen_addresses = '*'" \
+     >> /etc/postgresql/9.4/main/postgresql.conf || exit 1
+echo "host all all 0.0.0.0/0 trust" \
+     >> /etc/postgresql/9.4/main/pg_hba.conf || exit 1
 
-ln -s /vagrant /home/vagrant/fhirbase
+ln -s /vagrant /home/vagrant/fhirbase || exit 1
 
-service postgresql restart
+service postgresql restart || exit 1

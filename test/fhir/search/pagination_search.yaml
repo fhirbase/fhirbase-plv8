@@ -1,0 +1,65 @@
+title: Search Pagination
+resources: ['patient', 'encounter']
+indices:
+  - {resourceType: 'Encounter', name: 'patient'}
+
+fixtures:
+  - {id: 'nicola', resourceType: 'Patient', name: [{given: ['nicola']}], active: true, birthDate: '1980'}
+  - {id: 'ivan', resourceType: 'Patient', name: [{given: ['ivan']}], active: true , birthDate: '1981'}
+  - id: 'nicola-enc-1'
+    resourceType: 'Encounter'
+    patient: {reference: 'Patient/nicola'}
+  - id: 'nicola-enc-2'
+    resourceType: 'Encounter'
+    patient: {reference: 'Patient/nicola'}
+  - id: 'nicola-enc-3'
+    resourceType: 'Encounter'
+    patient: {reference: 'Patient/nicola'}
+  - id: 'ivan-enc-1'
+    resourceType: 'Encounter'
+    patient: {reference: 'Patient/ivan'}
+
+queries:
+  - query: {resourceType: 'Encounter', queryString: 'patient=Patient/nicola&_sort=patient&_count=1'}
+    total: 3
+    probes:
+      - path: ['entry', 'length']
+        result: 1
+      - path: ['entry', 0, 'resource', 'id']
+        result: 'nicola-enc-1'
+
+  # same test as previous to check if _page=0 don't break anything
+  - query: {resourceType: 'Encounter', queryString: 'patient=Patient/nicola&_sort=patient&_count=1&_page=0'}
+    total: 3
+    probes:
+      - path: ['entry', 'length']
+        result: 1
+
+  - query: {resourceType: 'Encounter', queryString: 'patient=Patient/nicola&_sort=patient&_count=1&_page=1'}
+    total: 3
+    probes:
+      - path: ['entry', 'length']
+        result: 1
+      - path: ['entry', 0, 'resource', 'id']
+        result: 'nicola-enc-2'
+
+  # check how _page works without _count
+  - query: {resourceType: 'Encounter', queryString: 'patient=Patient/nicola&_sort=patient&_page=1'}
+    total: 3
+    probes:
+      - path: ['entry', 'length']
+        result: 0
+
+  - query: {resourceType: 'Encounter', queryString: 'patient=Patient/nicola&_sort=patient&_page=1&_count=1'}
+    total: 3
+    probes:
+      - path: ['entry', 'length']
+        result: 1
+      - path: ['link', 0, 'url']
+        result: "Encounter/search?patient=Patient/nicola&_sort=patient&_page=1&_count=1"
+      - path: ['link', 1, 'url']
+        result: "Encounter/search?patient=Patient/nicola&_sort=patient&_page=2&_count=1"
+      - path: ['link', 2, 'url']
+        result: "Encounter/search?patient=Patient/nicola&_sort=patient&_page=0&_count=1"
+      - path: ['link', 3, 'url']
+        result: "Encounter/search?patient=Patient/nicola&_sort=patient&_page=3&_count=1"

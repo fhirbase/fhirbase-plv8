@@ -1,0 +1,37 @@
+extractInt = (base_url, regex)->
+  matched = base_url.match(regex)
+  matched && matched[1] && parseInt(matched[1])
+
+exports.search_links = (query, expr, total)->
+  base_url = "#{query.resourceType}/search?#{query.queryString}"
+  res = []
+
+  if base_url.indexOf('_page=') < 0
+    base_url = base_url + "&_page=0"
+
+  requested_count = expr.count
+  requested_page = expr.page
+
+  res.push({relation: 'self', url: base_url})
+
+  if requested_count && requested_count < total
+    next_url = base_url.replace /_page=\d+/, -> "_page=#{requested_page + 1}"
+    res.push({relation: 'next', url: next_url})
+
+  if requested_page && requested_page >= 1
+    next_url = base_url.replace /_page=\d+/, -> "_page=#{requested_page - 1}"
+    res.push({relation: 'previous', url: next_url})
+
+  if requested_count
+    last_page = if requested_count < total
+        Math.floor(total / requested_count)
+      else
+        requested_page
+
+    last_url = base_url.replace /_page=\d+/, -> "_page=#{last_page}"
+    res.push({relation: 'last', url: last_url})
+
+  res
+
+exports.postprocess_resource = (resource)->
+  resource

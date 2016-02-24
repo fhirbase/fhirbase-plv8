@@ -1,12 +1,5 @@
 {
-  "src/*.sql": {
-    "type": "src",
-    "alternate": "test/{}_spec.sql",
-    "make": "./runme load {file}"
-  },
-  "test/*_spec.sql": {
-    "type": "test",
-    "alternate": "src/{}.sql",
-    "make": "./runme test {file}"
-  }
+  "src/*.coffee": {"alternate": "test/{}_spec.coffee"},
+  "test/*_spec.coffee": {"alternate": "test/{}_spec.yaml"},
+  "test/*_spec.yaml": {"alternate": "src/{}.coffee"}
 }

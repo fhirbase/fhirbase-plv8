@@ -1,0 +1,54 @@
+title: Polymorphic Attribute Search
+resources: ['Patient']
+# indices:
+#   - {resourceType: 'Patient', name: 'active'}
+
+fixtures:
+  - resourceType: 'Patient'
+    name: [{given: ['nicola']}]
+    id: id1
+    deceasedBoolean: true
+  - resourceType: 'Patient'
+    name: [{given: ['nicola']}]
+    id: id2
+    deceasedBoolean: false
+  - resourceType: 'Patient'
+    name: [{given: ['nicola']}]
+    id: id3
+  - resourceType: 'Patient'
+    name: [{given: ['nicola']}]
+    deceasedDateTime: '1972-02-01'
+    id: id4
+
+queries:
+  - query: {resourceType: 'Patient', queryString:  'deceased=true'}
+    total: 2
+    probes:
+      - path: ['entry', 0, 'resource', 'id']
+        result: id1
+      - path: ['entry', 1, 'resource', 'id']
+        result: id4
+
+  - query: {resourceType: 'Patient', queryString:  'deceased=false'}
+    total: 2
+    probes:
+      - path: ['entry', 0, 'resource', 'id']
+        result: id2
+      - path: ['entry', 1, 'resource', 'id']
+        result: id4
+
+  - query: {resourceType: 'Patient', queryString:  'deceased:missing=true'}
+    total: 1
+    probes:
+      - path: ['entry', 0, 'resource', 'id']
+        result: id3
+
+  - query: {resourceType: 'Patient', queryString:  'deceased:missing=false'}
+    total: 3
+    probes:
+      - path: ['entry', 0, 'resource', 'id']
+        result: id1
+      - path: ['entry', 1, 'resource', 'id']
+        result: id2
+      - path: ['entry', 2, 'resource', 'id']
+        result: id4

@@ -1,49 +1,109 @@
-FROM ubuntu:14.10
-MAINTAINER Nicola <niquola@gmail.com>, BazZy <bazzy.bazzy@gmail.com>
+FROM ubuntu:14.04.3
+MAINTAINER Nicola <niquola@gmail.com>, \
+           BazZy <bazzy.bazzy@gmail.com>, \
+           Danil Kutkevich <danil@kutkevich.org>
 
-RUN apt-get update && apt-get -y -q install git python-software-properties software-properties-common
+ENV REFRESHED_AT 2015-12-24
 
-RUN locale-gen en_US.UTF-8
-RUN update-locale LANG=en_US.UTF-8
+RUN localedef --force --inputfile=en_US --charmap=UTF-8 \
+    --alias-file=/usr/share/locale/locale.alias \
+    en_US.UTF-8
+ENV LANG en_US.UTF-8
 
-RUN apt-get -y -q install postgresql-9.4 postgresql-client-9.4 postgresql-contrib-9.4 postgresql-9.4-plv8
+RUN apt-get --yes update
+RUN apt-get --yes upgrade
 
-ADD . /fhirbase
-RUN chown -R postgres /fhirbase
+# Add PostgreSQL 9.4 apt repository
+# <http://www.postgresql.org/download/linux/ubuntu/>.
+RUN apt-get install --yes curl
+RUN echo 'deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main' \
+    > /etc/apt/sources.list.d/pgdg.list
+RUN curl --silent https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
+    sudo apt-key add -
 
-USER postgres
+RUN apt-get --yes update
+RUN apt-get --yes upgrade
 
-RUN /etc/init.d/postgresql start \
-    && psql --command "CREATE USER fhirbase WITH SUPERUSER PASSWORD 'fhirbase';" \
-    && createdb -O fhirbase pgdb
+# Install PostgreSQL.
+ENV PG_MAJOR 9.4
 
-RUN /etc/init.d/postgresql start && cd /fhirbase && DB=fhirbase ./runme integrate
+RUN apt-get install --yes postgresql-$PG_MAJOR
 
-USER root
+# Install plv8 (in case of plv8 compilation issues address to
+# README in <https://github.com/clkao/docker-postgres-plv8>).
+RUN apt-get install --yes git build-essential libv8-dev postgresql-server-dev-$PG_MAJOR
+RUN apt-get install --yes nodejs-dev
+
+ENV PLV8_BRANCH r1.4
+
+RUN cd /tmp && git clone -b $PLV8_BRANCH https://github.com/plv8/plv8.git \
+    && cd /tmp/plv8 \
+    && make all install
 
 # Adjust PostgreSQL configuration so that remote connections to the
 # database are possible.
-RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/9.4/main/pg_hba.conf
-
-# And add ``listen_addresses`` to ``/etc/postgresql/9.4/main/postgresql.conf``
-RUN echo "listen_addresses='*'" >> /etc/postgresql/9.4/main/postgresql.conf
-RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/9.4/main/pg_hba.conf
-
-# Expose the PostgreSQL port
-EXPOSE 5432
-
-RUN mkdir -p /var/run/postgresql && chown -R postgres /var/run/postgresql
-
-# Add VOLUMEs to allow backup of config, logs, socket and databases
-VOLUME  ["/etc/postgresql", "/var/log/postgresql", "/var/lib/postgresql", "/var/run/postgresql"]
-
-RUN mkdir /etc/ssl/private-copy \
-    && mv /etc/ssl/private/* /etc/ssl/private-copy/ \
-    && rm -r /etc/ssl/private \
-    && mv /etc/ssl/private-copy /etc/ssl/private \
-    && chmod -R 0700 /etc/ssl/private \
-    && chown -R postgres /etc/ssl/private
+RUN echo 'host all  all    0.0.0.0/0  md5' >> /etc/postgresql/$PG_MAJOR/main/pg_hba.conf
+RUN echo 'local all  all    trust' >> /etc/postgresql/$PG_MAJOR/main/pg_hba.conf
+RUN echo "listen_addresses='*'" >> /etc/postgresql/$PG_MAJOR/main/postgresql.conf
 
 USER postgres
-# Set the default command to run when starting the container
-CMD ["/usr/lib/postgresql/9.4/bin/postgres", "-D", "/var/lib/postgresql/9.4/main", "-c", "config_file=/etc/postgresql/9.4/main/postgresql.conf"]
+
+# Fix PostgreSQL locale
+# <http://stackoverflow.com/questions/16736891/pgerror-error-new-encoding-utf8-is-incompatible#16737776>,
+# <http://www.postgresql.org/message-id/43FE1E65.3030000@genome.chop.edu>,
+# <http://www.postgresql.org/docs/current/static/multibyte.html#AEN35730>.
+RUN service postgresql start \
+    && psql --command="UPDATE pg_database SET datistemplate = FALSE WHERE datname = 'template1';" \
+    && psql --command="DROP DATABASE template1;" \
+    && psql --command="CREATE DATABASE template1 WITH TEMPLATE = template0 ENCODING = 'UNICODE' LC_COLLATE='en_US.UTF-8' LC_CTYPE='en_US.UTF-8';" \
+    && psql --command="UPDATE pg_database SET datistemplate = TRUE WHERE datname = 'template1';" \
+    && psql --command="CREATE ROLE fhirbase WITH SUPERUSER LOGIN PASSWORD 'fhirbase';" \
+    && psql --command="CREATE DATABASE fhirbase WITH OWNER fhirbase ENCODING = 'UTF8';"
+
+USER root
+
+RUN useradd --user-group --create-home --shell /bin/bash fhirbase \
+    && echo 'fhirbase:fhirbase' | chpasswd && adduser fhirbase sudo
+RUN echo 'fhirbase ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+USER fhirbase
+
+RUN cd ~ \
+    && git clone https://github.com/fhirbase/fhirbase-plv8.git fhirbase \
+    && cd ~/fhirbase \
+    && git submodule update --init --recursive
+
+# Install nodejs.
+RUN curl --silent -o- https://raw.githubusercontent.com/creationix/nvm/v0.29.0/install.sh \
+    | bash
+RUN bash -lc 'source ~/.nvm/nvm.sh && nvm install 5.3'
+RUN bash -lc 'cd ~/fhirbase && source ~/.nvm/nvm.sh && nvm use 5.3 \
+              && npm install'
+RUN bash -lc 'cd ~/fhirbase/plpl && source ~/.nvm/nvm.sh && nvm use 5.3 \
+              && npm install'
+
+# Install fhirbase.
+RUN bash -lc 'sudo service postgresql start \
+              && cd ~/fhirbase \
+              && source ~/.nvm/nvm.sh && nvm use 5.3 \
+              && export PATH="$HOME"/fhirbase/node_modules/coffee-script/bin:"$PATH" \
+              && export DATABASE_URL=postgres://fhirbase:fhirbase@localhost:5432/fhirbase \
+              && ~/fhirbase/build.sh \
+              && cat ~/fhirbase/tmp/build.sql | psql fhirbase'
+
+# Run test suite.
+RUN bash -lc 'sudo service postgresql start \
+              && cd ~/fhirbase \
+              && source ~/.nvm/nvm.sh && nvm use 5.3 \
+              && export DATABASE_URL=postgres://fhirbase:fhirbase@localhost:5432/fhirbase \
+              && npm run test'
+
+# Expose the PostgreSQL port.
+EXPOSE 5432
+
+# Add VOLUMEs to allow backup of config, logs, socket and databases
+VOLUME  ['/etc/postgresql', '/var/log/postgresql', '/var/lib/postgresql', '/var/run/postgresql']
+
+WORKDIR ~/fhirbase
+
+CMD sudo service postgresql start
