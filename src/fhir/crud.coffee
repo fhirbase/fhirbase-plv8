@@ -345,7 +345,7 @@ fhir_patch_resource = _build [
       resourceType: query.resource.resourceType, id: query.resource.id
     })
 
-    jsonpatch.apply(resource, [query.patch])
+    jsonpatch.apply(resource, query.patch)
 
     old_version = null
     id = null

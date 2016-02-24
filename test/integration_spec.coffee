@@ -253,11 +253,14 @@ describe 'Integration',->
           plv8.execute(
             'SELECT fhir_patch_resource($1)', [JSON.stringify(
               resource: {id: created.id, resourceType: 'Order'},
-              patch: {op: 'replace', path: '/name', value: 'bar'}
+              patch: [
+                {op: 'replace', path: '/name', value: 'bar1'},
+                {op: 'replace', path: '/name', value: 'bar2'}
+              ]
           )])[0].fhir_patch_resource
         )
 
-      assert.deepEqual(patched.name, 'bar')
+      assert.deepEqual(patched.name, 'bar2')
       assert.notEqual(patched.meta.versionId, false)
       assert.notEqual(patched.meta.versionId, created.meta.versionId)
 
@@ -268,7 +271,7 @@ describe 'Integration',->
             [JSON.stringify(patched)]
           )[0].fhir_read_resource
         )
-      assert.deepEqual(read_patched.name, 'bar')
+      assert.deepEqual(read_patched.name, 'bar2')
 
       hx =
         JSON.parse(
@@ -277,7 +280,7 @@ describe 'Integration',->
             [JSON.stringify(id: created.id, resourceType: 'Order')]
           )[0].fhir_resource_history
         )
-      assert.deepEqual(read_patched.name, 'bar')
+      assert.deepEqual(read_patched.name, 'bar2')
       assert.equal(hx.total, 2)
       assert.equal(hx.entry.length, 2)
 
