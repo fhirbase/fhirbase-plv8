@@ -198,6 +198,19 @@ SELECT fhir_conformance('{"default": "values"}');
 -- return simple Conformance resource, based on created stores
 ```
 
+## Performance
+
+Run performance benchmark
+
+```sh
+PGHOST=localhost \
+  PGDATABASE=your-db-name \
+  PGPORT=5432 \
+  PGUSER=your-user \
+  PGPASSWORD=your-password \
+  perf/perf.sh
+```
+
 ## Contribution
 
 * Star us on GitHub
