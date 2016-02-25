@@ -22,6 +22,12 @@ queries:
     probes:
       - path: ['total']
         result: 1
+  - query: {resourceType: 'Encounter', queryString: 'patient:Patient=nicola'}
+    total: 1
+    indexed: true
+    probes:
+      - path: ['total']
+        result: 1
   - query: {resourceType: 'Encounter', queryString: 'patient:missing=true'}
     total: 1
     indexed: true
