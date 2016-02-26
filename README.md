@@ -202,6 +202,7 @@ SELECT fhir_conformance('{"default": "values"}');
 
 Drop database `your_db_name` on `localhost`
 than create database `your-db-name` and install Fhirbase into it
+than generate 1000000 patients
 and than run performance tests.
 
 ```sh
@@ -209,6 +210,7 @@ and than run performance tests.
             --pghost=locahost \
             --pgport=5432 \
             --pgpassword=your-password \
+            --number-of-patients=1000000
             --verbose \
             --createdb \
             --dropdb

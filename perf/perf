@@ -14,6 +14,7 @@ export pg_schema=${pg_schema:-perf}
 export other_database=${other_database:-postgres}
 
 export number_of_patients=${number_of_patients:-1000}
+export number_of_practitioners=${number_of_practitioners:-200}
 export rand_seed=${rand_seed:-0.21}
 
 while [ $# -gt 0 ]; do
@@ -45,7 +46,6 @@ while [ $# -gt 0 ]; do
         --pgpassword=*)
             export PGPASSWORD="${1#*=}"
             ;;
-
         --pgschema=*)
             export pg_schema="${1#*=}"
             ;;
@@ -54,6 +54,9 @@ while [ $# -gt 0 ]; do
             ;;
         --number-of-patients=*)
             export number_of_patients="${1#*=}"
+            ;;
+        --number-of-practitioners=*)
+            export number_of_practitioners="${1#*=}"
             ;;
         --rand-seed=*)
             export rand_seed="${1#*=}"
@@ -114,6 +117,9 @@ psql --file="$directory"/load.sql || exit 1
 read -r -d '' sql << EOF
 SET plv8.start_proc = 'plv8_init';
 SELECT fhir_create_storage('{"resourceType": "Organization"}'::json);
+SELECT fhir_create_storage('{"resourceType": "Encounter"}'::json);
+SELECT fhir_create_storage('{"resourceType": "Practitioner"}'::json);
+SELECT fhir_create_storage('{"resourceType": "Patient"}'::json);
 EOF
 psql --command="$sql" || exit 1
 
@@ -127,6 +133,6 @@ fi
 echo Run performance tests.
 read -r -d '' sql << EOF
 SET plv8.start_proc = 'plv8_init';
-SELECT generate($number_of_patients, $rand_seed);
+SELECT generate($number_of_patients, $number_of_practitioners, $rand_seed);
 EOF
 psql --command="$sql" || exit 1

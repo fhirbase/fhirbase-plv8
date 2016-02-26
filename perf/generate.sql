@@ -102,14 +102,65 @@ RETURNS bigint AS $$
   select count(*) inserted;
 $$ LANGUAGE SQL;
 
-\echo 'Create generation function: "generate(_number_of_patients_ integer, _rand_seed_ float)".'
-DROP FUNCTION IF EXISTS generate(_number_of_patients_ integer, _rand_seed_ float) CASCADE;
-CREATE OR REPLACE FUNCTION generate(_number_of_patients_ integer, _rand_seed_ float)
+\echo 'Create generation function: "insert_practitioners(_total_count_ integer)".'
+DROP FUNCTION IF EXISTS insert_practitioners(_total_count_ integer) CASCADE;
+CREATE OR REPLACE FUNCTION insert_practitioners(_total_count_ integer)
+RETURNS bigint AS $$
+  with first_names_source as (
+    select *, row_number() over () from (
+      select CASE WHEN sex = 'M' THEN 'male' ELSE 'female' END as sex,
+             first_name
+      from first_names
+      order by random()
+      limit _total_count_) _
+  ), last_names_source as (
+    select *, row_number() over () from (
+      select last_name
+      from last_names
+      order by random()
+      limit _total_count_) _
+  ), practitioner_data as (
+    select *
+    from first_names_source
+    join last_names_source using (row_number)
+  ), inserted as (
+    INSERT into practitioner (id, version_id, resource)
+    SELECT obj->>'id', obj#>>'{meta,versionId}', obj
+    FROM (
+      SELECT
+        json_build_object(
+         'resourceType', 'Practitioner',
+         'id', gen_random_uuid(),
+         'name', ARRAY[
+           json_build_object(
+            'given', ARRAY[first_name],
+            'family', ARRAY[last_name]
+           )
+         ]
+        )::jsonb as obj
+        FROM practitioner_data
+    ) _
+    RETURNING id
+  )
+  select count(*) from practitioner_data;
+$$ LANGUAGE SQL;
+
+\echo 'Create generation function: "generate(_number_of_patients_ integer, _number_of_practitioners_ integer, _rand_seed_ float)".'
+DROP FUNCTION IF EXISTS generate(_number_of_patients_ integer,
+                                 _number_of_practitioners_ integer,
+                                 _rand_seed_ float) CASCADE;
+CREATE OR REPLACE FUNCTION generate(_number_of_patients_ integer,
+                                    _number_of_practitioners_ integer,
+                                    _rand_seed_ float)
 RETURNS bigint AS $$
   BEGIN
-    TRUNCATE TABLE organization, organization_history;
+    TRUNCATE TABLE organization, organization_history,
+                   encounter, encounter_history,
+                   practitioner, practitioner_history,
+                   patient, patient_history;
     PERFORM insert_organizations();
-  RETURN (SELECT count(*) FROM organization);
+    PERFORM insert_practitioners(_number_of_practitioners_);
+  RETURN (SELECT count(*) FROM practitioner);
   END
 $$ LANGUAGE plpgsql;
 
