@@ -34,7 +34,7 @@ export PGPASSWORD=${PGPASSWORD:-your_password}
 export PG_SCHEMA=${PG_SCHEMA:-perf}
 export OTHER_DATABASE=${OTHER_DATABASE:-postgres}
 
-if [ $verbose = true ] ; then
+if [ "$verbose" = true ] ; then
     echo "PGHOST=$PGHOST"
     echo "PGDATABASE=$PGDATABASE"
     echo "PGPORT=$PGPORT"
@@ -49,24 +49,25 @@ if [ $createdb = true ] ; then
     read -r -d '' sql << EOF
 DROP DATABASE IF EXISTS $PGDATABASE;
 EOF
-    psql $OTHER_DATABASE --command="$sql" || exit 1
+    psql $OTHER_DATABASE --command="$sql" > /dev/null || exit 1
 
     read -r -d '' sql << EOF
 CREATE DATABASE $PGDATABASE WITH OWNER $PGUSER ENCODING = 'UTF8';
 EOF
-    psql $OTHER_DATABASE --command="$sql" || exit 1
+    psql $OTHER_DATABASE --command="$sql" > /dev/null || exit 1
 
-    psql --file="$directory"/../tmp/build.sql || exit 1
+    psql --file="$directory"/../tmp/build.sql > /dev/null || exit 1
 fi
 
-read -r -d '' alert << EOF
-Load temporary tables into "$PG_SCHEMA" schema from "${directory}/data" directory.
-EOF
-echo $alert || exit 1
-psql --file="$directory"/load.sql || exit 1
+echo Load temporary tables into '"'$PG_SCHEMA'"' \
+     schema from '"'"$directory"/data'"' directory.
+psql --file="$directory"/load.sql > /dev/null || exit 1
 
-read -r -d '' alert << EOF
-Create generation functions in "$PG_SCHEMA" schema.
+read -r -d '' sql << EOF
+SET plv8.start_proc = 'plv8_init';
+SELECT fhir_create_storage('{"resourceType": "Organization"}'::json);
 EOF
-echo $alert || exit 1
-psql --file="$directory"/generate.sql || exit 1
+psql $OTHER_DATABASE --command="$sql" > /dev/null || exit 1
+
+echo Create generation functions in '"'$PG_SCHEMA'"' schema.
+psql --file="$directory"/generate.sql > /dev/null || exit 1
