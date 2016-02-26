@@ -8,11 +8,11 @@ while [ $# -gt 0 ]; do
         --verbose=*)
             verbose="${1#*=}"
             ;;
+        --dropdb)
+            dropdb=1
+            ;;
         --createdb)
             createdb=1
-            ;;
-        --createdb=*)
-            createdb="${1#*=}"
             ;;
         *)
             printf "***************************\n"
@@ -27,7 +27,7 @@ done
 export verbose=${verbose:-1}
 
 if [ "$verbose" = 0 ] || [ "$verbose" = 1 ] ; then
-    exec &>/dev/null
+    exec >/dev/null
 fi
 
 directory=$(dirname $0)
@@ -94,7 +94,7 @@ echo Create generation functions in $PGDATABASE.$PG_SCHEMA.
 psql --file="$directory"/generate.sql || exit 1
 
 if [ "$verbose" != 0 ] ; then
-    exec &> /dev/tty
+    exec > /dev/tty
 fi
 
 echo Run performance tests.
