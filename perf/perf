@@ -3,7 +3,7 @@
 while [ $# -gt 0 ]; do
   case "$1" in
     --verbose)
-      verbose=true
+      verbose=1
       ;;
     --verbose=*)
       verbose="${1#*=}"
@@ -34,7 +34,7 @@ export PGPASSWORD=${PGPASSWORD:-your_password}
 export PG_SCHEMA=${PG_SCHEMA:-perf}
 export OTHER_DATABASE=${OTHER_DATABASE:-postgres}
 
-if [ "$verbose" = true ] ; then
+if [ "$verbose" = 2 ] ; then
     echo "PGHOST=$PGHOST"
     echo "PGDATABASE=$PGDATABASE"
     echo "PGPORT=$PGPORT"
@@ -59,8 +59,9 @@ EOF
     psql --file="$directory"/../tmp/build.sql > /dev/null || exit 1
 fi
 
-echo Load temporary tables into '"'$PG_SCHEMA'"' \
-     schema from '"'"$directory"/data'"' directory.
+([ "$verbose" = 1 ] || [ "$verbose" = 2 ]) && \
+    echo Load temporary tables into '"'$PG_SCHEMA'"' \
+         schema from '"'"$directory"/data'"' directory.
 psql --file="$directory"/load.sql > /dev/null || exit 1
 
 read -r -d '' sql << EOF
@@ -69,5 +70,6 @@ SELECT fhir_create_storage('{"resourceType": "Organization"}'::json);
 EOF
 psql --command="$sql" > /dev/null || exit 1
 
-echo Create generation functions in '"'$PG_SCHEMA'"' schema.
+([ "$verbose" = 1 ] || [ "$verbose" = 2 ]) && \
+    echo Create generation functions in '"'$PG_SCHEMA'"' schema.
 psql --file="$directory"/generate.sql > /dev/null || exit 1
