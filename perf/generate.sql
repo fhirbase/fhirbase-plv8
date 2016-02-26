@@ -106,9 +106,8 @@ $$ LANGUAGE SQL;
 DROP FUNCTION IF EXISTS generate(_number_of_patients_ integer, _rand_seed_ float) CASCADE;
 CREATE OR REPLACE FUNCTION generate(_number_of_patients_ integer, _rand_seed_ float)
 RETURNS bigint AS $$
-  BEGIN
     TRUNCATE TABLE organization, organization_history;
-    PERFORM insert_organizations();
+    SELECT insert_organizations();
 $$ LANGUAGE SQL;
 
 -- \echo 'Create generation function: "@@@###".'
