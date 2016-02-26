@@ -60,33 +60,28 @@ fi
 
 if [ "$createdb" = 1 ] ; then
     if [ "$dropdb" = 1 ] ; then
-        ([ "$verbose" = 2 ] || [ "$verbose" = 3 ]) && \
-            echo Drop $PGDATABASE database.
+        echo Drop $PGDATABASE database.
         read -r -d '' sql << EOF
 DROP DATABASE IF EXISTS $PGDATABASE;
 EOF
         psql $OTHER_DATABASE --command="$sql" || exit 1
     fi
 
-    ([ "$verbose" = 2 ] || [ "$verbose" = 3 ]) && \
-        echo Crate $PGDATABASE database.
+    echo Crate $PGDATABASE database.
     read -r -d '' sql << EOF
 CREATE DATABASE $PGDATABASE WITH OWNER $PGUSER ENCODING = 'UTF8';
 EOF
     psql $OTHER_DATABASE --command="$sql" || exit 1
 
-    ([ "$verbose" = 2 ] || [ "$verbose" = 3 ]) && \
-        echo Install Fhirbase into $PGDATABASE database.
+    echo Install Fhirbase into $PGDATABASE database.
     psql --file="$directory"/../tmp/build.sql || exit 1
 else
-    ([ "$verbose" = 2 ] || [ "$verbose" = 3 ]) && \
-        echo Assume that database $PGDATABASE.$PG_SCHEMA \
-             contains installed Fhirbase.
+    echo Assume that database $PGDATABASE.$PG_SCHEMA \
+         contains installed Fhirbase.
 fi
 
-([ "$verbose" = 2 ] || [ "$verbose" = 3 ]) && \
-    echo Load temporary tables into $PGDATABASE.$PG_SCHEMA \
-         from "$directory"/data.
+echo Load temporary tables into $PGDATABASE.$PG_SCHEMA \
+     from "$directory"/data.
 psql --file="$directory"/load.sql || exit 1
 
 read -r -d '' sql << EOF
@@ -95,15 +90,14 @@ SELECT fhir_create_storage('{"resourceType": "Organization"}'::json);
 EOF
 psql --command="$sql" || exit 1
 
-([ "$verbose" = 2 ] || [ "$verbose" = 3 ]) && \
-    echo Create generation functions in $PGDATABASE.$PG_SCHEMA.
+echo Create generation functions in $PGDATABASE.$PG_SCHEMA.
 psql --file="$directory"/generate.sql || exit 1
 
 if [ "$verbose" != 0 ] ; then
     exec &> /dev/tty
 fi
 
-([ "$verbose" = 2 ] || [ "$verbose" = 3 ]) && echo Run performance tests.
+echo Run performance tests.
 read -r -d '' sql << EOF
 SET plv8.start_proc = 'plv8_init';
 SELECT generate($NUMBER_OF_PATIENTS, $RAND_SEED);
