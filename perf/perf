@@ -1,5 +1,21 @@
 #! /bin/sh
 
+export verbose=${verbose:-1}
+
+export directory=$(dirname $0)
+
+export PGHOST=${PGHOST:-localhost}
+export PGPORT=${PGPORT:-5432}
+export PGDATABASE=${PGDATABASE:-fhirbase}
+export PGUSER=${PGUSER:-fhirbase}
+export PGPASSWORD=${PGPASSWORD:-your_password}
+
+export pg_schema=${pg_schema:-perf}
+export other_database=${other_database:-postgres}
+
+export number_of_patients=${number_of_patients:-1000}
+export rand_seed=${rand_seed:-0.21}
+
 while [ $# -gt 0 ]; do
     case "$1" in
         --verbose)
@@ -23,26 +39,9 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-# --verbose=1 by default
-export verbose=${verbose:-1}
-
 if [ "$verbose" = 0 ] || [ "$verbose" = 1 ] ; then
     exec >/dev/null
 fi
-
-directory=$(dirname $0)
-
-export PGHOST=${PGHOST:-localhost}
-export PGPORT=${PGPORT:-5432}
-export PGDATABASE=${PGDATABASE:-fhirbase}
-export PGUSER=${PGUSER:-fhirbase}
-export PGPASSWORD=${PGPASSWORD:-your_password}
-
-export PG_SCHEMA=${PG_SCHEMA:-perf}
-export OTHER_DATABASE=${OTHER_DATABASE:-postgres}
-
-export NUMBER_OF_PATIENTS=${NUMBER_OF_PATIENTS:-1000}
-export RAND_SEED=${RAND_SEED:-0.21}
 
 if [ "$verbose" = 3 ] ; then
     echo "PGHOST=$PGHOST"
@@ -51,11 +50,11 @@ if [ "$verbose" = 3 ] ; then
     echo "PGUSER=$PGUSER"
     echo "PGPASSWORD=$PGPASSWORD"
 
-    echo "PG_SCHEMA=$PG_SCHEMA"
-    echo "OTHER_DATABASE=$OTHER_DATABASE"
+    echo "pg_schema=$pg_schema"
+    echo "other_database=$other_database"
 
-    echo "NUMBER_OF_PATIENTS=$NUMBER_OF_PATIENTS"
-    echo "RAND_SEED=$RAND_SEED"
+    echo "number_of_patients=$number_of_patients"
+    echo "rand_seed=$rand_seed"
 fi
 
 if [ "$createdb" = 1 ] ; then
@@ -64,23 +63,23 @@ if [ "$createdb" = 1 ] ; then
         read -r -d '' sql << EOF
 DROP DATABASE IF EXISTS $PGDATABASE;
 EOF
-        psql $OTHER_DATABASE --command="$sql" || exit 1
+        psql $other_database --command="$sql" || exit 1
     fi
 
     echo Crate $PGDATABASE database.
     read -r -d '' sql << EOF
 CREATE DATABASE $PGDATABASE WITH OWNER $PGUSER ENCODING = 'UTF8';
 EOF
-    psql $OTHER_DATABASE --command="$sql" || exit 1
+    psql $other_database --command="$sql" || exit 1
 
     echo Install Fhirbase into $PGDATABASE database.
     psql --file="$directory"/../tmp/build.sql || exit 1
 else
-    echo Assume that database $PGDATABASE.$PG_SCHEMA \
+    echo Assume that database $PGDATABASE.$pg_schema \
          contains installed Fhirbase.
 fi
 
-echo Load temporary tables into $PGDATABASE.$PG_SCHEMA \
+echo Load temporary tables into $PGDATABASE.$pg_schema \
      from "$directory"/data.
 psql --file="$directory"/load.sql || exit 1
 
@@ -90,7 +89,7 @@ SELECT fhir_create_storage('{"resourceType": "Organization"}'::json);
 EOF
 psql --command="$sql" || exit 1
 
-echo Create generation functions in $PGDATABASE.$PG_SCHEMA.
+echo Create generation functions in $PGDATABASE.$pg_schema.
 psql --file="$directory"/generate.sql || exit 1
 
 if [ "$verbose" != 0 ] ; then
@@ -100,6 +99,6 @@ fi
 echo Run performance tests.
 read -r -d '' sql << EOF
 SET plv8.start_proc = 'plv8_init';
-SELECT generate($NUMBER_OF_PATIENTS, $RAND_SEED);
+SELECT generate($number_of_patients, $rand_seed);
 EOF
 psql --command="$sql" || exit 1
