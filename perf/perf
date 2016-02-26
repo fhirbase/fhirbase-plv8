@@ -45,7 +45,7 @@ if [ "$verbose" = true ] ; then
     echo "OTHER_DATABASE=$OTHER_DATABASE"
 fi
 
-if [ $createdb = true ] ; then
+if [ "$createdb" = true ] ; then
     read -r -d '' sql << EOF
 DROP DATABASE IF EXISTS $PGDATABASE;
 EOF
