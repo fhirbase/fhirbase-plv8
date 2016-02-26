@@ -106,9 +106,12 @@ $$ LANGUAGE SQL;
 DROP FUNCTION IF EXISTS generate(_number_of_patients_ integer, _rand_seed_ float) CASCADE;
 CREATE OR REPLACE FUNCTION generate(_number_of_patients_ integer, _rand_seed_ float)
 RETURNS bigint AS $$
+  BEGIN
     TRUNCATE TABLE organization, organization_history;
-    SELECT insert_organizations();
-$$ LANGUAGE SQL;
+    PERFORM insert_organizations();
+  RETURN (SELECT count(*) FROM organization);
+  END
+$$ LANGUAGE plpgsql;
 
 -- \echo 'Create generation function: "@@@###".'
 -- DROP FUNCTION IF EXISTS @@@### CASCADE;
