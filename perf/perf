@@ -30,6 +30,34 @@ while [ $# -gt 0 ]; do
         --createdb)
             createdb=1
             ;;
+        --pghost=*)
+            export PGHOST="${1#*=}"
+            ;;
+        --pgport=*)
+            export PGPORT="${1#*=}"
+            ;;
+        --pgdatabase=*)
+            export PGDATABASE="${1#*=}"
+            ;;
+        --pguser=*)
+            export PGUSER="${1#*=}"
+            ;;
+        --pgpassword=*)
+            export PGPASSWORD="${1#*=}"
+            ;;
+
+        --pgschema=*)
+            export pg_schema="${1#*=}"
+            ;;
+        --other-database=*)
+            export other_database="${1#*=}"
+            ;;
+        --number-of-patients=*)
+            export number_of_patients="${1#*=}"
+            ;;
+        --rand-seed=*)
+            export rand_seed="${1#*=}"
+            ;;
         *)
             printf "***************************\n"
             printf "* Error: Invalid argument.*\n"

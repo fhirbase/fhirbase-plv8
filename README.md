@@ -200,17 +200,18 @@ SELECT fhir_conformance('{"default": "values"}');
 
 ## Performance
 
-Drop database `your_db_name`
+Drop database `your_db_name` on `localhost`
 than create database `your-db-name` and install Fhirbase into it
 and than run performance tests.
 
 ```sh
-PGHOST=localhost \
-  PGDATABASE=your_db_name \
-  PGPORT=5432 \
-  PGUSER=your_user \
-  PGPASSWORD=your-password \
-  perf/perf --verbose --dropdb --createdb
+./perf/perf --pgdatabase=your_db_name \
+            --pghost=locahost \
+            --pgport=5432 \
+            --pgpassword=your-password \
+            --verbose \
+            --createdb \
+            --dropdb
 ```
 
 ## Contribution
