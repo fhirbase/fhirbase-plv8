@@ -9,7 +9,7 @@ while [ $# -gt 0 ]; do
       verbose="${1#*=}"
       ;;
     --createdb)
-      createdb=true
+      createdb=1
       ;;
     --createdb=*)
       createdb="${1#*=}"
@@ -34,6 +34,9 @@ export PGPASSWORD=${PGPASSWORD:-your_password}
 export PG_SCHEMA=${PG_SCHEMA:-perf}
 export OTHER_DATABASE=${OTHER_DATABASE:-postgres}
 
+export NUMBER_OF_PATIENTS=${NUMBER_OF_PATIENTS:-1000}
+export RAND_SEED=${RAND_SEED:-0.21}
+
 if [ "$verbose" = 2 ] ; then
     echo "PGHOST=$PGHOST"
     echo "PGDATABASE=$PGDATABASE"
@@ -43,25 +46,40 @@ if [ "$verbose" = 2 ] ; then
 
     echo "PG_SCHEMA=$PG_SCHEMA"
     echo "OTHER_DATABASE=$OTHER_DATABASE"
+
+    echo "NUMBER_OF_PATIENTS=$NUMBER_OF_PATIENTS"
+    echo "RAND_SEED=$RAND_SEED"
 fi
 
-if [ "$createdb" = true ] ; then
-    read -r -d '' sql << EOF
+if [ "$createdb" = 1 ] ; then
+    if [ "$dropdb" = 1 ] ; then
+        ([ "$verbose" = 1 ] || [ "$verbose" = 2 ]) && \
+            echo Drop $PGDATABASE database.
+        read -r -d '' sql << EOF
 DROP DATABASE IF EXISTS $PGDATABASE;
 EOF
-    psql $OTHER_DATABASE --command="$sql" > /dev/null || exit 1
+        psql $OTHER_DATABASE --command="$sql" > /dev/null || exit 1
+    fi
 
+    ([ "$verbose" = 1 ] || [ "$verbose" = 2 ]) && \
+        echo Crate $PGDATABASE database.
     read -r -d '' sql << EOF
 CREATE DATABASE $PGDATABASE WITH OWNER $PGUSER ENCODING = 'UTF8';
 EOF
     psql $OTHER_DATABASE --command="$sql" > /dev/null || exit 1
 
+    ([ "$verbose" = 1 ] || [ "$verbose" = 2 ]) && \
+        echo Install Fhirbase into $PGDATABASE database.
     psql --file="$directory"/../tmp/build.sql > /dev/null || exit 1
+else
+    ([ "$verbose" = 1 ] || [ "$verbose" = 2 ]) && \
+        echo Assume that database $PGDATABASE.$PG_SCHEMA \
+             contains installed Fhirbase.
 fi
 
 ([ "$verbose" = 1 ] || [ "$verbose" = 2 ]) && \
-    echo Load temporary tables into '"'$PG_SCHEMA'"' \
-         schema from '"'"$directory"/data'"' directory.
+    echo Load temporary tables into $PGDATABASE.$PG_SCHEMA \
+         from "$directory"/data.
 psql --file="$directory"/load.sql > /dev/null || exit 1
 
 read -r -d '' sql << EOF
@@ -71,5 +89,12 @@ EOF
 psql --command="$sql" > /dev/null || exit 1
 
 ([ "$verbose" = 1 ] || [ "$verbose" = 2 ]) && \
-    echo Create generation functions in '"'$PG_SCHEMA'"' schema.
+    echo Create generation functions in $PGDATABASE.$PG_SCHEMA.
 psql --file="$directory"/generate.sql > /dev/null || exit 1
+
+([ "$verbose" = 1 ] || [ "$verbose" = 2 ]) && echo Run performance tests.
+read -r -d '' sql << EOF
+SET plv8.start_proc = 'plv8_init';
+SELECT generate(1, 0.28);
+EOF
+psql --command="$sql" > /dev/null || exit 1
