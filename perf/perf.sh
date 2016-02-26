@@ -67,7 +67,7 @@ read -r -d '' sql << EOF
 SET plv8.start_proc = 'plv8_init';
 SELECT fhir_create_storage('{"resourceType": "Organization"}'::json);
 EOF
-psql $OTHER_DATABASE --command="$sql" > /dev/null || exit 1
+psql --command="$sql" > /dev/null || exit 1
 
 echo Create generation functions in '"'$PG_SCHEMA'"' schema.
 psql --file="$directory"/generate.sql > /dev/null || exit 1
