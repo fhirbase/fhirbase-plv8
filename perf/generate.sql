@@ -145,6 +145,140 @@ RETURNS bigint AS $$
   select count(*) from practitioner_data;
 $$ LANGUAGE SQL;
 
+\echo 'Create generation function: "insert_patients(_total_count_ integer)".'
+DROP FUNCTION IF EXISTS insert_patients(_total_count_ integer) CASCADE;
+CREATE OR REPLACE FUNCTION insert_patients(_total_count_ integer)
+RETURNS bigint AS $$
+  with first_names_source as (
+    select CASE WHEN sex = 'M' THEN 'male' ELSE 'female' END as sex,
+           first_name,
+           row_number() over ()
+    from first_names
+    cross join generate_series(0, ceil(_total_count_::float
+                                       / (select count(*)
+                                          from first_names)::float)::integer)
+    order by random()
+  ), last_names_source as (
+    select last_name, row_number() over ()
+    from last_names
+    cross join generate_series(0, ceil(_total_count_::float
+                                       / (select count(*)
+                                          from last_names)::float)::integer)
+    order by random()
+  ), street_names_source as (
+    select street_name, row_number() over ()
+    from street_names
+    cross join generate_series(0, ceil(_total_count_::float
+                                       / (select count(*)
+                                          from street_names)::float)::integer)
+    order by random()
+  ), cities_source as (
+    select city, zip, state, row_number() over ()
+    from cities
+    cross join generate_series(0, ceil(_total_count_::float
+                                       / (select count(*)
+                                          from cities)::float)::integer)
+    order by random()
+  ), languages_source as (
+    select code as language_code,
+           name as language_name,
+           row_number() over ()
+    from languages
+    cross join generate_series(0, ceil(_total_count_::float
+                                       / (select count(*)
+                                          from languages)::float)::integer)
+    order by random()
+  ), organizations_source as (
+    select id as organization_id,
+           resource#>>'{name}' as organization_name,
+           row_number() over ()
+    from organization
+    cross join generate_series(0, ceil(_total_count_::float
+                                       / (select count(*)
+                                          from organization)::float)::integer)
+    order by random()
+  ), patient_data as (
+    select
+      *,
+      random_date() as birth_date,
+      random_phone() as phone
+    from first_names_source
+    join last_names_source using (row_number)
+    join street_names_source using (row_number)
+    join cities_source using (row_number)
+    join languages_source using (row_number)
+    join organizations_source using (row_number)
+  ), inserted as (
+    INSERT into patient (id, version_id, resource)
+    SELECT obj->>'id', obj#>>'{meta,versionId}', obj
+    FROM (
+      SELECT
+        json_build_object(
+         'resourceType', 'Patient',
+         'id', gen_random_uuid(),
+         'meta', json_build_object(
+            'versionId', gen_random_uuid(),
+            'lastUpdated', CURRENT_TIMESTAMP
+          ),
+         'gender', sex,
+         'birthDate', birth_date,
+         'active', TRUE,
+         'name', ARRAY[
+           json_build_object(
+            'given', ARRAY[first_name],
+            'family', ARRAY[last_name]
+           )
+         ],
+         'telecom', ARRAY[
+           json_build_object(
+            'system', 'phone',
+            'value', phone,
+            'use', 'home'
+           )
+         ],
+         'address', make_address(street_name, zip, city, state),
+         'communication', ARRAY[
+           json_build_object(
+             'language',
+             json_build_object(
+               'coding', ARRAY[
+                 json_build_object(
+                   'system', 'urn:ietf:bcp:47',
+                   'code', language_code,
+                   'display', language_name
+                 )
+               ],
+               'text', language_name
+             ),
+             'preferred', TRUE
+           )
+         ],
+         'identifier', ARRAY[
+           json_build_object(
+             'use', 'usual',
+             'system', 'urn:oid:2.16.840.1.113883.2.4.6.3',
+             'value', random(6000000, 100000000)::text
+           ),
+           json_build_object(
+             'use', 'usual',
+             'system', 'urn:oid:1.2.36.146.595.217.0.1',
+             'value', random(6000000, 100000000)::text,
+             'label', 'MRN'
+           )
+         ],
+         'managingOrganization', json_build_object(
+           'reference', 'Organization/' || organization_id,
+           'display', organization_name
+         )
+        )::jsonb as obj
+        FROM patient_data
+        LIMIT _total_count_
+    ) _
+    RETURNING id
+  )
+  select count(*) inserted;
+$$ LANGUAGE SQL;
+
 \echo 'Create generation function: "generate(_number_of_patients_ integer, _number_of_practitioners_ integer, _rand_seed_ float)".'
 DROP FUNCTION IF EXISTS generate(_number_of_patients_ integer,
                                  _number_of_practitioners_ integer,
@@ -160,7 +294,8 @@ RETURNS bigint AS $$
                    patient, patient_history;
     PERFORM insert_organizations();
     PERFORM insert_practitioners(_number_of_practitioners_);
-  RETURN (SELECT count(*) FROM practitioner);
+    PERFORM insert_patients(_number_of_patients_);
+  RETURN (SELECT count(*) FROM patient);
   END
 $$ LANGUAGE plpgsql;
 

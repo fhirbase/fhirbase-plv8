@@ -126,11 +126,10 @@ psql --command="$sql" || exit 1
 echo Create generation functions in $PGDATABASE.$pg_schema.
 psql --file="$directory"/generate.sql || exit 1
 
+echo Run performance tests.
 if [ "$verbose" != 0 ] ; then
     exec > /dev/tty
 fi
-
-echo Run performance tests.
 read -r -d '' sql << EOF
 SET plv8.start_proc = 'plv8_init';
 SELECT generate($number_of_patients, $number_of_practitioners, $rand_seed);
