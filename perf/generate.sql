@@ -279,6 +279,71 @@ RETURNS bigint AS $$
   select count(*) inserted;
 $$ LANGUAGE SQL;
 
+\echo 'Create generation function: "insert_encounters()".'
+DROP FUNCTION IF EXISTS insert_encounters() CASCADE;
+CREATE OR REPLACE FUNCTION insert_encounters()
+RETURNS bigint AS $$
+  WITH patients_ids_source as (
+    SELECT id as patient_id,
+           row_number() over ()
+      FROM patient
+
+    UNION ALL
+
+    SELECT patient_id, row_number() over ()
+    FROM (SELECT id as patient_id
+          FROM patient order by random()
+          LIMIT (select count(*) from patient) / 3) _
+  ), practitioners_source AS (
+    SELECT id as practitioner_id,
+           row_number() OVER ()
+    FROM practitioner
+    CROSS JOIN generate_series(0, ceil((select count(*) from patients_ids_source)::float
+                                       / (select count(*)
+                                          from practitioner)::float)::integer)
+    ORDER by random()
+  ), encounter_data as (
+    SELECT *,
+           random_elem(ARRAY['inpatient',
+                             'outpatient',
+                             'ambulatory',
+                             'emergency']) as class,
+           random_elem(ARRAY['in-progress',
+                             'planned',
+                             'arrived',
+                             'onleave',
+                             'cancelled',
+                             'finished']) as status
+    FROM patients_ids_source
+    JOIN practitioners_source using (row_number)
+  ), inserted as (
+    INSERT into encounter (id, version_id, resource)
+    SELECT obj->>'id', obj#>>'{meta,versionId}', obj
+    FROM (
+      SELECT
+        json_build_object(
+         'resourceType', 'Encounter',
+         'id', gen_random_uuid(),
+         'status', status,
+         'class', class,
+         'patient', json_build_object(
+           'reference', 'Patient/' || patient_id
+         ),
+         'participant', ARRAY[
+           json_build_object(
+             'individual', json_build_object(
+               'reference', 'Practitioner/' || practitioner_id
+             )
+           )
+         ]
+        )::jsonb as obj
+        FROM encounter_data
+    ) _
+    RETURNING id
+  )
+  SELECT 42::bigint;
+$$ LANGUAGE SQL;
+
 \echo 'Create generation function: "generate(_number_of_patients_ integer, _number_of_practitioners_ integer, _rand_seed_ float)".'
 DROP FUNCTION IF EXISTS generate(_number_of_patients_ integer,
                                  _number_of_practitioners_ integer,
@@ -295,13 +360,7 @@ RETURNS bigint AS $$
     PERFORM insert_organizations();
     PERFORM insert_practitioners(_number_of_practitioners_);
     PERFORM insert_patients(_number_of_patients_);
+    PERFORM insert_encounters();
   RETURN (SELECT count(*) FROM patient);
   END
 $$ LANGUAGE plpgsql;
-
--- \echo 'Create generation function: "@@@###".'
--- DROP FUNCTION IF EXISTS @@@### CASCADE;
--- CREATE OR REPLACE FUNCTION @@@###
--- RETURNS ??? AS $$
---
--- $$ LANGUAGE SQL;
