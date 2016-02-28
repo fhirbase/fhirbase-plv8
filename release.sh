@@ -56,7 +56,8 @@ FB_SCHEMA=bar npm run test || exit 1
 
 version_sensitive_files="
 ./src/core/version.coffee
-./vagrant/provision/provision-environment.sh"
+./vagrant/provision/provision-environment.sh
+./perf/perf"
 
 for file in $version_sensitive_files; do
     sed --in-place \
