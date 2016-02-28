@@ -104,7 +104,10 @@ EOF
     echo "$sql" | psql $other_database || exit 1
 
     echo Install Fhirbase into $PGDATABASE database.
-    cat "$directory"/../tmp/build.sql | psql || exit 1
+    curl --location \
+         https://github.com/fhirbase/fhirbase-plv8/releases/download/v0.0.1-beta.19/fhirbase-0.0.1-beta.19.sql.zip \
+        | funzip \
+        | psql || exit 1
 else
     echo Assume that database $PGDATABASE.$pg_schema \
          contains installed Fhirbase.
