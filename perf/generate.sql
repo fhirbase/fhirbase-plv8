@@ -1,6 +1,3 @@
--- CREATE SCHEMA IF NOT EXISTS perf;
--- SET search_path TO perf;
-
 \echo 'Create generation function: "random(a numeric, b numeric)".'
 DROP FUNCTION IF EXISTS random(a numeric, b numeric) CASCADE;
 CREATE OR REPLACE FUNCTION random(a numeric, b numeric)

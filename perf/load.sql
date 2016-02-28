@@ -1,6 +1,3 @@
--- CREATE SCHEMA IF NOT EXISTS perf;
--- SET search_path TO perf;
-
 DROP TABLE IF EXISTS first_names;
 DROP TABLE IF EXISTS last_names;
 DROP TABLE IF EXISTS languages;
