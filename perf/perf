@@ -131,4 +131,16 @@ read -r -d '' sql << EOF
 SET plv8.start_proc = 'plv8_init';
 SELECT generate($number_of_patients, $number_of_practitioners, $rand_seed);
 EOF
-psql --command="$sql" || exit 1
+time psql --command="$sql" || exit 1
+
+echo Run performance tests.
+if [ "$verbose" = 3 ] ; then
+    exec > /dev/tty
+else
+    exec >/dev/null
+fi
+read -r -d '' sql << EOF
+SET plv8.start_proc = 'plv8_init';
+SELECT fhir_conformance('{"somekey": "somevalue"}'::json);
+EOF
+time psql --pset="pager=off" --expanded --command="$sql" || exit 1
