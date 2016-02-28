@@ -20,10 +20,10 @@ export rand_seed=${rand_seed:-0.21}
 while [ $# -gt 0 ]; do
     case "$1" in
         --verbose)
-            verbose=2
+            let verbose=2
             ;;
         --verbose=*)
-            verbose="${1#*=}"
+            let verbose="${1#*=}"
             ;;
         --dropdb)
             dropdb=1
@@ -70,11 +70,11 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-if [ "$verbose" = 0 ] || [ "$verbose" = 1 ] ; then
-    exec >/dev/null
+if [[ $verbose -lt 2 ]] ; then
+    exec > /dev/null
 fi
 
-if [ "$verbose" = 3 ] ; then
+if [[ $verbose -eq 3 ]] ; then
     echo "PGHOST=$PGHOST"
     echo "PGDATABASE=$PGDATABASE"
     echo "PGPORT=$PGPORT"
@@ -94,14 +94,14 @@ if [ "$createdb" = 1 ] ; then
         read -r -d '' sql << EOF
 DROP DATABASE IF EXISTS $PGDATABASE;
 EOF
-        psql $other_database --command="$sql" || exit 1
+        echo "$sql" | psql $other_database || exit 1
     fi
 
     echo Crate $PGDATABASE database.
     read -r -d '' sql << EOF
 CREATE DATABASE $PGDATABASE WITH OWNER $PGUSER ENCODING = 'UTF8';
 EOF
-    psql $other_database --command="$sql" || exit 1
+    echo "$sql" | psql $other_database || exit 1
 
     echo Install Fhirbase into $PGDATABASE database.
     cat "$directory"/../tmp/build.sql | psql || exit 1
@@ -121,26 +121,29 @@ SELECT fhir_create_storage('{"resourceType": "Encounter"}'::json);
 SELECT fhir_create_storage('{"resourceType": "Practitioner"}'::json);
 SELECT fhir_create_storage('{"resourceType": "Patient"}'::json);
 EOF
-psql --command="$sql" || exit 1
+echo "$sql" | psql || exit 1
 
 echo Create generation functions in $PGDATABASE.$pg_schema.
 cat "$directory"/generate.sql | psql || exit 1
 
+if [[ $verbose -gt 0 ]] ; then
+    exec > /dev/tty
+else
+    exec > /dev/null
+fi
+
 echo Generate temporary data.
 read -r -d '' sql << EOF
 SET plv8.start_proc = 'plv8_init';
+\timing on
 SELECT generate($number_of_patients, $number_of_practitioners, $rand_seed);
 EOF
-time psql --command="$sql" || exit 1
+echo "$sql" | psql || exit 1
 
 echo Run performance tests.
-if [ "$verbose" = 3 ] ; then
-    exec > /dev/tty
-else
-    exec >/dev/null
-fi
 read -r -d '' sql << EOF
 SET plv8.start_proc = 'plv8_init';
+\timing on
 SELECT fhir_conformance('{"somekey": "somevalue"}'::json);
 EOF
-time psql --pset="pager=off" --expanded --command="$sql" || exit 1
+echo "$sql" | psql --pset="pager=off" --expanded || exit 1
