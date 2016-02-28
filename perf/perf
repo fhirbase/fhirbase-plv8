@@ -104,7 +104,7 @@ EOF
     psql $other_database --command="$sql" || exit 1
 
     echo Install Fhirbase into $PGDATABASE database.
-    psql --file="$directory"/../tmp/build.sql || exit 1
+    cat "$directory"/../tmp/build.sql | psql || exit 1
 else
     echo Assume that database $PGDATABASE.$pg_schema \
          contains installed Fhirbase.
@@ -112,7 +112,7 @@ fi
 
 echo Load temporary tables into $PGDATABASE.$pg_schema \
      from "$directory"/data.
-psql --file="$directory"/load.sql || exit 1
+cat "$directory"/load.sql | psql || exit 1
 
 read -r -d '' sql << EOF
 SET plv8.start_proc = 'plv8_init';
@@ -124,12 +124,9 @@ EOF
 psql --command="$sql" || exit 1
 
 echo Create generation functions in $PGDATABASE.$pg_schema.
-psql --file="$directory"/generate.sql || exit 1
+cat "$directory"/generate.sql | psql || exit 1
 
-echo Run performance tests.
-if [ "$verbose" != 0 ] ; then
-    exec > /dev/tty
-fi
+echo Generate temporary data.
 read -r -d '' sql << EOF
 SET plv8.start_proc = 'plv8_init';
 SELECT generate($number_of_patients, $number_of_practitioners, $rand_seed);
