@@ -119,10 +119,17 @@ else
          contains installed Fhirbase.
 fi
 
-echo Load temporary tables into $PGDATABASE.$pg_schema \
+echo Create loading fake data function in $PGDATABASE.$pg_schema \
      from "$directory"/data.
 { echo "SET search_path TO $pg_schema;" ; cat "$directory"/load.sql ; } \
     | psql || exit 1
+
+echo Load dummy data to $PGDATABASE.$pg_schema from "$directory"/data.
+read -r -d '' sql << EOF
+SET search_path TO $pg_schema;
+SELECT load_dummy_data();
+EOF
+echo "$sql" | psql || exit 1
 
 read -r -d '' sql << EOF
 SET search_path TO $pg_schema;

@@ -50,20 +50,27 @@ CREATE TABLE organization_names (
 -- COPY organization_names (organization_name)
 --      FROM './perf/data/organization_names.csv';
 
-\echo 'Load fake "first_names".'
-\copy first_names (sex, first_name) from './perf/data/first_names.csv'
+\echo 'Create loading fake date function: "load_dummy_data()".'
+DROP FUNCTION IF EXISTS load_dummy_data() CASCADE;
+CREATE OR REPLACE FUNCTION load_dummy_data()
+RETURNS void AS $$
+  BEGIN
+    RAISE NOTICE 'Load fake "first_names".';
+    COPY first_names (sex, first_name) FROM '/fhirbase/perf/data/first_names.csv';
 
-\echo 'Load fake "last_names".'
-\copy last_names (last_name) from './perf/data/last_names.csv'
+    RAISE NOTICE 'Load fake "last_names".';
+    COPY last_names (last_name) FROM '/fhirbase/perf/data/last_names.csv';
 
-\echo 'Load fake "languages".'
-\copy languages (code, name) from './perf/data/language-codes-iso-639-1-alpha-2.csv' with csv
+    RAISE NOTICE 'Load fake "languages".';
+    COPY languages (code, name) FROM '/fhirbase/perf/data/language-codes-iso-639-1-alpha-2.csv' WITH csv;
 
-\echo 'Load fake "street_names".'
-\copy street_names (street_name) from './perf/data/street_names.csv'
+    RAISE NOTICE 'Load fake "street_names".';
+    COPY street_names (street_name) FROM '/fhirbase/perf/data/street_names.csv';
 
-\echo 'Load fake "cities".'
-\copy cities (zip, state, city, latitude, longitude) from './perf/data/cities.csv' with csv
+    RAISE NOTICE 'Load fake "cities".';
+    COPY cities (zip, state, city, latitude, longitude) FROM '/fhirbase/perf/data/cities.csv' WITH csv;
 
-\echo 'Load fake "organization_names".'
-\copy organization_names (organization_name) from './perf/data/organization_names.csv'
+    RAISE NOTICE 'Load fake "organization_names".';
+    COPY organization_names (organization_name) FROM '/fhirbase/perf/data/organization_names.csv';
+  END
+$$ LANGUAGE plpgsql;
