@@ -1,0 +1,83 @@
+- name: Apt update
+  apt: update_cache=true
+
+- name: Set locale before install PostgresQl
+  shell: "{{ item }}"
+  with_items:
+    - apt-get install --reinstall locales
+    - dpkg-reconfigure locales
+    - locale-gen en_US.UTF-8
+    - update-locale LANG=en_US.UTF-8
+    - dpkg-reconfigure locales
+    - locale-gen en_US.UTF-8
+    - locale-gen --no-purge --lang en_US.UTF-8
+    - dpkg-reconfigure locales
+    - export LANGUAGE="en_US.UTF-8"
+    - export LC_ALL=en_US.UTF-8
+    - echo 'LANGUAGE="en_US.UTF-8"' >> /etc/default/locale
+    - echo 'LC_ALL="en_US.UTF-8"' >> /etc/default/locale
+
+- name: Install required system packages
+  apt: pkg={{ item }} state=present force=yes
+  with_items:
+    - curl
+    - unzip
+    - git
+
+- name: Install PostgreSQl
+  apt: pkg={{ item }} state=present force=yes
+  with_items:
+    - postgresql-9.4
+    - postgresql-9.4-plv8
+    - postgresql-contrib
+    - python-psycopg2
+    - libpq-dev
+
+- name: Create fhirbase user
+  user:
+    name: "{{ user }}"
+    shell: /bin/bash
+    home: "{{ home }}"
+    state: present
+
+- name: Create key folder user
+  file:
+    path: "{{ home }}/key"
+    mode: 0700
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    state: directory
+
+- name: Copy deploy keys
+  copy:
+    src: "./secure/{{ item }}"
+    dest: "{{ home }}/key/{{ item }}"
+    owner: "{{ user }}"
+    mode: "0600"
+  with_items:
+    - deployer_rsa
+    - deployer_rsa.pub
+
+- name: Create deploy folder
+  file:
+    path: "{{ app_dir }}"
+    mode: 0755
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    state: directory
+
+- name: Postgres | Start Postgres
+  service: name=postgresql state=started
+
+- name: Postgres | Create postgres fhirbase user
+  postgresql_user: name={{ postgres.user }}
+                   password={{ postgres.password }}
+                   role_attr_flags=SUPERUSER
+                   login_user=postgres
+  sudo_user: postgres
+
+# - name: Postgres | Create postgres fhirbase database
+#   postgresql_db: name=fhirbase
+#                  encoding='UTF-8'
+#                  owner='{{ postgres.user }}'
+#   sudo_user: postgres

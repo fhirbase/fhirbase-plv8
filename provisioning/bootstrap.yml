@@ -1,0 +1,6 @@
+- hosts: app
+  sudo: true
+  gather_facts: yes
+  tasks:
+    - name: Install PostgreSQl and stuff, create user and folders
+      include: ./tasks/bootstrap.yml

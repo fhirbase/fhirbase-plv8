@@ -1,0 +1,30 @@
+- hosts: app
+  gather_facts: True
+  tasks:
+
+  - name: Clone Fhirbase project
+    sudo_user: "{{ user }}"
+    git:
+    args:
+      accept_hostkey: yes
+      dest: "{{ app_dir }}/"
+      force: yes
+      key_file: "{{ home }}/key/deployer_rsa"
+      repo: git@github.com:fhirbase/fhirbase-plv8.git
+      track_submodules: yes
+      update: yes
+      version: perf
+
+  - name: Test Fhirbase performance
+    shell:
+      ./perf
+      --createdb
+      --dropdb
+      --number-of-patients=1000
+      --pgdatabase={{ postgres.database }}
+      --pgpassword={{ postgres.password }}
+      --pguser={{ postgres.user }}
+      --verbose=3
+      2>&1 | tee foobar
+    args:
+      chdir: "{{ app_dir }}/perf"

@@ -1,0 +1,5 @@
+[app]
+localhost:7022
+
+[all:vars]
+ansible_ssh_user=ubuntu

@@ -1,0 +1,2 @@
+fhirbase_env:
+  DATABASE_URL: postgresql://ubuntu:ubuntu@localhost:5432/fhirbase
