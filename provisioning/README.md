@@ -10,6 +10,7 @@ with `ubuntu` user and `ubuntu`.
 ``` bash
 ./docker_setup.sh
 ```
+
 Archive with ssh keys placed in `secure` directory.
 `22` port will proxy to `7022` port.
 
