@@ -7,14 +7,14 @@
 `docker_setup.sh` will build docker image and create container with __Ubuntu 14.04__
 with `ubuntu` user and `ubuntu`.
 
-``` bash
+```bash
 ./docker_setup.sh
 ```
 
 Archive with ssh keys placed in `secure` directory.
 `22` port will proxy to `7022` port.
 
-``` bash
+```bash
 cd secure
 unzip secure.zip
 ssh-add local.pem
@@ -23,7 +23,7 @@ ssh ubuntu@localhost -p 7022
 
 Use `ping.yml` to test ansible and docker:
 
-``` bash
+```bash
 ansible-playbook -i inventories/local ping.yml
 ```
 
@@ -33,14 +33,14 @@ ansible-playbook -i inventories/local ping.yml
 
 Install PostgreSQL and stuff
 
-``` bash
+```bash
 ansible-playbook -i inventories/local bootstrap.yml
 ```
 ## perf.yml
 
 Run performance test
 
-``` bash
+```bash
 ansible-playbook -i inventories/local perf.yml
 ```
 
@@ -58,7 +58,7 @@ ansible-playbook -i inventories/local perf.yml
 staging нужно использовать инвентарь из
 `inventories/devbox.health-samurai.io`:
 
-``` bash
+```bash
 ansible-playbook -i inventories/local ping.yml
 ansible-playbook -i inventories/example.com bootstrap.yml perf.yml
 ```
