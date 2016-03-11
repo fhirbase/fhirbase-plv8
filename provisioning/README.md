@@ -36,6 +36,7 @@ Install PostgreSQL and stuff
 ```bash
 ansible-playbook -i inventories/local bootstrap.yml
 ```
+
 ## perf.yml
 
 Run performance test
