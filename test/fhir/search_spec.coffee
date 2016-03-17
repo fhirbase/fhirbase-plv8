@@ -80,18 +80,18 @@ describe 'AuditEvent search', ->
     schema.fhir_drop_storage(plv8, resourceType: 'AuditEvent')
     schema.fhir_create_storage(plv8, resourceType: 'AuditEvent')
     search.fhir_index_parameter(plv8,
-      resourceType: 'AuditEvent', name: 'desc')
+      resourceType: 'AuditEvent', name: 'action')
 
   beforeEach ->
     schema.fhir_truncate_storage(plv8, resourceType: 'AuditEvent')
     crud.fhir_create_resource(plv8, resource: {
       resourceType: 'AuditEvent',
-      object: {name: 'foo'}
+      entity: {name: 'foo'}
     })
     crud.fhir_create_resource(plv8, resource: {
       resourceType: 'AuditEvent',
-      object: {name: 'bar'},
-      event: {action: 'xyz'}
+      entity: {name: 'bar'},
+      action: 'xyz'
     })
 
   it 'action', ->
@@ -100,24 +100,24 @@ describe 'AuditEvent search', ->
         resourceType: 'AuditEvent', queryString: 'action=xyz').total,
       1)
 
-  it 'desc', ->
+  it 'entity-name', ->
     assert.equal(
       search.fhir_search(plv8,
-        resourceType: 'AuditEvent', queryString: 'desc=foo').total,
+        resourceType: 'AuditEvent', queryString: 'entity-name=foo').total,
       1)
     assert.equal(
       search.fhir_search(plv8,
-        resourceType: 'AuditEvent', queryString: 'desc=bar').total,
+        resourceType: 'AuditEvent', queryString: 'entity-name=bar').total,
       1)
     assert.equal(
       search.fhir_search(plv8,
-        resourceType: 'AuditEvent', queryString: 'desc=muhaha').total,
+        resourceType: 'AuditEvent', queryString: 'entity-name=muhaha').total,
       0)
 
-  it 'desc and action', ->
+  it 'entity-name and action', ->
     assert.equal(
       search.fhir_search(plv8,
-        resourceType: 'AuditEvent', queryString: 'desc=foo,action=xyz').total,
+        resourceType: 'AuditEvent', queryString: 'entity-name=foo,action=xyz').total,
       1)
 
 describe 'Search normalize', ->
