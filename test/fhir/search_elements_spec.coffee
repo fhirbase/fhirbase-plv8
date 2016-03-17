@@ -44,19 +44,23 @@ pt_summary_els = [
   'deceasedBoolean',
   'deceasedDateTime',
   'address',
+  'contact.modifierExtension',
   'animal',
+  'animal.modifierExtension',
   'animal.species',
   'animal.breed',
   'animal.genderStatus',
-  'managingOrganization'
+  'communication.modifierExtension',
+  'managingOrganization',
+  'link.modifierExtension'
 ]
 
 describe "elements: filter", ()->
   it "summary elements", ->
     els = elements.summary_elements(pt_sd)
-    assert.deepEqual(els, pt_summary_els)
+    assert.deepEqual(pt_summary_els, els)
 
   it "summary selector", ->
     sel = elements.summary_selector(pt_sd)
     filtered = elements.elements(pt, sel)
-    assert.deepEqual(filtered, expected_pt)
+    assert.deepEqual(expected_pt, filtered)
