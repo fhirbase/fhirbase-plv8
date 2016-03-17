@@ -57,6 +57,14 @@ DO $JS$
                 for(var j = 0; j < (include.concept && include.concept.length) || 0; j++){
                     expand_concept(acc, props, {}, include.concept[j]);
                 }
+                var syst = plv8.execute("SELECT * FROM codesystem WHERE resource->>'url' = $1 LIMIT 1", include.system);
+                var syst_res = syst && syst[0] && syst[0].resource && parse(syst[0].resource);
+                /* if(syst_res && syst_res.concept.length > 0){ */
+                /*   log("+ " + include.system + '  (' + syst_res.concept.length + ')'); */
+                /* } */
+                for(var j = 0; j < (syst_res && syst_res.concept.length) || 0; j++){
+                  expand_concept(acc, props, {}, syst_res.concept[j]);
+                }
             }
         }
         return acc;
@@ -74,15 +82,16 @@ DO $JS$
    var cursor = plan.cursor();
    var row = null;
    while (row = cursor.fetch()) {
-     var res = expand(parse(row.resource))
-     if(res.length > 0){
-        log('expand valueset: ' + row.resource.id + ' (' + res.length + ')')
+     var res = parse(row.resource)
+     var items = expand(res);
+     if(items.length > 0){
+        log('expand valueset: ' + res.id + ' (' + items.length + ')')
         plv8.execute(
             "INSERT INTO _valueset_expansion" +
             "(valueset_id, system, parent_code, code, display, abstract, definition, designation, extension) " +
             "SELECT x->>'valueset_id', x->>'system', x->>'parent_code', x->>'code', x->>'display', (x->>'abstract')::boolean, x->>'definition', (x->'designation')::jsonb, (x->'extension')::jsonb " +
             "FROM json_array_elements($1::json) x"
-        , JSON.stringify(res))
+        , JSON.stringify(items))
      }
    }
    cursor.close();

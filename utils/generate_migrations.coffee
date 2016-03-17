@@ -45,6 +45,7 @@ output  schema.fhir_create_storage_sql(plv8, resourceType: 'SearchParameter')
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'OperationDefinition')
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'ValueSet')
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'ConceptMap')
+output  schema.fhir_create_storage_sql(plv8, resourceType: 'CodeSystem')
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'NamingSystem')
 
 bundles = [
@@ -100,7 +101,7 @@ console.log """
   );
 """
 
-for tp in ['StructureDefinition', 'SearchParameter', 'OperationDefinition', 'ValueSet', 'ConceptMap', 'NamingSystem']
+for tp in ['StructureDefinition', 'SearchParameter', 'OperationDefinition', 'ValueSet', 'ConceptMap', 'NamingSystem', 'CodeSystem']
   console.log """
     INSERT INTO #{tp.toLowerCase()} (id, version_id, resource)
     SELECT m.resource->>'id', m.resource->>'id' || '-#{VERSION}' , resource
