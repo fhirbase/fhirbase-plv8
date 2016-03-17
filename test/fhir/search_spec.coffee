@@ -80,7 +80,7 @@ describe 'AuditEvent search', ->
     schema.fhir_drop_storage(plv8, resourceType: 'AuditEvent')
     schema.fhir_create_storage(plv8, resourceType: 'AuditEvent')
     search.fhir_index_parameter(plv8,
-      resourceType: 'AuditEvent', name: 'desc', token: 'action')
+      resourceType: 'AuditEvent', name: 'desc')
 
   beforeEach ->
     schema.fhir_truncate_storage(plv8, resourceType: 'AuditEvent')
