@@ -113,5 +113,6 @@ for tp in ['StructureDefinition', 'SearchParameter', 'OperationDefinition', 'Val
     INSERT INTO #{tp.toLowerCase()}_history (id, version_id, resource, valid_from, valid_to)
     SELECT m.resource->>'id', m.resource->>'id' || '-#{VERSION}' , resource, CURRENT_TIMESTAMP, 'infinity'
     FROM metadata m
+    WHERE m.resource->>'resourceType' = '#{tp}'
   ;
   """

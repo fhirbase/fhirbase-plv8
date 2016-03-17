@@ -83,7 +83,7 @@ wrap_required_attributes = (fn, attrs)->
     issue = []
     for attr in attrs
       unless _get_in(query, attr)
-        issue.push(severity: 'error', code: 'structure', diagnostics: "expected attribute #{attr}") 
+        issue.push(severity: 'error', code: 'structure', diagnostics: "expected attribute #{attr}")
     if issue.length > 0
       return {resourceType: "OperationOutcome", issue: issue }
     fn(plv8, query)
@@ -173,7 +173,7 @@ fhir_create_resource = _build [
       version_id: version_id
       resource: sql.jsonb(resource)
       valid_from: sql.now
-      valid_to: sql.now
+      valid_to: sql.infinity
 
   resource
 
@@ -185,7 +185,6 @@ resource_is_deleted = (plv8, query)->
   assert(query.resourceType, 'query.resourceType')
   hx_table_name = namings.history_table_name(plv8, query.resourceType)
   # TODO??
-
 
 fhir_read_resource = _build [
     [wrap_required_attributes, [['id'], ['resourceType']]]
