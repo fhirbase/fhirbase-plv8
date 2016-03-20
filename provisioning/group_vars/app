@@ -6,3 +6,6 @@ postgres:
   user: fhirbase
 remote_user: ubuntu
 user: ubuntu
+postgresql:
+  conf: /etc/postgresql/9.4/main/postgresql.conf
+  log: /var/log/postgresql/postgresql-9.4-main.log

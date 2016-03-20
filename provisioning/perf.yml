@@ -15,6 +15,24 @@
       update: yes
       version: perf
 
+  - name: PostgreSQl should log all statements
+    lineinfile: dest="{{ postgresql.conf }}" line="log_statement = 'all'"
+
+  - name: PostgreSQl should log statements with any durations
+    lineinfile: dest="{{ postgresql.conf }}" line="log_min_duration_statement = 0"
+
+  - name: Backup PostgreSQl log file
+    shell: cp "{{ postgresql.log }}" "{{ postgresql.log }}_{{ timestamp }}"
+    sudo_user: postgres
+
+  - name: Truncate PostgreSQl log file
+    shell: echo > "{{ postgresql.log }}"
+    sudo_user: postgres
+
+  - name: PostgreSQl restart
+    service: name=postgresql state=restarted
+    sudo_user: root
+
   - name: Test Fhirbase performance
     shell:
       ./perf
