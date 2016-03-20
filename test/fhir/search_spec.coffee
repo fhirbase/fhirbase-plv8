@@ -216,3 +216,30 @@ describe 'Search normalize', ->
           queryString: 'patient=https://fhirbase/Patient/patient-id/_history/patient-fake-history-id'
         ).total,
         1)
+
+describe 'Search', ->
+  before ->
+    plv8.execute("SET plv8.start_proc = 'plv8_init'")
+    schema.fhir_create_storage(plv8, resourceType: 'Patient')
+
+  beforeEach ->
+    schema.fhir_truncate_storage(plv8, resourceType: 'Patient')
+
+    crud.fhir_create_resource(plv8, allowId: true, resource: {
+      resourceType: 'Patient'
+    })
+
+  it 'by lastUpdated should raise error', -> # TODO: Implement search by _lastUpdated
+    assert.throws(
+      (->
+        search.fhir_search(
+          plv8,
+          resourceType: 'Patient',
+          queryString: '_lastUpdated=>1970-01-01'
+        )
+      ),
+      ((err)->
+        (err instanceof Error) &&
+          /No parser for special - lastUpdated/.test(err)
+      )
+    )
