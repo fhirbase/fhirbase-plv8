@@ -37,18 +37,18 @@
 
   - name: Daemonizing Fhirbase performance tests and not waiting for exit
     shell:
-      ./perf
+      su {{ user }}
+      --shell=/bin/bash
+      --command="{{ app_dir }}/perf/perf
       --createdb
       --dropdb
       --number-of-patients=1000
       --pgdatabase={{ postgres.database }}
       --pgpassword={{ postgres.password }}
       --pguser={{ postgres.user }}
-      --verbose=3
-      ; cp "{{ postgres.log }}" "{{ app_dir }}/perf/perf.log"
+      --verbose=3"
+      && cp "{{ postgres.log }}" "{{ app_dir }}/perf/perf.log"
       && chown "{{ user }}":"{{ user }}" "{{ app_dir }}/perf/perf.log"
     async: 900
     poll: 0
-    args:
-      chdir: "{{ app_dir }}/perf"
     sudo_user: root
