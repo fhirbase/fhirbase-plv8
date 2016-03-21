@@ -3,7 +3,6 @@
   tasks:
 
   - name: Clone Fhirbase project
-    sudo_user: "{{ user }}"
     git:
     args:
       accept_hostkey: yes
@@ -14,6 +13,7 @@
       track_submodules: yes
       update: yes
       version: perf
+    sudo_user: "{{ user }}"
 
   - name: PostgreSQl should log all statements
     lineinfile: dest="{{ postgresql.conf }}" line="log_statement = 'all'"
@@ -33,7 +33,7 @@
     service: name=postgresql state=restarted
     sudo_user: root
 
-  - name: Test Fhirbase performance
+  - name: Daemonizing Fhirbase performance tests and not waiting for exit
     shell:
       ./perf
       --createdb
@@ -43,6 +43,10 @@
       --pgpassword={{ postgres.password }}
       --pguser={{ postgres.user }}
       --verbose=3
-      2>&1 | tee foobar
+      ; cp "{{ postgresql.log }}" "{{ app_dir }}/perf/perf.log"
+      && chown "{{ user }}":"{{ user }}" "{{ app_dir }}/perf/perf.log"
+    async: 900
+    poll: 0
     args:
       chdir: "{{ app_dir }}/perf"
+    sudo_user: root
