@@ -58,6 +58,12 @@
     - performance_reporter
     - performance_reporter.pub
 
+- name: Configure user git
+  template:
+    src=templates/home/user/gitconfig.j2
+    dest="{{ home }}/.gitconfig"
+    mode=0644
+
 - name: Create deploy folder
   file:
     path: "{{ app_dir }}"
