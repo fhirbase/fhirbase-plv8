@@ -1,7 +1,0 @@
-secure/*.key
-secure/*.pem
-secure/*.pub
-secure/*rsa*
-secure/STAR*
-secure/deployer*
-secure/nsi*

@@ -55,8 +55,8 @@
     owner: "{{ user }}"
     mode: "0600"
   with_items:
-    - deployer_rsa
-    - deployer_rsa.pub
+    - performance_reporter
+    - performance_reporter.pub
 
 - name: Create deploy folder
   file:

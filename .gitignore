@@ -1,5 +1,6 @@
 *sw?
 /node_modules
+/provisioning/secure/*
 /releases
 /tmp
 /vagrant/.vagrant
