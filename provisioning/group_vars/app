@@ -1,4 +1,8 @@
 app_dir: /fhirbase
+git:
+  branch: perf
+  commit:
+    message: "docs: update performance report"
 home: /home/ubuntu
 postgres:
   conf: /etc/postgresql/9.4/main/postgresql.conf

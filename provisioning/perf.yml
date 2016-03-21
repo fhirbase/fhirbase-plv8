@@ -12,7 +12,7 @@
       repo: git@github.com:fhirbase/fhirbase-plv8.git
       track_submodules: yes
       update: yes
-      version: perf
+      version: "{{ git.branch }}"
     sudo_user: "{{ user }}"
 
   - name: PostgreSQl should log all statements
@@ -49,6 +49,12 @@
       --verbose=3"
       && cp "{{ postgres.log }}" "{{ app_dir }}/perf/perf.log"
       && chown "{{ user }}":"{{ user }}" "{{ app_dir }}/perf/perf.log"
+      && su {{ user }}
+      --shell=/bin/bash
+      --command="cd {{ app_dir }}
+      && git add perf/perf.log
+      && git commit --message='{{ git.commit.message }}'
+      && git push origin {{ git.branch }}"
     async: 900
     poll: 0
     sudo_user: root
