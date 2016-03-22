@@ -57,7 +57,7 @@ Only equality operator is implemented.
         op = if value.value == 'false' then '$ne' else '$eq'
         [op
           ['$cast', extract_expr(meta, tbl), ":text[]"]
-          ['$caskt', ['$array', EMPTY_VALUE], ":text[]"]]
+          ['$cast', ['$array', EMPTY_VALUE], ":text[]"]]
 
 
     exports.normalize_operator = (meta, value)->
