@@ -24,8 +24,15 @@ USER ubuntu
 
 RUN mkdir ~/.ssh
 RUN touch ~/.ssh/authorized_keys
-COPY ./secure/local_docker.pub  /home/ubuntu/.ssh/local_docker.pub
-RUN cat /home/ubuntu/.ssh/local_docker.pub > /home/ubuntu/.ssh/authorized_keys
+
+USER root
+
+COPY ./secure/local_docker.pub /home/ubuntu/.ssh/local_docker.pub
+RUN chown ubuntu:ubuntu /home/ubuntu/.ssh/local_docker.pub
+
+USER ubuntu
+
+RUN cat ~/.ssh/local_docker.pub > ~/.ssh/authorized_keys
 RUN touch ~/.ssh/known_hosts
 RUN chmod 700 ~/.ssh
 RUN chmod 600 ~/.ssh/authorized_keys

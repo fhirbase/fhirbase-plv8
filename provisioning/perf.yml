@@ -8,7 +8,7 @@
       accept_hostkey: yes
       dest: "{{ app_dir }}/"
       force: yes
-      key_file: "{{ home }}/key/performance_reporter"
+      key_file: "{{ home }}/.ssh/performance_reporter"
       repo: git@github.com:fhirbase/fhirbase-plv8.git
       track_submodules: yes
       update: yes
