@@ -20,8 +20,6 @@
 - name: Install required system packages
   apt: pkg={{ item }} state=present force=yes
   with_items:
-    - curl
-    - unzip
     - git
 
 - name: Install PostgreSQl

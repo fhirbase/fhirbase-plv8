@@ -1,8 +1,8 @@
-# This container should as much as possible be like amazone container.
+# This container should as much as possible be like amazone ubuntu container.
 FROM ubuntu:15.10
 MAINTAINER Danil Kutkevich <danil@kutkevich.org>
 
-ENV REFRESHED_AT 2016-02-29
+ENV REFRESHED_AT 2016-03-22
 
 RUN localedef --force --inputfile=en_US --charmap=UTF-8 \
     --alias-file=/usr/share/locale/locale.alias \
@@ -12,7 +12,7 @@ ENV LANG en_US.UTF-8
 RUN apt-get --yes update
 RUN apt-get --yes upgrade
 
-RUN apt-get install --yes git openssh-server python-apt net-tools sudo
+RUN apt-get install --yes openssh-server python-apt sudo
 
 USER root
 
