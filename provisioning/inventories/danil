@@ -1,0 +1,5 @@
+[app]
+45.79.168.4
+
+[all:vars]
+ansible_ssh_user=ubuntu
