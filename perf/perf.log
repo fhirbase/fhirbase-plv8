@@ -1,15 +1,15 @@
 
-2016-03-22 16:47:43 UTC [2868-2] LOG:  received fast shutdown request
-2016-03-22 16:47:43 UTC [2868-3] LOG:  aborting any active transactions
-2016-03-22 16:47:43 UTC [2873-2] LOG:  autovacuum launcher shutting down
-2016-03-22 16:47:43 UTC [2870-1] LOG:  shutting down
-2016-03-22 16:47:44 UTC [2870-2] LOG:  database system is shut down
-2016-03-22 16:47:45 UTC [3280-1] LOG:  database system was shut down at 2016-03-22 16:47:44 UTC
-2016-03-22 16:47:45 UTC [3280-2] LOG:  MultiXact member wraparound protections are now enabled
-2016-03-22 16:47:45 UTC [3284-1] LOG:  autovacuum launcher started
-2016-03-22 16:47:45 UTC [3279-1] LOG:  database system is ready to accept connections
-2016-03-22 16:47:45 UTC [3286-1] [unknown]@[unknown] LOG:  incomplete startup packet
-2016-03-22 16:47:46 UTC [3289-1] postgres@postgres LOG:  statement: SELECT d.datname as "Name",
+2016-03-22 13:37:10 EDT [23917-2] LOG:  received fast shutdown request
+2016-03-22 13:37:10 EDT [23917-3] LOG:  aborting any active transactions
+2016-03-22 13:37:10 EDT [23922-2] LOG:  autovacuum launcher shutting down
+2016-03-22 13:37:10 EDT [23919-1] LOG:  shutting down
+2016-03-22 13:37:10 EDT [23919-2] LOG:  database system is shut down
+2016-03-22 13:37:11 EDT [24523-1] LOG:  database system was shut down at 2016-03-22 13:37:10 EDT
+2016-03-22 13:37:11 EDT [24523-2] LOG:  MultiXact member wraparound protections are now enabled
+2016-03-22 13:37:11 EDT [24522-1] LOG:  database system is ready to accept connections
+2016-03-22 13:37:11 EDT [24527-1] LOG:  autovacuum launcher started
+2016-03-22 13:37:11 EDT [24529-1] [unknown]@[unknown] LOG:  incomplete startup packet
+2016-03-22 13:37:12 EDT [24532-1] postgres@postgres LOG:  statement: SELECT d.datname as "Name",
 	       pg_catalog.pg_get_userbyid(d.datdba) as "Owner",
 	       pg_catalog.pg_encoding_to_char(d.encoding) as "Encoding",
 	       d.datcollate as "Collate",
@@ -17,8 +17,8 @@
 	       pg_catalog.array_to_string(d.datacl, E'\n') AS "Access privileges"
 	FROM pg_catalog.pg_database d
 	ORDER BY 1;
-2016-03-22 16:47:46 UTC [3289-2] postgres@postgres LOG:  duration: 0.729 ms
-2016-03-22 16:47:46 UTC [3292-1] postgres@postgres LOG:  statement: SELECT d.datname as "Name",
+2016-03-22 13:37:12 EDT [24532-2] postgres@postgres LOG:  duration: 1.570 ms
+2016-03-22 13:37:12 EDT [24535-1] postgres@postgres LOG:  statement: SELECT d.datname as "Name",
 	       pg_catalog.pg_get_userbyid(d.datdba) as "Owner",
 	       pg_catalog.pg_encoding_to_char(d.encoding) as "Encoding",
 	       d.datcollate as "Collate",
@@ -26,8 +26,8 @@
 	       pg_catalog.array_to_string(d.datacl, E'\n') AS "Access privileges"
 	FROM pg_catalog.pg_database d
 	ORDER BY 1;
-2016-03-22 16:47:46 UTC [3292-2] postgres@postgres LOG:  duration: 0.516 ms
-2016-03-22 16:47:47 UTC [3295-1] postgres@postgres LOG:  statement: SELECT d.datname as "Name",
+2016-03-22 13:37:12 EDT [24535-2] postgres@postgres LOG:  duration: 1.021 ms
+2016-03-22 13:37:13 EDT [24538-1] postgres@postgres LOG:  statement: SELECT d.datname as "Name",
 	       pg_catalog.pg_get_userbyid(d.datdba) as "Owner",
 	       pg_catalog.pg_encoding_to_char(d.encoding) as "Encoding",
 	       d.datcollate as "Collate",
@@ -35,62 +35,62 @@
 	       pg_catalog.array_to_string(d.datacl, E'\n') AS "Access privileges"
 	FROM pg_catalog.pg_database d
 	ORDER BY 1;
-2016-03-22 16:47:47 UTC [3295-2] postgres@postgres LOG:  duration: 0.502 ms
-2016-03-22 16:47:47 UTC [3328-1] fhirbase@postgres LOG:  statement: DROP DATABASE IF EXISTS fhirbase;
-2016-03-22 16:47:47 UTC [3328-2] fhirbase@postgres LOG:  duration: 0.096 ms
-2016-03-22 16:47:47 UTC [3338-1] fhirbase@postgres LOG:  statement: CREATE DATABASE fhirbase WITH OWNER fhirbase ENCODING = 'UTF8';
-2016-03-22 16:47:47 UTC [3338-2] fhirbase@postgres LOG:  duration: 411.464 ms
-2016-03-22 16:47:47 UTC [3348-1] fhirbase@fhirbase LOG:  statement: CREATE SCHEMA IF NOT EXISTS perf;
-2016-03-22 16:47:47 UTC [3348-2] fhirbase@fhirbase LOG:  duration: 6.505 ms
-2016-03-22 16:47:47 UTC [3360-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
-2016-03-22 16:47:47 UTC [3360-2] fhirbase@fhirbase LOG:  duration: 0.079 ms
-2016-03-22 16:47:47 UTC [3371-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
-2016-03-22 16:47:47 UTC [3371-2] fhirbase@fhirbase LOG:  duration: 0.080 ms
-2016-03-22 16:47:47 UTC [3371-3] fhirbase@fhirbase LOG:  statement: DROP TABLE IF EXISTS first_names;
-2016-03-22 16:47:47 UTC [3371-4] fhirbase@fhirbase LOG:  duration: 0.130 ms
-2016-03-22 16:47:47 UTC [3371-5] fhirbase@fhirbase LOG:  statement: DROP TABLE IF EXISTS last_names;
-2016-03-22 16:47:47 UTC [3371-6] fhirbase@fhirbase LOG:  duration: 0.049 ms
-2016-03-22 16:47:47 UTC [3371-7] fhirbase@fhirbase LOG:  statement: DROP TABLE IF EXISTS languages;
-2016-03-22 16:47:47 UTC [3371-8] fhirbase@fhirbase LOG:  duration: 0.044 ms
-2016-03-22 16:47:47 UTC [3371-9] fhirbase@fhirbase LOG:  statement: DROP TABLE IF EXISTS street_names;
-2016-03-22 16:47:47 UTC [3371-10] fhirbase@fhirbase LOG:  duration: 0.051 ms
-2016-03-22 16:47:47 UTC [3371-11] fhirbase@fhirbase LOG:  statement: DROP TABLE IF EXISTS cities;
-2016-03-22 16:47:47 UTC [3371-12] fhirbase@fhirbase LOG:  duration: 0.041 ms
-2016-03-22 16:47:47 UTC [3371-13] fhirbase@fhirbase LOG:  statement: DROP TABLE IF EXISTS organization_names;
-2016-03-22 16:47:47 UTC [3371-14] fhirbase@fhirbase LOG:  duration: 0.048 ms
-2016-03-22 16:47:47 UTC [3371-15] fhirbase@fhirbase LOG:  statement: CREATE TABLE first_names (
+2016-03-22 13:37:13 EDT [24538-2] postgres@postgres LOG:  duration: 1.543 ms
+2016-03-22 13:37:18 EDT [24575-1] fhirbase@postgres LOG:  statement: DROP DATABASE IF EXISTS fhirbase;
+2016-03-22 13:37:18 EDT [24575-2] fhirbase@postgres LOG:  duration: 0.182 ms
+2016-03-22 13:37:18 EDT [24585-1] fhirbase@postgres LOG:  statement: CREATE DATABASE fhirbase WITH OWNER fhirbase ENCODING = 'UTF8';
+2016-03-22 13:37:19 EDT [24585-2] fhirbase@postgres LOG:  duration: 239.571 ms
+2016-03-22 13:37:19 EDT [24595-1] fhirbase@fhirbase LOG:  statement: CREATE SCHEMA IF NOT EXISTS perf;
+2016-03-22 13:37:19 EDT [24595-2] fhirbase@fhirbase LOG:  duration: 0.733 ms
+2016-03-22 13:37:19 EDT [24608-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
+2016-03-22 13:37:19 EDT [24608-2] fhirbase@fhirbase LOG:  duration: 0.150 ms
+2016-03-22 13:37:20 EDT [24621-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
+2016-03-22 13:37:20 EDT [24621-2] fhirbase@fhirbase LOG:  duration: 0.166 ms
+2016-03-22 13:37:20 EDT [24621-3] fhirbase@fhirbase LOG:  statement: DROP TABLE IF EXISTS first_names;
+2016-03-22 13:37:20 EDT [24621-4] fhirbase@fhirbase LOG:  duration: 0.387 ms
+2016-03-22 13:37:20 EDT [24621-5] fhirbase@fhirbase LOG:  statement: DROP TABLE IF EXISTS last_names;
+2016-03-22 13:37:20 EDT [24621-6] fhirbase@fhirbase LOG:  duration: 0.172 ms
+2016-03-22 13:37:20 EDT [24621-7] fhirbase@fhirbase LOG:  statement: DROP TABLE IF EXISTS languages;
+2016-03-22 13:37:20 EDT [24621-8] fhirbase@fhirbase LOG:  duration: 0.182 ms
+2016-03-22 13:37:20 EDT [24621-9] fhirbase@fhirbase LOG:  statement: DROP TABLE IF EXISTS street_names;
+2016-03-22 13:37:20 EDT [24621-10] fhirbase@fhirbase LOG:  duration: 0.200 ms
+2016-03-22 13:37:20 EDT [24621-11] fhirbase@fhirbase LOG:  statement: DROP TABLE IF EXISTS cities;
+2016-03-22 13:37:20 EDT [24621-12] fhirbase@fhirbase LOG:  duration: 0.179 ms
+2016-03-22 13:37:20 EDT [24621-13] fhirbase@fhirbase LOG:  statement: DROP TABLE IF EXISTS organization_names;
+2016-03-22 13:37:20 EDT [24621-14] fhirbase@fhirbase LOG:  duration: 0.200 ms
+2016-03-22 13:37:20 EDT [24621-15] fhirbase@fhirbase LOG:  statement: CREATE TABLE first_names (
 	  sex text,
 	  first_name text
 	);
-2016-03-22 16:47:47 UTC [3371-16] fhirbase@fhirbase LOG:  duration: 41.090 ms
-2016-03-22 16:47:47 UTC [3371-17] fhirbase@fhirbase LOG:  statement: CREATE TABLE last_names (
+2016-03-22 13:37:20 EDT [24621-16] fhirbase@fhirbase LOG:  duration: 8.993 ms
+2016-03-22 13:37:20 EDT [24621-17] fhirbase@fhirbase LOG:  statement: CREATE TABLE last_names (
 	  last_name text
 	);
-2016-03-22 16:47:47 UTC [3371-18] fhirbase@fhirbase LOG:  duration: 34.650 ms
-2016-03-22 16:47:47 UTC [3371-19] fhirbase@fhirbase LOG:  statement: CREATE TABLE languages (
+2016-03-22 13:37:20 EDT [24621-18] fhirbase@fhirbase LOG:  duration: 2.079 ms
+2016-03-22 13:37:20 EDT [24621-19] fhirbase@fhirbase LOG:  statement: CREATE TABLE languages (
 	  code text,
 	  name text
 	);
-2016-03-22 16:47:47 UTC [3371-20] fhirbase@fhirbase LOG:  duration: 32.795 ms
-2016-03-22 16:47:47 UTC [3371-21] fhirbase@fhirbase LOG:  statement: CREATE TABLE street_names (
+2016-03-22 13:37:20 EDT [24621-20] fhirbase@fhirbase LOG:  duration: 1.951 ms
+2016-03-22 13:37:20 EDT [24621-21] fhirbase@fhirbase LOG:  statement: CREATE TABLE street_names (
 	  street_name text
 	);
-2016-03-22 16:47:47 UTC [3371-22] fhirbase@fhirbase LOG:  duration: 30.972 ms
-2016-03-22 16:47:47 UTC [3371-23] fhirbase@fhirbase LOG:  statement: CREATE TABLE cities (
+2016-03-22 13:37:20 EDT [24621-22] fhirbase@fhirbase LOG:  duration: 1.710 ms
+2016-03-22 13:37:20 EDT [24621-23] fhirbase@fhirbase LOG:  statement: CREATE TABLE cities (
 	  zip text,
 	  state text,
 	  city text,
 	  latitude float,
 	  longitude float
 	);
-2016-03-22 16:47:48 UTC [3371-24] fhirbase@fhirbase LOG:  duration: 43.771 ms
-2016-03-22 16:47:48 UTC [3371-25] fhirbase@fhirbase LOG:  statement: CREATE TABLE organization_names (
+2016-03-22 13:37:20 EDT [24621-24] fhirbase@fhirbase LOG:  duration: 1.731 ms
+2016-03-22 13:37:20 EDT [24621-25] fhirbase@fhirbase LOG:  statement: CREATE TABLE organization_names (
 	  organization_name text
 	);
-2016-03-22 16:47:48 UTC [3371-26] fhirbase@fhirbase LOG:  duration: 41.383 ms
-2016-03-22 16:47:48 UTC [3371-27] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS load_dummy_data() CASCADE;
-2016-03-22 16:47:48 UTC [3371-28] fhirbase@fhirbase LOG:  duration: 0.161 ms
-2016-03-22 16:47:48 UTC [3371-29] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION load_dummy_data()
+2016-03-22 13:37:20 EDT [24621-26] fhirbase@fhirbase LOG:  duration: 1.735 ms
+2016-03-22 13:37:20 EDT [24621-27] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS load_dummy_data() CASCADE;
+2016-03-22 13:37:20 EDT [24621-28] fhirbase@fhirbase LOG:  duration: 0.256 ms
+2016-03-22 13:37:20 EDT [24621-29] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION load_dummy_data()
 	RETURNS void AS $$
 	  BEGIN
 	    RAISE NOTICE 'Load fake "first_names".';
@@ -112,50 +112,50 @@
 	    COPY organization_names (organization_name) FROM '/fhirbase/perf/data/organization_names.csv';
 	  END
 	$$ LANGUAGE plpgsql;
-2016-03-22 16:47:48 UTC [3371-30] fhirbase@fhirbase LOG:  duration: 13.960 ms
-2016-03-22 16:47:48 UTC [3381-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
-2016-03-22 16:47:48 UTC [3381-2] fhirbase@fhirbase LOG:  duration: 0.081 ms
-2016-03-22 16:47:48 UTC [3381-3] fhirbase@fhirbase LOG:  statement: SELECT load_dummy_data();
-2016-03-22 16:47:48 UTC [3381-4] fhirbase@fhirbase LOG:  duration: 160.599 ms
-2016-03-22 16:47:48 UTC [3392-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
-2016-03-22 16:47:48 UTC [3392-2] fhirbase@fhirbase LOG:  duration: 0.097 ms
-2016-03-22 16:47:48 UTC [3392-3] fhirbase@fhirbase LOG:  statement: SET plv8.start_proc = 'plv8_init';
-2016-03-22 16:47:48 UTC [3392-4] fhirbase@fhirbase LOG:  duration: 0.080 ms
-2016-03-22 16:47:48 UTC [3392-5] fhirbase@fhirbase LOG:  statement: SELECT fhir_create_storage('{"resourceType": "Organization"}'::json);
-2016-03-22 16:47:48 UTC [3392-6] fhirbase@fhirbase ERROR:  function fhir_create_storage(json) does not exist at character 8
-2016-03-22 16:47:48 UTC [3392-7] fhirbase@fhirbase HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-2016-03-22 16:47:48 UTC [3392-8] fhirbase@fhirbase STATEMENT:  SELECT fhir_create_storage('{"resourceType": "Organization"}'::json);
-2016-03-22 16:47:48 UTC [3392-9] fhirbase@fhirbase LOG:  statement: SELECT fhir_create_storage('{"resourceType": "Encounter"}'::json);
-2016-03-22 16:47:48 UTC [3392-10] fhirbase@fhirbase ERROR:  function fhir_create_storage(json) does not exist at character 8
-2016-03-22 16:47:48 UTC [3392-11] fhirbase@fhirbase HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-2016-03-22 16:47:48 UTC [3392-12] fhirbase@fhirbase STATEMENT:  SELECT fhir_create_storage('{"resourceType": "Encounter"}'::json);
-2016-03-22 16:47:48 UTC [3392-13] fhirbase@fhirbase LOG:  statement: SELECT fhir_create_storage('{"resourceType": "Practitioner"}'::json);
-2016-03-22 16:47:48 UTC [3392-14] fhirbase@fhirbase ERROR:  function fhir_create_storage(json) does not exist at character 8
-2016-03-22 16:47:48 UTC [3392-15] fhirbase@fhirbase HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-2016-03-22 16:47:48 UTC [3392-16] fhirbase@fhirbase STATEMENT:  SELECT fhir_create_storage('{"resourceType": "Practitioner"}'::json);
-2016-03-22 16:47:48 UTC [3392-17] fhirbase@fhirbase LOG:  statement: SELECT fhir_create_storage('{"resourceType": "Patient"}'::json);
-2016-03-22 16:47:48 UTC [3392-18] fhirbase@fhirbase ERROR:  function fhir_create_storage(json) does not exist at character 8
-2016-03-22 16:47:48 UTC [3392-19] fhirbase@fhirbase HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-2016-03-22 16:47:48 UTC [3392-20] fhirbase@fhirbase STATEMENT:  SELECT fhir_create_storage('{"resourceType": "Patient"}'::json);
-2016-03-22 16:47:48 UTC [3403-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
-2016-03-22 16:47:48 UTC [3403-2] fhirbase@fhirbase LOG:  duration: 0.103 ms
-2016-03-22 16:47:48 UTC [3403-3] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS random(a numeric, b numeric) CASCADE;
-2016-03-22 16:47:48 UTC [3403-4] fhirbase@fhirbase LOG:  duration: 0.204 ms
-2016-03-22 16:47:48 UTC [3403-5] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION random(a numeric, b numeric)
+2016-03-22 13:37:20 EDT [24621-30] fhirbase@fhirbase LOG:  duration: 2.350 ms
+2016-03-22 13:37:20 EDT [24631-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
+2016-03-22 13:37:20 EDT [24631-2] fhirbase@fhirbase LOG:  duration: 0.165 ms
+2016-03-22 13:37:20 EDT [24631-3] fhirbase@fhirbase LOG:  statement: SELECT load_dummy_data();
+2016-03-22 13:37:20 EDT [24631-4] fhirbase@fhirbase LOG:  duration: 152.318 ms
+2016-03-22 13:37:20 EDT [24641-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
+2016-03-22 13:37:20 EDT [24641-2] fhirbase@fhirbase LOG:  duration: 0.149 ms
+2016-03-22 13:37:20 EDT [24641-3] fhirbase@fhirbase LOG:  statement: SET plv8.start_proc = 'plv8_init';
+2016-03-22 13:37:20 EDT [24641-4] fhirbase@fhirbase LOG:  duration: 0.117 ms
+2016-03-22 13:37:20 EDT [24641-5] fhirbase@fhirbase LOG:  statement: SELECT fhir_create_storage('{"resourceType": "Organization"}'::json);
+2016-03-22 13:37:20 EDT [24641-6] fhirbase@fhirbase ERROR:  function fhir_create_storage(json) does not exist at character 8
+2016-03-22 13:37:20 EDT [24641-7] fhirbase@fhirbase HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+2016-03-22 13:37:20 EDT [24641-8] fhirbase@fhirbase STATEMENT:  SELECT fhir_create_storage('{"resourceType": "Organization"}'::json);
+2016-03-22 13:37:20 EDT [24641-9] fhirbase@fhirbase LOG:  statement: SELECT fhir_create_storage('{"resourceType": "Encounter"}'::json);
+2016-03-22 13:37:20 EDT [24641-10] fhirbase@fhirbase ERROR:  function fhir_create_storage(json) does not exist at character 8
+2016-03-22 13:37:20 EDT [24641-11] fhirbase@fhirbase HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+2016-03-22 13:37:20 EDT [24641-12] fhirbase@fhirbase STATEMENT:  SELECT fhir_create_storage('{"resourceType": "Encounter"}'::json);
+2016-03-22 13:37:20 EDT [24641-13] fhirbase@fhirbase LOG:  statement: SELECT fhir_create_storage('{"resourceType": "Practitioner"}'::json);
+2016-03-22 13:37:20 EDT [24641-14] fhirbase@fhirbase ERROR:  function fhir_create_storage(json) does not exist at character 8
+2016-03-22 13:37:20 EDT [24641-15] fhirbase@fhirbase HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+2016-03-22 13:37:20 EDT [24641-16] fhirbase@fhirbase STATEMENT:  SELECT fhir_create_storage('{"resourceType": "Practitioner"}'::json);
+2016-03-22 13:37:20 EDT [24641-17] fhirbase@fhirbase LOG:  statement: SELECT fhir_create_storage('{"resourceType": "Patient"}'::json);
+2016-03-22 13:37:20 EDT [24641-18] fhirbase@fhirbase ERROR:  function fhir_create_storage(json) does not exist at character 8
+2016-03-22 13:37:20 EDT [24641-19] fhirbase@fhirbase HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+2016-03-22 13:37:20 EDT [24641-20] fhirbase@fhirbase STATEMENT:  SELECT fhir_create_storage('{"resourceType": "Patient"}'::json);
+2016-03-22 13:37:20 EDT [24652-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
+2016-03-22 13:37:20 EDT [24652-2] fhirbase@fhirbase LOG:  duration: 0.148 ms
+2016-03-22 13:37:20 EDT [24652-3] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS random(a numeric, b numeric) CASCADE;
+2016-03-22 13:37:20 EDT [24652-4] fhirbase@fhirbase LOG:  duration: 0.308 ms
+2016-03-22 13:37:20 EDT [24652-5] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION random(a numeric, b numeric)
 	RETURNS numeric AS $$
 	  SELECT ceil(a + (b - a) * random())::numeric;
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-6] fhirbase@fhirbase LOG:  duration: 8.913 ms
-2016-03-22 16:47:48 UTC [3403-7] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS random_elem(a anyarray) CASCADE;
-2016-03-22 16:47:48 UTC [3403-8] fhirbase@fhirbase LOG:  duration: 0.118 ms
-2016-03-22 16:47:48 UTC [3403-9] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION random_elem(a anyarray)
+2016-03-22 13:37:20 EDT [24652-6] fhirbase@fhirbase LOG:  duration: 1.793 ms
+2016-03-22 13:37:20 EDT [24652-7] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS random_elem(a anyarray) CASCADE;
+2016-03-22 13:37:20 EDT [24652-8] fhirbase@fhirbase LOG:  duration: 0.158 ms
+2016-03-22 13:37:20 EDT [24652-9] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION random_elem(a anyarray)
 	RETURNS anyelement AS $$
 	  SELECT a[1 + floor(RANDOM() * array_length(a, 1))];
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-10] fhirbase@fhirbase LOG:  duration: 6.230 ms
-2016-03-22 16:47:48 UTC [3403-11] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS random_date() CASCADE;
-2016-03-22 16:47:48 UTC [3403-12] fhirbase@fhirbase LOG:  duration: 0.085 ms
-2016-03-22 16:47:48 UTC [3403-13] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION random_date()
+2016-03-22 13:37:20 EDT [24652-10] fhirbase@fhirbase LOG:  duration: 0.371 ms
+2016-03-22 13:37:20 EDT [24652-11] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS random_date() CASCADE;
+2016-03-22 13:37:20 EDT [24652-12] fhirbase@fhirbase LOG:  duration: 0.137 ms
+2016-03-22 13:37:20 EDT [24652-13] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION random_date()
 	RETURNS text AS $$
 	  SELECT random(1900, 2010)::text
 	           || '-'
@@ -163,10 +163,10 @@
 	           || '-'
 	           || lpad(random(1, 28)::text, 2, '0');
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-14] fhirbase@fhirbase LOG:  duration: 6.331 ms
-2016-03-22 16:47:48 UTC [3403-15] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS random_phone() CASCADE;
-2016-03-22 16:47:48 UTC [3403-16] fhirbase@fhirbase LOG:  duration: 0.054 ms
-2016-03-22 16:47:48 UTC [3403-17] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION random_phone()
+2016-03-22 13:37:20 EDT [24652-14] fhirbase@fhirbase LOG:  duration: 0.480 ms
+2016-03-22 13:37:20 EDT [24652-15] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS random_phone() CASCADE;
+2016-03-22 13:37:20 EDT [24652-16] fhirbase@fhirbase LOG:  duration: 0.137 ms
+2016-03-22 13:37:20 EDT [24652-17] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION random_phone()
 	RETURNS text AS $$
 	  SELECT '+' || random(1, 12)::text ||
 	         ' (' || random(1, 999)::text || ') ' ||
@@ -176,10 +176,10 @@
 	         '-' ||
 	         lpad(random(1, 99)::text, 2, '0')
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-18] fhirbase@fhirbase LOG:  duration: 6.388 ms
-2016-03-22 16:47:48 UTC [3403-19] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS make_address(_street_name_ text, _zip_ text, _city_ text, _state_ text) CASCADE;
-2016-03-22 16:47:48 UTC [3403-20] fhirbase@fhirbase LOG:  duration: 0.062 ms
-2016-03-22 16:47:48 UTC [3403-21] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION make_address(_street_name_ text, _zip_ text, _city_ text, _state_ text)
+2016-03-22 13:37:20 EDT [24652-18] fhirbase@fhirbase LOG:  duration: 0.403 ms
+2016-03-22 13:37:20 EDT [24652-19] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS make_address(_street_name_ text, _zip_ text, _city_ text, _state_ text) CASCADE;
+2016-03-22 13:37:20 EDT [24652-20] fhirbase@fhirbase LOG:  duration: 0.155 ms
+2016-03-22 13:37:20 EDT [24652-21] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION make_address(_street_name_ text, _zip_ text, _city_ text, _state_ text)
 	RETURNS jsonb AS $$
 	  select array_to_json(ARRAY[
 	    json_build_object(
@@ -192,10 +192,10 @@
 	    )
 	  ])::jsonb;
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-22] fhirbase@fhirbase LOG:  duration: 6.110 ms
-2016-03-22 16:47:48 UTC [3403-23] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS insert_organizations() CASCADE;
-2016-03-22 16:47:48 UTC [3403-24] fhirbase@fhirbase LOG:  duration: 0.077 ms
-2016-03-22 16:47:48 UTC [3403-25] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION insert_organizations()
+2016-03-22 13:37:20 EDT [24652-22] fhirbase@fhirbase LOG:  duration: 0.524 ms
+2016-03-22 13:37:20 EDT [24652-23] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS insert_organizations() CASCADE;
+2016-03-22 13:37:20 EDT [24652-24] fhirbase@fhirbase LOG:  duration: 0.168 ms
+2016-03-22 13:37:20 EDT [24652-25] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION insert_organizations()
 	RETURNS bigint AS $$
 	  with organizations_source as (
 	    select organization_name, row_number() over ()
@@ -239,8 +239,8 @@
 	  )
 	  select count(*) inserted;
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-26] fhirbase@fhirbase ERROR:  relation "organization" does not exist at character 669
-2016-03-22 16:47:48 UTC [3403-27] fhirbase@fhirbase STATEMENT:  CREATE OR REPLACE FUNCTION insert_organizations()
+2016-03-22 13:37:20 EDT [24652-26] fhirbase@fhirbase ERROR:  relation "organization" does not exist at character 669
+2016-03-22 13:37:20 EDT [24652-27] fhirbase@fhirbase STATEMENT:  CREATE OR REPLACE FUNCTION insert_organizations()
 	RETURNS bigint AS $$
 	  with organizations_source as (
 	    select organization_name, row_number() over ()
@@ -284,9 +284,9 @@
 	  )
 	  select count(*) inserted;
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-28] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS insert_practitioners(_total_count_ integer) CASCADE;
-2016-03-22 16:47:48 UTC [3403-29] fhirbase@fhirbase LOG:  duration: 0.118 ms
-2016-03-22 16:47:48 UTC [3403-30] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION insert_practitioners(_total_count_ integer)
+2016-03-22 13:37:20 EDT [24652-28] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS insert_practitioners(_total_count_ integer) CASCADE;
+2016-03-22 13:37:20 EDT [24652-29] fhirbase@fhirbase LOG:  duration: 0.163 ms
+2016-03-22 13:37:20 EDT [24652-30] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION insert_practitioners(_total_count_ integer)
 	RETURNS bigint AS $$
 	  with first_names_source as (
 	    select *, row_number() over () from (
@@ -326,8 +326,8 @@
 	  )
 	  select count(*) from practitioner_data;
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-31] fhirbase@fhirbase ERROR:  relation "practitioner" does not exist at character 655
-2016-03-22 16:47:48 UTC [3403-32] fhirbase@fhirbase STATEMENT:  CREATE OR REPLACE FUNCTION insert_practitioners(_total_count_ integer)
+2016-03-22 13:37:20 EDT [24652-31] fhirbase@fhirbase ERROR:  relation "practitioner" does not exist at character 655
+2016-03-22 13:37:20 EDT [24652-32] fhirbase@fhirbase STATEMENT:  CREATE OR REPLACE FUNCTION insert_practitioners(_total_count_ integer)
 	RETURNS bigint AS $$
 	  with first_names_source as (
 	    select *, row_number() over () from (
@@ -367,9 +367,9 @@
 	  )
 	  select count(*) from practitioner_data;
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-33] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS insert_patients(_total_count_ integer) CASCADE;
-2016-03-22 16:47:48 UTC [3403-34] fhirbase@fhirbase LOG:  duration: 0.054 ms
-2016-03-22 16:47:48 UTC [3403-35] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION insert_patients(_total_count_ integer)
+2016-03-22 13:37:20 EDT [24652-33] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS insert_patients(_total_count_ integer) CASCADE;
+2016-03-22 13:37:20 EDT [24652-34] fhirbase@fhirbase LOG:  duration: 0.141 ms
+2016-03-22 13:37:20 EDT [24652-35] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION insert_patients(_total_count_ integer)
 	RETURNS bigint AS $$
 	  with first_names_source as (
 	    select CASE WHEN sex = 'M' THEN 'male' ELSE 'female' END as sex,
@@ -500,8 +500,8 @@
 	  )
 	  select count(*) inserted;
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-36] fhirbase@fhirbase ERROR:  relation "organization" does not exist at character 1930
-2016-03-22 16:47:48 UTC [3403-37] fhirbase@fhirbase STATEMENT:  CREATE OR REPLACE FUNCTION insert_patients(_total_count_ integer)
+2016-03-22 13:37:20 EDT [24652-36] fhirbase@fhirbase ERROR:  relation "organization" does not exist at character 1930
+2016-03-22 13:37:20 EDT [24652-37] fhirbase@fhirbase STATEMENT:  CREATE OR REPLACE FUNCTION insert_patients(_total_count_ integer)
 	RETURNS bigint AS $$
 	  with first_names_source as (
 	    select CASE WHEN sex = 'M' THEN 'male' ELSE 'female' END as sex,
@@ -632,9 +632,9 @@
 	  )
 	  select count(*) inserted;
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-38] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS insert_encounters() CASCADE;
-2016-03-22 16:47:48 UTC [3403-39] fhirbase@fhirbase LOG:  duration: 0.051 ms
-2016-03-22 16:47:48 UTC [3403-40] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION insert_encounters()
+2016-03-22 13:37:20 EDT [24652-38] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS insert_encounters() CASCADE;
+2016-03-22 13:37:20 EDT [24652-39] fhirbase@fhirbase LOG:  duration: 0.138 ms
+2016-03-22 13:37:20 EDT [24652-40] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION insert_encounters()
 	RETURNS bigint AS $$
 	  WITH patients_ids_source as (
 	    SELECT id as patient_id,
@@ -696,8 +696,8 @@
 	  )
 	  SELECT 42::bigint;
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-41] fhirbase@fhirbase ERROR:  relation "patient" does not exist at character 173
-2016-03-22 16:47:48 UTC [3403-42] fhirbase@fhirbase STATEMENT:  CREATE OR REPLACE FUNCTION insert_encounters()
+2016-03-22 13:37:20 EDT [24652-41] fhirbase@fhirbase ERROR:  relation "patient" does not exist at character 173
+2016-03-22 13:37:20 EDT [24652-42] fhirbase@fhirbase STATEMENT:  CREATE OR REPLACE FUNCTION insert_encounters()
 	RETURNS bigint AS $$
 	  WITH patients_ids_source as (
 	    SELECT id as patient_id,
@@ -759,11 +759,11 @@
 	  )
 	  SELECT 42::bigint;
 	$$ LANGUAGE SQL;
-2016-03-22 16:47:48 UTC [3403-43] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS generate(_number_of_patients_ integer,
+2016-03-22 13:37:20 EDT [24652-43] fhirbase@fhirbase LOG:  statement: DROP FUNCTION IF EXISTS generate(_number_of_patients_ integer,
 	                                 _number_of_practitioners_ integer,
 	                                 _rand_seed_ float) CASCADE;
-2016-03-22 16:47:48 UTC [3403-44] fhirbase@fhirbase LOG:  duration: 0.062 ms
-2016-03-22 16:47:48 UTC [3403-45] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION generate(_number_of_patients_ integer,
+2016-03-22 13:37:20 EDT [24652-44] fhirbase@fhirbase LOG:  duration: 0.145 ms
+2016-03-22 13:37:20 EDT [24652-45] fhirbase@fhirbase LOG:  statement: CREATE OR REPLACE FUNCTION generate(_number_of_patients_ integer,
 	                                    _number_of_practitioners_ integer,
 	                                    _rand_seed_ float)
 	RETURNS bigint AS $$
@@ -779,24 +779,24 @@
 	  RETURN (SELECT count(*) FROM patient);
 	  END
 	$$ LANGUAGE plpgsql;
-2016-03-22 16:47:48 UTC [3403-46] fhirbase@fhirbase LOG:  duration: 14.702 ms
-2016-03-22 16:47:48 UTC [3413-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
-2016-03-22 16:47:48 UTC [3413-2] fhirbase@fhirbase LOG:  duration: 0.081 ms
-2016-03-22 16:47:48 UTC [3413-3] fhirbase@fhirbase LOG:  statement: SET plv8.start_proc = 'plv8_init';
-2016-03-22 16:47:48 UTC [3413-4] fhirbase@fhirbase LOG:  duration: 0.087 ms
-2016-03-22 16:47:48 UTC [3413-5] fhirbase@fhirbase LOG:  statement: SELECT generate(1000, 200, 0.21);
-2016-03-22 16:47:48 UTC [3413-6] fhirbase@fhirbase ERROR:  relation "organization" does not exist
-2016-03-22 16:47:48 UTC [3413-7] fhirbase@fhirbase CONTEXT:  SQL statement "TRUNCATE TABLE organization, organization_history,
+2016-03-22 13:37:20 EDT [24652-46] fhirbase@fhirbase LOG:  duration: 1.272 ms
+2016-03-22 13:37:20 EDT [24662-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
+2016-03-22 13:37:20 EDT [24662-2] fhirbase@fhirbase LOG:  duration: 0.155 ms
+2016-03-22 13:37:20 EDT [24662-3] fhirbase@fhirbase LOG:  statement: SET plv8.start_proc = 'plv8_init';
+2016-03-22 13:37:20 EDT [24662-4] fhirbase@fhirbase LOG:  duration: 0.112 ms
+2016-03-22 13:37:20 EDT [24662-5] fhirbase@fhirbase LOG:  statement: SELECT generate(1000, 200, 0.21);
+2016-03-22 13:37:20 EDT [24662-6] fhirbase@fhirbase ERROR:  relation "organization" does not exist
+2016-03-22 13:37:20 EDT [24662-7] fhirbase@fhirbase CONTEXT:  SQL statement "TRUNCATE TABLE organization, organization_history,
 	                   encounter, encounter_history,
 	                   practitioner, practitioner_history,
 	                   patient, patient_history"
 	PL/pgSQL function generate(integer,integer,double precision) line 3 at SQL statement
-2016-03-22 16:47:48 UTC [3413-8] fhirbase@fhirbase STATEMENT:  SELECT generate(1000, 200, 0.21);
-2016-03-22 16:47:48 UTC [3423-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
-2016-03-22 16:47:48 UTC [3423-2] fhirbase@fhirbase LOG:  duration: 0.080 ms
-2016-03-22 16:47:48 UTC [3423-3] fhirbase@fhirbase LOG:  statement: SET plv8.start_proc = 'plv8_init';
-2016-03-22 16:47:48 UTC [3423-4] fhirbase@fhirbase LOG:  duration: 0.091 ms
-2016-03-22 16:47:48 UTC [3423-5] fhirbase@fhirbase LOG:  statement: SELECT fhir_conformance('{"somekey": "somevalue"}'::json);
-2016-03-22 16:47:48 UTC [3423-6] fhirbase@fhirbase ERROR:  function fhir_conformance(json) does not exist at character 8
-2016-03-22 16:47:48 UTC [3423-7] fhirbase@fhirbase HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-2016-03-22 16:47:48 UTC [3423-8] fhirbase@fhirbase STATEMENT:  SELECT fhir_conformance('{"somekey": "somevalue"}'::json);
+2016-03-22 13:37:20 EDT [24662-8] fhirbase@fhirbase STATEMENT:  SELECT generate(1000, 200, 0.21);
+2016-03-22 13:37:20 EDT [24672-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
+2016-03-22 13:37:20 EDT [24672-2] fhirbase@fhirbase LOG:  duration: 0.146 ms
+2016-03-22 13:37:20 EDT [24672-3] fhirbase@fhirbase LOG:  statement: SET plv8.start_proc = 'plv8_init';
+2016-03-22 13:37:20 EDT [24672-4] fhirbase@fhirbase LOG:  duration: 0.120 ms
+2016-03-22 13:37:20 EDT [24672-5] fhirbase@fhirbase LOG:  statement: SELECT fhir_conformance('{"somekey": "somevalue"}'::json);
+2016-03-22 13:37:20 EDT [24672-6] fhirbase@fhirbase ERROR:  function fhir_conformance(json) does not exist at character 8
+2016-03-22 13:37:20 EDT [24672-7] fhirbase@fhirbase HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+2016-03-22 13:37:20 EDT [24672-8] fhirbase@fhirbase STATEMENT:  SELECT fhir_conformance('{"somekey": "somevalue"}'::json);
