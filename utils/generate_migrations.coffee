@@ -57,8 +57,8 @@ bundles = [
 
 VERSION = "1"
 
-output "CREATE TABLE metadata_with_dups (resource jsonb);"
-output "CREATE TABLE metadata (resource jsonb);"
+output "CREATE TEMP TABLE metadata_with_dups (resource jsonb);"
+output "CREATE TEMP TABLE metadata (resource jsonb);"
 
 output """
 -- Create a function that always returns the first non-NULL item

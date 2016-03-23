@@ -10,9 +10,16 @@ output = (x)->
 
 # Should be droped and recreated.
 console.log """
+  DROP TABLE IF EXISTS metadata CASCADE;
+  DROP TABLE IF EXISTS metadata_with_dups CASCADE;
+
   DROP TABLE IF EXISTS valueset CASCADE;
   DROP TABLE IF EXISTS valueset_history CASCADE;
 """
+
+output "CREATE TEMP TABLE metadata_with_dups (resource jsonb);"
+output "CREATE TEMP TABLE metadata (resource jsonb);"
+
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'ValueSet')
 
 # New table should be created.
@@ -21,6 +28,7 @@ output schema.fhir_create_storage_sql(plv8, resourceType: 'CodeSystem')
 bundles = [
   require('../fhir/valuesets.json')
   require('../fhir/v3-codesystems.json')
+  require('../fhir/v2-tables.json')
 ]
 
 VERSION = "1"
