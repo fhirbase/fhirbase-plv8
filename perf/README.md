@@ -5,7 +5,7 @@
 # Environment preparation
 
 `docker_setup.sh` will build docker image and create container
-with __Ubuntu 14.04__ with `ubuntu` user and `ubuntu`.
+with __Ubuntu 15.10__ with `ubuntu` user and `ubuntu`.
 
 ```bash
 ./docker_setup.sh
@@ -14,20 +14,20 @@ with __Ubuntu 14.04__ with `ubuntu` user and `ubuntu`.
 Archive with ssh keys placed in `secure` directory used by container.
 
 ```bash
-cd path/to/repository/secure
+cd path/to/repository/perf/provisioning/secure
 gpg --output - secure.tar.gz.asc | tar --extract --gzip --file -
 ```
 
 `22` port will proxy to `7022` port.
 
 ```bash
-ssh -i path/to/repository/secure/local_docker.pem ubuntu@localhost -p 7022
+ssh -i path/to/repository/perf/provisioning/secure/local_docker.pem ubuntu@localhost -p 7022
 ```
 
 Use `ping.yml` to test ansible and docker:
 
 ```bash
-ansible-playbook --private-key=path/to/repository/secure/local_docker.pem \
+ansible-playbook --private-key=path/to/repository/perf/provisioning/secure/local_docker.pem \
                  --inventory=inventories/local \
                  ping.yml
 ```
@@ -39,7 +39,7 @@ ansible-playbook --private-key=path/to/repository/secure/local_docker.pem \
 Install PostgreSQL and stuff
 
 ```bash
-ansible-playbook --private-key=path/to/repository/secure/local_docker.pem \
+ansible-playbook --private-key=path/to/repository/perf/provisioning/secure/local_docker.pem \
                  --inventory=inventories/local \
                  bootstrap.yml
 ```
@@ -49,7 +49,7 @@ ansible-playbook --private-key=path/to/repository/secure/local_docker.pem \
 Run performance test
 
 ```bash
-ansible-playbook --private-key=path/to/repository/secure/local_docker.pem \
+ansible-playbook --private-key=path/to/repository/perf/provisioning/secure/local_docker.pem \
                  --inventory=inventories/local \
                  perf.yml
 ```

@@ -7,6 +7,7 @@ addons:
   postgresql: "9.4"
   apt:
     packages:
+      - ansible
       - postgresql-contrib-9.4
       - postgresql-9.4-plv8
 notifications:
@@ -24,3 +25,11 @@ before_script:
   - cd ..
 
 script: export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase && export TRAVIS=true && FB_SCHEMA=foo ./build.sh && { echo "CREATE SCHEMA IF NOT EXISTS foo; SET search_path TO foo;"; cat tmp/build.sql; } | psql fhirbase && FB_SCHEMA=foo npm run test && FB_SCHEMA=bar ./build.sh && { echo "CREATE SCHEMA IF NOT EXISTS bar; SET search_path TO bar;"; cat tmp/build.sql; } | psql fhirbase && FB_SCHEMA=bar npm run test
+after_success:
+- cat perf/provisioning/secure/secure.tar.gz | tar --extract --gzip --directory perf/provisioning/secure --file -
+- cd perf/provisioning
+- ansible-playbook --private-key=secure/performance_reporter --inventory=inventories/danil bootstrap.yml
+- ansible-playbook --private-key=secure/performance_reporter --inventory=inventories/danil --extra-vars="timestamp=foobar" perf.yml
+before_install:
+- openssl aes-256-cbc -K $encrypted_6ab70d4cdf06_key -iv $encrypted_6ab70d4cdf06_iv
+  -in perf/provisioning/secure/secure.tar.gz.enc -out perf/provisioning/secure/secure.tar.gz -d
