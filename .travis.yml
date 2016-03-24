@@ -36,6 +36,10 @@ script:
   | psql fhirbase
   && FB_SCHEMA=bar npm run test
 deploy:
+  on:
+    tags: true
+    all_branches: true
+  skip_cleanup: true
   provider: script
   script:
     cat perf/provisioning/secure/secure.tar.gz
@@ -52,9 +56,6 @@ deploy:
        --inventory=inventories/amazon
        --extra-vars="timestamp=foobar"
        perf.yml
-  on:
-    tags: true
-    all_branches: true
 before_install:
 - openssl aes-256-cbc -K $encrypted_6ab70d4cdf06_key -iv $encrypted_6ab70d4cdf06_iv
   -in perf/provisioning/secure/secure.tar.gz.enc -out perf/provisioning/secure/secure.tar.gz -d
