@@ -3,7 +3,10 @@ git:
   branch: perf
   commit:
     message: "docs: update performance report"
-home: /home/ubuntu
+os:
+  user:
+    home: /home/ubuntu
+    name: ubuntu
 postgres:
   conf: /etc/postgresql/9.4/main/postgresql.conf
   database: fhirbase
@@ -11,5 +14,3 @@ postgres:
   password: fhirbase
   system_user: postgres
   user: fhirbase
-remote_user: ubuntu
-user: ubuntu

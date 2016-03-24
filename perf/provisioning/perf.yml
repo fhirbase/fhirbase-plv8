@@ -8,12 +8,12 @@
       accept_hostkey: yes
       dest: "{{ app_dir }}/"
       force: yes
-      key_file: "{{ home }}/.ssh/fhirbase_performance_benchmark.pem"
+      key_file: "{{ os.user.home }}/.ssh/fhirbase_performance_benchmark.pem"
       repo: git@github.com:fhirbase/fhirbase-plv8.git
       track_submodules: yes
       update: yes
       version: "{{ git.branch }}"
-    sudo_user: "{{ user }}"
+    sudo_user: "{{ os.user.name }}"
 
   - name: PostgreSQl should log all statements
     lineinfile: dest="{{ postgres.conf }}" line="log_statement = 'all'"
@@ -37,7 +37,7 @@
 
   - name: Daemonizing Fhirbase performance tests and not waiting for exit
     shell:
-      su {{ user }}
+      su {{ os.user.name }}
       --shell=/bin/bash
       --command="{{ app_dir }}/perf/perf
       --createdb
@@ -48,8 +48,8 @@
       --pguser={{ postgres.user }}
       --verbose=3"
       && cp "{{ postgres.log }}" "{{ app_dir }}/perf/perf.log"
-      && chown "{{ user }}":"{{ user }}" "{{ app_dir }}/perf/perf.log"
-      && su {{ user }}
+      && chown "{{ os.user.name }}":"{{ os.user.name }}" "{{ app_dir }}/perf/perf.log"
+      && su {{ os.user.name }}
       --shell=/bin/bash
       --command="cd {{ app_dir }}
       && git add perf/perf.log

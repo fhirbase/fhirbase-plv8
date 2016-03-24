@@ -6,7 +6,7 @@
 - name: Apt update
   apt: update_cache=true
 
-- name: Set locale before install PostgresQl
+- name: Set locale before install PostgreSQL
   shell: "{{ item }}"
   with_items:
     - apt-get install --reinstall locales
@@ -25,71 +25,101 @@
 - name: Install required system packages
   apt: pkg={{ item }} state=present force=yes
   with_items:
-    - git
+    - curl #download fhirbase archive
+    - git #clone fhirbase repository and push
+    - unzip #funzip fhirbase archive
 
-- name: Install PostgreSQl
+- name: Uninstall PostgreSQL versions unless 9.4
+  apt: pkg={{ item }} state=absent force=yes purge=yes
+  with_items:
+    - postgresql-8.4
+    - postgresql-8.4-plv8
+    - postgresql-client-8.4
+    - postgresql-contrib-8.4
+
+    - postgresql-9.0
+    - postgresql-9.0-plv8
+    - postgresql-client-9.0
+    - postgresql-contrib-9.0
+
+    - postgresql-9.1
+    - postgresql-9.1-plv8
+    - postgresql-client-9.1
+    - postgresql-contrib-9.1
+
+    - postgresql-9.2
+    - postgresql-9.2-plv8
+    - postgresql-client-9.2
+    - postgresql-contrib-9.2
+
+    - postgresql-9.3
+    - postgresql-9.3-plv8
+    - postgresql-client-9.3
+    - postgresql-contrib-9.3
+
+    - postgresql-9.5
+    - postgresql-9.5-plv8
+    - postgresql-client-9.5
+    - postgresql-contrib-9.5
+
+- name: Install PostgreSQl 9.4
   apt: pkg={{ item }} state=present force=yes
   with_items:
+    - libpq-dev
     - postgresql-9.4
     - postgresql-9.4-plv8
-    - postgresql-contrib
+    - postgresql-contrib-9.4
     - python-psycopg2
-    - libpq-dev
 
-- name: Create fhirbase user
+- name: Create ubuntu user
   user:
-    name: "{{ user }}"
+    name: "{{ os.user.name }}"
     shell: /bin/bash
-    home: "{{ home }}"
+    home: "{{ os.user.home }}"
     state: present
 
-- name: Copy git repository ssh keys
+- name: Copy ssh keys to ubuntu user home directory
   copy:
     src: "./secure/{{ item }}"
-    dest: "{{ home }}/.ssh/{{ item }}"
-    owner: "{{ user }}"
-    group: "{{ user }}"
+    dest: "{{ os.user.home }}/.ssh/{{ item }}"
+    owner: "{{ os.user.name }}"
+    group: "{{ os.user.name }}"
     mode: "0600"
   with_items:
     - fhirbase_performance_benchmark.pem
     - fhirbase_performance_benchmark.pub
 
-- name: Copy git repository ssh config
+- name: Copy ssh config to ubuntu user home directory
   template:
     src=templates/home/user/.ssh/config.j2
-    dest="{{ home }}/.ssh/config"
-    owner="{{ user }}"
-    group="{{ user }}"
+    dest="{{ os.user.home }}/.ssh/config"
+    owner="{{ os.user.name }}"
+    group="{{ os.user.name }}"
     mode=0644
 
-- name: Configure user git
+- name: Copy git global config to ubuntu user home directory
   template:
     src=templates/home/user/gitconfig.j2
-    dest="{{ home }}/.gitconfig"
-    owner="{{ user }}"
-    group="{{ user }}"
+    dest="{{ os.user.home }}/.gitconfig"
+    owner="{{ os.user.name }}"
+    group="{{ os.user.name }}"
     mode=0644
 
-- name: Create deploy folder
+- name: Create fhirbase folder
   file:
     path: "{{ app_dir }}"
     mode: 0755
-    owner: "{{ user }}"
-    group: "{{ user }}"
+    owner: "{{ os.user.name }}"
+    group: "{{ os.user.name }}"
     state: directory
 
-- name: Postgres | Start Postgres
+- name: Start PostgreSQL
   service: name=postgresql state=started
 
-- name: Postgres | Create postgres fhirbase user
+- name: Create PostgreSQL fhirbase user
   postgresql_user: name={{ postgres.user }}
                    password={{ postgres.password }}
                    role_attr_flags=SUPERUSER
                    login_user=postgres
+                   state=present
   sudo_user: postgres
-
-# - name: Postgres | Create postgres fhirbase database
-#   postgresql_db: name=fhirbase
-#                  encoding='UTF-8'
-#                  owner='{{ postgres.user }}'
-#   sudo_user: postgres

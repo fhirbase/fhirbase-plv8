@@ -5,4 +5,4 @@
   - name: Ping
     ping: ""
   - name: Echo
-    shell: "echo {{user}}"
+    shell: "echo {{os.user.name}}"
