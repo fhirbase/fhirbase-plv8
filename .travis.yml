@@ -35,24 +35,25 @@ script:
   && { echo "CREATE SCHEMA IF NOT EXISTS bar; SET search_path TO bar;"; cat tmp/build.sql; }
   | psql fhirbase
   && FB_SCHEMA=bar npm run test
-after_success:
+after_success: |
   if [ "$TRAVIS_BRANCH" == "perf" ] &&
      [ ! -z "$TRAVIS_TAG" ] &&
      [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     cat perf/provisioning/secure/secure.tar.gz
     | tar --extract --gzip --directory perf/provisioning/secure --file -
-    && pip install --user --upgrade 'ansible<2'
-    && cd perf/provisioning
-    && export ANSIBLE_HOST_KEY_CHECKING=False
-    && python2 ~/.local/bin/ansible-playbook
-       --private-key=secure/fhirbase_performance_benchmark
-       --inventory=inventories/amazon
-       bootstrap.yml
-    && python2 ~/.local/bin/ansible-playbook
-       --private-key=secure/fhirbase_performance_benchmark
-       --inventory=inventories/amazon
-       --extra-vars="timestamp=foobar"
-       perf.yml
+    [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
+    pip install --user --upgrade 'ansible<2' || exit 1
+    cd perf/provisioning || exit 1
+    export ANSIBLE_HOST_KEY_CHECKING=False || exit 1
+    python2 ~/.local/bin/ansible-playbook
+            --private-key=secure/fhirbase_performance_benchmark
+            --inventory=inventories/amazon
+            bootstrap.yml || exit 1
+    python2 ~/.local/bin/ansible-playbook
+            --private-key=secure/fhirbase_performance_benchmark
+            --inventory=inventories/amazon
+            --extra-vars="timestamp=foobar"
+            perf.yml || exit 1
   fi
 before_install:
 - openssl aes-256-cbc -K $encrypted_6ab70d4cdf06_key -iv $encrypted_6ab70d4cdf06_iv
