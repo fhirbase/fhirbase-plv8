@@ -1,8 +1,8 @@
 # This container should as much as possible be like amazone ubuntu container.
-FROM ubuntu:15.10
+FROM ubuntu:14.04.3
 MAINTAINER Danil Kutkevich <danil@kutkevich.org>
 
-ENV REFRESHED_AT 2016-03-22
+ENV REFRESHED_AT 2016-03-24
 
 RUN localedef --force --inputfile=en_US --charmap=UTF-8 \
     --alias-file=/usr/share/locale/locale.alias \
