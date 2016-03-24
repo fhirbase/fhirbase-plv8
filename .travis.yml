@@ -24,15 +24,35 @@ before_script:
   - psql -c '\dt' -U postgres
   - cd ..
 
-script: export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase && export TRAVIS=true && FB_SCHEMA=foo ./build.sh && { echo "CREATE SCHEMA IF NOT EXISTS foo; SET search_path TO foo;"; cat tmp/build.sql; } | psql fhirbase && FB_SCHEMA=foo npm run test && FB_SCHEMA=bar ./build.sh && { echo "CREATE SCHEMA IF NOT EXISTS bar; SET search_path TO bar;"; cat tmp/build.sql; } | psql fhirbase && FB_SCHEMA=bar npm run test
+script:
+  export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase
+  && export TRAVIS=true
+  && FB_SCHEMA=foo ./build.sh
+  && { echo "CREATE SCHEMA IF NOT EXISTS foo; SET search_path TO foo;"; cat tmp/build.sql; }
+  | psql fhirbase
+  && FB_SCHEMA=foo npm run test
+  && FB_SCHEMA=bar ./build.sh
+  && { echo "CREATE SCHEMA IF NOT EXISTS bar; SET search_path TO bar;"; cat tmp/build.sql; }
+  | psql fhirbase
+  && FB_SCHEMA=bar npm run test
 deploy:
   provider: script
   script:
-    - cat perf/provisioning/secure/secure.tar.gz | tar --extract --gzip --directory perf/provisioning/secure --file -
+    - cat perf/provisioning/secure/secure.tar.gz
+      | tar --extract --gzip --directory perf/provisioning/secure --file -
     - pip install --user --upgrade 'ansible<2'
     - cd perf/provisioning
-    - export ANSIBLE_HOST_KEY_CHECKING=False && python2 ~/.local/bin/ansible-playbook --private-key=secure/fhirbase_performance_benchmark --inventory=inventories/amazon bootstrap.yml
-    - export ANSIBLE_HOST_KEY_CHECKING=False && python2 ~/.local/bin/ansible-playbook --private-key=secure/fhirbase_performance_benchmark --inventory=inventories/amazon --extra-vars="timestamp=foobar" perf.yml
+    - export ANSIBLE_HOST_KEY_CHECKING=False
+      && python2 ~/.local/bin/ansible-playbook
+         --private-key=secure/fhirbase_performance_benchmark
+         --inventory=inventories/amazon
+         bootstrap.yml
+    - export ANSIBLE_HOST_KEY_CHECKING=False
+      && python2 ~/.local/bin/ansible-playbook
+         --private-key=secure/fhirbase_performance_benchmark
+         --inventory=inventories/amazon
+         --extra-vars="timestamp=foobar"
+         perf.yml
   on:
     tags: true
 before_install:
