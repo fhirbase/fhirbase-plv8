@@ -38,21 +38,20 @@ script:
 deploy:
   provider: script
   script:
-    - cat perf/provisioning/secure/secure.tar.gz
-      | tar --extract --gzip --directory perf/provisioning/secure --file -
-    - pip install --user --upgrade 'ansible<2'
-    - cd perf/provisioning
-    - export ANSIBLE_HOST_KEY_CHECKING=False
-      && python2 ~/.local/bin/ansible-playbook
-         --private-key=secure/fhirbase_performance_benchmark
-         --inventory=inventories/amazon
-         bootstrap.yml
-    - export ANSIBLE_HOST_KEY_CHECKING=False
-      && python2 ~/.local/bin/ansible-playbook
-         --private-key=secure/fhirbase_performance_benchmark
-         --inventory=inventories/amazon
-         --extra-vars="timestamp=foobar"
-         perf.yml
+    cat perf/provisioning/secure/secure.tar.gz
+    | tar --extract --gzip --directory perf/provisioning/secure --file -
+    && pip install --user --upgrade 'ansible<2'
+    && cd perf/provisioning
+    && export ANSIBLE_HOST_KEY_CHECKING=False
+    && python2 ~/.local/bin/ansible-playbook
+       --private-key=secure/fhirbase_performance_benchmark
+       --inventory=inventories/amazon
+       bootstrap.yml
+    && python2 ~/.local/bin/ansible-playbook
+       --private-key=secure/fhirbase_performance_benchmark
+       --inventory=inventories/amazon
+       --extra-vars="timestamp=foobar"
+       perf.yml
   on:
     tags: true
     all_branches: true
