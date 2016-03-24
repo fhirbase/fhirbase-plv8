@@ -29,6 +29,43 @@
     - git #clone fhirbase repository and push
     - unzip #funzip fhirbase archive
 
+- name: Create ubuntu user
+  user:
+    name: "{{ os.user.name }}"
+    shell: /bin/bash
+    home: "{{ os.user.home }}"
+    state: present
+
+- name: Copy ssh keys to ubuntu user home directory
+  copy:
+    src: "./secure/{{ item }}"
+    dest: "{{ os.user.home }}/.ssh/{{ item }}"
+    owner: "{{ os.user.name }}"
+    group: "{{ os.user.name }}"
+    mode: "0600"
+  with_items:
+    - fhirbase_performance_benchmark.pem
+    - fhirbase_performance_benchmark.pub
+
+- name: Copy ssh config to ubuntu user home directory
+  template:
+    src=templates/home/user/.ssh/config.j2
+    dest="{{ os.user.home }}/.ssh/config"
+    owner="{{ os.user.name }}"
+    group="{{ os.user.name }}"
+    mode=0644
+
+- name: Copy git global config to ubuntu user home directory
+  template:
+    src=templates/home/user/gitconfig.j2
+    dest="{{ os.user.home }}/.gitconfig"
+    owner="{{ os.user.name }}"
+    group="{{ os.user.name }}"
+    mode=0644
+
+- name: Stop PostgreSQL
+  service: name=postgresql state=stopped
+
 - name: Uninstall PostgreSQL versions unless 9.4
   apt: pkg={{ item }} state=absent force=yes purge=yes
   with_items:
@@ -71,47 +108,21 @@
     - postgresql-contrib-9.4
     - python-psycopg2
 
-- name: Create ubuntu user
-  user:
-    name: "{{ os.user.name }}"
-    shell: /bin/bash
-    home: "{{ os.user.home }}"
-    state: present
+- name: PostgreSQl should use port 5432
+  lineinfile: dest="{{ postgres.conf }}"
+              regexp="^port *= *[0-9]+"
+              line="port = 5432"
+              state=present
+              backup=yes
+  sudo_user: "{{ postgres.system_user }}"
 
-- name: Copy ssh keys to ubuntu user home directory
-  copy:
-    src: "./secure/{{ item }}"
-    dest: "{{ os.user.home }}/.ssh/{{ item }}"
-    owner: "{{ os.user.name }}"
-    group: "{{ os.user.name }}"
-    mode: "0600"
-  with_items:
-    - fhirbase_performance_benchmark.pem
-    - fhirbase_performance_benchmark.pub
+- name: PostgreSQl should log all statements
+  lineinfile: dest="{{ postgres.conf }}" line="log_statement = 'all'"
+  sudo_user: "{{ postgres.system_user }}"
 
-- name: Copy ssh config to ubuntu user home directory
-  template:
-    src=templates/home/user/.ssh/config.j2
-    dest="{{ os.user.home }}/.ssh/config"
-    owner="{{ os.user.name }}"
-    group="{{ os.user.name }}"
-    mode=0644
-
-- name: Copy git global config to ubuntu user home directory
-  template:
-    src=templates/home/user/gitconfig.j2
-    dest="{{ os.user.home }}/.gitconfig"
-    owner="{{ os.user.name }}"
-    group="{{ os.user.name }}"
-    mode=0644
-
-- name: Create fhirbase folder
-  file:
-    path: "{{ app_dir }}"
-    mode: 0755
-    owner: "{{ os.user.name }}"
-    group: "{{ os.user.name }}"
-    state: directory
+- name: PostgreSQl should log statements with any durations
+  lineinfile: dest="{{ postgres.conf }}" line="log_min_duration_statement = 0"
+  sudo_user: "{{ postgres.system_user }}"
 
 - name: Start PostgreSQL
   service: name=postgresql state=started
@@ -123,3 +134,11 @@
                    login_user=postgres
                    state=present
   sudo_user: postgres
+
+- name: Create fhirbase folder
+  file:
+    path: "{{ app_dir }}"
+    mode: 0755
+    owner: "{{ os.user.name }}"
+    group: "{{ os.user.name }}"
+    state: directory

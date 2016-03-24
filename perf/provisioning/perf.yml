@@ -2,6 +2,18 @@
   gather_facts: True
   tasks:
 
+  - name: Backup PostgreSQl log file
+    shell: cp "{{ postgres.log }}" "{{ postgres.log }}_{{ timestamp }}"
+    sudo_user: "{{ postgres.system_user }}"
+
+  - name: Truncate PostgreSQl log file
+    shell: echo > "{{ postgres.log }}"
+    sudo_user: "{{ postgres.system_user }}"
+
+  - name: PostgreSQl restart
+    service: name=postgresql state=restarted
+    sudo_user: root
+
   - name: Clone Fhirbase project
     git:
     args:
@@ -14,26 +26,6 @@
       update: yes
       version: "{{ git.branch }}"
     sudo_user: "{{ os.user.name }}"
-
-  - name: PostgreSQl should log all statements
-    lineinfile: dest="{{ postgres.conf }}" line="log_statement = 'all'"
-    sudo_user: "{{ postgres.system_user }}"
-
-  - name: PostgreSQl should log statements with any durations
-    lineinfile: dest="{{ postgres.conf }}" line="log_min_duration_statement = 0"
-    sudo_user: "{{ postgres.system_user }}"
-
-  - name: Backup PostgreSQl log file
-    shell: cp "{{ postgres.log }}" "{{ postgres.log }}_{{ timestamp }}"
-    sudo_user: "{{ postgres.system_user }}"
-
-  - name: Truncate PostgreSQl log file
-    shell: echo > "{{ postgres.log }}"
-    sudo_user: "{{ postgres.system_user }}"
-
-  - name: PostgreSQl restart
-    service: name=postgresql state=restarted
-    sudo_user: root
 
   - name: Daemonizing Fhirbase performance tests and not waiting for exit
     shell:
