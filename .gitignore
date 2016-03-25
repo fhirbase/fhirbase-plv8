@@ -1,5 +1,6 @@
 *sw?
 /node_modules
+/perf/provisioning/secure/*
 /provisioning/secure/*
 /releases
 /tmp
