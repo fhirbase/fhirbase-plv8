@@ -7,8 +7,8 @@ set -e
 # DATABASE_URL=postgres://your_user_name:your_password@localhost:5432/fhirbase_build
 # WARNING: `fhirbase_build` database will be destroed and recreated!
 
-PREV_FBVERSION="0.0.1-beta.18"
-FBVERSION="0.0.1-beta.19"
+PREV_FBVERSION="0.0.1-beta.19"
+FBVERSION="0.0.1-beta.20"
 
 PGOPTIONS='--client-min-messages=warning'
 loadcmd="psql --no-psqlrc --quiet --echo-all --single-transaction \
@@ -31,11 +31,15 @@ npm install
 psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' || exit 1
 psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' || exit 1
 
+if [[ ! -f /tmp/fhirbase-release-$PREV_FBVERSION.sql ]]; then
+    curl --location \
+         https://github.com/fhirbase/fhirbase-plv8/releases/download/v$PREV_FBVERSION/fhirbase-$PREV_FBVERSION.sql.zip \
+        | funzip > /tmp/fhirbase-release-$PREV_FBVERSION.sql
+fi
+
 FB_SCHEMA=public bash build.sh || exit 1
 { echo $(schema_statement "public"); \
-  curl --location \
-       https://github.com/fhirbase/fhirbase-plv8/releases/download/v$PREV_FBVERSION/fhirbase-$PREV_FBVERSION.sql.zip \
-       | funzip; } \
+  cat /tmp/fhirbase-release-$PREV_FBVERSION.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 { echo $(schema_statement "public"); cat tmp/patch.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1

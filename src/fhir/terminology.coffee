@@ -1,4 +1,5 @@
 utils = require('../core/utils')
+compat = require('../compat')
 outcome = require('./outcome')
 
 exports.fhir_expand_valueset = (plv8, query)->
@@ -124,6 +125,17 @@ exports.fhir_valueset_after_changed = (plv8, resource)->
   for inc in  ((resource.compose && resource.compose.include) || [])
     for concept in (inc.concept || [])
       _create_concept(plv8, acc, {valueset_id: resource.id, system: inc.system}, {}, concept)
+    if inc.system
+      plv8.debug = true
+      syst = utils.exec plv8,
+        select: [':*']
+        from: ':codesystem'
+        where: ['$eq', ":resource->>'url'", inc.system]
+        limit: 1
+      syst_res = (syst[0] && syst[0].resource && JSON.parse(syst[0].resource))
+      for concept in ((syst_res && syst_res.concept) || [])
+        _create_concept(plv8, acc, {valueset_id: resource.id, system: inc.system}, {}, concept)
+      plv8.debug = false
 
   res = plv8.execute """
     INSERT INTO _valueset_expansion

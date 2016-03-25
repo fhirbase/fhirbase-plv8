@@ -1,5 +1,6 @@
 term = require('../../src/fhir/terminology')
 crud = require('../../src/fhir/crud')
+schema = require('../../src/core/schema')
 test = require('../helpers.coffee')
 plv8 = require('../../plpl/src/plv8')
 
@@ -7,6 +8,19 @@ assert = require('assert')
 log = (x)-> console.log(JSON.stringify(x, null, " "))
 
 expand = (q)-> term.fhir_expand_valueset(plv8, q)
+
+TEST_CS = {
+  id: 'mytestvs'
+  url: '/mycodesystem'
+  resourceType: 'CodeSystem'
+  concept: [
+    {
+      code: 'b'
+      display: 'b'
+      concept: [{code: 'b1', display: 'b1'}]
+    }
+  ]
+}
 
 TEST_VS = {
   id: 'mytestvs'
@@ -34,8 +48,10 @@ TEST_VS = {
          {code: 'a31', display: 'A31'}
          {code: 'a32', display: 'A32'}]
       }
+      {system: '/mycodesystem'}
     ]
 }
+
 
 big_valueset = require('./fixtures/valueset-ucum-common.json')
 big_valueset.id = 'bigone'
@@ -44,8 +60,11 @@ describe "terminology", ->
   @timeout(50000)
 
   before (done)->
+    schema.fhir_create_storage(plv8, {resourceType: 'CodeSystem'})
     crud.fhir_terminate_resource(plv8, {resourceType: 'ValueSet', id: TEST_VS.id})
     crud.fhir_terminate_resource(plv8, {resourceType: 'ValueSet', id: big_valueset.id})
+    crud.fhir_terminate_resource(plv8, {resourceType: 'CodeSystem', id: TEST_CS.id})
+    crud.fhir_create_resource(plv8, {resourceType: 'CodeSystem', allowId: true, resource: TEST_CS})
     crud.fhir_create_resource(plv8, {resourceType: 'ValueSet', allowId: true, resource: TEST_VS})
     done()
 
@@ -61,7 +80,7 @@ describe "terminology", ->
   it "custom vs", ->
     vs =  expand(id: "mytestvs")
     res = vs.expansion.contains.map((x)-> x.code).sort()
-    assert.deepEqual([ 'a1', 'a21', 'a22', 'a31', 'a32', 'nested' ], res)
+    assert.deepEqual([ 'a1', 'a21', 'a22', 'a31', 'a32', 'b', 'b1', 'nested' ], res)
 
     vs =  expand(id: "mytestvs", filter: '32')
     res = vs.expansion.contains
@@ -73,6 +92,11 @@ describe "terminology", ->
 
     vs =  expand(id: "mytestvs", filter: 'display')
     res = vs.expansion.contains
+    assert.equal(res.length, 1)
+
+    vs =  expand(id: "mytestvs", filter: 'b1')
+    res = vs.expansion.contains
+    console.log(res)
     assert.equal(res.length, 1)
 
     crud.fhir_update_resource plv8,

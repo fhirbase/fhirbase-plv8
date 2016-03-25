@@ -53,17 +53,6 @@ Only equality operator is implemented.
         ['$quote', meta.elementType]]
 
     OPERATORS =
-      eq: (tbl, meta, value)->
-        # Support for value as array
-        val = if lang.isArray(value.value)
-            ['$array'].concat(value.value)
-          else
-            ['$array', value.value.toLowerCase()]
-
-        ["$&&"
-          ['$cast', extract_expr(meta, tbl), ":text[]"]
-          ['$cast', val, ":text[]"]]
-
       missing: (tbl, meta, value)->
         op = if value.value == 'false' then '$ne' else '$eq'
         [op
@@ -72,9 +61,8 @@ Only equality operator is implemented.
 
 
     exports.normalize_operator = (meta, value)->
-      return 'eq' if not meta.modifier and not value.prefix
       return 'missing' if meta.modifier == 'missing'
-      throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
+      return 'eq'
 
     SUPPORTED_TYPES = ['Reference']
 
@@ -82,10 +70,11 @@ Only equality operator is implemented.
       unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
         throw new Error("Reference Search: unsupported type #{JSON.stringify(meta)}")
 
-      op = OPERATORS[meta.operator]
-
-      unless op
-        throw new Error("Reference Search: Unsupported operator #{JSON.stringify(meta)}")
+      if meta.operator == "missing"
+        op = if value.value == 'false' then '$ne' else '$eq'
+        return [op
+                 ['$cast', extract_expr(meta, tbl), ":text[]"]
+                 ['$cast', ['$array', EMPTY_VALUE], ":text[]"]]
 
       # If `value` like /Patient/id or http://fhirbase/Patient/id
       if typeof(value.value) == 'string' &&
@@ -106,7 +95,14 @@ Only equality operator is implemented.
 
         value.value = value.value.join('/')
 
-      op(tbl, meta, value)
+      val = if lang.isArray(value.value)
+          ['$array'].concat(value.value)
+        else
+          ['$array', value.value.toLowerCase()]
+
+      ["$&&"
+        ['$cast', extract_expr(meta, tbl), ":text[]"]
+        ['$cast', val, ":text[]"]]
 
     exports.order_expression = (tbl, meta)->
       search_token.order_expression(tbl, meta)

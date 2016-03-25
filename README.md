@@ -9,8 +9,8 @@ This is new version of fhirbase, with support of DSTU-2 and planned support many
 *  Extended query syntax
 *  Terminologies
 *  Profile validation
-*  References validateion
-*  ValueSet validateion
+*  References validation
+*  ValueSet validation
 
 ## Motivation
 

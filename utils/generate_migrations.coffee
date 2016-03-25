@@ -51,18 +51,14 @@ bundles = [
   require('../fhir/search-parameters.json')
   require('../fhir/profiles-types.json')
   require('../fhir/profiles-resources.json')
-  if process.env.TRAVIS
-    require('../fhir/valuesets-minified.json')
-  else
-    require('../fhir/valuesets.json')
-  require('../fhir/v3-codesystems.json')
+  require('../fhir/valuesets.json')
   require('../fhir/v2-tables.json')
 ]
 
 VERSION = "1"
 
-output "CREATE TABLE metadata_with_dups (resource jsonb);"
-output "CREATE TABLE metadata (resource jsonb);"
+output "CREATE TEMP TABLE metadata_with_dups (resource jsonb);"
+output "CREATE TEMP TABLE metadata (resource jsonb);"
 
 output """
 -- Create a function that always returns the first non-NULL item
@@ -113,5 +109,6 @@ for tp in ['StructureDefinition', 'SearchParameter', 'OperationDefinition', 'Val
     INSERT INTO #{tp.toLowerCase()}_history (id, version_id, resource, valid_from, valid_to)
     SELECT m.resource->>'id', m.resource->>'id' || '-#{VERSION}' , resource, CURRENT_TIMESTAMP, 'infinity'
     FROM metadata m
+    WHERE m.resource->>'resourceType' = '#{tp}'
   ;
   """
