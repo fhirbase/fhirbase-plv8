@@ -1,6 +1,6 @@
 app_dir: /fhirbase
 git:
-  branch: perf
+  branch: master
   commit:
     message: "docs: update performance report"
 os:
