@@ -110,10 +110,11 @@ EOF
     echo "$sql" | psql || exit 1
 
     echo Install Fhirbase into $PGDATABASE.$pg_schema database.
-    { echo "SET search_path TO $pg_schema;" ;
-      curl --location \
-           https://github.com/fhirbase/fhirbase-plv8/releases/download/v0.0.1-beta.19/fhirbase-0.0.1-beta.19.sql.zip | funzip ; } \
-        | psql
+    { echo "SET search_path TO $pg_schema;" \
+      && curl --location \
+              https://github.com/fhirbase/fhirbase-plv8/releases/download/v0.0.1-beta.19/fhirbase-0.0.1-beta.19.sql.zip \
+         | funzip ; } \
+      | psql
     [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
 else
     echo Assume that database $PGDATABASE.$pg_schema \
@@ -122,7 +123,7 @@ fi
 
 echo Create loading fake data function in $PGDATABASE.$pg_schema \
      from "$directory"/data.
-{ echo "SET search_path TO $pg_schema;" ; cat "$directory"/load.sql ; } \
+{ echo "SET search_path TO $pg_schema;" && cat "$directory"/load.sql ; } \
     | psql
 [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
 
@@ -144,7 +145,7 @@ EOF
 echo "$sql" | psql || exit 1
 
 echo Create generation functions in $PGDATABASE.$pg_schema.
-{ echo "SET search_path TO $pg_schema;" ; cat "$directory"/generate.sql ; } \
+{ echo "SET search_path TO $pg_schema;" && cat "$directory"/generate.sql ; } \
     | psql
 [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
 

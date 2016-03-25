@@ -28,12 +28,14 @@ script:
   export DATABASE_URL=postgres://fb:fb@localhost:5432/fhirbase
   && export TRAVIS=true
   && FB_SCHEMA=foo ./build.sh
-  && { echo "CREATE SCHEMA IF NOT EXISTS foo; SET search_path TO foo;"; cat tmp/build.sql; }
-  | psql fhirbase
+  && { echo "CREATE SCHEMA IF NOT EXISTS foo; SET search_path TO foo;"
+       && cat tmp/build.sql ; }
+     | psql fhirbase
   && FB_SCHEMA=foo npm run test
   && FB_SCHEMA=bar ./build.sh
-  && { echo "CREATE SCHEMA IF NOT EXISTS bar; SET search_path TO bar;"; cat tmp/build.sql; }
-  | psql fhirbase
+  && { echo "CREATE SCHEMA IF NOT EXISTS bar; SET search_path TO bar;"
+       && cat tmp/build.sql ; }
+     | psql fhirbase
   && FB_SCHEMA=bar npm run test
 after_success: |
   if [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
