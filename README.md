@@ -25,8 +25,8 @@ on a concept of __resource__.
 > product lines while leveraging the latest web standards and applying
 > a tight focus on implementability.
 
-Also we learned that data is a heart of any information system, and
-should be reliably managed. PostgreSQL is a battle proved open source
+We also learned that data is a heart of any information system, and
+should be reliably managed. PostgreSQL is a battle proven open source
 database which supports structured documents (jsonb) while
 preserving ACID guaranties and richness of SQL query language.
 
@@ -125,9 +125,7 @@ echo "plv8.start_proc='plv8_init'" >> /etc/postgresql/9.4/main/postgresql.conf
 
 ## Usage
 
-To make fhirbase-plv8 work
-you have to just after opening connection to postgresql
-you have to issue following command (read more [here](http://pgxn.org/dist/plv8/doc/plv8.html#Start-up.procedure)):
+To make fhirbase-plv8 work, just after opening connection to postgresql, you have to issue the following command (read more [here](http://pgxn.org/dist/plv8/doc/plv8.html#Start-up.procedure)):
 
 
 ```sql
@@ -201,9 +199,9 @@ SELECT fhir_conformance('{"default": "values"}');
 ## Performance
 
 Drop database `your_db_name` on `localhost`
-than create database `your-db-name` and install Fhirbase into it
-than generate 1000000 patients
-and than run performance tests.
+then create database `your_db_name` and install Fhirbase into it
+then generate 1000000 patients
+and then run performance tests.
 
 ```sh
 ./perf/perf --pgdatabase=your_db_name \
