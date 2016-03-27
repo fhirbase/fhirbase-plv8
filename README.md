@@ -132,6 +132,7 @@ To make fhirbase-plv8 work, just after opening connection to postgresql, you hav
 SET plv8.start_proc = 'plv8_init';
 ```
 
+## Examples
 
 ```sql
 
@@ -143,6 +144,22 @@ SELECT fhir_create_storage('{"resourceType": "Patient"}');
 SELECT fhir_drop_storage('{"resourceType": "Patient"}');
 SELECT fhir_truncate_storage('{"resourceType": "Patient"}');
 -- delete all resources of specified type
+
+-- the above commands should look like this:
+$ psql fhirbase
+psql (9.4.6)
+Type "help" for help.
+
+fhirbase=# SET plv8.start_proc = 'plv8_init';
+SET
+fhirbase=# SELECT fhir_create_storage('{"resourceType": "Patient"}');
+                  fhir_create_storage                  
+-------------------------------------------------------
+ {"status":"ok","message":"Table patient was created"}
+(1 row)
+
+fhirbase=# 
+
 
 -- CRUD
 
