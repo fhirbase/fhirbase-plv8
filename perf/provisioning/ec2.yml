@@ -1,0 +1,38 @@
+- name: Start fhirbase amazon ec2
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    instance_ids:
+      - 'i-790bdccc'
+    region: us-west-1
+  tasks:
+    - name: Start fhirbase performance test amazon ec2 instance
+      ec2:
+        instance_ids: '{{ instance_ids }}'
+        region: '{{ region }}'
+        state: running
+        wait: True
+        vpc_subnet_id: subnet-77f6152e
+        # assign_public_ip: yes
+  # roles:
+  #   - do_neat_stuff
+  #   - do_more_neat_stuff
+
+- name: Stop fhirbase amazon ec2
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    instance_ids:
+      - 'i-790bdccc'
+    region: us-west-1
+  tasks:
+    - name: Stop fhirbase performance test amazon ec2 instance
+      ec2:
+        instance_ids: '{{ instance_ids }}'
+        region: '{{ region }}'
+        state: stopped
+        wait: True
+        vpc_subnet_id: subnet-77f6152e
+        # assign_public_ip: yes
