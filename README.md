@@ -49,7 +49,7 @@ To install fhirbase you need postgresql-9.4 and plv8 extension.
 
 ```sh
 sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
-psql -c "CREATE USER user WITH PASSWORD 'password'"
+psql -c "CREATE USER \"user\" WITH PASSWORD 'password'"
 psql -c 'CREATE DATABASE fhirbase;' -U user
 psql -c '\dt' -U postgres
 export DATABASE_URL=postgres://user:password@localhost:5432/fhirbase
