@@ -46,6 +46,7 @@ output  schema.fhir_create_storage_sql(plv8, resourceType: 'OperationDefinition'
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'ValueSet')
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'ConceptMap')
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'NamingSystem')
+output  schema.fhir_create_storage_sql(plv8, resourceType: 'CodeSystem')
 
 bundles = [
   require('../fhir/search-parameters.json')
@@ -53,6 +54,7 @@ bundles = [
   require('../fhir/profiles-resources.json')
   require('../fhir/valuesets.json')
   require('../fhir/v2-tables.json')
+  require('../fhir/v3-codesystems.json')
 ]
 
 VERSION = "1"
@@ -96,7 +98,7 @@ console.log """
   );
 """
 
-for tp in ['StructureDefinition', 'SearchParameter', 'OperationDefinition', 'ValueSet', 'ConceptMap', 'NamingSystem']
+for tp in ['StructureDefinition', 'SearchParameter', 'OperationDefinition', 'ValueSet', 'ConceptMap', 'NamingSystem', 'CodeSystem']
   console.log """
     INSERT INTO #{tp.toLowerCase()} (id, version_id, resource)
     SELECT m.resource->>'id', m.resource->>'id' || '-#{VERSION}' , resource
