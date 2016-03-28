@@ -16,8 +16,11 @@ env:
 notifications:
   slack: fhirbase:isitOv0KvPgaMzrccuAzVUwB
 before_install:
-- openssl aes-256-cbc -K $encrypted_6ab70d4cdf06_key -iv $encrypted_6ab70d4cdf06_iv
-  -in perf/provisioning/secure/secure.tar.gz.enc -out perf/provisioning/secure/secure.tar.gz
+- openssl aes-256-cbc
+  -K $encrypted_6ab70d4cdf06_key
+  -iv $encrypted_6ab70d4cdf06_iv
+  -in perf/provisioning/secure/secure.tar.gz.enc
+  -out perf/provisioning/secure/secure.tar.gz
   -d
 before_script:
 - npm install && cd plpl && npm install

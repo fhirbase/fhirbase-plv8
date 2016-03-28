@@ -46,6 +46,8 @@
   with_items:
     - fhirbase_performance_benchmark.pem
     - fhirbase_performance_benchmark.pub
+    - fhirbase_performance_documentation
+    - fhirbase_performance_documentation.pub
 
 - name: Copy ssh config to ubuntu user home directory
   template:
