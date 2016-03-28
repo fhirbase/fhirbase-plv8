@@ -18,10 +18,23 @@
     git:
     args:
       accept_hostkey: yes
-      dest: "{{ app_dir }}/"
+      dest: "{{ fhirbase.app_dir }}/"
       force: yes
       key_file: "{{ os.user.home }}/.ssh/fhirbase_performance_benchmark.pem"
-      repo: git@github.com:fhirbase/fhirbase-plv8.git
+      repo: git@github_fhirbase_plv8:fhirbase/fhirbase-plv8.git
+      track_submodules: yes
+      update: yes
+      version: "{{ git.branch }}"
+    sudo_user: "{{ os.user.name }}"
+
+  - name: Clone Fhirbase documentation project
+    git:
+    args:
+      accept_hostkey: yes
+      dest: "{{ fhirbase.doc_dir }}/"
+      force: yes
+      key_file: "{{ os.user.home }}/.ssh/fhirbase_performance_documentation"
+      repo: git@github_fhirbase_documentation:fhirbase/fhirbase.github.io.git
       track_submodules: yes
       update: yes
       version: "{{ git.branch }}"
@@ -31,7 +44,7 @@
     shell:
       su {{ os.user.name }}
       --shell=/bin/bash
-      --command="{{ app_dir }}/perf/perf
+      --command="{{ fhirbase.app_dir }}/perf/perf
       --createdb
       --dropdb
       --number-of-patients=1000
@@ -39,11 +52,11 @@
       --pgpassword={{ postgres.password }}
       --pguser={{ postgres.user }}
       --verbose=3"
-      && cp "{{ postgres.log }}" "{{ app_dir }}/perf/perf.log"
-      && chown "{{ os.user.name }}":"{{ os.user.name }}" "{{ app_dir }}/perf/perf.log"
+      && cp "{{ postgres.log }}" "{{ fhirbase.app_dir }}/perf/perf.log"
+      && chown "{{ os.user.name }}":"{{ os.user.name }}" "{{ fhirbase.app_dir }}/perf/perf.log"
       && su {{ os.user.name }}
       --shell=/bin/bash
-      --command="cd {{ app_dir }}
+      --command="cd {{ fhirbase.app_dir }}
       && git add perf/perf.log
       && git commit --message='{{ git.commit.message }}'
       && git push origin {{ git.branch }}"

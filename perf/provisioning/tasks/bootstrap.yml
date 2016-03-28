@@ -139,7 +139,15 @@
 
 - name: Create fhirbase folder
   file:
-    path: "{{ app_dir }}"
+    path: "{{ fhirbase.app_dir }}"
+    mode: 0755
+    owner: "{{ os.user.name }}"
+    group: "{{ os.user.name }}"
+    state: directory
+
+- name: Create fhirbase documentation folder
+  file:
+    path: "{{ fhirbase.doc_dir }}"
     mode: 0755
     owner: "{{ os.user.name }}"
     group: "{{ os.user.name }}"

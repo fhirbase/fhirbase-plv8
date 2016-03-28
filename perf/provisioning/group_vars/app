@@ -1,4 +1,6 @@
-app_dir: /fhirbase
+fhirbase:
+  app_dir: /fhirbase
+  doc_dir: /fhirbase_documentation
 git:
   branch: master
   commit:
