@@ -14,30 +14,52 @@
     service: name=postgresql state=restarted
     sudo_user: root
 
+  - name: Remove fhirbase folder
+    file: path="{{ fhirbase.app_dir }}" state=absent
+    sudo_user: root
+
+  - name: Remove fhirbase documentation folder
+    file: path="{{ fhirbase.doc_dir }}" state=absent
+    sudo_user: root
+
+  - name: Create fhirbase folder
+    file:
+      path: "{{ fhirbase.app_dir }}"
+      mode: 0755
+      owner: "{{ os.user.name }}"
+      group: "{{ os.user.name }}"
+      state: directory
+    sudo_user: root
+
+  - name: Create fhirbase documentation folder
+    file:
+      path: "{{ fhirbase.doc_dir }}"
+      mode: 0755
+      owner: "{{ os.user.name }}"
+      group: "{{ os.user.name }}"
+      state: directory
+    sudo_user: root
+
   - name: Clone Fhirbase project
-    git:
-    args:
-      accept_hostkey: yes
-      dest: "{{ fhirbase.app_dir }}/"
-      force: yes
-      key_file: "{{ os.user.home }}/.ssh/fhirbase_performance_benchmark.pem"
-      repo: git@github_fhirbase_plv8:fhirbase/fhirbase-plv8.git
-      track_submodules: yes
-      update: yes
-      version: "{{ git.branch }}"
+    shell:
+      git clone
+          git@github_fhirbase_plv8:fhirbase/fhirbase-plv8.git
+          {{ fhirbase.app_dir }}
+      && cd {{ fhirbase.app_dir }}
+      && git submodule update --init --recursive
+    # become: yes
+    # become_user: "{{ os.user.name }}"
     sudo_user: "{{ os.user.name }}"
 
   - name: Clone Fhirbase documentation project
-    git:
-    args:
-      accept_hostkey: yes
-      dest: "{{ fhirbase.doc_dir }}/"
-      force: yes
-      key_file: "{{ os.user.home }}/.ssh/fhirbase_performance_documentation"
-      repo: git@github_fhirbase_documentation:fhirbase/fhirbase.github.io.git
-      track_submodules: yes
-      update: yes
-      version: "{{ git.branch }}"
+    shell:
+      git clone
+          git@github_fhirbase_documentation:fhirbase/fhirbase.github.io.git
+         {{ fhirbase.doc_dir }}
+      && cd {{ fhirbase.doc_dir }}
+      && git submodule update --init --recursive
+    # become: yes
+    # become_user: "{{ os.user.name }}"
     sudo_user: "{{ os.user.name }}"
 
   - name: Daemonizing Fhirbase performance tests and not waiting for exit
