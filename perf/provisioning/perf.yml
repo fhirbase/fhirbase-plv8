@@ -47,8 +47,6 @@
           {{ fhirbase.app_dir }}
       && cd {{ fhirbase.app_dir }}
       && git submodule update --init --recursive
-    # become: yes
-    # become_user: "{{ os.user.name }}"
     sudo_user: "{{ os.user.name }}"
 
   - name: Clone Fhirbase documentation project
@@ -58,8 +56,6 @@
          {{ fhirbase.doc_dir }}
       && cd {{ fhirbase.doc_dir }}
       && git submodule update --init --recursive
-    # become: yes
-    # become_user: "{{ os.user.name }}"
     sudo_user: "{{ os.user.name }}"
 
   - name: Daemonizing Fhirbase performance tests and not waiting for exit
