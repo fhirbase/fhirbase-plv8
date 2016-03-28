@@ -165,6 +165,12 @@ EOF
 echo "$sql" | psql || exit 1
 
 echo Run performance tests.
+
+read -r -d '' sql << EOF
+SELECT 'Performance tests results are below.';
+EOF
+echo "$sql" | psql --pset="pager=off" --expanded || exit 1
+
 read -r -d '' sql << EOF
 SET search_path TO $pg_schema;
 SET plv8.start_proc = 'plv8_init';
