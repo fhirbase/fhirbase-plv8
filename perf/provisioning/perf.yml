@@ -74,7 +74,9 @@
       --pgpassword={{ postgres.password }}
       --pguser={{ postgres.user }}
       --verbose=3"
-      && cp "{{ postgres.log }}" "{{ fhirbase.app_dir }}/perf/perf.log"
+      && cat "{{ postgres.log }}"
+         | sed '0,/^.*Performance tests results are below.*$/d'
+         > "{{ fhirbase.app_dir }}/perf/perf.log"
       && chown "{{ os.user.name }}":"{{ os.user.name }}" "{{ fhirbase.app_dir }}/perf/perf.log"
       && su {{ os.user.name }}
       --shell=/bin/bash
