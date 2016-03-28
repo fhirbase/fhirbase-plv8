@@ -86,13 +86,15 @@
                      && git commit --message='{{ git.commit.message }}' \
                      && git push origin {{ git.branch }}"
 
-      function get_duration {
+      get_duration () {
         local statement=$1
         local description=$2
-        export timing=$(cat "{{ fhirbase.app_dir }}/perf/perf.log" \
-        | tr '\n' '\r' \
-        | sed -n "s/.*${statement}.*\r.*duration: \([0-9a-z. ]*\).*/\1/p")
-        printf "  - description: '$description'\n    time: '$timing'\n"
+        local duration=$( \
+          cat "{{ fhirbase.app_dir }}/perf/perf.log" \
+          | tr '\n' '\r' \
+          | sed -n "s/.*${statement}.*\r.*duration: \([0-9a-z. ]*\).*/\1/p" \
+        )
+        printf "  - description: '$description'\n    time: '$duration'\n"
       }
 
       echo 'operations:' > "{{ fhirbase.doc_dir }}/_data/performance2.yml" \
