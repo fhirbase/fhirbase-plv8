@@ -63,28 +63,53 @@
     sudo_user: "{{ os.user.name }}"
 
   - name: Daemonizing Fhirbase performance tests and not waiting for exit
-    shell:
-      su {{ os.user.name }}
-      --shell=/bin/bash
-      --command="{{ fhirbase.app_dir }}/perf/perf
-      --createdb
-      --dropdb
-      --number-of-patients=1000
-      --pgdatabase={{ postgres.database }}
-      --pgpassword={{ postgres.password }}
-      --pguser={{ postgres.user }}
-      --verbose=3"
-      && cat "{{ postgres.log }}"
-         | sed '0,/^.*Performance tests results are below.*$/d'
-         > "{{ fhirbase.app_dir }}/perf/perf.log"
-      && chown "{{ os.user.name }}":"{{ os.user.name }}" "{{ fhirbase.app_dir }}/perf/perf.log"
-      && su {{ os.user.name }}
-      --shell=/bin/bash
-      --command="cd {{ fhirbase.app_dir }}
-      && git add perf/perf.log
-      && git commit --message='{{ git.commit.message }}'
-      && git push origin {{ git.branch }}"
-      ; shutdown -h now
+    shell: |
+      su {{ os.user.name }} \
+         --shell=/bin/bash \
+         --command="{{ fhirbase.app_dir }}/perf/perf \
+                    --createdb \
+                    --dropdb \
+                    --number-of-patients=1000 \
+                    --pgdatabase={{ postgres.database }} \
+                    --pgpassword={{ postgres.password }} \
+                    --pguser={{ postgres.user }} \
+                    --verbose=3" \
+      && cat "{{ postgres.log }}" \
+         | sed '0,/^.*Performance tests results are below.*$/d' \
+               > "{{ fhirbase.app_dir }}/perf/perf.log" \
+      && chown "{{ os.user.name }}":"{{ os.user.name }}" \
+               "{{ fhirbase.app_dir }}/perf/perf.log" \
+      && su {{ os.user.name }} \
+          --shell=/bin/bash \
+          --command="cd {{ fhirbase.app_dir }} \
+                     && git add perf/perf.log \
+                     && git commit --message='{{ git.commit.message }}' \
+                     && git push origin {{ git.branch }}"
+
+      function get_duration {
+        local statement=$1
+        local description=$2
+        export timing=$(cat "{{ fhirbase.app_dir }}/perf/perf.log" \
+        | tr '\n' '\r' \
+        | sed -n "s/.*${statement}.*\r.*duration: \([0-9a-z. ]*\).*/\1/p")
+        printf "  - description: '$description'\n    time: '$timing'\n"
+      }
+
+      echo 'operations:' > "{{ fhirbase.doc_dir }}/_data/performance2.yml" \
+      && echo "$(get_duration 'SELECT fhir_conformance' 'FHIR conformance')" \
+              >> "{{ fhirbase.doc_dir }}/_data/performance2.yml" \
+      && chown "{{ os.user.name }}":"{{ os.user.name }}" \
+               "{{ fhirbase.doc_dir }}/_data/performance2.yml" \
+      && su {{ os.user.name }} \
+          --shell=/bin/bash \
+          --command="cd {{ fhirbase.doc_dir }} \
+                     && git add _data/performance2.yml \
+                     && git commit --message='{{ git.commit.message }}' \
+                     && git push origin {{ git.branch }}"
+
+      shutdown -h now
+    args:
+      executable: /bin/bash
     async: 900
     poll: 0
     sudo_user: root
