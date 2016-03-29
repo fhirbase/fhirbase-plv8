@@ -66,9 +66,10 @@
          --number-of-patients=1000 \
          --pgdatabase={{ postgres.database }} \
          --pgpassword={{ postgres.password }} \
+         --pgschema={{ postgres.schema }} \
          --pguser={{ postgres.user }} \
          --verbose=3 \
-      && echo "SET plv8.start_proc = 'plv8_init'; select fhir_benchmark('{}'::json);" \
+      && echo "SET search_path TO {{ postgres.schema }}; SET plv8.start_proc = 'plv8_init'; select fhir_benchmark('{}'::json);" \
       | PGHOST=localhost \
         PGPORT={{ postgres.port }} \
         PGDATABASE={{ postgres.database }} \

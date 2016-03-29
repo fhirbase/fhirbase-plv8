@@ -15,5 +15,6 @@ postgres:
   log: /var/log/postgresql/postgresql-9.4-main.log
   password: fhirbase
   port: 5432
+  schema: benchmark
   system_user: postgres
   user: fhirbase
