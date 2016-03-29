@@ -31,7 +31,6 @@ fhir_benchmark_dissoc = (plv8, object, property)->
   object
 
 exports.fhir_benchmark_dissoc = fhir_benchmark_dissoc
-
 exports.fhir_benchmark_dissoc.plv8_signature = {
   arguments: ['jsonb', 'text']
   returns: 'jsonb'
