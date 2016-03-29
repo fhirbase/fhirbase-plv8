@@ -12,6 +12,7 @@ describe 'Benchmark', ->
       'fhir.fhir_create_resource called just one time'
     )
     assert.equal(
-      JSON.parse(benchmark[0].fhir_benchmark).operations[0].time,
-      '0.666 ms'
+      !!JSON.parse(benchmark[0].fhir_benchmark).operations[0]
+        .time.match(/[0-9.]+ [a-z]+/),
+      true
     )
