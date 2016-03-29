@@ -69,39 +69,23 @@
                     --pgdatabase={{ postgres.database }} \
                     --pgpassword={{ postgres.password }} \
                     --pguser={{ postgres.user }} \
-                    --verbose=3" \
-      && cat "{{ postgres.log }}" \
-         | sed '0,/^.*Performance tests results are below.*$/d' \
-               > "{{ fhirbase.app_dir }}/perf/perf.log" \
-      && chown "{{ os.user.name }}":"{{ os.user.name }}" \
-               "{{ fhirbase.app_dir }}/perf/perf.log" \
-      && su {{ os.user.name }} \
-          --shell=/bin/bash \
-          --command="cd {{ fhirbase.app_dir }} \
-                     && git add perf/perf.log \
-                     && git commit --message='{{ git.commit.message }}' \
-                     && git push origin {{ git.branch }}"
+                    --verbose=3"
 
-      get_duration () {
-        local statement="$1"
-        local description="$2"
-        local duration="$( \
-          cat "{{ fhirbase.app_dir }}/perf/perf.log" \
-          | tr '\n' '\r' \
-          | sed -n "s/.*${statement}.*\r.*duration: \([0-9a-z. ]*\).*/\1/p" \
-        )"
-        printf "  - description: '$description'\n    time: '$duration'\n"
-      }
-
-      echo 'operations:' > "{{ fhirbase.doc_dir }}/_data/performance2.yml" \
-      && echo "$(get_duration 'SELECT fhir_conformance' 'FHIR conformance')" \
-              >> "{{ fhirbase.doc_dir }}/_data/performance2.yml" \
+      echo "SET plv8.start_proc = 'plv8_init'; select fhir_benchmark('{}'::json);" \
+      | PGHOST=localhost \
+        PGPORT={{ postgres.port }} \
+        PGDATABASE={{ postgres.database }} \
+        PGUSER={{ postgres.user }} \
+        PGPASSWORD={{ postgres.password }} \
+        psql --pset="pager=off" --tuples-only \
+      | grep  --invert-match SET \
+      > "{{ fhirbase.doc_dir }}/_data/performance3.json" \
       && chown "{{ os.user.name }}":"{{ os.user.name }}" \
-               "{{ fhirbase.doc_dir }}/_data/performance2.yml" \
+               "{{ fhirbase.doc_dir }}/_data/performance3.json" \
       && su {{ os.user.name }} \
           --shell=/bin/bash \
           --command="cd {{ fhirbase.doc_dir }} \
-                     && git add _data/performance2.yml \
+                     && git add _data/performance3.json \
                      && git commit --message='{{ git.commit.message }}' \
                      && git push origin {{ git.branch }}"
 

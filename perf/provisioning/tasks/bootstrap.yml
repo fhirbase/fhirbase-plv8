@@ -110,10 +110,10 @@
     - postgresql-contrib-9.4
     - python-psycopg2
 
-- name: PostgreSQl should use port 5432
+- name: PostgreSQl should use right port
   lineinfile: dest="{{ postgres.conf }}"
               regexp="^port *= *[0-9]+"
-              line="port = 5432"
+              line="port = {{ postgres.port }}"
               state=present
               backup=yes
   sudo_user: "{{ postgres.system_user }}"
