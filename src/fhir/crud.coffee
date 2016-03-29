@@ -32,7 +32,7 @@ validate_create_resource = (resource)->
 
 table_not_exists = (resourceType)->
   resourceType: "OperationOutcome"
-  text: {div: "<div>Storage for #{resourceType} not exists</div>"}
+  text: {div: "<div>Storage for #{resourceType} does not exist</div>"}
   issue: [
     severity: 'error'
     code: 'not-supported'
@@ -116,7 +116,7 @@ wrap_ensure_not_exists = (fn)->
         from: sql.q(query.table_name)
         where: {id: resource.id}
       if res.length > 0
-        return outcome.error(code: 'invalid', diagnostics: "resource with given id already exist ")
+        return outcome.error(code: 'invalid', diagnostics: "resource with given id already exists ")
     fn(plv8, query)
 
 wrap_postprocess = (fn)->
@@ -291,7 +291,7 @@ fhir_update_resource = _build [
   throw new Error("Unexpected behavior, no id") unless id
 
   if query.ifMatch && old_version.meta.versionId != query.ifMatch
-    return outcome.conflict("Newer then [#{query.ifMatch}] version available [#{old_version.meta.versionId}]")
+    return outcome.conflict("Newer than [#{query.ifMatch}] version available [#{old_version.meta.versionId}]")
 
   version_id = utils.uuid(plv8)
 
@@ -386,7 +386,7 @@ fhir_patch_resource = _build [
     throw new Error("Unexpected behavior, no id") unless id
 
     if query.ifMatch && old_version.meta.versionId != query.ifMatch
-      return outcome.conflict("Newer then [#{query.ifMatch}] version available [#{old_version.meta.versionId}]")
+      return outcome.conflict("Newer than [#{query.ifMatch}] version available [#{old_version.meta.versionId}]")
 
     version_id = utils.uuid(plv8)
 
