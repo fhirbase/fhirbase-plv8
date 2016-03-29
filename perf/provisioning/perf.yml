@@ -82,7 +82,6 @@
       && git add _data/performance3.json \
       && git commit --message="{{ git.commit.message }}" \
       && git push origin {{ git.branch }}
-
       shutdown -h now
     args:
       executable: /bin/bash
