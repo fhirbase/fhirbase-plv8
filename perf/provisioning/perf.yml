@@ -60,18 +60,15 @@
 
   - name: Daemonizing Fhirbase performance tests and not waiting for exit
     shell: |
-      su {{ os.user.name }} \
-         --shell=/bin/bash \
-         --command="{{ fhirbase.app_dir }}/perf/perf \
-                    --createdb \
-                    --dropdb \
-                    --number-of-patients=1000 \
-                    --pgdatabase={{ postgres.database }} \
-                    --pgpassword={{ postgres.password }} \
-                    --pguser={{ postgres.user }} \
-                    --verbose=3"
-
-      echo "SET plv8.start_proc = 'plv8_init'; select fhir_benchmark('{}'::json);" \
+      {{ fhirbase.app_dir }}/perf/perf \
+         --createdb \
+         --dropdb \
+         --number-of-patients=1000 \
+         --pgdatabase={{ postgres.database }} \
+         --pgpassword={{ postgres.password }} \
+         --pguser={{ postgres.user }} \
+         --verbose=3 \
+      && echo "SET plv8.start_proc = 'plv8_init'; select fhir_benchmark('{}'::json);" \
       | PGHOST=localhost \
         PGPORT={{ postgres.port }} \
         PGDATABASE={{ postgres.database }} \
@@ -79,19 +76,16 @@
         PGPASSWORD={{ postgres.password }} \
         psql --pset="pager=off" --tuples-only \
       | grep  --invert-match SET \
-      > "{{ fhirbase.doc_dir }}/_data/performance3.json" \
-      && chown "{{ os.user.name }}":"{{ os.user.name }}" \
-               "{{ fhirbase.doc_dir }}/_data/performance3.json" \
-      && su {{ os.user.name }} \
-          --shell=/bin/bash \
-          --command="cd {{ fhirbase.doc_dir }} \
-                     && git add _data/performance3.json \
-                     && git commit --message='{{ git.commit.message }}' \
-                     && git push origin {{ git.branch }}"
+        > "{{ fhirbase.doc_dir }}/_data/performance3.json" \
+      && cd {{ fhirbase.doc_dir }} \
+      && git add _data/performance3.json \
+      && git commit --message="{{ git.commit.message }}" \
+      && git push origin {{ git.branch }}
 
       shutdown -h now
     args:
       executable: /bin/bash
     async: 900
     poll: 0
-    sudo_user: root
+    become: yes
+    become_user: "{{ os.user.name }}"
