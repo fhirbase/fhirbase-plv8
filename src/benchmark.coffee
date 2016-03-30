@@ -4,7 +4,7 @@ fhir_benchmark = (plv8, query)->
       '''
       SELECT count(
                fhir_create_resource(
-                 fhir_benchmark_dissoc(patients.resource, 'id')::json
+                 fhir_benchmark_dissoc(patients.resource::json, 'id')
                )
              )
              FROM (SELECT resource FROM patient LIMIT $1) patients;
