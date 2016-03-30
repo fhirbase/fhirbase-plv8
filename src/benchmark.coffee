@@ -8,14 +8,32 @@ fhir_benchmark = (plv8, query)->
            )
            FROM (SELECT resource FROM patient LIMIT #{limit}) patients;
     """
+  read_patients = (limit)->
+    """
+    SELECT count(
+             fhir_read_resource(
+               fhir_benchmark_dissoc(patients.resource::json, 'versionId')
+             )
+           )
+           FROM (SELECT resource FROM patient LIMIT #{limit}) patients;
+    """
+
   benchmarks = [
     {
-      statement: create_patients(1)
       discrition: 'fhir_create_resource called just one time'
+      statement: create_patients(1)
     },
     {
-      statement: create_patients(1000)
       discrition: 'fhir_create_resource called 1000 times in batch'
+      statement: create_patients(1000)
+    },
+    {
+      discrition: 'fhir_read_resource called just one time'
+      statement: read_patients(1)
+    },
+    {
+      discrition: 'fhir_read_resource called 1000 times in batch'
+      statement: read_patients(1000)
     }
   ]
 
@@ -32,17 +50,6 @@ fhir_benchmark = (plv8, query)->
 
 exports.fhir_benchmark = fhir_benchmark
 exports.fhir_benchmark.plv8_signature = ['json', 'json']
-
-fhir_benchmark_assoc = (plv8, object, property, value)->
-  object[property] = value
-  object
-
-exports.fhir_benchmark_assoc = fhir_benchmark_assoc
-exports.fhir_benchmark_assoc.plv8_signature = {
-  arguments: ['json', 'text', 'anyelement']
-  returns: 'json'
-  immutable: true
-}
 
 fhir_benchmark_dissoc = (plv8, object, property)->
   delete object[property]

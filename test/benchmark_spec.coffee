@@ -21,16 +21,6 @@ describe 'Benchmarking', ->
       true
     )
 
-  it 'Assoc', ->
-    object = plv8.execute(
-      'SELECT fhir_benchmark_assoc($1::json, $2::text, $3)',
-       [JSON.stringify({foo: 'bar'}), 'xyz', 123]
-    )
-    assert.deepEqual(
-      JSON.parse(object[0].fhir_benchmark_assoc),
-      {foo: 'bar', xyz: 123}
-    )
-
   it 'Dissoc', ->
     object = plv8.execute(
       'SELECT fhir_benchmark_dissoc($1::json, $2::text)',
