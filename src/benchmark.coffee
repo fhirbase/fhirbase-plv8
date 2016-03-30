@@ -8,7 +8,6 @@ fhir_benchmark = (plv8, query)->
            )
            FROM (SELECT resource FROM patient LIMIT #{limit}) patients;
     """
-
   benchmarks = [
     {
       statement: create_patients(1)
@@ -33,6 +32,17 @@ fhir_benchmark = (plv8, query)->
 
 exports.fhir_benchmark = fhir_benchmark
 exports.fhir_benchmark.plv8_signature = ['json', 'json']
+
+fhir_benchmark_assoc = (plv8, object, property, value)->
+  object[property] = value
+  object
+
+exports.fhir_benchmark_assoc = fhir_benchmark_assoc
+exports.fhir_benchmark_assoc.plv8_signature = {
+  arguments: ['json', 'text', 'anyelement']
+  returns: 'json'
+  immutable: true
+}
 
 fhir_benchmark_dissoc = (plv8, object, property)->
   delete object[property]
