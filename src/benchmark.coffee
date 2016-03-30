@@ -1,27 +1,21 @@
 fhir_benchmark = (plv8, query)->
+  create_patients = (limit)->
+    """
+    SELECT count(
+             fhir_create_resource(
+               fhir_benchmark_dissoc(patients.resource::json, 'id')
+             )
+           )
+           FROM (SELECT resource FROM patient LIMIT #{limit}) patients;
+    """
+
   benchmarks = [
     {
-      statement:
-        '''
-        SELECT count(
-                 fhir_create_resource(
-                   fhir_benchmark_dissoc(patients.resource::json, 'id')
-                 )
-               )
-               FROM (SELECT resource FROM patient LIMIT 1) patients;
-        '''
+      statement: create_patients(1)
       discrition: 'fhir_create_resource called just one time'
     },
     {
-      statement:
-        '''
-        SELECT count(
-                 fhir_create_resource(
-                   fhir_benchmark_dissoc(patients.resource::json, 'id')
-                 )
-               )
-               FROM (SELECT resource FROM patient LIMIT 1000) patients;
-        '''
+      statement: create_patients(1000)
       discrition: 'fhir_create_resource called 1000 times in batch'
     }
   ]
