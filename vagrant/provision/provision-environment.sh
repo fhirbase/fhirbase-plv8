@@ -6,7 +6,7 @@ echo "createuser -s fhir" | sudo -u postgres sh || exit 1
 echo "psql -d postgres -c 'create database fhir'" \
     | sudo -u postgres sh || exit 1
 
-echo "curl --location https://github.com/fhirbase/fhirbase-plv8/releases/download/v0.0.1-beta.26/fhirbase-0.0.1-beta.26.sql.zip | funzip | psql -d fhir" \
+echo "curl --location https://github.com/fhirbase/fhirbase-plv8/releases/download/v0.0.1-beta.27/fhirbase-0.0.1-beta.27.sql.zip | funzip | psql -d fhir" \
     | sudo -u postgres sh || exit 1
 
 echo "listen_addresses = '*'" \
