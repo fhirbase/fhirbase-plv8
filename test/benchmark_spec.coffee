@@ -10,7 +10,7 @@ describe 'Benchmarking', ->
     )
 
   it 'Benchmark', ->
-    benchmark = plv8.execute('SELECT fhir_benchmark($1)', [JSON.stringify({})])
+    benchmark = plv8.execute('SELECT fhir_benchmark($1::json)', [JSON.stringify({})])
     assert.equal(
       JSON.parse(benchmark[0].fhir_benchmark).operations[0].description,
       'fhir_create_resource called just one time'
@@ -22,12 +22,12 @@ describe 'Benchmarking', ->
     )
 
   it 'Dissoc', ->
-    object = plv8.execute(
-      'SELECT fhir_benchmark_dissoc($1, $2)',
+    obj = plv8.execute(
+      'SELECT fhir_benchmark_dissoc($1::json, $2::text)',
        [JSON.stringify({foo: 'bar', xyz: 123}),
         'foo']
     )
     assert.deepEqual(
-      JSON.parse(object[0].fhir_benchmark_dissoc),
+      JSON.parse(obj[0].fhir_benchmark_dissoc),
       {xyz: 123}
     )

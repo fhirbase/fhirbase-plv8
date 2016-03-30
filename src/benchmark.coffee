@@ -26,13 +26,13 @@ fhir_benchmark = (plv8, query)->
 exports.fhir_benchmark = fhir_benchmark
 exports.fhir_benchmark.plv8_signature = ['json', 'json']
 
-fhir_benchmark_dissoc = (plv8, object, property)->
-  object[property] = undefined
-  object
+fhir_benchmark_dissoc = (plv8, obj, property)->
+  delete obj[property]
+  obj
 
 exports.fhir_benchmark_dissoc = fhir_benchmark_dissoc
 exports.fhir_benchmark_dissoc.plv8_signature = {
-  arguments: ['jsonb', 'text']
-  returns: 'jsonb'
+  arguments: ['json', 'text']
+  returns: 'json'
   immutable: true
 }
