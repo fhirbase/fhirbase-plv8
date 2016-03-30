@@ -34,13 +34,31 @@ fhir_benchmark = (plv8, query)->
 exports.fhir_benchmark = fhir_benchmark
 exports.fhir_benchmark.plv8_signature = ['json', 'json']
 
-fhir_benchmark_dissoc = (plv8, obj, property)->
-  delete obj[property]
-  obj
+fhir_benchmark_dissoc = (plv8, object, property)->
+  delete object[property]
+  object
 
 exports.fhir_benchmark_dissoc = fhir_benchmark_dissoc
 exports.fhir_benchmark_dissoc.plv8_signature = {
   arguments: ['json', 'text']
+  returns: 'json'
+  immutable: true
+}
+
+fhir_benchmark_merge = (plv8, object1, object2)->
+  object3 = {}
+
+  for key, value of object1
+    object3[key] = value
+
+  for key, value of object2
+    object3[key] = value
+
+  object3
+
+exports.fhir_benchmark_merge = fhir_benchmark_merge
+exports.fhir_benchmark_merge.plv8_signature = {
+  arguments: ['json', 'json']
   returns: 'json'
   immutable: true
 }

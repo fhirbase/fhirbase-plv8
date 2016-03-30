@@ -22,12 +22,23 @@ describe 'Benchmarking', ->
     )
 
   it 'Dissoc', ->
-    obj = plv8.execute(
+    object = plv8.execute(
       'SELECT fhir_benchmark_dissoc($1::json, $2::text)',
        [JSON.stringify({foo: 'bar', xyz: 123}),
         'foo']
     )
     assert.deepEqual(
-      JSON.parse(obj[0].fhir_benchmark_dissoc),
+      JSON.parse(object[0].fhir_benchmark_dissoc),
       {xyz: 123}
+    )
+
+  it 'Merge', ->
+    object = plv8.execute(
+      'SELECT fhir_benchmark_merge($1::json, $2::json)',
+       [JSON.stringify({foo: 'bar'}),
+        JSON.stringify({xyz: 123})]
+    )
+    assert.deepEqual(
+      JSON.parse(object[0].fhir_benchmark_merge),
+      {foo: 'bar', xyz: 123}
     )
