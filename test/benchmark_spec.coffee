@@ -17,7 +17,7 @@ describe 'Benchmarking', ->
     )
     assert.equal(
       !!JSON.parse(benchmark[0].fhir_benchmark).operations[0]
-        .time.match(/[0-9.]+ [a-z]+/),
+        .time.toString().match(/[0-9.]+/),
       true
     )
 

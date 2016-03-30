@@ -43,7 +43,7 @@ fhir_benchmark = (plv8, query)->
     t2 = new Date()
     {
       description: benchmark.discrition
-      time: "#{t2 - t1} ms"
+      time: t2 - t1
     }
 
   {operations: benchmarks}
