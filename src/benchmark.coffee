@@ -186,8 +186,7 @@ fhir_benchmark = (plv8, query)->
     },
     {
       description: "searching Patient with name=John&gender=male&_count=100&_sort=name",
-      statement: "SELECT count(*) FROM fhir.search('Patient', 'name=John&gender=male&_count=100&_sort=name')",
-      skip: true
+      statement: fhir_search('{"resourceType": "Patient", "queryString": "name=John&gender=male&_count=100&_sort=name"}')
     },
     {
       description: "searching Patient with name=John&gender=male&_count=100&_sort=active"

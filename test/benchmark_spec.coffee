@@ -4,10 +4,11 @@ assert = require('assert')
 describe 'Benchmarking', ->
   before ->
     plv8.execute("SET plv8.start_proc = 'plv8_init'")
-    plv8.execute(
-      'SELECT fhir_create_storage($1)',
-      [JSON.stringify(resourceType: 'Patient')]
-    )
+    ['Patient', 'Encounter', 'Organization', 'Practitioner'].forEach (r)->
+      plv8.execute(
+        'SELECT fhir_create_storage($1)',
+        [JSON.stringify(resourceType: r)]
+      )
 
   it 'Benchmark', ->
     benchmark = plv8.execute('SELECT fhir_benchmark($1::json)', [JSON.stringify({})])
