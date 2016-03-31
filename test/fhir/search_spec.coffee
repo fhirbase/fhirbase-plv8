@@ -243,3 +243,26 @@ describe 'Search', ->
           /No parser for special - lastUpdated/.test(err)
       )
     )
+
+describe 'Encounter search', ->
+  before ->
+    plv8.execute("SET plv8.start_proc = 'plv8_init'")
+    schema.fhir_drop_storage(plv8, resourceType: 'Encounter')
+    schema.fhir_create_storage(plv8, resourceType: 'Encounter')
+
+  beforeEach ->
+    schema.fhir_truncate_storage(plv8, resourceType: 'Encounter')
+    crud.fhir_create_resource(plv8, resource: {
+      resourceType: 'Encounter',
+      status: 'planned'
+    })
+    crud.fhir_create_resource(plv8, resource: {
+      resourceType: 'Encounter',
+      status: 'finished'
+    })
+
+  it 'by status', ->
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Encounter', queryString: 'status=finished').total,
+      1)
