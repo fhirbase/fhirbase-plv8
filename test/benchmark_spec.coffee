@@ -11,6 +11,7 @@ describe 'Benchmarking', ->
 
   it 'Benchmark', ->
     benchmark = plv8.execute('SELECT fhir_benchmark($1::json)', [JSON.stringify({})])
+    console.log JSON.stringify(JSON.parse(benchmark[0].fhir_benchmark), null, 2)
     assert.equal(
       JSON.parse(benchmark[0].fhir_benchmark).operations[0].description,
       'fhir_create_resource called just one time'

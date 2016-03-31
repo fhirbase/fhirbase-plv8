@@ -17,22 +17,26 @@ fhir_benchmark = (plv8, query)->
            )
            FROM (SELECT resource FROM patient LIMIT #{limit}) patients;
     """
+  fhir_search = (query)->
+    """
+    SELECT count(*) FROM fhir_search('#{query}'::json);
+    """
 
   benchmarks = [
     {
-      descrition: 'fhir_create_resource called just one time'
+      description: 'fhir_create_resource called just one time'
       statement: create_patients(1)
     },
     {
-      descrition: 'fhir_create_resource called 1000 times in batch'
+      description: 'fhir_create_resource called 1000 times in batch'
       statement: create_patients(1000)
     },
     {
-      descrition: 'fhir_read_resource called just one time'
+      description: 'fhir_read_resource called just one time'
       statement: read_patients(1)
     },
     {
-      descrition: 'fhir_read_resource called 1000 times in batch'
+      description: 'fhir_read_resource called 1000 times in batch'
       statement: read_patients(1000)
     },
     {
@@ -196,9 +200,8 @@ fhir_benchmark = (plv8, query)->
       skip: true
     },
     {
-      description: "searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis",
-      statement: "SELECT count(*) FROM fhir.search('Encounter', 'patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis')",
-      skip: true
+      description: "searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis"
+      statement: fhir_search('{"resourceType": "Encounter", "queryString": "patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis"}')
     }
   ]
 
@@ -207,7 +210,7 @@ fhir_benchmark = (plv8, query)->
     plv8.execute(benchmark.statement)
     t2 = new Date()
     {
-      description: benchmark.descrition
+      description: benchmark.description
       time: t2 - t1
     }
 
