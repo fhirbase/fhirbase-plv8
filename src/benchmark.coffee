@@ -202,6 +202,11 @@ fhir_benchmark = (plv8, query)->
     {
       description: "searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis"
       statement: fhir_search('{"resourceType": "Encounter", "queryString": "patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis"}')
+    },
+    {
+      description: "Wait 5 seconds"
+      statement: "SELECT pg_sleep(5)"
+      skip: true
     }
   ]
 
