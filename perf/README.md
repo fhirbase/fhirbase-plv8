@@ -5,29 +5,31 @@
 # Environment preparation
 
 `docker_setup.sh` will build docker image and create container
-with __Ubuntu 15.10__ with `ubuntu` user and `ubuntu`.
+with __Ubuntu 14.04.3__ with `ubuntu` user and `ubuntu`.
 
 ```bash
-./docker_setup.sh
+path/to/fhirbase/perf/provisioning/docker_setup.sh
 ```
 
 Archive with ssh keys placed in `secure` directory used by container.
 
 ```bash
-cd path/to/repository/perf/provisioning/secure
+cd path/to/fhirbase/perf/provisioning/secure
 gpg --output - secure.tar.gz.asc | tar --extract --gzip --file -
 ```
 
 `22` port will proxy to `7022` port.
 
 ```bash
-ssh -i path/to/repository/perf/provisioning/secure/local_docker.pem ubuntu@localhost -p 7022
+ssh -p 7022 \
+    -i path/to/fhirbase/perf/provisioning/secure/local_docker.pem \
+    ubuntu@localhost
 ```
 
 Use `ping.yml` to test ansible and docker:
 
 ```bash
-ansible-playbook --private-key=path/to/repository/perf/provisioning/secure/local_docker.pem \
+ansible-playbook --private-key=path/to/fhirbase/perf/provisioning/secure/local_docker.pem \
                  --inventory=inventories/local \
                  ping.yml
 ```
@@ -39,7 +41,7 @@ ansible-playbook --private-key=path/to/repository/perf/provisioning/secure/local
 Install PostgreSQL and stuff
 
 ```bash
-ansible-playbook --private-key=path/to/repository/perf/provisioning/secure/local_docker.pem \
+ansible-playbook --private-key=path/to/fhirbase/perf/provisioning/secure/local_docker.pem \
                  --inventory=inventories/local \
                  bootstrap.yml
 ```
@@ -49,7 +51,7 @@ ansible-playbook --private-key=path/to/repository/perf/provisioning/secure/local
 Run performance test
 
 ```bash
-ansible-playbook --private-key=path/to/repository/perf/provisioning/secure/local_docker.pem \
+ansible-playbook --private-key=path/to/fhirbase/perf/provisioning/secure/local_docker.pem \
                  --inventory=inventories/local \
                  perf.yml
 ```

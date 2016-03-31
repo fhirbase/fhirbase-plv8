@@ -10,7 +10,7 @@ export PGDATABASE=${PGDATABASE:-fhirbase}
 export PGUSER=${PGUSER:-fhirbase}
 export PGPASSWORD=${PGPASSWORD:-your_password}
 
-export pg_schema=${pg_schema:-perf}
+export pg_schema=${pg_schema:-public}
 export other_database=${other_database:-postgres}
 
 export number_of_patients=${number_of_patients:-1000}
@@ -155,7 +155,7 @@ else
     exec > /dev/null
 fi
 
-echo Generate temporary data.
+echo Generate seed data.
 read -r -d '' sql << EOF
 SET search_path TO $pg_schema;
 SET plv8.start_proc = 'plv8_init';
@@ -163,18 +163,3 @@ SET plv8.start_proc = 'plv8_init';
 SELECT generate($number_of_patients, $number_of_practitioners, $rand_seed);
 EOF
 echo "$sql" | psql || exit 1
-
-echo Run performance tests.
-
-read -r -d '' sql << EOF
-SELECT 'Performance tests results are below.';
-EOF
-echo "$sql" | psql --pset="pager=off" --expanded || exit 1
-
-read -r -d '' sql << EOF
-SET search_path TO $pg_schema;
-SET plv8.start_proc = 'plv8_init';
-\timing on
-SELECT fhir_conformance('{"somekey": "somevalue"}'::json);
-EOF
-echo "$sql" | psql --pset="pager=off" --expanded || exit 1

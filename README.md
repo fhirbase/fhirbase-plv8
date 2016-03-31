@@ -196,24 +196,6 @@ SELECT fhir_conformance('{"default": "values"}');
 -- return simple Conformance resource, based on created stores
 ```
 
-## Performance
-
-Drop database `your_db_name` on `localhost`
-then create database `your_db_name` and install Fhirbase into it
-then generate 1000000 patients
-and then run performance tests.
-
-```sh
-./perf/perf --pgdatabase=your_db_name \
-            --pghost=locahost \
-            --pgport=5432 \
-            --pgpassword=your-password \
-            --number-of-patients=1000000
-            --verbose \
-            --createdb \
-            --dropdb
-```
-
 ## Contribution
 
 * Star us on GitHub
