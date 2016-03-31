@@ -17,6 +17,30 @@ fhir_benchmark = (plv8, query)->
            )
            FROM (SELECT resource FROM patient LIMIT #{limit}) patients;
     """
+
+  create_temporary_patients = (limit)->
+    """
+    DROP TABLE IF EXISTS temp_patient_data;
+    CREATE TABLE temp_patient_data (data jsonb);
+    INSERT INTO temp_patient_data (data)
+           SELECT fhir_benchmark_merge(
+                    resource::json,
+                    '{"multipleBirthBoolean": true}'::json
+                  )::jsonb
+           FROM patient LIMIT #{limit};
+    """
+
+  update_patients = (limit)->
+    """
+    SELECT count(
+             fhir_update_resource(
+               ('{"resource":' || temp_patients.data || '}')::json
+             )
+           )
+           FROM
+           (SELECT data FROM temp_patient_data LIMIT #{limit}) temp_patients;
+    """
+
   fhir_search = (query)->
     """
     SELECT count(*) FROM fhir_search('#{query}'::json);
@@ -55,29 +79,9 @@ fhir_benchmark = (plv8, query)->
       skip: true
     },
     {
-      description: "fhir.create called just one time"
-      statement: "SELECT performance.create_patients(1)"
-      skip: true
-    },
-    {
-      description: "fhir.create called 1000 times in batch"
-      statement: "SELECT performance.create_patients(1000)"
-      skip: true
-    },
-    {
-      description: "fhir.read called just one time"
-      statement: "SELECT performance.read_patients(1)"
-      skip: true
-    },
-    {
-      description: "fhir.read called 1000 times in batch",
-      statement: "SELECT performance.read_patients(1000)",
-      skip: true
-    },
-    {
-      description: "Updating single patient with fhir.update()",
-      statement: "SELECT performance.create_temporary_patients(1000);\nSELECT performance.update_patients(1)",
-      skip: true
+      description: "Updating single patient with fhir_update_resource",
+      beforeStatement: create_temporary_patients(1000),
+      statement: update_patients(1)
     },
     {
       description: "fhir.delete called one time",
@@ -214,6 +218,9 @@ fhir_benchmark = (plv8, query)->
   ]
 
   benchmarks = (b for b in benchmarks when not b.skip).map (benchmark)->
+    if benchmark.beforeStatement
+      plv8.execute(benchmark.beforeStatement)
+
     t1 = new Date()
     plv8.execute(benchmark.statement)
     t2 = new Date()
