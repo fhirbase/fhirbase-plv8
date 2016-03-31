@@ -21,6 +21,16 @@ fhir_benchmark = (plv8, query)->
     """
     SELECT count(*) FROM fhir_search('#{query}'::json);
     """
+  performance_search = ()->
+    """
+    SELECT count(fhir_create_resource(
+      fhir_benchmark_merge(
+        fhir_benchmark_dissoc(patients.resource::json, 'id'),
+        json_build_object('name', ARRAY[json_build_object('given', ARRAY['foobarbaz'])])::json)))
+    FROM (SELECT resource FROM patient LIMIT 1) patients;
+    SELECT count(*)
+    FROM fhir_search('{"resourceType": "Patient", "queryString": "name=foobarbaz&_count=50000000"}');
+    """
 
   benchmarks = [
     {
@@ -160,9 +170,8 @@ fhir_benchmark = (plv8, query)->
       skip: true
     },
     {
-      description: "searching for patient with unique name",
-      statement: "SELECT performance.search_patient_with_only_one_search_candidate()",
-      skip: true
+      description: "searching for patient with unique name"
+      statement: performance_search()
     },
     {
       description: "searching for all Johns in database"
