@@ -41,6 +41,18 @@ fhir_benchmark = (plv8, query)->
            (SELECT data FROM temp_patient_data LIMIT #{limit}) temp_patients;
     """
 
+  delete_patients = (limit)->
+    """
+    SELECT count(
+             fhir_delete_resource(
+               (
+                 '{"resourceType": "Patient", "id": "' || patients.id || '"}'
+               )::json
+             )
+           )
+           FROM (SELECT id FROM patient LIMIT #{limit}) patients;
+    """
+
   fhir_search = (query)->
     """
     SELECT count(*) FROM fhir_search('#{query}'::json);
@@ -90,14 +102,13 @@ fhir_benchmark = (plv8, query)->
       statement: update_patients(1)
     },
     {
-      description: "fhir.delete called one time",
-      statement: "SELECT performance.delete_patients(1)",
-      skip: true
+
+      description: "fhir_delete_resource called one time",
+      statement: delete_patients(1)
     },
     {
-      description: "fhir.delete called 1000 times in batch",
-      statement: "SELECT performance.delete_patients(1000)",
-      skip: true
+      description: "fhir_delete_resource called 1000 times in batch",
+      statement: delete_patients(1000)
     },
     {
       description: "searching for non-existent name without index"
