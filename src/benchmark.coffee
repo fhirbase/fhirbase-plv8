@@ -190,14 +190,13 @@ fhir_benchmark = (plv8, query)->
       skip: true
     },
     {
-      description: "searching Patient with name=John&gender=male&_count=100&_sort=active",
-      statement: "SELECT count(*) FROM fhir.search('Patient', 'name=John&gender=male&_count=100&_sort=active')",
-      skip: true
+      description: "searching Patient with name=John&gender=male&_count=100&_sort=active"
+      statement: fhir_search('{"resourceType": "Patient", "queryString": "name=John&gender=male&_count=100&_sort=active"}')
     },
     {
-      description: "searching Encounter with patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex",
-      statement: "SELECT count(*) FROM fhir.search('Encounter', 'patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex')",
-      skip: true
+      description: "searching Encounter with patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex"
+      #statement: fhir_search('{"resourceType": "Encounter", "queryString": "patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex"}')
+      statement: fhir_search('{"resourceType": "Encounter", "queryString": "patient:Patient.name=John&_count=100&practitioner:Practitioner.name=Alex"}')
     },
     {
       description: "searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis"
