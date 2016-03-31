@@ -77,9 +77,9 @@
         PGPASSWORD={{ postgres.password }} \
         psql --pset="pager=off" --tuples-only \
       | grep  --invert-match SET \
-        > "{{ fhirbase.doc_dir }}/_data/performance3.json" \
+        > "{{ fhirbase.doc_dir }}/_data/performance.json" \
       && cd {{ fhirbase.doc_dir }} \
-      && git add _data/performance3.json \
+      && git add _data/performance.json \
       && git commit --message="{{ git.commit.message }}" \
       && git push origin {{ git.branch }}
 
