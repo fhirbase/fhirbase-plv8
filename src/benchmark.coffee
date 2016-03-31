@@ -56,6 +56,12 @@ fhir_benchmark = (plv8, query)->
     FROM fhir_search('{"resourceType": "Patient", "queryString": "name=foobarbaz&_count=50000000"}');
     """
 
+  performance_search_param = (resourceType, name)->
+    """
+    SELECT fhir_unindex_parameter('{"resourceType": "#{resourceType}", "name": "#{name}"}');
+    SELECT fhir_index_parameter('{"resourceType": "#{resourceType}", "name": "#{name}"}');
+    """
+
   benchmarks = [
     {
       description: 'fhir_create_resource called just one time'
@@ -99,59 +105,48 @@ fhir_benchmark = (plv8, query)->
       skip: true
     },
     {
-      description: "building Patient.name index",
-      statement: "SELECT performance.index_search_param('Patient','name')",
-      skip: true
+      description: "building Patient.name index"
+      statement: performance_search_param('Patient','name')
     },
     {
-      description: "building Patient.gender index",
-      statement: "SELECT performance.index_search_param('Patient','gender')",
-      skip: true
+      description: "building Patient.gender index"
+      statement: performance_search_param('Patient','gender')
     },
     {
-      description: "building Patient.address index",
-      statement: "SELECT performance.index_search_param('Patient','address')",
-      skip: true
+      description: "building Patient.address index"
+      statement: performance_search_param('Patient','address')
     },
     {
-      description: "building Patient.telecom index",
-      statement: "SELECT performance.index_search_param('Patient','telecom')",
-      skip: true
+      description: "building Patient.telecom index"
+      statement: performance_search_param('Patient','telecom')
     },
     {
-      description: "building Participant.name index",
-      statement: "SELECT performance.index_search_param('Participant','name')",
-      skip: true
+      description: "building Practitioner.name index"
+      statement: performance_search_param('Practitioner','name')
     },
     {
-      description: "building Organization.name index",
-      statement: "SELECT performance.index_search_param('Organization','name')",
-      skip: true
+      description: "building Organization.name index"
+      statement: performance_search_param('Organization','name')
     },
     {
-      description: "building Encounter.status index",
-      statement: "SELECT performance.index_search_param('Encounter','status')",
-      skip: true
+      description: "building Encounter.status index"
+      statement: performance_search_param('Encounter','status')
     },
     {
-      description: "building Encounter.patient index",
-      statement: "SELECT performance.index_search_param('Encounter','patient')",
-      skip: true
+      description: "building Encounter.patient index"
+      statement: performance_search_param('Encounter','patient')
     },
     {
-      description: "building Encounter.participant index",
-      statement: "SELECT performance.index_search_param('Encounter','participant')",
-      skip: true
+      description: "building Encounter.participant index"
+      statement: performance_search_param('Encounter','participant')
     },
     {
-      description: "building Encounter.practitioner index",
-      statement: "SELECT performance.index_search_param('Encounter','practitioner')",
-      skip: true
+      description: "building Encounter.practitioner index"
+      statement: performance_search_param('Encounter','practitioner')
     },
     {
-      description: "building Patient.organization index",
-      statement: "SELECT performance.index_search_param('Patient','organization')",
-      skip: true
+      description: "building Patient.organization index"
+      statement: performance_search_param('Patient','organization')
     },
     {
       description: "running VACUUM ANALYZE on patient table",
