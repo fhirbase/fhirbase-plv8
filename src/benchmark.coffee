@@ -165,24 +165,20 @@ fhir_benchmark = (plv8, query)->
       skip: true
     },
     {
-      description: "searching for all Johns in database",
-      statement: "SELECT count(*) FROM fhir.search('Patient', 'name=John&_count=50000000')",
-      skip: true
+      description: "searching for all Johns in database"
+      statement: fhir_search('{"resourceType": "Patient", "queryString": "name=John&_count=50000000"}')
     },
     {
-      description: "searching Patient with name=John&gender=female&_count=100 (should have no matches at all)",
-      statement: "SELECT count(*) FROM fhir.search('Patient', 'name=John&gender=female&_count=100')",
-      skip: true
+      description: "searching Patient with name=John&gender=female&_count=100 (should have no matches at all)"
+      statement: fhir_search('{"resourceType": "Patient", "querySTring": "name=John&gender=female&_count=100"}')
     },
     {
-      description: "searching Patient with name=John&gender=male&_count=100",
-      statement: "SELECT count(*) FROM fhir.search('Patient', 'name=John&gender=male&_count=100')",
-      skip: true
+      description: "searching Patient with name=John&gender=male&_count=100"
+      statement: fhir_search('{"resourceType": "Patient", "queryString": "name=John&gender=male&_count=100"}')
     },
     {
-      description: "searching Patient with name=John&gender=male&active=true&address=YALUMBA&_count=100",
-      statement: "SELECT count(*) FROM fhir.search('Patient', 'name=John&gender=male&active=true&address=YALUMBA&_count=100')",
-      skip: true
+      description: "searching Patient with name=John&gender=male&active=true&address=YALUMBA&_count=100"
+      statement: fhir_search('{"resourceType": "Patient", "queryString": "name=John&gender=male&active=true&address=YALUMBA&_count=100"}')
     },
     {
       description: "searching Patient with name=John&gender=male&_count=100&_sort=name",
