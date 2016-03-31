@@ -100,9 +100,8 @@ fhir_benchmark = (plv8, query)->
       skip: true
     },
     {
-      description: "searching for non-existent name without index",
-      statement: "SELECT count(*) FROM fhir.search('Patient', 'name=nonexistentname')",
-      skip: true
+      description: "searching for non-existent name without index"
+      statement: fhir_search('{"resourceType": "Patient", "queryString": "name=nonexistentname"}')
     },
     {
       description: "building Patient.name index"
