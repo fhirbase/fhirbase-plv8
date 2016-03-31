@@ -36,23 +36,23 @@ fhir_benchmark = (plv8, query)->
       statement: read_patients(1000)
     },
     {
-      description: "disk usage right after generation of seed data",
-      statement: "SELECT admin.admin_disk_usage_top(10)",
+      description: "disk usage right after generation of seed data"
+      statement: "SELECT admin.admin_disk_usage_top(10)"
       skip: true
     },
     {
       description: "fhir.create called just one time"
-      statement: "SELECT performance.create_patients(1)",
+      statement: "SELECT performance.create_patients(1)"
       skip: true
     },
     {
-      description: "fhir.create called 1000 times in batch",
-      statement: "SELECT performance.create_patients(1000)",
+      description: "fhir.create called 1000 times in batch"
+      statement: "SELECT performance.create_patients(1000)"
       skip: true
     },
     {
-      description: ["fhir.read called just one time",
-      statement: "SELECT performance.read_patients(1)",
+      description: "fhir.read called just one time"
+      statement: "SELECT performance.read_patients(1)"
       skip: true
     },
     {
@@ -194,7 +194,7 @@ fhir_benchmark = (plv8, query)->
       description: "searching Encounter with patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex",
       statement: "SELECT count(*) FROM fhir.search('Encounter', 'patient:Patient.name=John&_count=100&status=finished&practitioner:Practitioner.name=Alex')",
       skip: true
-    }
+    },
     {
       description: "searching Encounter with patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis",
       statement: "SELECT count(*) FROM fhir.search('Encounter', 'patient:Patient.name=John&_count=100&patient:Patient.organization:Organization.name=Mollis')",
