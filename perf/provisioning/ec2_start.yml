@@ -4,7 +4,7 @@
   connection: local
   vars:
     instance_ids:
-      - 'i-790bdccc'
+      - 'i-8c68b739'
     region: us-west-1
   tasks:
     - name: Start fhirbase performance test amazon ec2 instance
