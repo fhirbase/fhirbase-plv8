@@ -65,9 +65,6 @@
     group="{{ os.user.name }}"
     mode=0644
 
-- name: Stop PostgreSQL
-  service: name=postgresql state=stopped
-
 - name: Uninstall PostgreSQL versions unless 9.4
   apt: pkg={{ item }} state=absent force=yes purge=yes
   with_items:
@@ -109,6 +106,9 @@
     - postgresql-9.4-plv8
     - postgresql-contrib-9.4
     - python-psycopg2
+
+- name: Stop PostgreSQL
+  service: name=postgresql state=stopped
 
 - name: PostgreSQl should use right port
   lineinfile: dest="{{ postgres.conf }}"
