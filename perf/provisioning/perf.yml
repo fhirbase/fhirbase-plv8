@@ -63,13 +63,13 @@
       {{ fhirbase.app_dir }}/perf/perf \
          --createdb \
          --dropdb \
-         --number-of-patients=1000000 \
+         --number-of-patients=100000 \
          --pgdatabase={{ postgres.database }} \
          --pgpassword={{ postgres.password }} \
          --pgschema={{ postgres.schema }} \
          --pguser={{ postgres.user }} \
          --verbose=3 \
-      && echo "SET search_path TO {{ postgres.schema }}; SET plv8.start_proc = 'plv8_init'; select fhir_benchmark('{}'::json);" \
+      && echo "SET search_path TO {{ postgres.schema }}; SET plv8.start_proc = 'plv8_init'; SELECT fhir_benchmark('{}'::json);" \
       | PGHOST=localhost \
         PGPORT={{ postgres.port }} \
         PGDATABASE={{ postgres.database }} \
@@ -86,7 +86,7 @@
       sudo shutdown -h now
     args:
       executable: /bin/bash
-    async: 900
-    poll: 0
     become: yes
     become_user: "{{ os.user.name }}"
+    async: 900
+    poll: 0
