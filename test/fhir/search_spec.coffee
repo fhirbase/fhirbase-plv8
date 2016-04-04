@@ -91,13 +91,13 @@ describe 'AuditEvent search', ->
     crud.fhir_create_resource(plv8, resource: {
       resourceType: 'AuditEvent',
       entity: {name: 'bar'},
-      action: 'xyz'
+      action: 'R'
     })
 
   it 'action', ->
     assert.equal(
       search.fhir_search(plv8,
-        resourceType: 'AuditEvent', queryString: 'action=xyz').total,
+        resourceType: 'AuditEvent', queryString: 'action=R').total,
       1)
 
   it 'entity-name', ->
@@ -117,7 +117,7 @@ describe 'AuditEvent search', ->
   it 'entity-name and action', ->
     assert.equal(
       search.fhir_search(plv8,
-        resourceType: 'AuditEvent', queryString: 'entity-name=foo,action=xyz').total,
+        resourceType: 'AuditEvent', queryString: 'entity-name=foo,action=R').total,
       1)
 
 describe 'Search normalize', ->

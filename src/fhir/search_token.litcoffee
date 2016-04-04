@@ -51,7 +51,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       else if element_type == 'dateTime' or element_type == 'date'
         res = if data.length > 0 then ['true', 'false'] else []
       else if element_type == 'code' || element_type == 'string' || element_type == 'uri'
-        res = (str.toString() for str in data)
+        res = (str.toString().toLowerCase() for str in data)
       else if element_type == 'Identifier' or element_type == 'ContactPoint'
         for coding in data
             res.push(coding.value.toString().toLowerCase()) if coding.value
