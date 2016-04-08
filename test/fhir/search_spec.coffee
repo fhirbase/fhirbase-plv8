@@ -240,7 +240,7 @@ describe 'Search', ->
       ),
       ((err)->
         (err instanceof Error) &&
-          /No parser for special - lastUpdated/.test(err)
+          /Search by lastUpdated not supported/.test(err)
       )
     )
 

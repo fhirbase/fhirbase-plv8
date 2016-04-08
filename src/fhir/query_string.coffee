@@ -124,6 +124,9 @@ specials =
     query
   format:  (query, left, right)->
     query
+  lastUpdated: (query, left, right)->
+    # TODO: Implement search by _lastUpdated (#97).
+    throw new Error('Search by lastUpdated not supported')
 
 grouping = (acc, expr)->
   result = acc
