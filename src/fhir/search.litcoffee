@@ -214,6 +214,29 @@ To build search query we need to
         if expr.ids
           expr = merge_where(expr, ['$in', ":#{alias}.id", expr.ids])
 
+        if expr.lastUpdateds
+          for lastUpdated in expr.lastUpdateds
+            expr = merge_where(
+              expr,
+              [
+                '$&&',
+                [
+                  '$raw',
+                  '''
+                  tstzrange(
+                    updated_at,
+                    (updated_at + INTERVAL '1 millisecond'),
+                    '[)'
+                  )
+                  '''
+                ],
+                SEARCH_TYPES_TABLE.date.value_to_range(
+                  lastUpdated.operator,
+                  lastUpdated.value
+                )
+              ]
+            )
+
         if expr.sort
           ordering = order_hsql(alias, expr.sort)
 

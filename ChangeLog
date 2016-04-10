@@ -1,3 +1,11 @@
+2016-04-10  Danil Kutkevich  <danil@kutkevich.org>
+
+        * src/fhir/search.litcoffee (_search_sql) Respects filter
+        by `updated_at` (#97).
+
+        * src/fhir/query_string.coffee (grouping)
+        Respects `_lastUpdated` (#97).
+
 2016-02-03  Danil Kutkevich  <danil@kutkevich.org>
 
         * src/fhir/crud.coffee (fhir_patch_resource): Fix `fhir_patch_resource`.

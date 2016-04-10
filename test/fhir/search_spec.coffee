@@ -217,7 +217,7 @@ describe 'Search normalize', ->
         ).total,
         1)
 
-describe 'Search', ->
+describe 'Date search', ->
   before ->
     plv8.execute("SET plv8.start_proc = 'plv8_init'")
     schema.fhir_create_storage(plv8, resourceType: 'Patient')
@@ -225,24 +225,88 @@ describe 'Search', ->
   beforeEach ->
     schema.fhir_truncate_storage(plv8, resourceType: 'Patient')
 
-    crud.fhir_create_resource(plv8, allowId: true, resource: {
+  it 'by birthDate', ->
+    crud.fhir_create_resource(plv8, resource: {
       resourceType: 'Patient'
+      birthDate: '1970-01-01'
+    })
+    crud.fhir_create_resource(plv8, resource: {
+      resourceType: 'Patient'
+      birthDate: '2000-01-01'
     })
 
-  it 'by lastUpdated should raise error', -> # TODO: Implement search by _lastUpdated
-    assert.throws(
-      (->
-        search.fhir_search(
-          plv8,
-          resourceType: 'Patient',
-          queryString: '_lastUpdated=>1970-01-01'
-        )
-      ),
-      ((err)->
-        (err instanceof Error) &&
-          /Search by lastUpdated not supported/.test(err)
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Patient', queryString: 'birthdate=lt2010').total,
+      2)
+
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Patient',
+        queryString: 'birthdate=ge2000-01-01&birthdate=le2010-01-01'
+      ).total,
+    1)
+
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Patient', queryString: 'birthdate=gt2010').total,
+      0)
+
+  it 'by lastUpdated', ->
+    createPatient = (dateString)->
+      patient = crud.fhir_create_resource(plv8, resource: {
+        resourceType: 'Patient'
+      })
+      patient.meta.lastUpdated = new Date(dateString)
+      plv8.execute(
+        '''
+        UPDATE patient
+        SET created_at = $1::timestamptz,
+            updated_at = $1::timestamptz,
+            resource = $2
+        WHERE id = $3
+        ''',
+        [JSON.stringify(dateString), JSON.stringify(patient), patient.id]
       )
-    )
+
+    createPatient('1970-01-01')
+    createPatient('2010-01-01')
+
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Patient',
+        queryString: '_lastUpdated=eq1970-01-01'
+      ).total,
+    1)
+
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Patient',
+        queryString: '_lastUpdated=1970-01-01'
+      ).total,
+    1)
+
+
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Patient',
+        queryString: '_lastUpdated=lt1970-01-01'
+      ).total,
+    0)
+
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Patient',
+        queryString: '_lastUpdated=ge1970-01-01&_lastUpdated=le2010-01-01'
+      ).total,
+    2)
+
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Patient',
+        queryString: '_lastUpdated=gt1960-01-01&_lastUpdated=lt2000-01-01'
+      ).total,
+    1)
 
 describe 'Encounter search', ->
   before ->
