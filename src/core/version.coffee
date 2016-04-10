@@ -1,4 +1,4 @@
-fhirbase_version = -> '1.3.0.3'
+fhirbase_version = -> '1.3.0.4'
 
 exports.fhirbase_version = fhirbase_version
 
