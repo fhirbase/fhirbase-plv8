@@ -18,3 +18,9 @@ describe "CORE: pg meta", ()->
     assert.equal(meta.table_exists(plv8, 'test_pg_meta'), true)
     sch = process.env.FB_SCHEMA || 'public'
     plv8.execute "SET search_path = '#{sch}'"
+
+  it 'resource types list', ->
+    assert.equal(
+      meta.resource_types_list(plv8).indexOf('Patient') > -1,
+      true
+    )
