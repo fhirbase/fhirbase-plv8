@@ -63,3 +63,16 @@ describe "CORE: schema", ()->
         " `SELECT fhir_create_storage('{\"resourceType\": \"Users\"}');`"
       'Resource Id "unexistingId" with versionId "unexistingVersionId" does not exist'
     )
+
+  it 'drop all storages', ->
+    schema.fhir_create_storage(plv8, resourceType: 'Patient')
+    assert.equal(pg_meta.table_exists(plv8, 'patient'), true)
+    schema.fhir_drop_all_storages(plv8)
+    assert.equal(pg_meta.table_exists(plv8, 'patient'), false)
+
+  it 'create all storages', ->
+    this.timeout(15000) # creating all storage takes longer time than default 2000 milliseconds <https://mochajs.org/#timeouts>
+    schema.fhir_drop_all_storages(plv8)
+    assert.equal(pg_meta.table_exists(plv8, 'patient'), false)
+    schema.fhir_create_all_storages(plv8)
+    assert.equal(pg_meta.table_exists(plv8, 'patient'), true)

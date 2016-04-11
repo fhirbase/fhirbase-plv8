@@ -1,3 +1,11 @@
+2016-04-11  Danil Kutkevich  <danil@kutkevich.org>
+
+        * src/core/schema.coffee (fhir_create_all_storages) Implements the
+        function for creating tables for all known resource types.
+
+        * src/core/schema.coffee (fhir_drop_all_storages) Implements
+        the function for dropping all resources tables.
+
 2016-04-10  Danil Kutkevich  <danil@kutkevich.org>
 
         * src/fhir/search.litcoffee (_search_sql) Respects filter

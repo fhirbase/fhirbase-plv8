@@ -51,7 +51,7 @@ exports.fhir_create_storage_sql = fhir_create_storage_sql
 exports.fhir_create_storage_sql.plv8_signature = ['json', 'json']
 
 # TODO: rename to create_storage
-exports.fhir_create_storage = (plv8, query)->
+fhir_create_storage = (plv8, query)->
   resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   if pg_meta.table_exists(plv8, nm)
@@ -60,7 +60,22 @@ exports.fhir_create_storage = (plv8, query)->
     plv8.execute(fhir_create_storage_sql(plv8, query)) 
     {status: 'ok', message: "Table #{nm} was created"}
 
+exports.fhir_create_storage = fhir_create_storage
 exports.fhir_create_storage.plv8_signature = ['json', 'json']
+
+exports.fhir_create_all_storages = (plv8)->
+  resourceTypes = pg_meta.resource_types_list(plv8)
+
+  for resourceType in resourceTypes
+    fhir_create_storage(plv8, resourceType: resourceType)
+
+  resourceTypes
+
+exports.fhir_create_all_storages.plv8_signature = {
+  arguments: 'json'
+  returns: 'SETOF text'
+  immutable: false
+}
 
 fhir_drop_storage_sql = (plv8, query)->
   resource_type = query.resourceType
@@ -74,7 +89,7 @@ fhir_drop_storage_sql = (plv8, query)->
 exports.fhir_drop_storage_sql = fhir_drop_storage_sql
 exports.fhir_drop_storage_sql.plv8_signature = ['json', 'json']
 
-exports.fhir_drop_storage = (plv8, query)->
+fhir_drop_storage = (plv8, query)->
   resource_type = query.resourceType
   nm = namings.table_name(plv8, resource_type)
   unless pg_meta.table_exists(plv8, nm)
@@ -83,7 +98,34 @@ exports.fhir_drop_storage = (plv8, query)->
     plv8.execute(fhir_drop_storage_sql(plv8, query))
     {status: 'ok', message: "Table #{nm} was dropped"}
 
+exports.fhir_drop_storage = fhir_drop_storage
 exports.fhir_drop_storage.plv8_signature = ['json', 'json']
+
+exports.fhir_drop_all_storages = (plv8)->
+  resourceTypes = pg_meta.resource_types_list(plv8)
+    .filter((resourceType)->
+      [
+        'CodeSystem',
+        'ConceptMap',
+        'NamingSystem',
+        'OperationDefinition',
+        'Resource',
+        'SearchParameter',
+        'StructureDefinition',
+        'ValueSet'
+      ].indexOf(resourceType) == -1
+    )
+
+  for resourceType in resourceTypes
+    fhir_drop_storage(plv8, resourceType: resourceType)
+
+  resourceTypes
+
+exports.fhir_drop_all_storages.plv8_signature = {
+  arguments: 'json'
+  returns: 'SETOF text'
+  immutable: false
+}
 
 exports.fhir_describe_storage = (plv8, query)->
   resource_type = query.resourceType

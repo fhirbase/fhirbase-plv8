@@ -62,6 +62,17 @@ describe 'Integration',->
         1
       )
 
+    it 'create all', ->
+      this.timeout(15000) # creating all storage takes longer time than default 2000 milliseconds <https://mochajs.org/#timeouts>
+      plv8.execute('SELECT fhir_create_all_storages()')
+      assert.equal(
+        plv8.execute('''
+          SELECT * from information_schema.tables
+          WHERE table_name = 'order' AND table_schema = current_schema()
+        ''').length,
+        1
+      )
+
     it 'drop', ->
       plv8.execute(
         'SELECT fhir_drop_storage($1)',
@@ -78,6 +89,16 @@ describe 'Integration',->
         plv8.execute('''
           SELECT * from information_schema.tables
           WHERE table_name = 'order_history' AND table_schema = current_schema()
+        ''').length,
+        0
+      )
+
+    it 'drop all', ->
+      plv8.execute('SELECT fhir_drop_all_storages()')
+      assert.equal(
+        plv8.execute('''
+          SELECT * from information_schema.tables
+          WHERE table_name = 'order' AND table_schema = current_schema()
         ''').length,
         0
       )
