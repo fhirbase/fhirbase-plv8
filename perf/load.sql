@@ -50,27 +50,27 @@ CREATE TABLE organization_names (
 -- COPY organization_names (organization_name)
 --      FROM './perf/data/organization_names.csv';
 
-\echo 'Create loading fake date function: "load_dummy_data()".'
-DROP FUNCTION IF EXISTS load_dummy_data() CASCADE;
-CREATE OR REPLACE FUNCTION load_dummy_data()
+\echo 'Create loading fake date function: "load_dummy_data(_directory_ TEXT)".'
+DROP FUNCTION IF EXISTS load_dummy_data(_directory_ TEXT) CASCADE;
+CREATE OR REPLACE FUNCTION load_dummy_data(_directory_ TEXT)
 RETURNS void AS $$
   BEGIN
     RAISE NOTICE 'Load fake "first_names".';
-    COPY first_names (sex, first_name) FROM '/fhirbase/perf/data/first_names.csv';
+    EXECUTE 'COPY first_names (sex, first_name) FROM ''' || _directory_ || '/first_names.csv''';
 
     RAISE NOTICE 'Load fake "last_names".';
-    COPY last_names (last_name) FROM '/fhirbase/perf/data/last_names.csv';
+    EXECUTE 'COPY last_names (last_name) FROM ''' || _directory_ || '/last_names.csv''';
 
     RAISE NOTICE 'Load fake "languages".';
-    COPY languages (code, name) FROM '/fhirbase/perf/data/language-codes-iso-639-1-alpha-2.csv' WITH csv;
+    EXECUTE 'COPY languages (code, name) FROM ''' || _directory_ || '/language-codes-iso-639-1-alpha-2.csv'' WITH csv';
 
     RAISE NOTICE 'Load fake "street_names".';
-    COPY street_names (street_name) FROM '/fhirbase/perf/data/street_names.csv';
+    EXECUTE 'COPY street_names (street_name) FROM ''' || _directory_ || '/street_names.csv''';
 
     RAISE NOTICE 'Load fake "cities".';
-    COPY cities (zip, state, city, latitude, longitude) FROM '/fhirbase/perf/data/cities.csv' WITH csv;
+    EXECUTE 'COPY cities (zip, state, city, latitude, longitude) FROM ''' || _directory_ || '/cities.csv'' WITH csv';
 
     RAISE NOTICE 'Load fake "organization_names".';
-    COPY organization_names (organization_name) FROM '/fhirbase/perf/data/organization_names.csv';
+    EXECUTE 'COPY organization_names (organization_name) FROM ''' || _directory_ || '/organization_names.csv''';
   END
 $$ LANGUAGE plpgsql;

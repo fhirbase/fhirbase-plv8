@@ -2,7 +2,8 @@
 
 export verbose=${verbose:-1}
 
-export directory=$(dirname $0)
+export script_directory=$(dirname $0)
+export data_directory=${data_directory:-/fhirbase/perf/data}
 
 export PGHOST=${PGHOST:-localhost}
 export PGPORT=${PGPORT:-5432}
@@ -24,6 +25,9 @@ while [ $# -gt 0 ]; do
             ;;
         --verbose=*)
             let verbose="${1#*=}"
+            ;;
+        --data-directory=*)
+            export data_directory="${1#*=}"
             ;;
         --dropdb)
             dropdb=1
@@ -75,6 +79,8 @@ if [[ $verbose -lt 2 ]] ; then
 fi
 
 if [[ $verbose -eq 3 ]] ; then
+    echo "data_directory=$data_directory"
+
     echo "PGHOST=$PGHOST"
     echo "PGDATABASE=$PGDATABASE"
     echo "PGPORT=$PGPORT"
@@ -122,15 +128,15 @@ else
 fi
 
 echo Create loading fake data function in $PGDATABASE.$pg_schema \
-     from "$directory"/data.
-{ echo "SET search_path TO $pg_schema;" && cat "$directory"/load.sql ; } \
+     from "$data_directory".
+{ echo "SET search_path TO $pg_schema;" && cat "$script_directory"/load.sql ; } \
     | psql
 [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
 
-echo Load dummy data to $PGDATABASE.$pg_schema from "$directory"/data.
+echo Load dummy data to $PGDATABASE.$pg_schema from "$data_directory".
 read -r -d '' sql << EOF
 SET search_path TO $pg_schema;
-SELECT load_dummy_data();
+SELECT load_dummy_data('$data_directory');
 EOF
 echo "$sql" | psql || exit 1
 
@@ -145,7 +151,7 @@ EOF
 echo "$sql" | psql || exit 1
 
 echo Create generation functions in $PGDATABASE.$pg_schema.
-{ echo "SET search_path TO $pg_schema;" && cat "$directory"/generate.sql ; } \
+{ echo "SET search_path TO $pg_schema;" && cat "$script_directory"/generate.sql ; } \
     | psql
 [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
 

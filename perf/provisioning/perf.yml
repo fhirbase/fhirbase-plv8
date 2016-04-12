@@ -62,6 +62,7 @@
     shell: |
       {{ fhirbase.app_dir }}/perf/perf \
          --createdb \
+         --data-directory={{ fhirbase.app_dir }}/perf/data \
          --dropdb \
          --number-of-patients=100000 \
          --pgdatabase={{ postgres.database }} \

@@ -11,6 +11,7 @@ describe 'Benchmarking', ->
       )
 
   it 'Benchmark', ->
+    this.timeout(60000) # may takes longer time than default 2000 milliseconds <https://mochajs.org/#timeouts>
     benchmark = plv8.execute('SELECT fhir_benchmark($1::json)', [JSON.stringify({})])
     console.log JSON.stringify(JSON.parse(benchmark[0].fhir_benchmark), null, 2)
     assert.equal(
