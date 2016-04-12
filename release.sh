@@ -7,8 +7,11 @@ set -e
 # DATABASE_URL=postgres://your_user_name:your_password@localhost:5432/fhirbase_build
 # WARNING: `fhirbase_build` database will be destroed and recreated!
 
-PREV_FBVERSION="1.3.0.4"
-FBVERSION="1.3.0.5"
+PREV_FHIRVERSION="1.3.0"
+FHIRVERSION="1.3.0"
+
+PREV_FBVERSION="1.3.0.5"
+FBVERSION="1.3.0.6"
 
 PGOPTIONS='--client-min-messages=warning'
 loadcmd="psql --no-psqlrc --quiet --echo-all --single-transaction \
@@ -58,12 +61,22 @@ FB_SCHEMA=bar bash build.sh || exit 1
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 FB_SCHEMA=bar npm run test || exit 1
 
-version_sensitive_files="
+# fhir_version_sensitive_files="
+# ./src/fhir/version.coffee
+# "
+
+# for file in $fhir_version_sensitive_files; do
+#     sed --in-place \
+#         --expression="s/$PREV_FHIRVERSION/$FHIRVERSION/g" \
+#         $file || exit 1
+# done
+
+fhirbase_version_sensitive_files="
 ./src/core/version.coffee
 ./vagrant/provision/provision-environment.sh
 ./perf/perf"
 
-for file in $version_sensitive_files; do
+for file in $fhirbase_version_sensitive_files; do
     sed --in-place \
         --expression="s/$PREV_FBVERSION/$FBVERSION/g" \
         $file || exit 1
