@@ -7,11 +7,11 @@ set -e
 # DATABASE_URL=postgres://your_user_name:your_password@localhost:5432/fhirbase_build
 # WARNING: `fhirbase_build` database will be destroed and recreated!
 
-PREV_FBVERSION="1.3.0.5"
-FBVERSION="1.3.0.6"
+PREV_FBVERSION="1.3.0.6"
+FBVERSION="1.3.0.7"
 
 PREV_FBRELEASEDATE="2016-04-12T17:00:00Z"
-FBRELEASEDATE="2016-04-12T17:00:00Z"
+FBRELEASEDATE="2016-04-12T19:00:00Z"
 
 PREV_FHIRVERSION="1.3.0"
 FHIRVERSION="1.3.0"
@@ -85,7 +85,7 @@ for file in $fhirbase_version_sensitive_files; do
         $file || exit 1
 done
 
-fhirbase_release_date_sensitive_files=" release_date
+fhirbase_release_date_sensitive_files="
 ./src/core/fhirbase_version.coffee
 "
 
