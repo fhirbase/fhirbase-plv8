@@ -7,11 +7,14 @@ set -e
 # DATABASE_URL=postgres://your_user_name:your_password@localhost:5432/fhirbase_build
 # WARNING: `fhirbase_build` database will be destroed and recreated!
 
-PREV_FHIRVERSION="1.3.0"
-FHIRVERSION="1.3.0"
-
 PREV_FBVERSION="1.3.0.5"
 FBVERSION="1.3.0.6"
+
+PREV_FBRELEASEDATE="2016-04-12T17:00:00Z"
+FBRELEASEDATE="2016-04-12T17:00:00Z"
+
+PREV_FHIRVERSION="1.3.0"
+FHIRVERSION="1.3.0"
 
 PGOPTIONS='--client-min-messages=warning'
 loadcmd="psql --no-psqlrc --quiet --echo-all --single-transaction \
@@ -61,24 +64,34 @@ FB_SCHEMA=bar bash build.sh || exit 1
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 FB_SCHEMA=bar npm run test || exit 1
 
-# fhir_version_sensitive_files="
-# ./src/fhir/version.coffee
-# "
+fhir_version_sensitive_files="
+./src/fhir/fhir_version.coffee
+"
 
-# for file in $fhir_version_sensitive_files; do
-#     sed --in-place \
-#         --expression="s/$PREV_FHIRVERSION/$FHIRVERSION/g" \
-#         $file || exit 1
-# done
+for file in $fhir_version_sensitive_files; do
+    sed --in-place \
+        --expression="s/$PREV_FHIRVERSION/$FHIRVERSION/g" \
+        $file || exit 1
+done
 
 fhirbase_version_sensitive_files="
-./src/core/version.coffee
+./src/core/fhirbase_version.coffee
 ./vagrant/provision/provision-environment.sh
 ./perf/perf"
 
 for file in $fhirbase_version_sensitive_files; do
     sed --in-place \
         --expression="s/$PREV_FBVERSION/$FBVERSION/g" \
+        $file || exit 1
+done
+
+fhirbase_release_date_sensitive_files=" release_date
+./src/core/fhirbase_version.coffee
+"
+
+for file in $fhirbase_release_date_sensitive_files; do
+    sed --in-place \
+        --expression="s/$PREV_FBRELEASEDATE/$FBRELEASEDATE/g" \
         $file || exit 1
 done
 

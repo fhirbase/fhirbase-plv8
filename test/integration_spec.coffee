@@ -24,10 +24,26 @@ describe 'Integration',->
       1
     )
 
-  it 'fhirbase version', ->
+  it 'FHIR version', ->
+    version = plv8.execute("SELECT fhir_version()")[0].fhir_version
+    assert.equal(
+      !!version.match(/.*[0-9]*\.[0-9]*\.[0-9].*/),
+      true
+    )
+
+  it 'Fhirbase version', ->
     version = plv8.execute("SELECT fhirbase_version()")[0].fhirbase_version
     assert.equal(
       !!version.match(/.*[0-9]*\.[0-9]*\.[0-9].*/),
+      true
+    )
+
+  it 'Fhirbase release date', ->
+    version = plv8.execute("SELECT fhirbase_release_date()")[0]
+      .fhirbase_release_date
+
+    assert.equal(
+      !!version.match(/-?[0-9]{4}(-(0[1-9]|1[0-2])(-(0[0-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\.[0-9]+)?(Z|(\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)))?)?)?/),
       true
     )
 

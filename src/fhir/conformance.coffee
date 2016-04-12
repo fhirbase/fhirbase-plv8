@@ -1,10 +1,20 @@
 utils = require('../core/utils')
 compat = require('../compat')
+fhirVersion = require('./fhir_version')
+fhirbaseVersion = require('../core/fhirbase_version')
 
 exports.fhir_conformance = (plv8, base)->
   base.resourceType = 'Conformance'
-  base.version =  base.version || 'fhirbase-0.0.2'
   base.acceptUnknown = true
+
+  base.fhirVersion = base.fhirVersion || fhirVersion.fhir_version()
+  base.version =  base.version || fhirbaseVersion.fhirbase_version()
+
+  base.software = {
+    name: 'Fhirbase'
+    releaseDate: base.releaseDate || fhirbaseVersion.fhirbase_release_date()
+    version: base.version || fhirbaseVersion.fhirbase_version()
+  }
 
   schema = utils.current_schema(plv8)
 
