@@ -159,6 +159,10 @@ fhir_benchmark = (plv8, query)->
       statement: performance_search_param('Patient','organization')
     },
     {
+      description: "building Patient.birthdate index"
+      statement: performance_search_param('Patient','birthdate')
+    },
+    {
       description: "running VACUUM ANALYZE on patient table",
       statement: "VACUUM ANALYZE patient",
       skip: true
