@@ -1,7 +1,0 @@
-2016-03-28 19:33:07 UTC [2882-2] fhirbase@fhirbase LOG:  duration: 0.238 ms
-2016-03-28 19:33:07 UTC [2892-1] fhirbase@fhirbase LOG:  statement: SET search_path TO perf;
-2016-03-28 19:33:07 UTC [2892-2] fhirbase@fhirbase LOG:  duration: 0.138 ms
-2016-03-28 19:33:07 UTC [2892-3] fhirbase@fhirbase LOG:  statement: SET plv8.start_proc = 'plv8_init';
-2016-03-28 19:33:07 UTC [2892-4] fhirbase@fhirbase LOG:  duration: 0.113 ms
-2016-03-28 19:33:07 UTC [2892-5] fhirbase@fhirbase LOG:  statement: SELECT fhir_conformance('{"somekey": "somevalue"}'::json);
-2016-03-28 19:33:07 UTC [2892-6] fhirbase@fhirbase LOG:  duration: 126.623 ms
