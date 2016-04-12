@@ -18,19 +18,20 @@ so the code split as much as possible  into small modules
 `expand_params` walk throw it and add required FHIR meta-data to each parameter
 `normalize_operators` unify operators
 
-    parser = require('./query_string')
-    helpers = require('./search_helpers')
+    compat = require('../compat')
     expand = require('./expand_params')
-    namings = require('../core/namings')
-    lisp = require('../lispy')
-    namings = require('../core/namings')
-    meta_db = require('./meta_pg')
+    helpers = require('./search_helpers')
     index = require('./meta_index')
-    utils = require('../core/utils')
+    lang = require('../lang')
+    lisp = require('../lispy')
+    meta_db = require('./meta_pg')
+    namings = require('../core/namings')
+    namings = require('../core/namings')
+    outcome = require('./outcome')
+    parser = require('./query_string')
     pg_meta = require('../core/pg_meta')
     sql = require('../honey')
-    lang = require('../lang')
-    compat = require('../compat')
+    utils = require('../core/utils')
 
 
 For every search type we have dedicated module,
@@ -88,6 +89,12 @@ Then we are returning  resulting Bundle.
       resources.map((res)-> search_elements.elements(res, sel))
 
     exports.fhir_search = (plv8, query)->
+      if query.resourceType &&
+         !pg_meta.table_exists(
+           plv8,
+           namings.table_name(plv8, query.resourceType)
+         )
+        return outcome.unknown_type(query.resourceType)
 
       idx_db = ensure_index(plv8)
 

@@ -74,6 +74,23 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
         if q.indexed_order
           assert((explain.indexOf("Index Scan") > -1) && (explain.indexOf("Scan Direction") > -1), "Should be indexed but #{explain}")
 
+describe 'Search', ->
+  before ->
+    plv8.execute("SET plv8.start_proc = 'plv8_init'")
+
+  it 'by nonexistent resource storge should return outcome', -> #<https://github.com/fhirbase/fhirbase-plv8/issues/95>
+    schema.fhir_drop_storage(plv8, resourceType: 'Patient')
+    outcome = search.fhir_search(plv8,
+      resourceType: 'Patient', queryString: 'name=foobar'
+    )
+    assert.equal(outcome.resourceType, 'OperationOutcome')
+    assert.equal(outcome.issue[0].code, 'not-found')
+    assert.equal(outcome.issue[0].details.coding[0].code, 'MSG_UNKNOWN_TYPE')
+    assert.equal(
+      outcome.issue[0].details.coding[0].display,
+      'Resource Type "Patient" not recognised'
+    )
+
 describe 'AuditEvent search', ->
   before ->
     plv8.execute("SET plv8.start_proc = 'plv8_init'")
