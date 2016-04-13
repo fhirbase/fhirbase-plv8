@@ -26,7 +26,6 @@ before_install:
   -in perf/provisioning/secure/secure.tar.gz.enc
   -out perf/provisioning/secure/secure.tar.gz
   -d
-install:
 - |
   cd /tmp || exit 1
   git clone https://github.com/plv8/plv8.git || exit 1
@@ -34,6 +33,7 @@ install:
   git checkout $PLV8_VERSION || exit 1
   sudo make all install || exit 1
 before_script:
+- cd $TRAVIS_BUILD_DIR
 - npm install && cd plpl && npm install
 - npm install -g mocha && npm install -g coffee-script
 - psql -c "CREATE USER fb WITH PASSWORD 'fb'"
