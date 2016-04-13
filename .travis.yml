@@ -3,15 +3,17 @@ sudo: false
 node_js:
 - '0.12'
 addons:
-  postgresql: '9.4'
+  postgresql: $PG_MAJOR
   apt:
     packages:
-    - postgresql-contrib-9.4
+    - postgresql-contrib-$PG_MAJOR
+    - postgresql-server-dev-$PG_MAJOR
     - python-pip
 env:
   global:
   - secure: OhbEMmdvXwMoNsQCzWRIQsYc6LwcRAARjAoVv150LRTDB4s/FPo/67DQuUkcMJPp5+HyGh2/9giNArmn7NcMiXHtiUZKQKRkt758Ga9IdYidHJrmUI3wZKJns6W7SeCr4GSsd7cVcDo/ubFQQGZK2yIlRRF3zmWnEcPt9uLIlyJlrBu5DKUev65n/AdUzaqGf48efavz97A9DCVxwuE44jGp5Bqjoqqrben97j9U5L8A3APGIcweBaxcLQPunIZboA9DX8xrP/Y+C0cTJlJksbEb8jDNwrK+xLmX/Bd3o5fQh83/wyu2c/E9WrOR96e74VutLjXhdt5gOfzD79Q09lPziYg+0PkR8NaBwHldpmzRf75asem83OYGlNDacd2dkyiuqCNpa1xOIutdk9IKl0FNCn5C4OYFXaR6vPNwwZWF4lt+cXXs0il2/buWkR1Ydt35W1j0LHAPLezrrD839klfxHmVd+3BEf1RB9TQGMzSseSdMEsx5pWJh1k3gM/QGTRpjeaTat49oHEusSx6P+nU5L1VzfPN60/QJvkiS9ay0xdounbb9pkiI/oYyzQP5JD+dqKqxpBWEEBfhrxc+GhFZEJLPLW9XB9dBF5FCWRVweGyDcGa2SP81xV7L/Vc56jWsKcA/KkCLnpSgBm+b34Fg45VOga1zO2lxEV/Cdk=
   - secure: TCYwHystRMTz1AKWfQ7436LM7r2WumYQNaLs3f/j4QLZEZhZJMTUGClYzfc80mbjkcpSsbXcitSOfwLxo+aTG8kgvQTVFZJsNNExinnlZ8zo8h91+iyN4GHdEECFnylEAC1QvSUJbACpYTmHwz5HsXrBmrP5yKVloesbbdTr5V34Z9DhKHb6MkpgNzzYM7Cy977eqkp5CaFOwRy1CbxM2bCJrgZEFrBGpW9Iqb5YLMoorygffDWltNZ/GK39hYsETOpdNkUIPZWbGQyRx4yYpydk4AMEBz7r0QM6opf4YVCoA2MfrbDnPGrfyyv+T1NgYmBa4PYzpBOACphuYmVcM6Voqb3qxZUxTzQ4lTsNU/gZ8kUQdlbjQCtVotj5blp39ynmOCt6F9iKXGPAG3u8iWB19+19CvpeFirxwa5yG6b0rlsnZNAyQYi+2/7mxR1ZDZjl2llX4WmVPM0NHQ+yfMIrljdog+2SkNOO0PPBcfba4inZE8A7+k/8zCucBOofxx0zfam44FjisUtiVjpEFJtKmEMHznKN/AlEu0SmUl859Hc+418xBboxYr5lux9d+ha0QD4/bpokRNFvSM3ZGcBP44+m3bRpyvjuv+cMN7DBedn2QeBJSnfsB0cJNepoi++b7NsZLggTqKy7KhvGplapiYvQrWSys6ZPnq28PXA=
+  - PG_MAJOR=9.4
   matrix:
   - PLV8_VERSION=v1.4.6
 notifications:
