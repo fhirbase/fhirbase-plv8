@@ -7,7 +7,7 @@ addons:
   apt:
     packages:
     - build-essential
-    - g++-4.8
+    - g++-4.7
     - libv8-dev
     - postgresql-contrib-9.4
     - postgresql-server-dev-9.4
@@ -29,7 +29,7 @@ before_install:
   -out perf/provisioning/secure/secure.tar.gz
   -d
 - |
-  sudo apt-get remove g++-4.4 g++-4.6 g++-4.7
+  sudo apt-get remove g++-4.4 g++-4.6
   cd /tmp || exit 1
   git clone https://github.com/plv8/plv8.git || exit 1
   cd /tmp/plv8 || exit 1
