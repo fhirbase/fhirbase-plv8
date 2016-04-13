@@ -26,12 +26,13 @@ before_install:
   -in perf/provisioning/secure/secure.tar.gz.enc
   -out perf/provisioning/secure/secure.tar.gz
   -d
+install:
 - |
   cd /tmp || exit 1
   git clone https://github.com/plv8/plv8.git || exit 1
   cd /tmp/plv8 || exit 1
   git checkout $PLV8_VERSION || exit 1
-  make all install || exit 1
+  sudo make all install || exit 1
 before_script:
 - npm install && cd plpl && npm install
 - npm install -g mocha && npm install -g coffee-script
