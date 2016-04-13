@@ -22,6 +22,7 @@ before_install:
   -in perf/provisioning/secure/secure.tar.gz.enc
   -out perf/provisioning/secure/secure.tar.gz
   -d
+- ./travis/foo.sh
 before_script:
 - npm install && cd plpl && npm install
 - npm install -g mocha && npm install -g coffee-script
