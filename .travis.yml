@@ -6,6 +6,8 @@ addons:
   postgresql: 9.4
   apt:
     packages:
+    - build-essential
+    - libv8-dev
     - postgresql-contrib-9.4
     - postgresql-server-dev-9.4
     - python-pip
