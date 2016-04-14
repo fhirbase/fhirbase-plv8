@@ -7,7 +7,6 @@ addons:
   apt:
     packages:
     - build-essential
-    - g++-4.7
     - libv8-dev
     - postgresql-contrib-9.4
     - postgresql-server-dev-9.4
@@ -18,7 +17,7 @@ env:
   - secure: TCYwHystRMTz1AKWfQ7436LM7r2WumYQNaLs3f/j4QLZEZhZJMTUGClYzfc80mbjkcpSsbXcitSOfwLxo+aTG8kgvQTVFZJsNNExinnlZ8zo8h91+iyN4GHdEECFnylEAC1QvSUJbACpYTmHwz5HsXrBmrP5yKVloesbbdTr5V34Z9DhKHb6MkpgNzzYM7Cy977eqkp5CaFOwRy1CbxM2bCJrgZEFrBGpW9Iqb5YLMoorygffDWltNZ/GK39hYsETOpdNkUIPZWbGQyRx4yYpydk4AMEBz7r0QM6opf4YVCoA2MfrbDnPGrfyyv+T1NgYmBa4PYzpBOACphuYmVcM6Voqb3qxZUxTzQ4lTsNU/gZ8kUQdlbjQCtVotj5blp39ynmOCt6F9iKXGPAG3u8iWB19+19CvpeFirxwa5yG6b0rlsnZNAyQYi+2/7mxR1ZDZjl2llX4WmVPM0NHQ+yfMIrljdog+2SkNOO0PPBcfba4inZE8A7+k/8zCucBOofxx0zfam44FjisUtiVjpEFJtKmEMHznKN/AlEu0SmUl859Hc+418xBboxYr5lux9d+ha0QD4/bpokRNFvSM3ZGcBP44+m3bRpyvjuv+cMN7DBedn2QeBJSnfsB0cJNepoi++b7NsZLggTqKy7KhvGplapiYvQrWSys6ZPnq28PXA=
   matrix:
   - PLV8_VERSION=v1.4.3
-  - PLV8_VERSION=v1.4.6
+  - PLV8_VERSION=v1.4.4
 notifications:
   slack: fhirbase:isitOv0KvPgaMzrccuAzVUwB
 before_install:
@@ -29,7 +28,6 @@ before_install:
   -out perf/provisioning/secure/secure.tar.gz
   -d
 - |
-  sudo apt-get remove g++-4.4 g++-4.6
   cd /tmp || exit 1
   git clone https://github.com/plv8/plv8.git || exit 1
   cd /tmp/plv8 || exit 1
