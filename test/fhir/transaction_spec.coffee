@@ -39,3 +39,34 @@ describe 'transaction execution', ->
       e.after.forEach (i) ->
         result = search.fhir_search(plv8, i.search)
         assert.equal(i.total, result.total, 'after:' + JSON.stringify(i))
+
+describe 'Transaction', ->
+  before ->
+    plv8.execute("SET plv8.start_proc = 'plv8_init'")
+    schema.fhir_create_storage(plv8, resourceType: 'Patient')
+
+  beforeEach ->
+    schema.fhir_truncate_storage(plv8, resourceType: 'Patient')
+    crud.fhir_create_resource(plv8,
+      resource: {resourceType: 'Patient', name: [{family: ['Foo bar']}]})
+
+  it 'search', ->
+    bundle =
+      resourceType: 'Bundle'
+      id: 'bundle-transaction-id'
+      type: 'transaction'
+      entry: [
+        {
+          request:
+            method: 'GET'
+            url: '/Patient?name=Foo bar'
+        }
+      ]
+    transaction = transaction.fhir_transaction(plv8, bundle)
+    assert.equal(transaction.resourceType, 'Bundle')
+    assert.equal(transaction.type, 'transaction-response')
+    assert.equal(transaction.entry[0].resourceType, 'Bundle')
+    assert.equal(transaction.entry[0].type, 'searchset')
+    assert.equal(transaction.entry[0].total, 1)
+    assert.equal(transaction.entry[0].entry[0].resource.resourceType, 'Patient')
+    assert.equal(transaction.entry[0].entry[0].resource.name[0].family[0], 'Foo bar')

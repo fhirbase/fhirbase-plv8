@@ -1,7 +1,9 @@
 crud = require('./crud')
+search = require('./search')
 
 RES_TYPE_RE = "([A-Za-z]+)"
 ID_RE = "([A-Za-z0-9\\-]+)"
+QUERY_STRING_RE = "([A-Za-z0-9 &=-]+)"
 
 strip = (obj)->
   res = {}
@@ -71,6 +73,13 @@ HANDLERS = [
     GET: (match, entry)->
       type: 'history'
   }
+  {
+    test: new RegExp("^/#{RES_TYPE_RE}/?\\?#{QUERY_STRING_RE}$")
+    GET: (match, entry)->
+      type: 'search'
+      resourceType: match[1]
+      queryString: match[2]
+  }
 ]
 
 # TODO:
@@ -113,8 +122,12 @@ executePlan = (plv8, plan) ->
         crud.fhir_read_resource(plv8, {id: action.id, resourceType: action.resourceType})
       when "vread"
         crud.fhir_vread_resource(plv8, {id: action.id, resourceType: action.resourceType, versionId: action.versionId})
+      when "search"
+        search.fhir_search(plv8,
+          resourceType: action.resourceType, queryString: action.queryString)
       else
         "request.type is not supported - \n#{JSON.stringify(action)}"
+
 exports.executePlan = executePlan
 
 execute = (plv8, bundle, strictMode) ->
