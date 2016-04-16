@@ -524,3 +524,135 @@ describe 'Integration',->
         )[0].fhir_explain_search
 
       assert.equal(explained, 1)
+
+  describe 'Transaction', ->
+    before ->
+      plv8.execute(
+        'SELECT fhir_create_storage($1)',
+        [JSON.stringify(resourceType: 'Patient')]
+      )
+
+    beforeEach ->
+      plv8.execute(
+        'SELECT fhir_truncate_storage($1)',
+        [JSON.stringify(resourceType: 'Patient')]
+      )
+      plv8.execute(
+        'SELECT fhir_create_resource($1)',
+        [JSON.stringify(
+          allowId: true,
+          resource: {id: 'patient-to-delete-id', resourceType: 'Patient'}
+        )]
+      )
+      plv8.execute(
+        'SELECT fhir_create_resource($1)',
+        [JSON.stringify(
+          allowId: true,
+          resource: {
+            id: 'patient-to-update-id',
+            resourceType: 'Patient',
+            name: [{given: ['Name to update']}]
+          }
+        )]
+      )
+
+    it 'seed data should be', ->
+      assert.equal(
+        JSON.parse(
+          plv8.execute(
+            'SELECT fhir_search($1)',
+            [JSON.stringify(
+              resourceType: 'Patient',
+              queryString: '_id=patient-to-delete-id'
+            )]
+          )[0].fhir_search
+        ).total,
+        1
+      )
+      assert.equal(
+        JSON.parse(
+          plv8.execute(
+            'SELECT fhir_search($1)',
+            [JSON.stringify(
+              resourceType: 'Patient',
+              queryString: '_id=patient-to-update-id&name=Name to update'
+            )]
+          )[0].fhir_search
+        ).total,
+        1
+      )
+
+    it 'should work', ->
+      bundle =
+        resourceType: 'Bundle'
+        id: 'bundle-transaction-id'
+        type: 'transaction'
+        entry: [
+          {
+            resource:
+              resourceType: 'Patient'
+              name: [{family: ['Name to create']}]
+            request:
+              method: 'POST'
+              url: '/Patient'
+          }
+          {
+            resource:
+              resourceType: 'Patient'
+              active: true
+              name: [{family: ['Name to update updated']}]
+            request:
+              method: 'PUT'
+              url: '/Patient/patient-to-update-id'
+          }
+          {
+            request:
+               method: 'DELETE'
+               url: '/Patient/patient-to-delete-id'
+          }
+          {
+            request:
+              method: 'GET'
+              url: '/Patient/patient-to-delete-id'
+          }
+          {
+            request:
+              method: 'GET'
+              url: '/Patient?name=Name to create'
+          }
+        ]
+
+      transaction =
+        JSON.parse(
+          plv8.execute(
+            'SELECT fhir_transaction($1)',
+            [JSON.stringify(bundle)]
+          )[0].fhir_transaction
+        )
+
+      assert.equal(transaction.resourceType, 'Bundle')
+      assert.equal(transaction.type, 'transaction-response')
+
+      assert.equal(transaction.entry[0].resourceType, 'Patient')
+      assert.equal(transaction.entry[0].meta.extension[0].url, 'fhir-request-method')
+      assert.equal(transaction.entry[0].meta.extension[0].valueString, 'POST')
+      assert.equal(transaction.entry[0].name[0].family[0], 'Name to create')
+
+      assert.equal(transaction.entry[1].resourceType, 'Patient')
+      assert.equal(transaction.entry[1].id, 'patient-to-update-id')
+      assert.equal(transaction.entry[1].name[0].family[0], 'Name to update updated')
+
+      assert.equal(transaction.entry[2].resourceType, 'Patient')
+      assert.equal(transaction.entry[2].id, 'patient-to-delete-id')
+      assert.equal(transaction.entry[2].meta.extension[0].url, 'fhir-request-method')
+      assert.equal(transaction.entry[2].meta.extension[0].valueString, 'DELETE')
+
+      assert.equal(transaction.entry[3].resourceType, 'OperationOutcome')
+      assert.equal(transaction.entry[3].issue[0].code, 'not-found')
+      assert.equal(transaction.entry[3].issue[0].details.coding[0].display, 'The resource "patient-to-delete-id" has been deleted')
+
+      assert.equal(transaction.entry[4].resourceType, 'Bundle')
+      assert.equal(transaction.entry[4].type, 'searchset')
+      assert.equal(transaction.entry[4].total, 1)
+      assert.equal(transaction.entry[4].entry[0].resource.resourceType, 'Patient')
+      assert.equal(transaction.entry[4].entry[0].resource.name[0].family[0], 'Name to create')
