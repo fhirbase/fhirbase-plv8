@@ -58,7 +58,7 @@ script: |
   [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
   FB_SCHEMA=bar npm run test || exit 1
 after_success: |
-  if [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+  if [ "$PLV8_VERSION" == "v1.4.4" ] && [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     cat perf/provisioning/secure/secure.tar.gz \
         | tar --extract --gzip --directory perf/provisioning/secure --file -
     [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
