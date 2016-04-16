@@ -100,23 +100,23 @@ makePlan = (bundle) ->
 
     if handler and handler[method]
       match = url.match(handler.test)
-      action = handler[method](match, entry)
-      action.method = method
-      action
+      action = handler[method]
+      action(match, entry)
     else
       type: 'error'
       message: "Cannot determine action for request #{method} #{url}"
 
   plan.sort((a, b)->
-    if a.method == b.method
-      return 0
+    # Transaction should processed in order (DELETE, POST, PUT, GET).
 
     number = (action)->
-      switch action.method
-        when 'DELETE' then 1
-        when 'POST' then 2
-        when 'PUT' then 3
-        when 'GET' then 4
+      switch action.type
+        when 'delete' then 1 # DELETE
+        when 'create' then 2 # POST
+        when 'update' then 3 # PUT
+        when 'read' then 4 # GET
+        when 'vread' then 4 # GET
+        when 'search' then 4 # GET
 
     aa = number(a)
     bb = number(b)
@@ -126,6 +126,8 @@ makePlan = (bundle) ->
 
     if aa > bb
       return 1
+
+    0
   )
 
 exports.makePlan = makePlan

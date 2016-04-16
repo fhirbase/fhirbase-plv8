@@ -35,6 +35,10 @@
           url: /_history
 
   plan:
+    - type: delete
+      resourceType: Patient
+      id: "123"
+
     - type: create
       resourceType: Patient
       resource: *pt1
@@ -43,10 +47,6 @@
       resourceType: Patient
       id: "123"
       resource: *pt2
-
-    - type: delete
-      resourceType: Patient
-      id: "123"
 
     - type: history
       resourceType: Patient
