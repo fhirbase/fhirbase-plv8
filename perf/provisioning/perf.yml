@@ -64,7 +64,7 @@
          --createdb \
          --data-directory={{ fhirbase.app_dir }}/perf/data \
          --dropdb \
-         --number-of-patients=100000 \
+         --number-of-patients=500000 \
          --pgdatabase={{ postgres.database }} \
          --pgpassword={{ postgres.password }} \
          --pgschema={{ postgres.schema }} \
