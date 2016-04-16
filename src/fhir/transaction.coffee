@@ -92,7 +92,7 @@ find = (coll, pred)->
   null
 
 makePlan = (bundle) ->
-  bundle.entry.map (entry) ->
+  plan = bundle.entry.map (entry) ->
     url = entry.request.url
     method = entry.request.method
 
@@ -100,11 +100,33 @@ makePlan = (bundle) ->
 
     if handler and handler[method]
       match = url.match(handler.test)
-      action = handler[method]
-      action(match, entry)
+      action = handler[method](match, entry)
+      action.method = method
+      action
     else
       type: 'error'
       message: "Cannot determine action for request #{method} #{url}"
+
+  plan.sort((a, b)->
+    if a.method == b.method
+      return 0
+
+    number = (action)->
+      switch action.method
+        when 'DELETE' then 1
+        when 'POST' then 2
+        when 'PUT' then 3
+        when 'GET' then 4
+
+    aa = number(a)
+    bb = number(b)
+
+    if aa < bb
+      return -1
+
+    if aa > bb
+      return 1
+  )
 
 exports.makePlan = makePlan
 

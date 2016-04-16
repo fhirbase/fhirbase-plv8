@@ -582,20 +582,25 @@ describe 'Integration',->
         1
       )
 
-    it 'should work', ->
+    it 'should processed in order (DELETE, POST, PUT, GET)', ->
       bundle =
         resourceType: 'Bundle'
         id: 'bundle-transaction-id'
         type: 'transaction'
         entry: [
+          # GET (read) should processed last <http://hl7-fhir.github.io/http.html#2.1.0.16.2>
           {
-            resource:
-              resourceType: 'Patient'
-              name: [{family: ['Name to create']}]
             request:
-              method: 'POST'
-              url: '/Patient'
+              method: 'GET'
+              url: '/Patient/patient-to-delete-id'
           }
+          # GET (search) also should processed last <http://hl7-fhir.github.io/http.html#2.1.0.16.2>
+          {
+            request:
+              method: 'GET'
+              url: '/Patient?name=Name to create'
+          }
+          # PUT (update) should processed after POST (create) <http://hl7-fhir.github.io/http.html#2.1.0.16.2>
           {
             resource:
               resourceType: 'Patient'
@@ -605,20 +610,20 @@ describe 'Integration',->
               method: 'PUT'
               url: '/Patient/patient-to-update-id'
           }
+          # POST (create) should processed after DELETE <http://hl7-fhir.github.io/http.html#2.1.0.16.2>
+          {
+            resource:
+              resourceType: 'Patient'
+              name: [{family: ['Name to create']}]
+            request:
+              method: 'POST'
+              url: '/Patient'
+          }
+          # DELETE should processed first <http://hl7-fhir.github.io/http.html#2.1.0.16.2>
           {
             request:
                method: 'DELETE'
                url: '/Patient/patient-to-delete-id'
-          }
-          {
-            request:
-              method: 'GET'
-              url: '/Patient/patient-to-delete-id'
-          }
-          {
-            request:
-              method: 'GET'
-              url: '/Patient?name=Name to create'
           }
         ]
 
@@ -635,17 +640,19 @@ describe 'Integration',->
 
       assert.equal(transaction.entry[0].resourceType, 'Patient')
       assert.equal(transaction.entry[0].meta.extension[0].url, 'fhir-request-method')
-      assert.equal(transaction.entry[0].meta.extension[0].valueString, 'POST')
-      assert.equal(transaction.entry[0].name[0].family[0], 'Name to create')
+      assert.equal(transaction.entry[0].meta.extension[0].valueString, 'DELETE')
+      assert.equal(transaction.entry[0].id, 'patient-to-delete-id')
 
       assert.equal(transaction.entry[1].resourceType, 'Patient')
-      assert.equal(transaction.entry[1].id, 'patient-to-update-id')
-      assert.equal(transaction.entry[1].name[0].family[0], 'Name to update updated')
+      assert.equal(transaction.entry[1].meta.extension[0].url, 'fhir-request-method')
+      assert.equal(transaction.entry[1].meta.extension[0].valueString, 'POST')
+      assert.equal(transaction.entry[1].name[0].family[0], 'Name to create')
 
       assert.equal(transaction.entry[2].resourceType, 'Patient')
-      assert.equal(transaction.entry[2].id, 'patient-to-delete-id')
       assert.equal(transaction.entry[2].meta.extension[0].url, 'fhir-request-method')
-      assert.equal(transaction.entry[2].meta.extension[0].valueString, 'DELETE')
+      assert.equal(transaction.entry[2].meta.extension[0].valueString, 'PUT')
+      assert.equal(transaction.entry[2].id, 'patient-to-update-id')
+      assert.equal(transaction.entry[2].name[0].family[0], 'Name to update updated')
 
       assert.equal(transaction.entry[3].resourceType, 'OperationOutcome')
       assert.equal(transaction.entry[3].issue[0].code, 'not-found')
