@@ -7,9 +7,7 @@ sudo service postgresql start || exit 1
 cd ~/fhirbase || exit 1
 source ~/.nvm/nvm.sh && nvm use 5.3 || exit 1
 
-schemas="
-foo
-bar"
+schemas="foo bar"
 
 for schema in $schemas; do
     FB_SCHEMA=$schema ./build.sh || exit 1
