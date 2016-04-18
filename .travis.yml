@@ -32,7 +32,7 @@ before_install:
                --file=Dockerfile-pg-9.4-plv8-$PLV8_VERSION ./ || exit 1
 script: |
   docker run fhirbase-tests-in-schemas:pg-9.4-plv8-$PLV8_VERSION \
-             --schemas='$SCHEMAS' || exit 1
+             --schemas="'$SCHEMAS'" || exit 1
 after_success: |
   if [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     cat perf/provisioning/secure/secure.tar.gz \
