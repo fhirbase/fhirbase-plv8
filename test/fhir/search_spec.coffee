@@ -346,4 +346,4 @@ describe 'Encounter search', ->
     assert.equal(
       search.fhir_search(plv8,
         resourceType: 'Encounter', queryString: 'status=finished').total,
-      0)
+      1)
