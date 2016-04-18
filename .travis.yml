@@ -30,9 +30,9 @@ before_install:
   docker build --tag=fhirbase-tests-in-schemas:pg-9.4-plv8-1.4.7 \
                --file=Dockerfile-pg-9.4-plv8-1.4.7 ./ || exit 1
 script: |
-  docker run fhirbase-tests-in-schemas:pg-9.4-plv8-1.4.3 --schemas='public'
-  docker run fhirbase-tests-in-schemas:pg-9.4-plv8-1.4.4 --schemas='public'
-  docker run fhirbase-tests-in-schemas:pg-9.4-plv8-1.4.7 --schemas='foo bar'
+  docker run fhirbase-tests-in-schemas:pg-9.4-plv8-1.4.3 --schemas='public' || exit 1
+  docker run fhirbase-tests-in-schemas:pg-9.4-plv8-1.4.4 --schemas='public' || exit 1
+  docker run fhirbase-tests-in-schemas:pg-9.4-plv8-1.4.7 --schemas='foo bar' || exit 1
   # Unfortunately plv8 1.5.x hard to install because required very new libv8 version <https://github.com/plv8/plv8/issues/158#issuecomment-189621200>.
 after_success: |
   if [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
