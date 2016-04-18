@@ -23,10 +23,13 @@ before_install:
   -d
 - |
   cd $TRAVIS_BUILD_DIR || exit 1
-  docker build --tag=fhirbase-tests:plv8-v1.4.4 \
+  docker build --tag=fhirbase-tests-in-schemas:plv8-v1.4.4 \
                --file=Dockerfile-plv8-v1.4.4 ./ || exit 1
+  docker build --tag=fhirbase-tests-in-schemas:plv8-v1.4.7 \
+               --file=Dockerfile-plv8-v1.4.7 ./ || exit 1
 script: |
-  docker run fhirbase-tests:plv8-v1.4.4
+  docker run fhirbase-tests-in-schemas:plv8-v1.4.4
+  docker run fhirbase-tests-in-schemas:plv8-v1.4.7
 after_success: |
   if [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     cat perf/provisioning/secure/secure.tar.gz \
