@@ -28,8 +28,8 @@ before_install:
   docker build --tag=fhirbase-tests-in-schemas:plv8-v1.4.7 \
                --file=Dockerfile-plv8-v1.4.7 ./ || exit 1
 script: |
-  docker run fhirbase-tests-in-schemas:plv8-v1.4.4
-  docker run fhirbase-tests-in-schemas:plv8-v1.4.7
+  docker run fhirbase-tests-in-schemas:plv8-v1.4.4 --schemas='public'
+  docker run fhirbase-tests-in-schemas:plv8-v1.4.7 --schemas='foo bar'
 after_success: |
   if [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     cat perf/provisioning/secure/secure.tar.gz \

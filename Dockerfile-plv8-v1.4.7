@@ -84,13 +84,13 @@ RUN cd /tmp \
     &&  git checkout $PLV8_VERSION \
     && make all install
 
-COPY docker-run-tests-in-schemas.sh /
-RUN chmod a+rwx /docker-run-tests-in-schemas.sh
-RUN chown fhirbase /docker-run-tests-in-schemas.sh
+COPY docker-run-tests.sh /
+RUN chmod a+rwx /docker-run-tests.sh
+RUN chown fhirbase /docker-run-tests.sh
 
 USER fhirbase
 
 # Install fhirbase and run test suite.
-ENTRYPOINT ["/docker-run-tests-in-schemas.sh"]
+ENTRYPOINT ["/docker-run-tests.sh"]
 
-# CMD ["public"]
+# CMD ["--schemas='public'"]
