@@ -1,9 +1,9 @@
-FROM ubuntu:14.04.3
+FROM ubuntu:14.04.4
 MAINTAINER Nicola <niquola@gmail.com>, \
            BazZy <bazzy.bazzy@gmail.com>, \
            Danil Kutkevich <danil@kutkevich.org>
 
-ENV REFRESHED_AT 2015-12-24
+ENV REFRESHED_AT 20160418T0800Z
 
 RUN localedef --force --inputfile=en_US --charmap=UTF-8 \
     --alias-file=/usr/share/locale/locale.alias \
@@ -33,12 +33,6 @@ RUN apt-get install --yes postgresql-$PG_MAJOR
 # README in <https://github.com/clkao/docker-postgres-plv8>).
 RUN apt-get install --yes git build-essential libv8-dev postgresql-server-dev-$PG_MAJOR
 RUN apt-get install --yes nodejs-dev
-
-ENV PLV8_BRANCH r1.4
-
-RUN cd /tmp && git clone -b $PLV8_BRANCH https://github.com/plv8/plv8.git \
-    && cd /tmp/plv8 \
-    && make all install
 
 # Adjust PostgreSQL configuration so that remote connections to the
 # database are possible.
@@ -81,6 +75,18 @@ RUN bash -lc 'cd ~/fhirbase && source ~/.nvm/nvm.sh && nvm use 5.3 \
               && npm install'
 RUN bash -lc 'cd ~/fhirbase/plpl && source ~/.nvm/nvm.sh && nvm use 5.3 \
               && npm install'
+
+USER root
+
+ENV PLV8_VERSION v1.4.4
+
+RUN cd /tmp \
+    && git clone https://github.com/plv8/plv8.git \
+    && cd /tmp/plv8 \
+    &&  git checkout $PLV8_VERSION \
+    && make all install
+
+USER fhirbase
 
 # Install fhirbase.
 RUN bash -lc 'sudo service postgresql start \
