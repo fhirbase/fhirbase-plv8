@@ -11,7 +11,7 @@ ENV LANG en_US.UTF-8
 RUN apt-get --yes update
 # RUN apt-get --yes upgrade
 
-# Add PostgreSQL 9.4 apt repository
+# Add PostgreSQL (9.1, 9.2, 9.3, 9.4, 9.5) apt repository
 # <http://www.postgresql.org/download/linux/ubuntu/>.
 RUN apt-get install --yes curl
 RUN echo 'deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main' \
