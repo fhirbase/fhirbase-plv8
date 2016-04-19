@@ -4,6 +4,9 @@ schemas="${schemas:-public}"
 
 while [ $# -gt 0 ]; do
     case "$1" in
+        --install-fhirbase)
+            install_fhirbase=1
+            ;;
         --schemas=*)
             export schemas="${1#*=}"
             ;;
@@ -24,10 +27,13 @@ cd ~/fhirbase || exit 1
 source ~/.nvm/nvm.sh && nvm use 5.3 || exit 1
 
 for schema in $schemas; do
-    FB_SCHEMA=$schema ./build.sh || exit 1
-    { echo "CREATE SCHEMA IF NOT EXISTS $schema; SET search_path TO $schema;" \
-      && cat tmp/build.sql ; } \
-      | psql fhirbase
-    [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
+    if [ "$install_fhirbase" = 1 ] ; then
+        FB_SCHEMA=$schema ./build.sh || exit 1
+        { echo "CREATE SCHEMA IF NOT EXISTS $schema; SET search_path TO $schema;" \
+          && cat tmp/build.sql ; } \
+          | psql fhirbase
+        [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
+    fi
+
     FB_SCHEMA=$schema npm run test || exit 1
 done
