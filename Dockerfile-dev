@@ -112,9 +112,6 @@ EXPOSE 5432
 # Add VOLUMEs to allow backup of config, logs, socket and databases
 VOLUME  ['/etc/postgresql', '/var/log/postgresql', '/var/lib/postgresql', '/var/run/postgresql']
 
-WORKDIR ~/fhirbase
+WORKDIR /home/fhirbase
 
-# Install fhirbase and run test suite.
-ENTRYPOINT ["/docker-run-tests.sh"]
-
-CMD ["--schemas='public'"]
+CMD /bin/bash
