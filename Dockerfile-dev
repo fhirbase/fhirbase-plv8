@@ -3,7 +3,7 @@ MAINTAINER Nicola <niquola@gmail.com>, \
            BazZy <bazzy.bazzy@gmail.com>, \
            Danil Kutkevich <danil@kutkevich.org>
 
-ENV REFRESHED_AT 20160418T0800Z
+ENV REFRESHED_AT 20160419T0400Z
 
 RUN localedef --force --inputfile=en_US --charmap=UTF-8 \
     --alias-file=/usr/share/locale/locale.alias \
@@ -13,7 +13,7 @@ ENV LANG en_US.UTF-8
 RUN apt-get --yes update
 RUN apt-get --yes upgrade
 
-# Add PostgreSQL 9.4 apt repository
+# Add PostgreSQL (9.1, 9.2, 9.3, 9.4, 9.5) apt repository
 # <http://www.postgresql.org/download/linux/ubuntu/>.
 RUN apt-get install --yes curl
 RUN echo 'deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main' \
@@ -78,7 +78,7 @@ RUN bash -lc 'cd ~/fhirbase/plpl && source ~/.nvm/nvm.sh && nvm use 5.3 \
 
 USER root
 
-ENV PLV8_VERSION v1.4.4
+ENV PLV8_VERSION v1.4.7
 
 RUN cd /tmp \
     && git clone https://github.com/plv8/plv8.git \
@@ -97,12 +97,14 @@ RUN bash -lc 'sudo service postgresql start \
               && ~/fhirbase/build.sh \
               && cat ~/fhirbase/tmp/build.sql | psql fhirbase'
 
-# Run test suite.
-RUN bash -lc 'sudo service postgresql start \
-              && cd ~/fhirbase \
-              && source ~/.nvm/nvm.sh && nvm use 5.3 \
-              && export DATABASE_URL=postgres://fhirbase:fhirbase@localhost:5432/fhirbase \
-              && npm run test'
+
+USER root
+
+COPY docker-run-tests.sh /
+RUN chmod a+rwx /docker-run-tests.sh
+RUN chown fhirbase /docker-run-tests.sh
+
+USER fhirbase
 
 # Expose the PostgreSQL port.
 EXPOSE 5432
@@ -112,4 +114,7 @@ VOLUME  ['/etc/postgresql', '/var/log/postgresql', '/var/lib/postgresql', '/var/
 
 WORKDIR ~/fhirbase
 
-CMD sudo service postgresql start
+# Install fhirbase and run test suite.
+ENTRYPOINT ["/docker-run-tests.sh"]
+
+CMD ["--schemas='public'"]
