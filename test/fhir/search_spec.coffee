@@ -269,6 +269,17 @@ describe 'Date search', ->
         resourceType: 'Patient', queryString: 'birthdate=gt2010').total,
       0)
 
+  it 'with format 1970-12-31T01:23+0300', ->
+    crud.fhir_create_resource(plv8, resource: {
+      resourceType: 'Patient'
+      birthDate: '1989-02-07T05:26+0300'
+    })
+
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Patient', queryString: 'birthdate=lt2000').total,
+      1)
+
   it 'by lastUpdated', ->
     createPatient = (dateString)->
       patient = crud.fhir_create_resource(plv8, resource: {
