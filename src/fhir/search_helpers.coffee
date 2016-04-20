@@ -3,7 +3,7 @@ extractInt = (base_url, regex)->
   matched && matched[1] && parseInt(matched[1])
 
 exports.search_links = (query, expr, total)->
-  base_url = "#{query.resourceType}/search?#{query.queryString}"
+  base_url = "#{query.resourceType}/_search?#{query.queryString}"
   res = []
 
   if base_url.indexOf('_page=') < 0
