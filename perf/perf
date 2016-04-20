@@ -118,7 +118,7 @@ EOF
     echo Install Fhirbase into $PGDATABASE.$pg_schema database.
     { echo "SET search_path TO $pg_schema;" \
       && curl --location \
-              https://github.com/fhirbase/fhirbase-plv8/releases/download/v1.3.0.9/fhirbase-1.3.0.9.sql.zip \
+              https://github.com/fhirbase/fhirbase-plv8/releases/download/v1.3.0.10/fhirbase-1.3.0.10.sql.zip \
          | funzip ; } \
       | psql
     [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
