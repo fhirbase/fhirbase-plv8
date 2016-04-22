@@ -56,10 +56,10 @@ queries:
       - path: ['entry', 'length']
         result: 1
       - path: ['link', 0, 'url']
-        result: "Encounter/_search?patient=Patient/nicola&_sort=patient&_page=1&_count=1"
+        result: "/Encounter?patient=Patient/nicola&_sort=patient&_page=1&_count=1"
       - path: ['link', 1, 'url']
-        result: "Encounter/_search?patient=Patient/nicola&_sort=patient&_page=2&_count=1"
+        result: "/Encounter?patient=Patient/nicola&_sort=patient&_page=2&_count=1"
       - path: ['link', 2, 'url']
-        result: "Encounter/_search?patient=Patient/nicola&_sort=patient&_page=0&_count=1"
+        result: "/Encounter?patient=Patient/nicola&_sort=patient&_page=0&_count=1"
       - path: ['link', 3, 'url']
-        result: "Encounter/_search?patient=Patient/nicola&_sort=patient&_page=3&_count=1"
+        result: "/Encounter?patient=Patient/nicola&_sort=patient&_page=3&_count=1"

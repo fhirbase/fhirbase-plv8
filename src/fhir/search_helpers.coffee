@@ -3,7 +3,11 @@ extractInt = (base_url, regex)->
   matched && matched[1] && parseInt(matched[1])
 
 exports.search_links = (query, expr, total)->
-  base_url = "#{query.resourceType}/_search?#{query.queryString}"
+  # <http://www.hl7.org/implement/standards/fhir/search.html#2.1.1.2>,
+  # <http://www.hl7.org/implement/standards/fhir/http.html#summary>:
+  # `GET [base]/[resourcetype]?name=value&...`
+  base_url = "/#{query.resourceType}?#{query.queryString}"
+
   res = []
 
   if base_url.indexOf('_page=') < 0
