@@ -1,3 +1,4 @@
+require('./fhirbase_admin')
 require('./fhirbase_version')
 require('./namings')
 require('./pg_meta')
