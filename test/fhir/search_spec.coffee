@@ -374,7 +374,7 @@ describe 'Encounter search', ->
         ).total,
       1)
 
-  it 'by patient name AND status should raise error', -> # FIXME: sql `where` and `join` statements mixed up in wrong order if encounters searched simultaneously by patient name and status.
+  it 'by patient name AND status should raise error', -> # FIXME: sql "where" and "join" statements mixed up in wrong order #104 <https://github.com/fhirbase/fhirbase-plv8/issues/104>.
     assert.throws(
       (->
         search.fhir_search(
