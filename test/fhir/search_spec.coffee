@@ -339,22 +339,52 @@ describe 'Date search', ->
 describe 'Encounter search', ->
   before ->
     plv8.execute("SET plv8.start_proc = 'plv8_init'")
-    schema.fhir_drop_storage(plv8, resourceType: 'Encounter')
     schema.fhir_create_storage(plv8, resourceType: 'Encounter')
+    schema.fhir_create_storage(plv8, resourceType: 'Patient')
 
   beforeEach ->
     schema.fhir_truncate_storage(plv8, resourceType: 'Encounter')
+
+    crud.fhir_create_resource(plv8, allowId: true, resource: {
+      id: 'patient-id', resourceType: 'Patient', name: [{given: ['John']}]
+    })
     crud.fhir_create_resource(plv8, resource: {
       resourceType: 'Encounter',
       status: 'planned'
     })
     crud.fhir_create_resource(plv8, resource: {
       resourceType: 'Encounter',
+      patient: {reference: 'Patient/patient-id'},
       status: 'finished'
     })
+
+  it 'by patient name', ->
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Encounter',
+        queryString: 'patient:Patient.name=John'
+        ).total,
+      1)
 
   it 'by status', ->
     assert.equal(
       search.fhir_search(plv8,
-        resourceType: 'Encounter', queryString: 'status=finished').total,
+        resourceType: 'Encounter',
+        queryString: 'status=finished'
+        ).total,
       1)
+
+  it 'by patient name AND status should raise error', -> # FIXME: sql `where` and `join` statements mixed up in wrong order if encounters searched simultaneously by patient name and status.
+    assert.throws(
+      (->
+        search.fhir_search(
+          plv8,
+          resourceType: 'Encounter',
+          queryString: 'patient:Patient.name=John&status=finished'
+        )
+      ),
+      ((err)->
+        (err instanceof Error) &&
+          /syntax error at or near "JOIN"/.test(err)
+      )
+    )
