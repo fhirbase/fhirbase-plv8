@@ -49,6 +49,8 @@ describe "CORE: CRUD spec", ->
       })
       assert.equal(outcome.resourceType, 'OperationOutcome')
       assert.equal(outcome.issue[0].code, '400')
+      assert.equal(outcome.issue[0].extension[0].url, 'http-status-code')
+      assert.equal(outcome.issue[0].extension[0].valueString, '400')
 
     describe 'conditional', ->
       it 'conditional', ->
@@ -143,6 +145,8 @@ describe "CORE: CRUD spec", ->
       'Resource Id "unexisting" does not exist'
     )
     assert.equal(issue.diagnostics, 'Resource Id "unexisting" does not exist')
+    assert.equal(issue.extension[0].url, 'http-status-code')
+    assert.equal(issue.extension[0].valueString, '404')
 
   it "vread unexisting", ->
     vread = crud.fhir_vread_resource(
@@ -166,6 +170,8 @@ describe "CORE: CRUD spec", ->
       issue.diagnostics,
       'Resource Id "unexistingId" with versionId "unexistingVersionId" does not exist'
     )
+    assert.equal(issue.extension[0].url, 'http-status-code')
+    assert.equal(issue.extension[0].valueString, '404')
 
   it 'vread created', ->
     created = crud.fhir_create_resource(
@@ -258,6 +264,8 @@ describe "CORE: CRUD spec", ->
     outcome = crud.fhir_update_resource(plv8, resource:  {resourceType: 'Patient'})
     assert.equal(outcome.resourceType, 'OperationOutcome')
     assert.equal(outcome.issue[0].code, '400')
+    assert.equal(outcome.issue[0].extension[0].url, 'http-status-code')
+    assert.equal(outcome.issue[0].extension[0].valueString, '400')
 
   it "Update with non existing id and meta should not fail", ->
     created = crud.fhir_update_resource(plv8, resource:  {id: 'nooonexisting', resourceType: 'Patient', meta: {versionId: 'dummy'}})
@@ -343,11 +351,15 @@ describe "CORE: CRUD spec", ->
       issue.diagnostics
       "Resource Id \"toBeDeleted\" with versionId \"#{deleted.versionId}\" has been deleted"
     )
+    assert.equal(issue.extension[0].url, 'http-status-code')
+    assert.equal(issue.extension[0].valueString, '410')
 
   it "delete unexisting", ->
     outcome = crud.fhir_delete_resource(plv8, {id: 'unexisting_id', resourceType: 'Users'})
     assert.equal(outcome.resourceType, 'OperationOutcome')
     assert.equal(outcome.issue[0].code, 'not-found')
+    assert.equal(outcome.issue[0].extension[0].url, 'http-status-code')
+    assert.equal(outcome.issue[0].extension[0].valueString, '404')
 
   it 'vread deleted', ->
     created = crud.fhir_create_resource(
@@ -374,3 +386,5 @@ describe "CORE: CRUD spec", ->
       issue.diagnostics
       "Resource Id \"toBeDeleted\" with versionId \"#{deleted.versionId}\" has been deleted"
     )
+    assert.equal(issue.extension[0].url, 'http-status-code')
+    assert.equal(issue.extension[0].valueString, '410')
