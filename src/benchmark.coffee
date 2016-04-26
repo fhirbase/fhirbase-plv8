@@ -74,6 +74,11 @@ fhir_benchmark = (plv8, query)->
     SELECT fhir_index_parameter('{"resourceType": "#{resourceType}", "name": "#{name}"}');
     """
 
+  disk_usage_top = (limit)->
+    """
+    SELECT count(*) FROM fhirbase_disk_usage_top('{"limit": #{limit}}'::json);
+    """
+
   benchmarks = [
     {
       description: 'fhir_create_resource called just one time'
@@ -93,8 +98,7 @@ fhir_benchmark = (plv8, query)->
     },
     {
       description: "disk usage right after generation of seed data"
-      statement: "SELECT admin.admin_disk_usage_top(10)"
-      skip: true
+      statement: disk_usage_top(10)
     },
     {
       description: "Updating single patient with fhir_update_resource",

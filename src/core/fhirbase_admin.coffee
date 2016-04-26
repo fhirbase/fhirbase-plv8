@@ -1,7 +1,4 @@
-sql = require('../honey')
-utils = require('./utils')
-
-fhirbase_disk_usage_sql = (plv8, query)->
+fhirbase_disk_usage_top_sql = (plv8, query)->
   limit =
     if typeof(query.limit) == 'number'
       query.limit
@@ -18,14 +15,14 @@ fhirbase_disk_usage_sql = (plv8, query)->
   LIMIT #{limit};
   """
 
-exports.fhirbase_disk_usage_sql = fhirbase_disk_usage_sql
+exports.fhirbase_disk_usage_top_sql = fhirbase_disk_usage_top_sql
 
-fhirbase_disk_usage = (plv8, query)->
-  plv8.execute(fhirbase_disk_usage_sql(plv8, query))
+fhirbase_disk_usage_top = (plv8, query)->
+  plv8.execute(fhirbase_disk_usage_top_sql(plv8, query))
 
-exports.fhirbase_disk_usage = fhirbase_disk_usage
+exports.fhirbase_disk_usage_top = fhirbase_disk_usage_top
 
-exports.fhirbase_disk_usage.plv8_signature = {
+exports.fhirbase_disk_usage_top.plv8_signature = {
   arguments: ['json', 'json']
   returns: 'json'
   immutable: false
