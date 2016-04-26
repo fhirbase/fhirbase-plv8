@@ -1,9 +1,9 @@
-FROM ubuntu:14.04.4
+FROM ubuntu:16.04
 MAINTAINER Nicola <niquola@gmail.com>, \
            BazZy <bazzy.bazzy@gmail.com>, \
            Danil Kutkevich <danil@kutkevich.org>
 
-ENV REFRESHED_AT 20160419T0400Z
+ENV REFRESHED_AT 20160425T0900Z
 
 RUN localedef --force --inputfile=en_US --charmap=UTF-8 \
     --alias-file=/usr/share/locale/locale.alias \
@@ -15,7 +15,7 @@ RUN apt-get --yes upgrade
 
 # Add PostgreSQL (9.1, 9.2, 9.3, 9.4, 9.5) apt repository
 # <http://www.postgresql.org/download/linux/ubuntu/>.
-RUN apt-get install --yes curl
+RUN apt-get install --yes curl sudo
 RUN echo 'deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main' \
     > /etc/apt/sources.list.d/pgdg.list
 RUN curl --silent https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
