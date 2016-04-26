@@ -116,11 +116,7 @@ wrap_ensure_not_exists = (fn)->
         from: sql.q(query.table_name)
         where: {id: resource.id}
       if res.length > 0
-        return outcome.error(
-          code: 'invalid',
-          diagnostics: 'resource with given id already exists'
-          extension: [{url: 'http-status-code', valueString: '500'}]
-        )
+        return outcome.bad_request2('resource with given id already exists')
     fn(plv8, query)
 
 wrap_postprocess = (fn)->
@@ -290,11 +286,7 @@ fhir_update_resource = _build [
       old_version = compat.parse(plv8, res[0].resource)
       id = resource.id
     else
-      return outcome.error(
-        code: 'invalid',
-        diagnostics: 'Unexpected many resources for one id'
-        extension: [{url: 'http-status-code', valueString: '500'}]
-      )
+      return outcome.bad_request2('Unexpected many resources for one id')
 
   if old_version.resourceType == 'OperationOutcome'
     return old_version
@@ -389,11 +381,7 @@ fhir_patch_resource = _build [
         old_version = compat.parse(plv8, res[0].resource)
         id = resource.id
       else
-        return outcome.error(
-          code: 'invalid',
-          diagnostics: 'Unexpected many resources for one id'
-          extension: [{url: 'http-status-code', valueString: '500'}]
-        )
+        return outcome.bad_request2('Unexpected many resources for one id')
 
     if old_version.resourceType == 'OperationOutcome'
       return old_version
@@ -460,12 +448,9 @@ exports.fhir_delete_resource = _build [
     return old_version
 
   if not old_version.meta  or not old_version.meta.versionId
-    return outcome.error(
-      code: 'invalid',
-      diagnostics: """
-      Resource #{query.resourceType}/#{query.id}, has broken old version #{JSON.stringify(old_version)}
-      """
-      extension: [{url: 'http-status-code', valueString: '500'}]
+    return outcome.bad_request2(
+      "Resource #{query.resourceType}/#{query.id}, " +
+        "has broken old version #{JSON.stringify(old_version)}"
     )
 
   resource = utils.copy(old_version)

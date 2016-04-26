@@ -1,3 +1,6 @@
+# OperationOutcome.issue[].code <https://hl7-fhir.github.io/valueset-issue-type.html#expansion>.
+# OperationOutcome.issue[].details.coding[].code <https://hl7-fhir.github.io/valueset-operation-outcome.html#expansion>.
+
 assert = (x, msg)->
   unless x
     throw new Error(msg)
@@ -115,6 +118,17 @@ exports.bad_request = (msg)->
       severity: 'error'
       code: '400'
       diagnostics: (msg || "Bad Request")
+      extension: [{url: 'http-status-code', valueString: '400'}]
+    }
+  ]
+
+exports.bad_request2 = (diagnostics)->
+  resourceType: 'OperationOutcome'
+  issue: [
+    {
+      severity: 'error'
+      code: 'invalid'
+      diagnostics: (diagnostics || 'Bad Request')
       extension: [{url: 'http-status-code', valueString: '400'}]
     }
   ]
