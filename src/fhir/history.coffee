@@ -55,6 +55,7 @@ exports.fhir_resource_history = (plv8, query)->
     select: sql.raw('*')
     from:   sql.q(hx_table_name)
     where:  {id: query.id}
+    order: [['$raw', '"valid_from" DESC']]
 
   if params._count
     hsql.limit = params._count
@@ -107,7 +108,7 @@ exports.fhir_resource_type_history = (plv8, query)->
   hsql =
     select: sql.raw('*')
     from:   sql.q(hx_table_name)
-    order: [':valid_from']
+    order: [['$raw', '"valid_from" DESC']]
 
   if params._count
     hsql.limit = params._count

@@ -145,11 +145,10 @@ describe 'PostgreSQL reserved key words', ->
       })
       assert.equal(hx.total, 3)
       assert.equal(hx.entry.length, 3)
-      assert.deepEqual(hx.entry.map((entry) -> entry.request), [
-        {'url': 'Order', 'method': 'POST'},
-        {'url': 'Order', 'method': 'PUT'},
-        {'url': 'Order', 'method': 'DELETE'}
-      ])
+      assert.deepEqual(
+        hx.entry.map((entry) -> entry.request.method),
+        ['DELETE', 'PUT', 'POST']
+      )
 
     it 'resource type', ->
       schema.fhir_truncate_storage(plv8, resourceType: 'Order')
@@ -174,13 +173,10 @@ describe 'PostgreSQL reserved key words', ->
       hx = history.fhir_resource_type_history(plv8, resourceType: 'Order')
       assert.equal(hx.total, 5)
 
-      assert.deepEqual(hx.entry.map((entry) -> entry.request), [
-        {'url': 'Order', 'method': 'POST'},
-        {'url': 'Order', 'method': 'POST'},
-        {'url': 'Order', 'method': 'POST'},
-        {'url': 'Order', 'method': 'PUT'},
-        {'url': 'Order', 'method': 'DELETE'}
-      ])
+      assert.deepEqual(
+        hx.entry.map((entry) -> entry.request.method),
+        ['DELETE', 'PUT', 'POST', 'POST', 'POST']
+      )
 
   describe 'Search API', ->
     before ->
