@@ -263,7 +263,7 @@ describe "CORE: CRUD spec", ->
   it "Update without id", ->
     outcome = crud.fhir_update_resource(plv8, resource:  {resourceType: 'Patient'})
     assert.equal(outcome.resourceType, 'OperationOutcome')
-    assert.equal(outcome.issue[0].code, '400')
+    assert.equal(outcome.issue[0].code, 'invalid')
     assert.equal(outcome.issue[0].extension[0].url, 'http-status-code')
     assert.equal(outcome.issue[0].extension[0].valueString, '400')
 

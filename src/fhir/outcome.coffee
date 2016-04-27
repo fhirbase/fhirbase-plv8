@@ -111,18 +111,7 @@ exports.valueset_not_found = (id)->
     }
   ]
 
-exports.bad_request = (msg)->
-  resourceType: "OperationOutcome"
-  issue: [
-    {
-      severity: 'error'
-      code: '400'
-      diagnostics: (msg || "Bad Request")
-      extension: [{url: 'http-status-code', valueString: '400'}]
-    }
-  ]
-
-exports.bad_request2 = (diagnostics)->
+exports.bad_request = (diagnostics)->
   resourceType: 'OperationOutcome'
   issue: [
     {
