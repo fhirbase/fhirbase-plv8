@@ -52,6 +52,32 @@ describe "CORE: CRUD spec", ->
       assert.equal(outcome.issue[0].extension[0].url, 'http-status-code')
       assert.equal(outcome.issue[0].extension[0].valueString, '400')
 
+    it 'with decimal value', -> # precision lost on write #108 <https://github.com/fhirbase/fhirbase-plv8/issues/108>
+      schema.fhir_create_storage(plv8, resourceType: 'Claim')
+      schema.fhir_truncate_storage(plv8, resourceType: 'Claim')
+
+      created = crud.fhir_create_resource(plv8, resource: {
+        resourceType: 'Claim',
+        item: [
+          {
+            unitPrice: {
+              value: 105.0,
+              system: 'urn:iso:std:iso:4217',
+              code: 'USD'
+            }
+          },
+          {
+            unitPrice: {
+              value: 105.1,
+              system: 'urn:iso:std:iso:4217',
+              code: 'USD'
+            }
+          }
+        ]
+      })
+      assert.equal(created.item[0].unitPrice.value, 105.0)
+      assert.equal(created.item[1].unitPrice.value, 105.1)
+
     describe 'conditional', ->
       it 'conditional', ->
         noise = crud.fhir_create_resource(plv8, resource: {
