@@ -3,7 +3,7 @@ search = require('./search')
 
 RES_TYPE_RE = "([A-Za-z]+)"
 ID_RE = "([A-Za-z0-9\\-]+)"
-QUERY_STRING_RE = "([A-Za-z0-9 &=-]+)"
+QUERY_STRING_RE = "([A-Za-z0-9 &=_-]+)"
 
 strip = (obj)->
   res = {}

@@ -659,3 +659,55 @@ describe 'Integration',->
       assert.equal(transaction.entry[4].total, 1)
       assert.equal(transaction.entry[4].entry[0].resource.resourceType, 'Patient')
       assert.equal(transaction.entry[4].entry[0].resource.name[0].family[0], 'Name to create')
+
+    it "should create with ID and respects ID's references", ->
+      plv8.execute(
+        'SELECT fhir_create_storage($1)',
+        [JSON.stringify(resourceType: 'Practitioner')]
+      )
+
+      bundle =
+        resourceType: 'Bundle'
+        id: 'bundle-transaction-id'
+        type: 'transaction'
+        entry: [
+          {
+            resource:
+              resourceType: 'Practitioner'
+            request:
+              method: 'PUT'
+              url: '/Practitioner/created-and-referenced-id'
+          }
+          {
+            resource:
+              resourceType: 'Patient'
+              careProvider: [
+                {reference: '/Practitioner/created-and-referenced-id'}
+              ]
+              name: [{given: ['patient-to-search']}]
+            request:
+              method: 'PUT'
+              url: '/Patient/patient-to-update-id'
+          }
+          {
+            request:
+              method: 'GET'
+              url: '/Patient?name=patient-to-search&_include=careprovider'
+          }
+        ]
+
+      transaction =
+        JSON.parse(
+          plv8.execute(
+            'SELECT fhir_transaction($1)',
+            [JSON.stringify(bundle)]
+          )[0].fhir_transaction
+        )
+
+      assert.equal(transaction.entry[2].total, 1)
+      assert.equal(
+        transaction.entry[2].entry.filter((resource)->
+          resource.resource.resourceType == 'Practitioner'
+        )[0].resource.id,
+        'created-and-referenced-id'
+      )
