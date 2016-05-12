@@ -684,7 +684,6 @@ describe 'Integration',->
               careProvider: [
                 {reference: '/Practitioner/created-and-referenced-id'}
               ]
-              name: [{given: ['patient-to-search']}]
             request:
               method: 'PUT'
               url: '/Patient/patient-to-update-id'
@@ -692,7 +691,7 @@ describe 'Integration',->
           {
             request:
               method: 'GET'
-              url: '/Patient?name=patient-to-search&_include=careprovider'
+              url: '/Patient?_id=patient-to-update-id&_include=careprovider'
           }
         ]
 
