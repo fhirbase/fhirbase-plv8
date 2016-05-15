@@ -44,15 +44,15 @@ after_success: |
     cd perf/provisioning || exit 1
     export ANSIBLE_HOST_KEY_CHECKING=False || exit 1
     python2 ~/.local/bin/ansible-playbook \
-            --inventory inventories/ec2 \
+            --inventory-file=inventories/ec2 \
             ec2_start.yml || exit 1
     python2 ~/.local/bin/ansible-playbook \
             --private-key=secure/fhirbase_performance_benchmark.pem \
-            --inventory=ec2.py \
+            --inventory-file=ec2.py \
             bootstrap.yml || exit 1
     python2 ~/.local/bin/ansible-playbook \
             --private-key=secure/fhirbase_performance_benchmark.pem \
-            --inventory=ec2.py \
+            --inventory-file=ec2.py \
             --extra-vars="timestamp=foobar" \
             perf.yml || exit 1
   fi
