@@ -1,4 +1,4 @@
-[app]
+[tag_performance_fhirbase]
 localhost:7022
 
 [all:vars]
