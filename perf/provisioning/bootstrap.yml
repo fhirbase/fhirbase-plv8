@@ -1,4 +1,4 @@
-- hosts: app
+- hosts: tag_performance_fhirbase
   sudo: true
   gather_facts: yes
   tasks:

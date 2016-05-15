@@ -1,4 +1,4 @@
-- hosts: app
+- hosts: tag_performance_fhirbase
   gather_facts: True
   tasks:
 
