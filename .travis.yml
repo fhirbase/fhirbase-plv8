@@ -49,10 +49,12 @@ after_success: |
     python2 ~/.local/bin/ansible-playbook \
             --private-key=secure/fhirbase_performance_benchmark.pem \
             --inventory-file=inventories/ec2.py \
+            --user=ubuntu
             bootstrap.yml || exit 1
     python2 ~/.local/bin/ansible-playbook \
             --private-key=secure/fhirbase_performance_benchmark.pem \
             --inventory-file=inventories/ec2.py \
+            --user=ubuntu
             --extra-vars="timestamp=foobar" \
             perf.yml || exit 1
   fi
