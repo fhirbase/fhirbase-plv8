@@ -1,0 +1,20 @@
+fhirbase:
+  app_dir: /fhirbase
+  doc_dir: /fhirbase_documentation
+git:
+  branch: master
+  commit:
+    message: "docs: update performance report"
+os:
+  user:
+    home: /home/ubuntu
+    name: ubuntu
+postgres:
+  conf: /etc/postgresql/9.4/main/postgresql.conf
+  database: fhirbase
+  log: /var/log/postgresql/postgresql-9.4-main.log
+  password: fhirbase
+  port: 5432
+  schema: benchmark
+  system_user: postgres
+  user: fhirbase
