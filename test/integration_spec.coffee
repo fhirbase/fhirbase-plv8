@@ -710,3 +710,72 @@ describe 'Integration',->
         )[0].resource.id,
         'created-and-referenced-id'
       )
+
+    it 'narus transaction', ->
+      plv8.execute('''
+        SELECT fhir_create_storage('{"resourceType": "Patient"}');
+      ''')
+
+      plv8.execute('''
+        SELECT fhir_create_storage('{"resourceType": "Practitioner"}');
+      ''')
+
+      plv8.execute('''
+        SELECT fhir_create_resource('
+          {
+            "allowId": true,
+            "resource": {"id": "patient-id", "resourceType": "Patient"}
+          }
+        ');
+      ''')
+
+      transaction =
+        JSON.parse(
+          plv8.execute('''
+            SELECT fhir_transaction('
+              {
+                "resourceType": "Bundle",
+                "type": "transaction",
+                "entry": [
+                  {
+                    "resource": {
+                      "resourceType": "Practitioner"
+                    },
+                    "request": {
+                      "method": "PUT",
+                      "url": "/Practitioner/practitioner-id"
+                    }
+                  },
+                  {
+                    "resource": {
+                      "resourceType": "Patient",
+                      "careProvider": [
+                        {
+                          "reference": "/Practitioner/practitioner-id"
+                        }
+                      ]
+                    },
+                    "request": {
+                      "method": "PUT",
+                      "url": "/Patient/patient-id"
+                    }
+                  },
+                  {
+                    "request": {
+                      "method": "GET",
+                      "url": "/Patient?_id=patient-id&_include=careprovider"
+                    }
+                  }
+                ]
+              }
+            ');
+          ''')[0].fhir_transaction
+        )
+
+      assert.equal(transaction.entry[2].total, 1)
+      assert.equal(
+        transaction.entry[2].entry.filter((resource)->
+          resource.resource.resourceType == 'Practitioner'
+        )[0].resource.id,
+        'practitioner-id'
+      )
