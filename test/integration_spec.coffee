@@ -525,71 +525,21 @@ describe 'Integration',->
       plv8.execute('''
         SELECT fhir_create_storage('{"resourceType": "Patient"}');
       ''')
+
       plv8.execute('''
         SELECT fhir_truncate_storage('{"resourceType": "Patient"}');
       ''')
 
-      plv8.execute('''
-        SELECT fhir_create_resource('
-          {"resource": {"resourceType": "Patient", "name": [{"family": ["test-family"]}, {"given": ["test-given-1"]}]}}
-        ');
-      ''')
-      plv8.execute('''
-        SELECT fhir_create_resource('
-          {"resource": {"resourceType": "Patient", "name": [{"family": ["test-family"]}, {"given": ["test-given-2"]}]}}
-        ');
-      ''')
-      plv8.execute('''
-        SELECT fhir_create_resource('
-          {"resource": {"resourceType": "Patient", "name": [{"family": ["test-family"]}, {"given": ["test-given-3"]}]}}
-        ');
-      ''')
-      plv8.execute('''
-        SELECT fhir_create_resource('
-          {"resource": {"resourceType": "Patient", "name": [{"family": ["test-family"]}, {"given": ["test-given-4"]}]}}
-        ');
-      ''')
-      plv8.execute('''
-        SELECT fhir_create_resource('
-          {"resource": {"resourceType": "Patient", "name": [{"family": ["test-family"]}, {"given": ["test-given-5"]}]}}
-        ');
-      ''')
-      plv8.execute('''
-        SELECT fhir_create_resource('
-          {"resource": {"resourceType": "Patient", "name": [{"family": ["test-family"]}, {"given": ["test-given-6"]}]}}
-        ');
-      ''')
-      plv8.execute('''
-        SELECT fhir_create_resource('
-          {"resource": {"resourceType": "Patient", "name": [{"family": ["test-family"]}, {"given": ["test-given-7"]}]}}
-        ');
-      ''')
-      plv8.execute('''
-        SELECT fhir_create_resource('
-          {"resource": {"resourceType": "Patient", "name": [{"family": ["test-family"]}, {"given": ["test-given-8"]}]}}
-        ');
-      ''')
-      plv8.execute('''
-        SELECT fhir_create_resource('
-          {"resource": {"resourceType": "Patient", "name": [{"family": ["test-family"]}, {"given": ["test-given-9"]}]}}
-        ');
-      ''')
-      plv8.execute('''
-        SELECT fhir_create_resource('
-          {"resource": {"resourceType": "Patient", "name": [{"family": ["test-family"]}, {"given": ["test-given-10"]}]}}
-        ');
-      ''')
-      plv8.execute('''
-        SELECT fhir_create_resource('
-          {"resource": {"resourceType": "Patient", "name": [{"family": ["test-family"]}, {"given": ["test-given-11"]}]}}
-        ');
-      ''')
+      for _ in [1..11]
+        plv8.execute('''
+          SELECT fhir_create_resource(' {"resource": {"resourceType": "Patient"}} ');
+        ''')
 
       outcome1 =
         JSON.parse(
           plv8.execute('''
             SELECT fhir_search('
-              {"resourceType": "Patient", "queryString": "name=test-family"}
+              {"resourceType": "Patient", "queryString": ""}
             ');
           ''')[0].fhir_search
         )
@@ -599,7 +549,7 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute('''
             SELECT fhir_search('
-              {"resourceType": "Patient", "queryString": "name=test-family&_count=3"}
+              {"resourceType": "Patient", "queryString": "_count=3"}
             ');
           ''')[0].fhir_search
         )
@@ -609,7 +559,7 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute('''
             SELECT fhir_search('
-              {"resourceType": "Patient", "queryString": "name=test-family&_count=999"}
+              {"resourceType": "Patient", "queryString": "_count=999"}
             ');
           ''')[0].fhir_search
         )
