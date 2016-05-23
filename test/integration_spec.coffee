@@ -521,49 +521,49 @@ describe 'Integration',->
 
       assert.equal(explained, 1)
 
-    # it 'pagination', ->
-    #   plv8.execute('''
-    #     SELECT fhir_create_storage('{"resourceType": "Patient"}');
-    #   ''')
+    it 'pagination', ->
+      plv8.execute('''
+        SELECT fhir_create_storage('{"resourceType": "Patient"}');
+      ''')
 
-    #   plv8.execute('''
-    #     SELECT fhir_truncate_storage('{"resourceType": "Patient"}');
-    #   ''')
+      plv8.execute('''
+        SELECT fhir_truncate_storage('{"resourceType": "Patient"}');
+      ''')
 
-    #   for _ in [1..11]
-    #     plv8.execute('''
-    #       SELECT fhir_create_resource(' {"resource": {"resourceType": "Patient"}} ');
-    #     ''')
+      for _ in [1..11]
+        plv8.execute('''
+          SELECT fhir_create_resource(' {"resource": {"resourceType": "Patient"}} ');
+        ''')
 
-    #   outcome1 =
-    #     JSON.parse(
-    #       plv8.execute('''
-    #         SELECT fhir_search('
-    #           {"resourceType": "Patient", "queryString": ""}
-    #         ');
-    #       ''')[0].fhir_search
-    #     )
-    #   assert.equal(outcome1.entry.length, 10)
+      outcome1 =
+        JSON.parse(
+          plv8.execute('''
+            SELECT fhir_search('
+              {"resourceType": "Patient", "queryString": ""}
+            ');
+          ''')[0].fhir_search
+        )
+      assert.equal(outcome1.entry.length, 10)
 
-    #   outcome2 =
-    #     JSON.parse(
-    #       plv8.execute('''
-    #         SELECT fhir_search('
-    #           {"resourceType": "Patient", "queryString": "_count=3"}
-    #         ');
-    #       ''')[0].fhir_search
-    #     )
-    #   assert.equal(outcome2.entry.length, 3)
+      outcome2 =
+        JSON.parse(
+          plv8.execute('''
+            SELECT fhir_search('
+              {"resourceType": "Patient", "queryString": "_count=3"}
+            ');
+          ''')[0].fhir_search
+        )
+      assert.equal(outcome2.entry.length, 3)
 
-    #   outcome3 =
-    #     JSON.parse(
-    #       plv8.execute('''
-    #         SELECT fhir_search('
-    #           {"resourceType": "Patient", "queryString": "_count=999"}
-    #         ');
-    #       ''')[0].fhir_search
-    #     )
-    #   assert.equal(outcome3.entry.length, 11)
+      outcome3 =
+        JSON.parse(
+          plv8.execute('''
+            SELECT fhir_search('
+              {"resourceType": "Patient", "queryString": "_count=999"}
+            ');
+          ''')[0].fhir_search
+        )
+      assert.equal(outcome3.entry.length, 11)
 
   describe 'Transaction', ->
     before ->
