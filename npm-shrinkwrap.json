@@ -1,0 +1,14 @@
+{
+  "name": "fhirbase",
+  "version": "0.0.1",
+  "dependencies": {
+    "jsedn": {
+      "version": "latest",
+      "dependencies": {
+        "equals": {
+          "version": "1.0.1"
+        }
+      }
+    }
+  }
+}

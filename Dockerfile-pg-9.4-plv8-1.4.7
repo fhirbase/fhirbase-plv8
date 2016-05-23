@@ -66,12 +66,12 @@ RUN cd ~ \
     && git submodule update --init --recursive
 
 # Install nodejs.
-RUN curl --silent -o- https://raw.githubusercontent.com/creationix/nvm/v0.29.0/install.sh \
+RUN curl --silent -o- https://raw.githubusercontent.com/creationix/nvm/v0.31.1/install.sh \
     | bash
-RUN bash -lc 'source ~/.nvm/nvm.sh && nvm install 5.3'
-RUN bash -lc 'cd ~/fhirbase && source ~/.nvm/nvm.sh && nvm use 5.3 \
+RUN bash -lc 'source ~/.nvm/nvm.sh && nvm install 6.2.0'
+RUN bash -lc 'cd ~/fhirbase && source ~/.nvm/nvm.sh && nvm use 6.2.0 \
               && npm install'
-RUN bash -lc 'cd ~/fhirbase/plpl && source ~/.nvm/nvm.sh && nvm use 5.3 \
+RUN bash -lc 'cd ~/fhirbase/plpl && source ~/.nvm/nvm.sh && nvm use 6.2.0 \
               && npm install'
 
 USER root

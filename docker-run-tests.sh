@@ -24,7 +24,7 @@ export DATABASE_URL=postgres://fhirbase:fhirbase@localhost:5432/fhirbase || exit
 
 sudo service postgresql start || exit 1
 cd ~/fhirbase || exit 1
-source ~/.nvm/nvm.sh && nvm use 5.3 || exit 1
+source ~/.nvm/nvm.sh && nvm use 6.2.0 || exit 1
 
 for schema in $schemas; do
     if [ "$install_fhirbase" = 1 ] ; then
