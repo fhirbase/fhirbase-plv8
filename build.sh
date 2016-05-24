@@ -17,7 +17,7 @@ if [[ ! -d $BUILD_DIR ]]; then
 
   echo "Build new version of fhirbase $COMMIT"
 
-  mkdir --parents $BUILD_DIR
+  mkdir -p $BUILD_DIR
 
   coffee utils/generate_migrations.coffee -n > $BUILD_DIR/schema.sql
   coffee utils/generate_patch.coffee -n > $BUILD_DIR/patch.sql
