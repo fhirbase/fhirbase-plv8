@@ -1,1 +1,1 @@
-export DATABASE_URL=postgres://root:root@localhost:5432/fb2
+export DATABASE_URL=postgres://root:root@localhost:5432/fhirbase_build

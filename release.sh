@@ -5,7 +5,7 @@ set -e
 # You should assign DATABASE_URL variable!
 # Like this:
 # DATABASE_URL=postgres://your_user_name:your_password@localhost:5432/fhirbase_build
-# WARNING: `fhirbase_build` database will be destroed and recreated!
+# WARNING: `fhirbase_build` database will be destroyed and recreated!
 
 PREV_FBVERSION="1.3.0.13"
 FBVERSION="1.3.0.14"
@@ -23,6 +23,8 @@ loadcmd="psql --no-psqlrc --quiet --echo-all --single-transaction \
 # We should temporary connect to `postgres` database
 # because `fhirbase_build` database will be droped.
 OTHER_DATABASE_URL="${DATABASE_URL/%\/fhirbase_build/\/postgres}"
+
+BUILD_DIR=build/latest
 
 function schema_statement {
     local schema=${1:-public}
@@ -47,7 +49,7 @@ FB_SCHEMA=public bash build.sh || exit 1
 { echo $(schema_statement "public"); \
   cat /tmp/fhirbase-release-$PREV_FBVERSION.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
-{ echo $(schema_statement "public"); cat tmp/patch.sql; } \
+{ echo $(schema_statement "public"); cat $BUILD_DIR/patch.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 FB_SCHEMA=public npm run test || exit 1
 
@@ -55,12 +57,12 @@ psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' ||
 psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' || exit 1
 
 FB_SCHEMA=foo bash build.sh || exit 1
-{ echo $(schema_statement "foo") ; cat tmp/build.sql; } \
+{ echo $(schema_statement "foo") ; cat $BUILD_DIR/build.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 FB_SCHEMA=foo npm run test || exit 1
 
 FB_SCHEMA=bar bash build.sh || exit 1
-{ echo $(schema_statement "bar") ; cat tmp/build.sql; } \
+{ echo $(schema_statement "bar") ; cat $BUILD_DIR/build.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 FB_SCHEMA=bar npm run test || exit 1
 
@@ -96,12 +98,12 @@ for file in $fhirbase_release_date_sensitive_files; do
 done
 
 FB_SCHEMA=public bash build.sh || exit 1
-{ echo $(schema_statement "public") ; cat tmp/build.sql; } \
+{ echo $(schema_statement "public") ; cat $BUILD_DIR/build.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 FB_SCHEMA=public npm run test || exit 1
 
-cp tmp/build.sql releases/fhirbase-$FBVERSION.sql || exit 1
-cp tmp/patch.sql releases/fhirbase-$FBVERSION-patch.sql || exit 1
+cp $BUILD_DIR/build.sql releases/fhirbase-$FBVERSION.sql || exit 1
+cp $BUILD_DIR/patch.sql releases/fhirbase-$FBVERSION-patch.sql || exit 1
 
 cd releases || exit 1
 
