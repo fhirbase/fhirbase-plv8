@@ -823,3 +823,62 @@ describe 'Integration',->
         )[0].resource.id,
         'practitioner-id'
       )
+
+    it 'Transactions are not rolled back on failure #112', ->
+      plv8.execute('''SELECT fhir_create_storage('{"resourceType": "Patient"}');''')
+      plv8.execute('''SELECT fhir_truncate_storage('{"resourceType": "Patient"}');''')
+
+      plv8.execute('''
+        SELECT fhir_create_resource('
+          {
+            "allowId": true,
+            "resource": {
+              "id": "id1",
+              "resourceType": "Patient",
+              "name": [{"given": ["Patient 1"]}]
+            }
+          }
+        ');
+      ''')
+
+      transaction =
+        JSON.parse(
+          plv8.execute('''
+            SELECT fhir_transaction('
+              {
+                "type": "transaction",
+                "id": "bundle-transaction",
+                "resourceType": "Bundle",
+                "entry": [
+                  {
+                    "request": {
+                      "url": "\/Patient\/id2",
+                      "method": "DELETE"
+                    }
+                  },
+                  {
+                    "request": {
+                      "url": "\/Patient\/id1",
+                      "method": "DELETE"
+                    }
+                  }
+                ]
+              }
+            ');
+          ''')[0].fhir_transaction
+        )
+
+      search =
+        JSON.parse(
+          plv8.execute('''
+            SELECT fhir_search('
+              {"resourceType": "Patient", "queryString": "_id=id1"}
+            ');
+          ''')[0].fhir_search
+        )
+
+      # assert.equal(search.entry.length, 1)
+      # FIXME: Transactions are not rolled back on failure #112
+      #        <https://github.com/fhirbase/fhirbase-plv8/issues/112>
+      #        (transaction should rollback and this patient should present).
+      assert.equal(search.entry.length, 0)
