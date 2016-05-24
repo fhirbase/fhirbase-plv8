@@ -1,5 +1,5 @@
 fs = require('fs')
-plv8 = require('../plpl/src/plv8')
+plv8 = {} # HACK to make it do not require connection require('../plpl/src/plv8')
 sql = require('../src/honey')
 schema = require('../src/core/schema')
 
