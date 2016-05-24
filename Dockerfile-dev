@@ -95,7 +95,7 @@ RUN bash -lc 'sudo service postgresql start \
               && export PATH="$HOME"/fhirbase/node_modules/coffee-script/bin:"$PATH" \
               && export DATABASE_URL=postgres://fhirbase:fhirbase@localhost:5432/fhirbase \
               && ~/fhirbase/build.sh \
-              && cat ~/fhirbase/tmp/build.sql | psql fhirbase'
+              && cat ~/fhirbase/tmp/latest/build.sql | psql fhirbase'
 
 
 USER root

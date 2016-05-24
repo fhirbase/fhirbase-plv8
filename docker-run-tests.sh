@@ -30,7 +30,7 @@ for schema in $schemas; do
     if [ "$install_fhirbase" = 1 ] ; then
         FB_SCHEMA=$schema ./build.sh || exit 1
         { echo "CREATE SCHEMA IF NOT EXISTS $schema; SET search_path TO $schema;" \
-          && cat tmp/build.sql ; } \
+          && cat tmp/latest/build.sql ; } \
           | psql fhirbase
         [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
     fi
