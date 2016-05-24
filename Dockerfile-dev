@@ -104,6 +104,9 @@ COPY docker-run-tests.sh /
 RUN chmod a+rwx /docker-run-tests.sh
 RUN chown fhirbase /docker-run-tests.sh
 
+# Install utils.
+RUN apt-get install --yes openssh-server aptitude
+
 USER fhirbase
 
 # Expose the PostgreSQL port.
