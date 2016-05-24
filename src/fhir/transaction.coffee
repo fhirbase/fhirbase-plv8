@@ -106,7 +106,7 @@ makePlan = (bundle) ->
       type: 'error'
       message: "Cannot determine action for request #{method} #{url}"
 
-  plan.sort((a, b)->
+  plan.sort (a, b)->
     # Transaction should processed in order (DELETE, POST, PUT, GET).
 
     number = (action)->
@@ -128,7 +128,6 @@ makePlan = (bundle) ->
       return 1
 
     0
-  )
 
 exports.makePlan = makePlan
 
@@ -159,8 +158,10 @@ executePlan = (plv8, plan) ->
       when "create"
         result = crud.fhir_create_resource(plv8, action)
 
-        if result.resourceType != "OperationOutcome" && action.fullUrl
+        if result && result.resourceType != "OperationOutcome" && action.fullUrl
           idReplacements[action.fullUrl] = "/" + result.resourceType + "/" + result.id
+
+        result
 
       when "update"
         action.resource.id = action.resource.id || (!action.queryString && action.id)
