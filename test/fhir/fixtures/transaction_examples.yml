@@ -133,3 +133,32 @@ examples:
           resourceType: Patient
           queryString: name=ucond
         total: 0
+
+  - desc: transaction with local ids used in references
+    before: []
+    transaction:
+      entry:
+        - request:
+            url: /Patient
+            method: POST
+          resource:
+            resourceType: Patient
+            name:
+              - given: ["John"]
+          fullUrl: "urn:uuid:f5b3dfcd-1191-4869-906a-da096341d83d"
+
+        - request:
+            url: /Encounter
+            method: POST
+          resource:
+            resourceType: Encounter
+            status: "in-progress"
+            class: "inpatient"
+            patient:
+              reference: "urn:uuid:f5b3dfcd-1191-4869-906a-da096341d83d"
+
+    after:
+      - search:
+          resourceType: Encounter
+          queryString: patient:Patient.name=john
+        total: 1

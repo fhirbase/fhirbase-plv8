@@ -11,7 +11,6 @@ strip = (obj)->
     res[k] = v
   res
 
-
 HANDLERS = [
   {
     name: 'Instance'
@@ -60,6 +59,7 @@ HANDLERS = [
         ifNoneExist: entry.request.ifNoneExist
         resource: entry.resource
         resourceType: match[1]
+        fullUrl: entry.fullUrl
   }
   {
     name: 'History'
@@ -132,11 +132,36 @@ makePlan = (bundle) ->
 
 exports.makePlan = makePlan
 
+replaceReferences = (resource, replacements) ->
+  if Array.isArray(resource)
+    resource.map (i) -> replaceReferences(i, replacements)
+  else if typeof(resource) == "object"
+    if resource.reference && typeof(resource.reference) == "string" && replacements[resource.reference]
+      result = resource
+      result.reference = replacements[resource.reference]
+    else
+      result = {}
+      for k, v of resource
+        result[k] = replaceReferences(v, replacements)
+
+    result
+  else
+    resource
+
 executePlan = (plv8, plan) ->
+  idReplacements = {}
+
   plan.map (action) ->
+    if action.resource
+      action.resource = replaceReferences(action.resource, idReplacements)
+
     switch action.type
       when "create"
-        crud.fhir_create_resource(plv8, action)
+        result = crud.fhir_create_resource(plv8, action)
+
+        if result.resourceType != "OperationOutcome" && action.fullUrl
+          idReplacements[action.fullUrl] = "/" + result.resourceType + "/" + result.id
+
       when "update"
         action.resource.id = action.resource.id || (!action.queryString && action.id)
         crud.fhir_update_resource(plv8, action)
@@ -173,7 +198,6 @@ execute = (plv8, bundle, strictMode) ->
   entry: result
 
 exports.execute = execute
-
 
 exports.fhir_transaction = (plv8, bundle)-> execute(plv8, bundle, true)
 
