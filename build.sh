@@ -27,6 +27,7 @@ if [[ ! -d $BUILD_DIR ]]; then
   cat $BUILD_DIR/schema.sql > $BUILD_DIR/build.sql
   cat $BUILD_DIR/patch.sql >> $BUILD_DIR/build.sql
   cat $BUILD_DIR/code.sql >> $BUILD_DIR/build.sql
+  echo $COMMIT > $BUILD_DIR/version
 
   cat $BUILD_DIR/code.sql >> $BUILD_DIR/patch.sql
 
