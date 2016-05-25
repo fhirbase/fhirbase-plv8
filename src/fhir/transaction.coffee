@@ -132,7 +132,9 @@ makePlan = (bundle) ->
 exports.makePlan = makePlan
 
 replaceReferences = (resource, replacements) ->
-  if Array.isArray(resource)
+  if resource == null || resource == undefined
+    null
+  else if Array.isArray(resource)
     resource.map (i) -> replaceReferences(i, replacements)
   else if typeof(resource) == "object"
     if resource.reference && typeof(resource.reference) == "string" && replacements[resource.reference]
