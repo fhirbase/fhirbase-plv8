@@ -474,19 +474,18 @@ describe 'Integration',->
         })]
       )
 
-    describe 'search by', ->
-      it 'identifier', ->
-        searched =
-          JSON.parse(
-            plv8.execute(
-              'SELECT fhir_search($1)',
-              [JSON.stringify(
-                resourceType: 'Order',
-                queryString: 'identifier=foo'
-              )]
-            )[0].fhir_search
-          )
-        assert.equal(searched.total, 1)
+    it 'search by identifier', ->
+      searched =
+        JSON.parse(
+          plv8.execute(
+            'SELECT fhir_search($1)',
+            [JSON.stringify(
+              resourceType: 'Order',
+              queryString: 'identifier=foo'
+            )]
+          )[0].fhir_search
+        )
+      assert.equal(searched.total, 1)
 
     it 'index', ->
       indexed =
