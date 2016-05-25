@@ -632,7 +632,7 @@ describe 'Integration',->
           {
             request:
               method: 'GET'
-              url: '/Patient/patient-to-delete-id'
+              url: '/Patient?_id=patient-to-delete-id'
           }
           # GET (search) also should processed last <http://hl7-fhir.github.io/http.html#2.1.0.16.2>
           {
@@ -694,9 +694,10 @@ describe 'Integration',->
       assert.equal(transaction.entry[2].id, 'patient-to-update-id')
       assert.equal(transaction.entry[2].name[0].family[0], 'Name to update updated')
 
-      assert.equal(transaction.entry[3].resourceType, 'OperationOutcome')
-      assert.equal(transaction.entry[3].issue[0].code, 'not-found')
-      assert.equal(transaction.entry[3].issue[0].details.coding[0].display, 'The resource "patient-to-delete-id" has been deleted')
+      assert.equal(transaction.entry[3].resourceType, 'Bundle')
+      assert.equal(transaction.entry[3].type, 'searchset')
+      assert.equal(transaction.entry[3].link[0].url, '/Patient?_id=patient-to-delete-id&_page=0')
+      assert.equal(transaction.entry[3].total, 0)
 
       assert.equal(transaction.entry[4].resourceType, 'Bundle')
       assert.equal(transaction.entry[4].type, 'searchset')
@@ -824,7 +825,7 @@ describe 'Integration',->
         'practitioner-id'
       )
 
-    it 'Transactions are not rolled back on failure #112', ->
+    it 'should rollback (#112)', ->
       plv8.execute('''SELECT fhir_create_storage('{"resourceType": "Patient"}');''')
       plv8.execute('''SELECT fhir_truncate_storage('{"resourceType": "Patient"}');''')
 
@@ -852,13 +853,13 @@ describe 'Integration',->
                 "entry": [
                   {
                     "request": {
-                      "url": "\/Patient\/id2",
+                      "url": "\/Patient\/id1",
                       "method": "DELETE"
                     }
                   },
                   {
                     "request": {
-                      "url": "\/Patient\/id1",
+                      "url": "\/Patient\/id2",
                       "method": "DELETE"
                     }
                   }
@@ -877,8 +878,4 @@ describe 'Integration',->
           ''')[0].fhir_search
         )
 
-      # assert.equal(search.entry.length, 1)
-      # FIXME: Transactions are not rolled back on failure #112
-      #        <https://github.com/fhirbase/fhirbase-plv8/issues/112>
-      #        (transaction should rollback and this patient should present).
-      assert.equal(search.entry.length, 0)
+      assert.equal(search.entry.length, 1)

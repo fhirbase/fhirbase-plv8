@@ -191,14 +191,40 @@ execute = (plv8, bundle, strictMode) ->
     if errors.length > 0
       return {
         resourceType: "OperationOutcome"
-        message: "There were incorrect requests within transaction. #{JSON.stringify(errors)}"
+        message: 'Transaction was rollbacked.' +
+          ' There were incorrect requests within transaction: ' +
+          JSON.stringify(errors)
       }
 
-  result = executePlan(plv8, plan)
+  wasRollbacked = false
+  try
+    result = #not assigning( because plv8 not return from `subtransaction` function( <http://pgxn.org/dist/plv8/doc/plv8.html#Subtransaction>
+      plv8.subtransaction(->
+        r = executePlan(plv8, plan)
 
-  resourceType: "Bundle"
-  type: 'transaction-response'
-  entry: result
+        shouldRollback = false
+        for resource in r
+          if resource.resourceType == 'OperationOutcome'
+            shouldRollback = true
+            break
+
+        if shouldRollback
+          throw new Error('Transaction should rollback')
+
+        r
+      )
+  catch e
+    wasRollbacked = true
+
+  if wasRollbacked
+    resourceType: 'OperationOutcome'
+    message: 'Transaction was rollbacked.' +
+      ' There were incorrect requests within transaction: ' +
+      JSON.stringify(result) #not assigned( because plv8 not return from `subtransaction` function( <http://pgxn.org/dist/plv8/doc/plv8.html#Subtransaction>
+  else
+    resourceType: "Bundle"
+    type: 'transaction-response'
+    entry: result
 
 exports.execute = execute
 

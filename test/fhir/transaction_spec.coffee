@@ -20,6 +20,8 @@ describe 'transaction execution', ->
   before ->
     plv8.execute("SET plv8.start_proc = 'plv8_init'")
 
+    schema.fhir_create_storage(plv8, resourceType: 'Encounter')
+
     for type, fixtures of transactionExamples.fixtures
       schema.fhir_create_storage(plv8, resourceType: type)
       schema.fhir_truncate_storage(plv8,  resourceType: type)
@@ -62,11 +64,53 @@ describe 'Transaction', ->
             url: '/Patient?name=Foo bar'
         }
       ]
-    transaction = transaction.fhir_transaction(plv8, bundle)
-    assert.equal(transaction.resourceType, 'Bundle')
-    assert.equal(transaction.type, 'transaction-response')
-    assert.equal(transaction.entry[0].resourceType, 'Bundle')
-    assert.equal(transaction.entry[0].type, 'searchset')
-    assert.equal(transaction.entry[0].total, 1)
-    assert.equal(transaction.entry[0].entry[0].resource.resourceType, 'Patient')
-    assert.equal(transaction.entry[0].entry[0].resource.name[0].family[0], 'Foo bar')
+    t = transaction.fhir_transaction(plv8, bundle)
+    assert.equal(t.resourceType, 'Bundle')
+    assert.equal(t.type, 'transaction-response')
+    assert.equal(t.entry[0].resourceType, 'Bundle')
+    assert.equal(t.entry[0].type, 'searchset')
+    assert.equal(t.entry[0].total, 1)
+    assert.equal(t.entry[0].entry[0].resource.resourceType, 'Patient')
+    assert.equal(t.entry[0].entry[0].resource.name[0].family[0], 'Foo bar')
+
+  it 'Transactions are not rolled back on failure #112', ->
+    schema.fhir_create_storage(plv8, {"resourceType": "Patient"})
+    schema.fhir_truncate_storage(plv8, {"resourceType": "Patient"})
+
+    crud.fhir_create_resource(plv8,
+      {
+        "allowId": true,
+        "resource": {
+          "id": "id1",
+          "resourceType": "Patient",
+          "name": [{"given": ["Patient 1"]}]
+        }
+      }
+    )
+
+    t = transaction.fhir_transaction(plv8,
+      {
+        "type": "transaction",
+        "id": "bundle-transaction",
+        "resourceType": "Bundle",
+        "entry": [
+          {
+            "request": {
+              "url": "\/Patient\/id1",
+              "method": "DELETE"
+            }
+          },
+          {
+            "request": {
+              "url": "\/Patient\/id2",
+              "method": "DELETE"
+            }
+          }
+        ]
+      }
+    )
+
+    search = search.fhir_search(plv8,
+      {"resourceType": "Patient", "queryString": "_id=id1"})
+
+    assert.equal(search.entry.length, 1)
