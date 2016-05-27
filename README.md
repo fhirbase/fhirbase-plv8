@@ -196,11 +196,11 @@ SELECT fhir_conformance('{"default": "values"}');
 -- return simple Conformance resource, based on created stores
 ```
 
-## Contribution
+## Contributing
 
-* Star us on GitHub
-* If you encountered a bug, please [make an Issue](https://github.com/fhirbase/fhirbase-plv8/issues/new)
-* Contribute to fhirbase
+See the [CONTRIBUTING.md][].
+
+[CONTRIBUTING.md]:https://github.com/fhirbase/fhirbase-plv8/blob/master/CONTRIBUTING.md
 
 ## License
 
