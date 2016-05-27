@@ -5,17 +5,18 @@ set -e
 git submodule init
 git submodule update
 
-cd plpl
-npm install
-cd ..
-npm install
-
 COMMIT=`git rev-parse HEAD`
 BUILD_DIR=build/$COMMIT
 
 if [[ ! -d $BUILD_DIR ]]; then
 
   echo "Build new version of fhirbase $COMMIT"
+
+  cd plpl
+  npm install
+  cd ..
+  npm install
+  npm install coffee-script -g
 
   mkdir -p $BUILD_DIR
 
@@ -31,7 +32,7 @@ if [[ ! -d $BUILD_DIR ]]; then
 
   cat $BUILD_DIR/code.sql >> $BUILD_DIR/patch.sql
 
-  rm `pwd`/build/latest
+  rm -f `pwd`/build/latest
   ln -s `pwd`/$BUILD_DIR `pwd`/build/latest
 else
   echo "Build $COMMIT already exists"
