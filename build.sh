@@ -16,7 +16,6 @@ if [[ ! -d $BUILD_DIR ]]; then
   npm install
   cd ..
   npm install
-  npm install coffee-script -g
 
   mkdir -p $BUILD_DIR
 
