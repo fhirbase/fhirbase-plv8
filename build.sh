@@ -31,6 +31,7 @@ if [[ ! -d $BUILD_DIR ]]; then
 
   cat $BUILD_DIR/code.sql >> $BUILD_DIR/patch.sql
 
+  rm `pwd`/build/latest
   ln -s `pwd`/$BUILD_DIR `pwd`/build/latest
 else
   echo "Build $COMMIT already exists"
