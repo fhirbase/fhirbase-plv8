@@ -12,6 +12,7 @@ env:
   global:
   - secure: OhbEMmdvXwMoNsQCzWRIQsYc6LwcRAARjAoVv150LRTDB4s/FPo/67DQuUkcMJPp5+HyGh2/9giNArmn7NcMiXHtiUZKQKRkt758Ga9IdYidHJrmUI3wZKJns6W7SeCr4GSsd7cVcDo/ubFQQGZK2yIlRRF3zmWnEcPt9uLIlyJlrBu5DKUev65n/AdUzaqGf48efavz97A9DCVxwuE44jGp5Bqjoqqrben97j9U5L8A3APGIcweBaxcLQPunIZboA9DX8xrP/Y+C0cTJlJksbEb8jDNwrK+xLmX/Bd3o5fQh83/wyu2c/E9WrOR96e74VutLjXhdt5gOfzD79Q09lPziYg+0PkR8NaBwHldpmzRf75asem83OYGlNDacd2dkyiuqCNpa1xOIutdk9IKl0FNCn5C4OYFXaR6vPNwwZWF4lt+cXXs0il2/buWkR1Ydt35W1j0LHAPLezrrD839klfxHmVd+3BEf1RB9TQGMzSseSdMEsx5pWJh1k3gM/QGTRpjeaTat49oHEusSx6P+nU5L1VzfPN60/QJvkiS9ay0xdounbb9pkiI/oYyzQP5JD+dqKqxpBWEEBfhrxc+GhFZEJLPLW9XB9dBF5FCWRVweGyDcGa2SP81xV7L/Vc56jWsKcA/KkCLnpSgBm+b34Fg45VOga1zO2lxEV/Cdk=
   - secure: TCYwHystRMTz1AKWfQ7436LM7r2WumYQNaLs3f/j4QLZEZhZJMTUGClYzfc80mbjkcpSsbXcitSOfwLxo+aTG8kgvQTVFZJsNNExinnlZ8zo8h91+iyN4GHdEECFnylEAC1QvSUJbACpYTmHwz5HsXrBmrP5yKVloesbbdTr5V34Z9DhKHb6MkpgNzzYM7Cy977eqkp5CaFOwRy1CbxM2bCJrgZEFrBGpW9Iqb5YLMoorygffDWltNZ/GK39hYsETOpdNkUIPZWbGQyRx4yYpydk4AMEBz7r0QM6opf4YVCoA2MfrbDnPGrfyyv+T1NgYmBa4PYzpBOACphuYmVcM6Voqb3qxZUxTzQ4lTsNU/gZ8kUQdlbjQCtVotj5blp39ynmOCt6F9iKXGPAG3u8iWB19+19CvpeFirxwa5yG6b0rlsnZNAyQYi+2/7mxR1ZDZjl2llX4WmVPM0NHQ+yfMIrljdog+2SkNOO0PPBcfba4inZE8A7+k/8zCucBOofxx0zfam44FjisUtiVjpEFJtKmEMHznKN/AlEu0SmUl859Hc+418xBboxYr5lux9d+ha0QD4/bpokRNFvSM3ZGcBP44+m3bRpyvjuv+cMN7DBedn2QeBJSnfsB0cJNepoi++b7NsZLggTqKy7KhvGplapiYvQrWSys6ZPnq28PXA=
+  - secure: B8Mc7dg0VDL8DZ0L2HakGWlzHnMprVtihjwcmn0a02mhaTxFv1FCXsb3O0pB/kQ0M5Ox2OzLSyrMUZFK+aiY1jhDJrllbXBRa34fVEawUdnczjzmqm8sWyfT3tTPwVPcdLSXuGPwLXmjOBnlJth1zBwJcDK6R4Epv80tNsViG8fmXk23zjS+shi4utlbScuZLZ9jM9DHay7IyMsVDxCSq7Gjsukue8ib3hzxGrL0a/anWfFo+9N7uLwplacPo/Vt+crA9VlIUvfd3Oli1KaEB7GsTCZs2xFPc48oinchei2T/Kb7oB13YW+6T2QYiWEjCw5Y9OEA7G+Ic7KSRqNruUH/63xaBEeCmBKUw5pbg/OKXvHEbI68AlMTls/xEoCPXY52KFUBCJ5tws8MXlC5vdzotjAz+gcBDz3pbQEaEA+MeCz1j9ogRTQCJ7lxqK8zWO8z4HV2u0ZOZ0sHA5IrHuHwiuLNjZyHwneTS+ov889s5ChdChvObRbcLOXtfQUABhvz69zyX/5c8kfVmniQ+FfYNmskNCPoqJifiZESjTnGbgknfNyHeiH2+QHU7nkpQjzbNUpePbJv3hMWSyh4gDT2ky6rxikvaLmsXZLybmvLyiF733VeF2svNXraaJ8yTW6ss/rhfTdESXxMghalFV4Pk02jW2PzLaFND3RH7ZY=
   matrix:
   - PLV8_VERSION=1.4.3 SCHEMAS="public"
   - PLV8_VERSION=1.4.4 SCHEMAS="public"
@@ -20,12 +21,6 @@ env:
 notifications:
   slack: fhirbase:isitOv0KvPgaMzrccuAzVUwB
 before_install:
-- openssl aes-256-cbc
-  -K $encrypted_6ab70d4cdf06_key
-  -iv $encrypted_6ab70d4cdf06_iv
-  -in perf/provisioning/secure/secure.tar.gz.enc
-  -out perf/provisioning/secure/secure.tar.gz
-  -d
 - |
   cd $TRAVIS_BUILD_DIR || exit 1
   docker build --tag=fhirbase-tests-in-schemas:pg-9.4-plv8-$PLV8_VERSION \
@@ -35,8 +30,8 @@ script: |
              --schemas="$SCHEMAS" --install-fhirbase || exit 1
 after_success: |
   if [ "$PLV8_VERSION" == "1.4.7" ] && [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
-    cat perf/provisioning/secure/secure.tar.gz \
-        | tar --extract --gzip --directory perf/provisioning/secure --file -
+    echo $PASS | gpg --passphrase-fd 0 --decrypt --output - ./secure.tar.gz.asc \
+      | tar --extract --gzip --file -
     [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
     pip install --user --upgrade 'ansible<2' || exit 1
     pip install --user --upgrade boto || exit 1
@@ -46,12 +41,12 @@ after_success: |
             --inventory-file=inventories/ec2 \
             ec2_start.yml || exit 1
     python2 ~/.local/bin/ansible-playbook \
-            --private-key=secure/fhirbase_performance_benchmark.pem \
+            --private-key=../../secure/fhirbase_performance_benchmark.pem \
             --inventory-file=inventories/ec2.py \
             --user=ubuntu \
             bootstrap.yml || exit 1
     python2 ~/.local/bin/ansible-playbook \
-            --private-key=secure/fhirbase_performance_benchmark.pem \
+            --private-key=../../secure/fhirbase_performance_benchmark.pem \
             --inventory-file=inventories/ec2.py \
             --user=ubuntu \
             --extra-vars="timestamp=foobar" \

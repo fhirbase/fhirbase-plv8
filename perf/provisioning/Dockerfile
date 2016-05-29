@@ -27,7 +27,7 @@ RUN touch ~/.ssh/authorized_keys
 
 USER root
 
-COPY ./secure/local_docker.pub /home/ubuntu/.ssh/local_docker.pub
+COPY ../../secure/local_docker.pub /home/ubuntu/.ssh/local_docker.pub
 RUN chown ubuntu:ubuntu /home/ubuntu/.ssh/local_docker.pub
 
 USER ubuntu

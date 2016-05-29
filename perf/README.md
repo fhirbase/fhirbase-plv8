@@ -11,25 +11,24 @@ with __Ubuntu 14.04.3__ with `ubuntu` user and `ubuntu`.
 path/to/fhirbase/perf/provisioning/docker_setup.sh
 ```
 
-Archive with ssh keys placed in `secure` directory used by container.
+Prepare `secure` directory with ssh keys used by container.
 
 ```bash
-cd path/to/fhirbase/perf/provisioning/secure
-gpg --output - secure.tar.gz.asc | tar --extract --gzip --file -
+cd path/to/fhirbase && ./secure-decrypt.sh
 ```
 
 `22` port will proxy to `7022` port.
 
 ```bash
 ssh -p 7022 \
-    -i path/to/fhirbase/perf/provisioning/secure/local_docker.pem \
+    -i path/to/fhirbase/secure/local_docker.pem \
     ubuntu@localhost
 ```
 
 Use `ping.yml` to test ansible and docker:
 
 ```bash
-ansible-playbook --private-key=path/to/fhirbase/perf/provisioning/secure/local_docker.pem \
+ansible-playbook --private-key=path/to/fhirbase/secure/local_docker.pem \
                  --inventory=inventories/local \
                  ping.yml
 ```
@@ -41,7 +40,7 @@ ansible-playbook --private-key=path/to/fhirbase/perf/provisioning/secure/local_d
 Install PostgreSQL and stuff
 
 ```bash
-ansible-playbook --private-key=path/to/fhirbase/perf/provisioning/secure/local_docker.pem \
+ansible-playbook --private-key=path/to/fhirbase/secure/local_docker.pem \
                  --inventory=inventories/local \
                  bootstrap.yml
 ```
@@ -51,7 +50,7 @@ ansible-playbook --private-key=path/to/fhirbase/perf/provisioning/secure/local_d
 Run performance test
 
 ```bash
-ansible-playbook --private-key=path/to/fhirbase/perf/provisioning/secure/local_docker.pem \
+ansible-playbook --private-key=path/to/fhirbase/secure/local_docker.pem \
                  --inventory=inventories/local \
                  perf.yml
 ```

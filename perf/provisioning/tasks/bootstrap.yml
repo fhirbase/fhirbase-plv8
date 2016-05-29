@@ -38,7 +38,7 @@
 
 - name: Copy ssh keys to ubuntu user home directory
   copy:
-    src: "./secure/{{ item }}"
+    src: "../../secure/{{ item }}"
     dest: "{{ os.user.home }}/.ssh/{{ item }}"
     owner: "{{ os.user.name }}"
     group: "{{ os.user.name }}"
