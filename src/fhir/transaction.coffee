@@ -185,16 +185,32 @@ exports.executePlan = executePlan
 execute = (plv8, bundle, strictMode) ->
   plan = makePlan(bundle)
 
+  outcome = (wrongTransaction)->
+    resourceType: 'OperationOutcome'
+    issue: [
+      {
+        severity: 'error'
+        code: 'invalid'
+        details: {
+          coding: [
+            {
+              code: 'MSG_BAD_SYNTAX',
+              display: 'There were incorrect requests within transaction'
+            }
+          ]
+        }
+        diagnostics: 'Transaction was rollbacked.' +
+          ' There were incorrect requests within transaction: ' +
+          JSON.stringify(wrongTransaction) #not assigned( because plv8 not return from `subtransaction` function( <http://pgxn.org/dist/plv8/doc/plv8.html#Subtransaction>
+        extension: [{url: 'http-status-code', valueString: '400'}]
+      }
+    ]
+
   if strictMode
     errors = plan.filter (i) -> i.type == 'error'
 
     if errors.length > 0
-      return {
-        resourceType: "OperationOutcome"
-        message: 'Transaction was rollbacked.' +
-          ' There were incorrect requests within transaction: ' +
-          JSON.stringify(errors)
-      }
+      return outcome(errors)
 
   wasRollbacked = false
   try
@@ -217,10 +233,7 @@ execute = (plv8, bundle, strictMode) ->
     wasRollbacked = true
 
   if wasRollbacked
-    resourceType: 'OperationOutcome'
-    message: 'Transaction was rollbacked.' +
-      ' There were incorrect requests within transaction: ' +
-      JSON.stringify(result) #not assigned( because plv8 not return from `subtransaction` function( <http://pgxn.org/dist/plv8/doc/plv8.html#Subtransaction>
+    outcome(result)
   else
     resourceType: "Bundle"
     type: 'transaction-response'
