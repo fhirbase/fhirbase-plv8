@@ -7,11 +7,11 @@ set -e
 # DATABASE_URL=postgres://your_user_name:your_password@localhost:5432/fhirbase_build
 # WARNING: `fhirbase_build` database will be destroyed and recreated!
 
-PREV_FBVERSION="1.3.0.14"
-FBVERSION="1.3.0.15"
+PREV_FBVERSION="1.3.0.15"
+FBVERSION="1.3.0.16"
 
-PREV_FBRELEASEDATE="2016-05-10T16:00:00Z"
-FBRELEASEDATE="2016-05-25T11:00:00Z"
+PREV_FBRELEASEDATE="2016-05-25T11:00:00Z"
+FBRELEASEDATE="2016-05-31T09:00:00Z"
 
 PREV_FHIRVERSION="1.3.0"
 FHIRVERSION="1.3.0"
@@ -96,6 +96,9 @@ for file in $fhirbase_release_date_sensitive_files; do
         --expression="s/$PREV_FBRELEASEDATE/$FBRELEASEDATE/g" \
         $file || exit 1
 done
+
+psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' || exit 1
+psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' || exit 1
 
 FB_SCHEMA=public ./build.sh --rebuild || exit 1
 { echo $(schema_statement "public") ; cat $BUILD_DIR/build.sql; } \

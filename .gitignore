@@ -6,6 +6,5 @@
 /releases
 /secure
 /secure.tar.gz
-/tmp
 /vagrant/.vagrant
 npm-debug.log

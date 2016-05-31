@@ -36,7 +36,7 @@ if [[ ! -d $BUILD_DIR ]]; then
 
   mkdir -p $BUILD_DIR
 
-  coffee utils/generate_migrations.coffee -n > $BUILD_DIR/schema.sql
+  coffee utils/generate_schema.coffee -n > $BUILD_DIR/schema.sql
   coffee utils/generate_patch.coffee -n > $BUILD_DIR/patch.sql
 
   plpl/bin/plpl compile $BUILD_DIR/code.sql
