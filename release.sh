@@ -45,7 +45,7 @@ if [[ ! -f /tmp/fhirbase-release-$PREV_FBVERSION.sql ]]; then
         | funzip > /tmp/fhirbase-release-$PREV_FBVERSION.sql
 fi
 
-FB_SCHEMA=public bash build.sh || exit 1
+FB_SCHEMA=public ./build.sh --rebuild || exit 1
 { echo $(schema_statement "public"); \
   cat /tmp/fhirbase-release-$PREV_FBVERSION.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
@@ -56,12 +56,12 @@ FB_SCHEMA=public npm run test || exit 1
 psql "$OTHER_DATABASE_URL" --command='DROP DATABASE IF EXISTS fhirbase_build' || exit 1
 psql "$OTHER_DATABASE_URL" --command='CREATE DATABASE fhirbase_build' || exit 1
 
-FB_SCHEMA=foo bash build.sh || exit 1
+FB_SCHEMA=foo ./build.sh --rebuild || exit 1
 { echo $(schema_statement "foo") ; cat $BUILD_DIR/build.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 FB_SCHEMA=foo npm run test || exit 1
 
-FB_SCHEMA=bar bash build.sh || exit 1
+FB_SCHEMA=bar ./build.sh --rebuild || exit 1
 { echo $(schema_statement "bar") ; cat $BUILD_DIR/build.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 FB_SCHEMA=bar npm run test || exit 1
@@ -97,7 +97,7 @@ for file in $fhirbase_release_date_sensitive_files; do
         $file || exit 1
 done
 
-FB_SCHEMA=public bash build.sh || exit 1
+FB_SCHEMA=public ./build.sh --rebuild || exit 1
 { echo $(schema_statement "public") ; cat $BUILD_DIR/build.sql; } \
     | $loadcmd "$DATABASE_URL" > /dev/null || exit 1
 FB_SCHEMA=public npm run test || exit 1

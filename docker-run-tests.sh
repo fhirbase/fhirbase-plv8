@@ -28,7 +28,7 @@ source ~/.nvm/nvm.sh && nvm use 6.2.0 || exit 1
 
 for schema in $schemas; do
     if [ "$install_fhirbase" = 1 ] ; then
-        FB_SCHEMA=$schema ./build.sh || exit 1
+        FB_SCHEMA=$schema ./build.sh --rebuild || exit 1
         { echo "CREATE SCHEMA IF NOT EXISTS $schema; SET search_path TO $schema;" \
           && cat build/latest/build.sql ; } \
           | psql fhirbase

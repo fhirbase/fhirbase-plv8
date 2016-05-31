@@ -24,7 +24,7 @@
   "files": ["bin", "lib", "src"],
   "scripts": {
     "publish": "coffee -o lib/ -c src/ && npm publish",
-    "migrate": "./build.sh && cat build/latest/build.sh | psql $DATABASE_URL",
+    "migrate": "./build.sh --rebuild && cat build/latest/build.sql | psql $DATABASE_URL",
     "reload": "plpl/bin/plpl reload",
     "test": "node_modules/mocha/bin/mocha --compilers mocha --compilers coffee:coffee-script/register  --recursive"
   }
