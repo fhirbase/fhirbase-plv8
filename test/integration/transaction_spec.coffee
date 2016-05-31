@@ -7,16 +7,11 @@ describe 'Integration', ->
 
   describe 'Transaction', ->
     before ->
-      plv8.execute(
-        'SELECT fhir_create_storage($1)',
-        [JSON.stringify(resourceType: 'Patient')]
-      )
+      plv8.execute('''SELECT fhir_create_storage('{"resourceType": "Patient"}');''')
 
     beforeEach ->
-      plv8.execute(
-        'SELECT fhir_truncate_storage($1)',
-        [JSON.stringify(resourceType: 'Patient')]
-      )
+      plv8.execute('''SELECT fhir_truncate_storage('{"resourceType": "Patient"}');''')
+
       plv8.execute(
         'SELECT fhir_create_resource($1)',
         [JSON.stringify(
@@ -198,10 +193,6 @@ describe 'Integration', ->
 
     it 'narus transaction', ->
       plv8.execute('''
-        SELECT fhir_create_storage('{"resourceType": "Patient"}');
-      ''')
-
-      plv8.execute('''
         SELECT fhir_create_storage('{"resourceType": "Practitioner"}');
       ''')
 
@@ -266,9 +257,6 @@ describe 'Integration', ->
       )
 
     it 'should rollback (#112)', ->
-      plv8.execute('''SELECT fhir_create_storage('{"resourceType": "Patient"}');''')
-      plv8.execute('''SELECT fhir_truncate_storage('{"resourceType": "Patient"}');''')
-
       plv8.execute('''
         SELECT fhir_create_resource('
           {
@@ -308,6 +296,41 @@ describe 'Integration', ->
             ');
           ''')[0].fhir_transaction
         )
+
+      assert.equal(transaction.resourceType, 'OperationOutcome')
+      assert.equal(transaction.issue[0].severity, 'error')
+      assert.equal(
+        transaction.issue[0].diagnostics,
+        'There were incorrect requests within transaction. Transaction was rollbacked.'
+      )
+      assert.equal(
+        JSON.parse(
+          transaction.issue[0].extension.find(
+            (extension)-> extension.url == 'transaction-entries'
+          ).valueString
+        ).length,
+        2
+       )
+      assert.equal(
+        JSON.parse(
+          transaction.issue[0].extension.find(
+            (extension)-> extension.url == 'transaction-entries'
+          ).valueString
+        ).find(
+          (entry)-> entry.resourceType == 'OperationOutcome'
+        ).issue[0].code,
+        'not-found'
+       )
+      assert.equal(
+        JSON.parse(
+          transaction.issue[0].extension.find(
+            (extension)-> extension.url == 'transaction-entries'
+          ).valueString
+        ).find(
+          (entry)-> entry.resourceType == 'OperationOutcome'
+        ).issue[0].diagnostics,
+        'Resource Id "id2" does not exist'
+       )
 
       search =
         JSON.parse(

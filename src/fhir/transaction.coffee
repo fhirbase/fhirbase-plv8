@@ -199,10 +199,15 @@ execute = (plv8, bundle, strictMode) ->
             }
           ]
         }
-        diagnostics: 'Transaction was rollbacked.' +
-          ' There were incorrect requests within transaction: ' +
-          JSON.stringify(wrongTransaction) #not assigned( because plv8 not return from `subtransaction` function( <http://pgxn.org/dist/plv8/doc/plv8.html#Subtransaction>
-        extension: [{url: 'http-status-code', valueString: '400'}]
+        diagnostics: 'There were incorrect requests within transaction. ' +
+          'Transaction was rollbacked.'
+        extension: [
+          {url: 'http-status-code', valueString: '400'}
+          {
+            url: 'transaction-entries',
+            valueString: JSON.stringify(wrongTransaction)
+          }
+        ]
       }
     ]
 
@@ -212,32 +217,34 @@ execute = (plv8, bundle, strictMode) ->
     if errors.length > 0
       return outcome(errors)
 
+  entries = null
   wasRollbacked = false
   try
-    result = #not assigning( because plv8 not return from `subtransaction` function( <http://pgxn.org/dist/plv8/doc/plv8.html#Subtransaction>
-      plv8.subtransaction(->
-        r = executePlan(plv8, plan)
+    plv8.subtransaction ->
+      entries = executePlan(plv8, plan)
 
-        shouldRollback = false
-        for resource in r
-          if resource.resourceType == 'OperationOutcome'
-            shouldRollback = true
-            break
+      shouldRollback = false
+      for resource in entries
+        if resource.resourceType == 'OperationOutcome' &&
+           typeof(resource.issue) == 'object'
+          for issue in resource.issue
+            if issue.severity == 'fatal' || issue.severity == 'error'
+              shouldRollbacked = true
+              break
+        if shouldRollbacked
+          break
 
-        if shouldRollback
-          throw new Error('Transaction should rollback')
-
-        r
-      )
+      if shouldRollbacked
+        throw new Error('Transaction should rollback')
   catch e
     wasRollbacked = true
 
   if wasRollbacked
-    outcome(result)
+    outcome(entries)
   else
     resourceType: "Bundle"
     type: 'transaction-response'
-    entry: result
+    entry: entries
 
 exports.execute = execute
 
