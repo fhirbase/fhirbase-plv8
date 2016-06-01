@@ -35,7 +35,4 @@ if [[ ! -d $BUILD_DIR ]]; then
   ln -s `pwd`/$BUILD_DIR `pwd`/build/latest
 else
   echo "Build already exists for revision $COMMIT"
-  echo "If you whant rebuild run `build.sh --rebuild`"
-  exit 1
 fi
-# psql postgres -c 'drop database build' && psql postgres -c "create database build with ENCODING = 'UTF-8' LC_CTYPE = 'ru_RU.UTF-8' LC_COLLATE = 'ru_RU.UTF-8'   template = template0" && cat $BUILD_DIR/build.sql | psql build && npm run test
