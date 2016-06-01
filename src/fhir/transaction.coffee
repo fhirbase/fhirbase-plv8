@@ -185,31 +185,19 @@ exports.executePlan = executePlan
 execute = (plv8, bundle, strictMode) ->
   plan = makePlan(bundle)
 
-  outcome = (wrongTransaction)->
+  outcome = (entries)->
+    issues = entries
+      .filter (entry)->
+        entry.resourceType == 'OperationOutcome' &&
+          entry.issue.filter(
+            (issue)-> issue.severity == 'fatal' || issue.severity == 'error'
+          ).length > 0
+      .map((entry)-> entry.issue)
+      .reduce(((a, b)-> a.concat(b)), []) #flatten
+
     resourceType: 'OperationOutcome'
-    issue: [
-      {
-        severity: 'error'
-        code: 'invalid'
-        details: {
-          coding: [
-            {
-              code: 'MSG_BAD_SYNTAX',
-              display: 'There were incorrect requests within transaction'
-            }
-          ]
-        }
-        diagnostics: 'There were incorrect requests within transaction. ' +
-          'Transaction was rollbacked.'
-        extension: [
-          {url: 'http-status-code', valueString: '400'}
-          {
-            url: 'transaction-entries',
-            valueString: JSON.stringify(wrongTransaction)
-          }
-        ]
-      }
-    ]
+    issue: issues
+    # extension: [{url: 'http-status-code', valueString: '400'}]
 
   if strictMode
     errors = plan.filter (i) -> i.type == 'error'

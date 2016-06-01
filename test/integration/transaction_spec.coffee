@@ -299,38 +299,11 @@ describe 'Integration', ->
 
       assert.equal(transaction.resourceType, 'OperationOutcome')
       assert.equal(transaction.issue[0].severity, 'error')
+      assert.equal(transaction.issue[0].code, 'not-found')
       assert.equal(
         transaction.issue[0].diagnostics,
-        'There were incorrect requests within transaction. Transaction was rollbacked.'
-      )
-      assert.equal(
-        JSON.parse(
-          transaction.issue[0].extension.find(
-            (extension)-> extension.url == 'transaction-entries'
-          ).valueString
-        ).length,
-        2
-       )
-      assert.equal(
-        JSON.parse(
-          transaction.issue[0].extension.find(
-            (extension)-> extension.url == 'transaction-entries'
-          ).valueString
-        ).find(
-          (entry)-> entry.resourceType == 'OperationOutcome'
-        ).issue[0].code,
-        'not-found'
-       )
-      assert.equal(
-        JSON.parse(
-          transaction.issue[0].extension.find(
-            (extension)-> extension.url == 'transaction-entries'
-          ).valueString
-        ).find(
-          (entry)-> entry.resourceType == 'OperationOutcome'
-        ).issue[0].diagnostics,
         'Resource Id "id2" does not exist'
-       )
+      )
 
       search =
         JSON.parse(
