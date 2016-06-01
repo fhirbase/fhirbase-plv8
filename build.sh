@@ -4,23 +4,6 @@ set -e
 
 COMMIT=`git rev-parse HEAD`
 BUILD_DIR=build/$COMMIT
-rebuild=${rebuild:--1}
-
-while [ $# -gt 0 ]; do
-    case "$1" in
-        --rebuild)
-            let rebuild=1
-            ;;
-        *)
-            printf "***************************\n"
-            printf "* Error: Invalid argument.*\n"
-            printf "***************************\n"
-            exit 1
-    esac
-    shift
-done
-
-[[ $rebuild -eq 1 ]] && rm -rf -d $BUILD_DIR
 
 git submodule init
 git submodule update
