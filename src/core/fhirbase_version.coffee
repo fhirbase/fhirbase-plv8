@@ -1,4 +1,4 @@
-fhirbase_version = -> '1.3.0.17'
+fhirbase_version = -> '1.3.0.18'
 
 exports.fhirbase_version = fhirbase_version
 
@@ -8,7 +8,7 @@ exports.fhirbase_version.plv8_signature = {
   immutable: true
 }
 
-fhirbase_release_date = -> '2016-05-31T23:00:00Z'
+fhirbase_release_date = -> '2016-06-01T13:00:00Z'
 
 exports.fhirbase_release_date = fhirbase_release_date
 
