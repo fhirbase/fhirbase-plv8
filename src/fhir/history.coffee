@@ -16,14 +16,6 @@ validate_create_resource = (resource)->
       code: 'structure' 
     ]
 
-table_not_exists = (resourceType)->
-  resourceType: "OperationOutcome"
-  text: {div: "<div>Storage for #{resourceType} not exists</div>"}
-  issue: [
-    severity: 'error'
-    code: 'not-supported' 
-  ]
-
 assert = (pred, msg)-> throw new Error("Asserted: #{msg}") unless pred
 
 ensure_meta = (resource, props)->
@@ -36,7 +28,7 @@ ensure_table = (plv8, resourceType)->
   table_name = namings.table_name(plv8, resourceType)
   hx_table_name = namings.history_table_name(plv8, resourceType)
   unless pg_meta.table_exists(plv8, table_name)
-    return [null, null, table_not_exists(resourceType)]
+    return [null, null, outcome.table_not_exists(resourceType)]
   else
     [table_name, hx_table_name, null]
 

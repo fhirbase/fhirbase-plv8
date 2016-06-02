@@ -161,3 +161,12 @@ exports.truncate_storage_done = (resourceType)->
       extension: [{url: 'http-status-code', valueString: '200'}]
     }
   ]
+
+exports.table_not_exists = (resourceType)->
+  resourceType: 'OperationOutcome'
+  text: {div: "<div>Storage for #{resourceType} not exists</div>"}
+  issue: [
+    severity: 'error'
+    code: 'not-supported'
+    diagnostics: "Storage for #{resourceType} not exists"
+  ]
