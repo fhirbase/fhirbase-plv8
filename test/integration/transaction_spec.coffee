@@ -12,6 +12,9 @@ describe 'Integration', ->
     beforeEach ->
       plv8.execute('''SELECT fhir_truncate_storage('{"resourceType": "Patient"}');''')
 
+    it 'seed data should be', ->
+
+    it 'should processed in order (DELETE, POST, PUT, GET)', ->
       plv8.execute(
         'SELECT fhir_create_resource($1)',
         [JSON.stringify(
@@ -30,8 +33,6 @@ describe 'Integration', ->
           }
         )]
       )
-
-    it 'seed data should be', ->
       assert.equal(
         JSON.parse(
           plv8.execute(
@@ -57,7 +58,6 @@ describe 'Integration', ->
         1
       )
 
-    it 'should processed in order (DELETE, POST, PUT, GET)', ->
       bundle =
         resourceType: 'Bundle'
         id: 'bundle-transaction-id'
