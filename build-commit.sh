@@ -52,5 +52,5 @@ if [[ ! -d $BUILD_DIR ]]; then
   ln -s `pwd`/$BUILD_DIR `pwd`/build/latest
 else
   echo "Build already exists for revision $COMMIT"
-  echo "If you whant rebuild run `build-commit.sh --rebuild`"
+  echo 'If you whant rebuild run "build-commit.sh --rebuild"'
 fi
