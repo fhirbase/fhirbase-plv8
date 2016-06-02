@@ -67,11 +67,11 @@ describe 'Transaction', ->
     t = transaction.fhir_transaction(plv8, bundle)
     assert.equal(t.resourceType, 'Bundle')
     assert.equal(t.type, 'transaction-response')
-    assert.equal(t.entry[0].resourceType, 'Bundle')
-    assert.equal(t.entry[0].type, 'searchset')
-    assert.equal(t.entry[0].total, 1)
-    assert.equal(t.entry[0].entry[0].resource.resourceType, 'Patient')
-    assert.equal(t.entry[0].entry[0].resource.name[0].family[0], 'Foo bar')
+    assert.equal(t.entry[0].resource.resourceType, 'Bundle')
+    assert.equal(t.entry[0].resource.type, 'searchset')
+    assert.equal(t.entry[0].resource.total, 1)
+    assert.equal(t.entry[0].resource.entry[0].resource.resourceType, 'Patient')
+    assert.equal(t.entry[0].resource.entry[0].resource.name[0].family[0], 'Foo bar')
 
   it 'Transactions are not rolled back on failure #112', ->
     schema.fhir_create_storage(plv8, {"resourceType": "Patient"})

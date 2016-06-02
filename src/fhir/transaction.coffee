@@ -230,9 +230,12 @@ execute = (plv8, bundle, strictMode) ->
   if wasRollbacked
     outcome(entries)
   else
-    resourceType: "Bundle"
+    backboneElements = entries.map (entry)->
+      resource: entry
+
+    resourceType: 'Bundle'
     type: 'transaction-response'
-    entry: entries
+    entry: backboneElements
 
 exports.execute = execute
 

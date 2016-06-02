@@ -113,32 +113,32 @@ describe 'Integration', ->
       assert.equal(transaction.resourceType, 'Bundle')
       assert.equal(transaction.type, 'transaction-response')
 
-      assert.equal(transaction.entry[0].resourceType, 'Patient')
-      assert.equal(transaction.entry[0].meta.extension[0].url, 'fhir-request-method')
-      assert.equal(transaction.entry[0].meta.extension[0].valueString, 'DELETE')
-      assert.equal(transaction.entry[0].id, 'patient-to-delete-id')
+      assert.equal(transaction.entry[0].resource.resourceType, 'Patient')
+      assert.equal(transaction.entry[0].resource.meta.extension[0].url, 'fhir-request-method')
+      assert.equal(transaction.entry[0].resource.meta.extension[0].valueString, 'DELETE')
+      assert.equal(transaction.entry[0].resource.id, 'patient-to-delete-id')
 
-      assert.equal(transaction.entry[1].resourceType, 'Patient')
-      assert.equal(transaction.entry[1].meta.extension[0].url, 'fhir-request-method')
-      assert.equal(transaction.entry[1].meta.extension[0].valueString, 'POST')
-      assert.equal(transaction.entry[1].name[0].family[0], 'Name to create')
+      assert.equal(transaction.entry[1].resource.resourceType, 'Patient')
+      assert.equal(transaction.entry[1].resource.meta.extension[0].url, 'fhir-request-method')
+      assert.equal(transaction.entry[1].resource.meta.extension[0].valueString, 'POST')
+      assert.equal(transaction.entry[1].resource.name[0].family[0], 'Name to create')
 
-      assert.equal(transaction.entry[2].resourceType, 'Patient')
-      assert.equal(transaction.entry[2].meta.extension[0].url, 'fhir-request-method')
-      assert.equal(transaction.entry[2].meta.extension[0].valueString, 'PUT')
-      assert.equal(transaction.entry[2].id, 'patient-to-update-id')
-      assert.equal(transaction.entry[2].name[0].family[0], 'Name to update updated')
+      assert.equal(transaction.entry[2].resource.resourceType, 'Patient')
+      assert.equal(transaction.entry[2].resource.meta.extension[0].url, 'fhir-request-method')
+      assert.equal(transaction.entry[2].resource.meta.extension[0].valueString, 'PUT')
+      assert.equal(transaction.entry[2].resource.id, 'patient-to-update-id')
+      assert.equal(transaction.entry[2].resource.name[0].family[0], 'Name to update updated')
 
-      assert.equal(transaction.entry[3].resourceType, 'Bundle')
-      assert.equal(transaction.entry[3].type, 'searchset')
-      assert.equal(transaction.entry[3].link[0].url, '/Patient?_id=patient-to-delete-id&_page=0')
-      assert.equal(transaction.entry[3].total, 0)
+      assert.equal(transaction.entry[3].resource.resourceType, 'Bundle')
+      assert.equal(transaction.entry[3].resource.type, 'searchset')
+      assert.equal(transaction.entry[3].resource.link[0].url, '/Patient?_id=patient-to-delete-id&_page=0')
+      assert.equal(transaction.entry[3].resource.total, 0)
 
-      assert.equal(transaction.entry[4].resourceType, 'Bundle')
-      assert.equal(transaction.entry[4].type, 'searchset')
-      assert.equal(transaction.entry[4].total, 1)
-      assert.equal(transaction.entry[4].entry[0].resource.resourceType, 'Patient')
-      assert.equal(transaction.entry[4].entry[0].resource.name[0].family[0], 'Name to create')
+      assert.equal(transaction.entry[4].resource.resourceType, 'Bundle')
+      assert.equal(transaction.entry[4].resource.type, 'searchset')
+      assert.equal(transaction.entry[4].resource.total, 1)
+      assert.equal(transaction.entry[4].resource.entry[0].resource.resourceType, 'Patient')
+      assert.equal(transaction.entry[4].resource.entry[0].resource.name[0].family[0], 'Name to create')
 
     it "should create with ID and respects ID's references", ->
       plv8.execute(
@@ -183,9 +183,9 @@ describe 'Integration', ->
           )[0].fhir_transaction
         )
 
-      assert.equal(transaction.entry[2].total, 1)
+      assert.equal(transaction.entry[2].resource.total, 1)
       assert.equal(
-        transaction.entry[2].entry.filter((resource)->
+        transaction.entry[2].resource.entry.filter((resource)->
           resource.resource.resourceType == 'Practitioner'
         )[0].resource.id,
         'created-and-referenced-id'
@@ -248,9 +248,9 @@ describe 'Integration', ->
           ''')[0].fhir_transaction
         )
 
-      assert.equal(transaction.entry[2].total, 1)
+      assert.equal(transaction.entry[2].resource.total, 1)
       assert.equal(
-        transaction.entry[2].entry.filter((resource)->
+        transaction.entry[2].resource.entry.filter((resource)->
           resource.resource.resourceType == 'Practitioner'
         )[0].resource.id,
         'practitioner-id'
