@@ -76,9 +76,18 @@
           method: HEAD
           url: /Patient
   plan:
-    - type: error
-      message: Cannot determine action for request POST /Patient/foobar/foobarbaz
-    - type: error
-      message: Cannot determine action for request OPTIONS /abc/123
-    - type: error
-      message: Cannot determine action for request HEAD /Patient
+    - resourceType: 'OperationOutcome'
+      issue: 
+       - severity: 'error'
+         code: '422'
+         diagnostics: "Invalid operation POST /Patient/foobar/foobarbaz"
+    - resourceType: 'OperationOutcome'
+      issue: 
+       - severity: 'error'
+         code: '422'
+         diagnostics: "Invalid operation OPTIONS /abc/123"
+    - resourceType: 'OperationOutcome'
+      issue: 
+       - severity: 'error'
+         code: '422'
+         diagnostics: "Invalid operation HEAD /Patient"

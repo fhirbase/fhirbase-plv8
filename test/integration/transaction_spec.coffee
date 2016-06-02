@@ -1,5 +1,13 @@
 plv8 = require('../../plpl/src/plv8')
 assert = require('assert')
+helpers = require('../helpers')
+match = helpers.match
+
+json_call = (fn_name, params...) ->
+  args = params.map((_, i)-> "$#{i+1}").join(',')
+  res = plv8.execute("SELECT #{fn_name}(#{args})", params.map((x)-> JSON.stringify(x)))
+  JSON.parse(res[0][fn_name])
+
 
 describe 'Integration', ->
   before ->
@@ -15,47 +23,38 @@ describe 'Integration', ->
     it 'seed data should be', ->
 
     it 'should processed in order (DELETE, POST, PUT, GET)', ->
-      plv8.execute(
-        'SELECT fhir_create_resource($1)',
-        [JSON.stringify(
-          allowId: true,
-          resource: {id: 'patient-to-delete-id', resourceType: 'Patient'}
-        )]
+      json_call(
+        'fhir_create_resource',
+        allowId: true,
+        resource: {id: 'patient-to-delete-id', resourceType: 'Patient'}
       )
-      plv8.execute(
-        'SELECT fhir_create_resource($1)',
-        [JSON.stringify(
-          allowId: true,
-          resource: {
-            id: 'patient-to-update-id',
-            resourceType: 'Patient',
-            name: [{given: ['Name to update']}]
-          }
-        )]
+
+      json_call(
+        'fhir_create_resource',
+        allowId: true,
+        resource: {
+          id: 'patient-to-update-id',
+          resourceType: 'Patient',
+          name: [{given: ['Name to update']}]
+        }
       )
-      assert.equal(
-        JSON.parse(
-          plv8.execute(
-            'SELECT fhir_search($1)',
-            [JSON.stringify(
-              resourceType: 'Patient',
-              queryString: '_id=patient-to-delete-id'
-            )]
-          )[0].fhir_search
-        ).total,
-        1
+
+      match(
+        json_call(
+          'fhir_search',
+          resourceType: 'Patient',
+          queryString: '_id=patient-to-delete-id'
+        )
+        total: 1
       )
-      assert.equal(
-        JSON.parse(
-          plv8.execute(
-            'SELECT fhir_search($1)',
-            [JSON.stringify(
-              resourceType: 'Patient',
-              queryString: '_id=patient-to-update-id&name=Name to update'
-            )]
-          )[0].fhir_search
-        ).total,
-        1
+
+      match(
+        json_call(
+          'fhir_search',
+          resourceType: 'Patient',
+          queryString: '_id=patient-to-update-id&name=Name to update'
+        )
+        total: 1
       )
 
       bundle =
@@ -102,49 +101,54 @@ describe 'Integration', ->
           }
         ]
 
-      transaction =
-        JSON.parse(
-          plv8.execute(
-            'SELECT fhir_transaction($1)',
-            [JSON.stringify(bundle)]
-          )[0].fhir_transaction
-        )
 
-      assert.equal(transaction.resourceType, 'Bundle')
-      assert.equal(transaction.type, 'transaction-response')
-
-      assert.equal(transaction.entry[0].resource.resourceType, 'Patient')
-      assert.equal(transaction.entry[0].resource.meta.extension[0].url, 'fhir-request-method')
-      assert.equal(transaction.entry[0].resource.meta.extension[0].valueString, 'DELETE')
-      assert.equal(transaction.entry[0].resource.id, 'patient-to-delete-id')
-
-      assert.equal(transaction.entry[1].resource.resourceType, 'Patient')
-      assert.equal(transaction.entry[1].resource.meta.extension[0].url, 'fhir-request-method')
-      assert.equal(transaction.entry[1].resource.meta.extension[0].valueString, 'POST')
-      assert.equal(transaction.entry[1].resource.name[0].family[0], 'Name to create')
-
-      assert.equal(transaction.entry[2].resource.resourceType, 'Patient')
-      assert.equal(transaction.entry[2].resource.meta.extension[0].url, 'fhir-request-method')
-      assert.equal(transaction.entry[2].resource.meta.extension[0].valueString, 'PUT')
-      assert.equal(transaction.entry[2].resource.id, 'patient-to-update-id')
-      assert.equal(transaction.entry[2].resource.name[0].family[0], 'Name to update updated')
-
-      assert.equal(transaction.entry[3].resource.resourceType, 'Bundle')
-      assert.equal(transaction.entry[3].resource.type, 'searchset')
-      assert.equal(transaction.entry[3].resource.link[0].url, '/Patient?_id=patient-to-delete-id&_page=0')
-      assert.equal(transaction.entry[3].resource.total, 0)
-
-      assert.equal(transaction.entry[4].resource.resourceType, 'Bundle')
-      assert.equal(transaction.entry[4].resource.type, 'searchset')
-      assert.equal(transaction.entry[4].resource.total, 1)
-      assert.equal(transaction.entry[4].resource.entry[0].resource.resourceType, 'Patient')
-      assert.equal(transaction.entry[4].resource.entry[0].resource.name[0].family[0], 'Name to create')
+      match(
+        json_call('fhir_transaction', bundle),
+        resourceType: 'Bundle'
+        type: 'transaction-response'
+        entry: [
+          {
+            resource:
+              id: 'patient-to-delete-id'
+              resourceType: 'Patient' 
+              meta:
+                extension: [{url: 'fhir-request-method', valueString: 'DELETE'}]
+          }
+          {
+            resource:
+              resourceType: 'Patient' 
+              name: [{family: ['Name to create']}]
+              meta:
+                extension: [{url: 'fhir-request-method', valueString: 'POST'}]
+          }
+          {
+            resource:
+              id: 'patient-to-update-id'
+              resourceType: 'Patient' 
+              name: [{family: ['Name to update updated']}]
+              meta:
+                extension: [{url: 'fhir-request-method', valueString: 'PUT'}]
+          }
+          {
+            resource:
+              resourceType: 'Bundle' 
+              type: 'searchset'
+              link: [{url: '/Patient?_id=patient-to-delete-id&_page=0'}]
+              total: 0
+          }
+          {
+            resource:
+              resourceType: 'Bundle' 
+              type: 'searchset'
+              total: 1
+              entry: [{resource: {resourceType: 'Patient', name: [{family: ['Name to create']}]}}]
+          }
+        ]
+      )
 
     it "should create with ID and respects ID's references", ->
-      plv8.execute(
-        'SELECT fhir_create_storage($1)',
-        [JSON.stringify(resourceType: 'Practitioner')]
-      )
+
+      json_call('fhir_create_storage', resourceType: 'Practitioner')
 
       bundle =
         resourceType: 'Bundle'
@@ -175,143 +179,144 @@ describe 'Integration', ->
           }
         ]
 
-      transaction =
-        JSON.parse(
-          plv8.execute(
-            'SELECT fhir_transaction($1)',
-            [JSON.stringify(bundle)]
-          )[0].fhir_transaction
-        )
 
-      assert.equal(transaction.entry[2].resource.total, 1)
-      assert.equal(
-        transaction.entry[2].resource.entry.filter((resource)->
-          resource.resource.resourceType == 'Practitioner'
-        )[0].resource.id,
-        'created-and-referenced-id'
+      match(
+        json_call('fhir_transaction', bundle)
+        entry: [
+          {},
+          {},
+          {
+            resource:
+              total: 1
+              resourceType: 'Bundle'
+              type: 'searchset'
+              entry: [
+                {},
+                resource:
+                  resourceType: 'Practitioner'
+                  id: 'created-and-referenced-id'
+              ]
+          }
+       ]
       )
 
     it 'narus transaction', ->
-      plv8.execute('''
-        SELECT fhir_create_storage('{"resourceType": "Practitioner"}');
-      ''')
 
-      plv8.execute('''
-        SELECT fhir_create_resource('
+      json_call('fhir_create_storage', {resourceType: "Practitioner"})
+      json_call(
+        'fhir_create_resource',
+        allowId: true,
+        resource: {id: "patient-id", resourceType: "Patient"}
+      )
+
+      bundle = 
+        "resourceType": "Bundle",
+        "type": "transaction",
+        "entry": [
           {
-            "allowId": true,
-            "resource": {"id": "patient-id", "resourceType": "Patient"}
+            "resource": {
+              "resourceType": "Practitioner"
+            },
+            "request": {
+              "method": "PUT",
+              "url": "/Practitioner/practitioner-id"
+            }
+          },
+          {
+            "resource": {
+              "resourceType": "Patient",
+              "careProvider": [
+                {
+                  "reference": "/Practitioner/practitioner-id"
+                }
+              ]
+            },
+            "request": {
+              "method": "PUT",
+              "url": "/Patient/patient-id"
+            }
+          },
+          {
+            "request": {
+              "method": "GET",
+              "url": "/Patient?_id=patient-id&_include=careprovider"
+            }
           }
-        ');
-      ''')
+        ]
 
-      transaction =
-        JSON.parse(
-          plv8.execute('''
-            SELECT fhir_transaction('
-              {
-                "resourceType": "Bundle",
-                "type": "transaction",
-                "entry": [
-                  {
-                    "resource": {
-                      "resourceType": "Practitioner"
-                    },
-                    "request": {
-                      "method": "PUT",
-                      "url": "/Practitioner/practitioner-id"
-                    }
-                  },
-                  {
-                    "resource": {
-                      "resourceType": "Patient",
-                      "careProvider": [
-                        {
-                          "reference": "/Practitioner/practitioner-id"
-                        }
-                      ]
-                    },
-                    "request": {
-                      "method": "PUT",
-                      "url": "/Patient/patient-id"
-                    }
-                  },
-                  {
-                    "request": {
-                      "method": "GET",
-                      "url": "/Patient?_id=patient-id&_include=careprovider"
-                    }
-                  }
-                ]
-              }
-            ');
-          ''')[0].fhir_transaction
-        )
-
-      assert.equal(transaction.entry[2].resource.total, 1)
-      assert.equal(
-        transaction.entry[2].resource.entry.filter((resource)->
-          resource.resource.resourceType == 'Practitioner'
-        )[0].resource.id,
-        'practitioner-id'
+      match(
+        json_call('fhir_transaction', bundle)
+        entry: [
+          {},
+          {},
+          {
+            resource:
+              total: 1
+              resourceType: 'Bundle'
+              type: 'searchset'
+              entry: [
+                {},
+                resource:
+                  resourceType: 'Practitioner'
+                  id: 'practitioner-id'
+              ]
+          }
+       ]
       )
 
     it 'should rollback (#112)', ->
-      plv8.execute('''
-        SELECT fhir_create_resource('
-          {
-            "allowId": true,
-            "resource": {
-              "id": "id1",
-              "resourceType": "Patient",
-              "name": [{"given": ["Patient 1"]}]
-            }
-          }
-        ');
-      ''')
-
-      transaction =
-        JSON.parse(
-          plv8.execute('''
-            SELECT fhir_transaction('
-              {
-                "type": "transaction",
-                "id": "bundle-transaction",
-                "resourceType": "Bundle",
-                "entry": [
-                  {
-                    "request": {
-                      "url": "\/Patient\/id1",
-                      "method": "DELETE"
-                    }
-                  },
-                  {
-                    "request": {
-                      "url": "\/Patient\/id2",
-                      "method": "DELETE"
-                    }
-                  }
-                ]
-              }
-            ');
-          ''')[0].fhir_transaction
-        )
-
-      assert.equal(transaction.resourceType, 'OperationOutcome')
-      assert.equal(transaction.issue[0].severity, 'error')
-      assert.equal(transaction.issue[0].code, 'not-found')
-      assert.equal(
-        transaction.issue[0].diagnostics,
-        'Resource Id "id2" does not exist'
+      json_call(
+        'fhir_create_resource',
+        allowId: true,
+        resource:
+          id: "id1",
+          resourceType: "Patient",
+          name: [{"given": ["Patient 1"]}]
       )
 
-      search =
-        JSON.parse(
-          plv8.execute('''
-            SELECT fhir_search('
-              {"resourceType": "Patient", "queryString": "_id=id1"}
-            ');
-          ''')[0].fhir_search
-        )
+      bundle =
+        type: "transaction",
+        id: "bundle-transaction",
+        resourceType: "Bundle",
+        entry: [
+          {
+            request:
+              url: '/Patient/id1',
+              method: "DELETE"
+          },
+          {
+            request:
+              url: '/Patient/id2',
+              method: "DELETE"
+          }
+        ]
 
-      assert.equal(search.entry.length, 1)
+      match(
+        json_call('fhir_transaction', bundle),
+        resourceType: 'OperationOutcome'
+        issue: [{severity: 'error', code: 'not-found', diagnostics: 'Resource Id "id2" does not exist'}]
+      )
+
+      match(
+        json_call('fhir_read_resource', id: 'id1', resourceType: "Patient"),
+        resourceType: 'Patient'
+        id: 'id1'
+      )
+    it 'should report error message', ->
+      bundle =
+        type: "transaction",
+        id: "bundle-transaction",
+        resourceType: "Bundle",
+        entry: [
+          {
+            request:
+              url: '/Patient/id1',
+              method: "POST"
+          }
+        ]
+
+      match(
+        json_call('fhir_transaction', bundle),
+        resourceType: 'OperationOutcome'
+        issue: [{severity: 'error', code: '422', diagnostics: 'Invalid operation POST /Patient/id1'}]
+      )

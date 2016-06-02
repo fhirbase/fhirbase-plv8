@@ -1,5 +1,7 @@
 yaml = require('js-yaml')
 fs   = require('fs')
+lang = require('../src/lang')
+assert = require('assert')
 
 exports.loadJson = (pth)->
   JSON.parse(fs.readFileSync(pth, "utf8"))
@@ -31,3 +33,25 @@ to_js = (obj)->
 exports.loadEdn = (pth)->
   str = fs.readFileSync(pth, "utf8")
   to_js(edn.parse(str))
+
+match_recur = (obj, sample, path)->
+  if lang.isArray(sample)
+    for v,i in sample
+      next = obj[i]
+      new_path = path.concat(i)
+      if not next?
+        assert(false, "No object on #{new_path.join('.')}, but #{JSON.stringify(obj)}")
+      match_recur(next, v, new_path)
+  else if lang.isObject(sample)
+    for k,v of sample
+      next = obj[k]
+      new_path = path.concat(k)
+      if not next?
+        assert(false, "No object on #{new_path.join('.')}, but #{JSON.stringify(obj)}")
+      match_recur(next, v, new_path) 
+  else
+    assert.equal(obj, sample, "Path #{path.join('.')}")
+
+
+exports.match = (obj, sample)->
+  match_recur(obj, sample, [])

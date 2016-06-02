@@ -103,8 +103,12 @@ makePlan = (bundle) ->
       action = handler[method]
       action(match, entry)
     else
-      type: 'error'
-      message: "Cannot determine action for request #{method} #{url}"
+      resourceType: 'OperationOutcome'
+      issue: [{
+        severity: 'error'
+        code: '422'
+        diagnostics: "Invalid operation #{method} #{url}"
+      }]
 
   plan.sort (a, b)->
     # Transaction should processed in order (DELETE, POST, PUT, GET).
@@ -200,7 +204,7 @@ execute = (plv8, bundle, strictMode) ->
     # extension: [{url: 'http-status-code', valueString: '400'}]
 
   if strictMode
-    errors = plan.filter (i) -> i.type == 'error'
+    errors = plan.filter (i) -> i.resourceType == 'OperationOutcome'
 
     if errors.length > 0
       return outcome(errors)

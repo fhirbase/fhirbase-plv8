@@ -6,6 +6,8 @@ search = require('../../src/fhir/search')
 crud = require('../../src/fhir/crud')
 schema = require('../../src/core/schema')
 
+match = helpers.match
+
 planExamples = helpers.loadYaml("#{__dirname}/fixtures/transaction_plans.yml")
 
 transactionExamples = helpers.loadYaml("#{__dirname}/fixtures/transaction_examples.yml")
@@ -114,3 +116,19 @@ describe 'Transaction', ->
       {"resourceType": "Patient", "queryString": "_id=id1"})
 
     assert.equal(search.entry.length, 1)
+
+  it 'Report proper error message', ->
+    bundle =
+        type: "transaction",
+        id: "bundle-transaction",
+        resourceType: "Bundle",
+        entry: [
+            request:
+              url: '/Patient/id1',
+              method: "POST"
+        ]
+    match(
+     transaction.fhir_transaction(plv8, bundle),
+     resourceType: 'OperationOutcome'
+     issue: [{severity: 'error', code: '422', diagnostics: 'Invalid operation POST /Patient/id1'}]
+    )

@@ -3,6 +3,7 @@ assert = require('assert')
 
 copy = (x)-> JSON.parse(JSON.stringify(x))
 
+
 describe 'Integration',->
   before ->
     plv8.execute("SET plv8.start_proc = 'plv8_init'")
