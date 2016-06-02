@@ -77,17 +77,17 @@
           url: /Patient
   plan:
     - resourceType: 'OperationOutcome'
-      issue: 
+      issue:
        - severity: 'error'
          code: '422'
          diagnostics: "Invalid operation POST /Patient/foobar/foobarbaz"
     - resourceType: 'OperationOutcome'
-      issue: 
+      issue:
        - severity: 'error'
          code: '422'
          diagnostics: "Invalid operation OPTIONS /abc/123"
     - resourceType: 'OperationOutcome'
-      issue: 
+      issue:
        - severity: 'error'
          code: '422'
          diagnostics: "Invalid operation HEAD /Patient"
