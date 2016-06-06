@@ -34,7 +34,7 @@ fhir_benchmark = (plv8, query)->
     """
     SELECT count(
              fhir_update_resource(
-               ('{"resource":' || temp_patients.data || '}')::json
+               ('{"resource":' || temp_patients.data::text || '}')::json
              )
            )
            FROM
