@@ -39,11 +39,16 @@ if [[ ! -d $BUILD_DIR ]]; then
   coffee utils/generate_schema.coffee -n > $BUILD_DIR/schema.sql
   coffee utils/generate_patch.coffee -n > $BUILD_DIR/patch.sql
 
-  # FIXME: May be extension statements should output from plpl?
+  plpl/bin/plpl compile $BUILD_DIR/code-without-extensions-statements.sql
+
+  # FIXME: May be extensions statements should output from plpl?
   { echo 'CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA pg_catalog;
 CREATE EXTENSION IF NOT EXISTS plv8 WITH SCHEMA pg_catalog;
 CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA pg_catalog;
-' && ./plpl/bin/plpl compile; } > $BUILD_DIR/code.sql || exit 1
+' && cat $BUILD_DIR/code-without-extensions-statements.sql; } \
+      > $BUILD_DIR/code.sql || exit 1
+
+  rm $BUILD_DIR/code-without-extensions-statements.sql
 
   cat $BUILD_DIR/schema.sql > $BUILD_DIR/build.sql
   cat $BUILD_DIR/patch.sql >> $BUILD_DIR/build.sql
