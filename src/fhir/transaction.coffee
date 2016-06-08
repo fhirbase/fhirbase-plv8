@@ -14,7 +14,7 @@ strip = (obj)->
 HANDLERS = [
   {
     name: 'Instance'
-    test: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}$")
+    test: new RegExp("^/?#{RES_TYPE_RE}/#{ID_RE}$")
     GET: (match, entry)->
       type: 'read'
       id: match[2]
