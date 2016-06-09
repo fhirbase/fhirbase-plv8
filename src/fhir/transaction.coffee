@@ -14,7 +14,7 @@ strip = (obj)->
 HANDLERS = [
   {
     name: 'Instance'
-    test: new RegExp("^/?#{RES_TYPE_RE}/#{ID_RE}$")
+    test: new RegExp("^/?#{RES_TYPE_RE}/#{ID_RE}/?$")
     GET: (match, entry)->
       type: 'read'
       id: match[2]
@@ -35,7 +35,7 @@ HANDLERS = [
   }
   {
     name: 'Revision'
-    test: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}/_history/#{ID_RE}$")
+    test: new RegExp("^/?#{RES_TYPE_RE}/#{ID_RE}/_history/#{ID_RE}/?$")
     GET: (match, entry)->
       type: 'vread'
       id: match[2]
@@ -44,7 +44,7 @@ HANDLERS = [
   }
   {
     name: 'Instance History'
-    test: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}/_history$")
+    test: new RegExp("^/?#{RES_TYPE_RE}/#{ID_RE}/_history/?$")
     GET: (match, entry)->
       type: 'history'
       resourceType: match[1]
@@ -63,18 +63,18 @@ HANDLERS = [
   }
   {
     name: 'History'
-    test: new RegExp("^/#{RES_TYPE_RE}/_history$")
+    test: new RegExp("^/?#{RES_TYPE_RE}/_history/?$")
     GET: (match, entry)->
       type: 'history'
       resourceType: match[1]
   }
   {
-    test: new RegExp("^/_history$")
+    test: new RegExp("^/?_history/?$")
     GET: (match, entry)->
       type: 'history'
   }
   {
-    test: new RegExp("^/#{RES_TYPE_RE}/?\\?#{QUERY_STRING_RE}$")
+    test: new RegExp("^/?#{RES_TYPE_RE}/?\\?#{QUERY_STRING_RE}/?$")
     GET: (match, entry)->
       type: 'search'
       resourceType: match[1]
