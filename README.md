@@ -74,7 +74,7 @@ cat fhirbase-<version of the fhirbase>-patch.sql | psql fhirbase
 ## Development Installation
 
 Development installation requires node v6.2.0 or newer
-and npm 3.0.0, which could be installed by [nvm][]:
+and npm 3.0.0 or newer, which could be installed by [nvm][]:
 
 [nvm]: https://github.com/creationix/nvm
 
