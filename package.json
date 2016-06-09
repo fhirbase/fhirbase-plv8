@@ -3,25 +3,23 @@
   "description": "fhirbase",
   "version": "0.0.1",
   "author": "niquola",
-  "dependencies": {
-    "fast-json-patch": "latest"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/niquola/fhirbase"
-  },
   "devDependencies": {
     "coffee": "latest",
     "coffee-script": "latest",
-    "pg-native":"latest",
+    "fast-json-patch": "latest",
     "js-yaml": "latest",
+    "jsedn": "latest",
     "mocha": "latest",
-    "jsedn": "latest"
+    "pg-native":"latest"
   },
   "dev": {"plpl": "latest"},
   "engines": { "node": ">=0.12" },
   "homepage": "https://github.com/niquola/plpl",
   "files": ["bin", "lib", "src"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/niquola/fhirbase"
+  },
   "scripts": {
     "publish": "coffee -o lib/ -c src/ && npm publish",
     "migrate": "./build-commit.sh --rebuild && cat build/latest/build.sql | psql $DATABASE_URL",
