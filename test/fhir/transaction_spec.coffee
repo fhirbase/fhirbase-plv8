@@ -66,14 +66,17 @@ describe 'Transaction', ->
             url: '/Patient?name=Foo bar'
         }
       ]
+
     t = transaction.fhir_transaction(plv8, bundle)
     assert.equal(t.resourceType, 'Bundle')
     assert.equal(t.type, 'transaction-response')
-    assert.equal(t.entry[0].resource.resourceType, 'Bundle')
-    assert.equal(t.entry[0].resource.type, 'searchset')
-    assert.equal(t.entry[0].resource.total, 1)
-    assert.equal(t.entry[0].resource.entry[0].resource.resourceType, 'Patient')
-    assert.equal(t.entry[0].resource.entry[0].resource.name[0].family[0], 'Foo bar')
+
+    r = t.entry[0].resource
+    assert.equal(r.resourceType, 'Bundle')
+    assert.equal(r.type, 'searchset')
+    assert.equal(r.total, 1)
+    assert.equal(r.entry[0].resource.resourceType, 'Patient')
+    assert.equal(r.entry[0].resource.name[0].family[0], 'Foo bar')
 
   it 'roll back on failure', -> #related to issue #112
     schema.fhir_create_storage(plv8, {"resourceType": "Patient"})
