@@ -69,16 +69,24 @@ HANDLERS = [
       resourceType: match[1]
   }
   {
+    name: 'History of all types'
     test: new RegExp("^/?_history/?$")
     GET: (match, entry)->
       type: 'history'
   }
   {
+    name: 'Search and conditional operations'
     test: new RegExp("^/?#{RES_TYPE_RE}/?\\?#{QUERY_STRING_RE}/?$")
     GET: (match, entry)->
       type: 'search'
       resourceType: match[1]
       queryString: match[2]
+    PUT: (match, entry)->
+      strip
+        type: 'conditionalUpdate'
+        resourceType: match[1]
+        queryString: match[2]
+        resource: entry.resource
   }
 ]
 
@@ -118,6 +126,7 @@ makePlan = (bundle) ->
         when 'delete' then 1 # DELETE
         when 'create' then 2 # POST
         when 'update' then 3 # PUT
+        when 'conditionalUpdate' then 3 # PUT
         when 'read' then 4 # GET
         when 'vread' then 4 # GET
         when 'search' then 4 # GET
@@ -169,7 +178,7 @@ executePlan = (plv8, plan) ->
 
         result
 
-      when "update"
+      when "update", "conditionalUpdate"
         action.resource.id = action.resource.id || (!action.queryString && action.id)
         crud.fhir_update_resource(plv8, action)
       when "delete"

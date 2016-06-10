@@ -51,10 +51,11 @@ describe 'Transaction', ->
 
   beforeEach ->
     schema.fhir_truncate_storage(plv8, resourceType: 'Patient')
+
+  it 'search', ->
     crud.fhir_create_resource(plv8,
       resource: {resourceType: 'Patient', name: [{family: ['Foo bar']}]})
 
-  it 'search', ->
     bundle =
       resourceType: 'Bundle'
       id: 'bundle-transaction-id'
@@ -77,6 +78,65 @@ describe 'Transaction', ->
     assert.equal(r.total, 1)
     assert.equal(r.entry[0].resource.resourceType, 'Patient')
     assert.equal(r.entry[0].resource.name[0].family[0], 'Foo bar')
+
+  # Conditional update in transaction doesn't work correctly #126
+  # <https://github.com/fhirbase/fhirbase-plv8/issues/126>
+  it 'conditional update', ->
+    crud.fhir_create_resource(plv8, {
+      "allowId": true,
+      "resource": {
+        "resourceType": "Patient",
+        "name": [{"given": ["Name1"], "family": ["Foo"]}],
+        "id": "id1"
+      }
+    })
+    crud.fhir_create_resource(plv8, {
+      "allowId": true,
+      "resource": {
+        "resourceType": "Patient",
+        "name": [{"given": ["Name2"], "family": ["Bar"]}],
+        "id": "id2"
+      }
+    })
+
+    bundle = {
+      "resourceType":"Bundle",
+      "type":"transaction",
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Patient",
+            "name": [{"given":["Name1"],"family":["Xyz"]}]
+          },
+          "request": {"method":"PUT","url":"Patient?given=Name1"}}
+        ]
+      }
+
+    match(
+      transaction.fhir_transaction(plv8, bundle),
+      {
+        "resourceType": "Bundle",
+        "type": "transaction-response",
+        "entry": [
+          {
+            "resource": {
+              "resourceType": "Patient",
+              "name": [
+                {
+                  "given": [
+                    "Name1"
+                  ],
+                  "family": [
+                    "Xyz"
+                  ]
+                }
+              ],
+              "id": "id1",
+            }
+          }
+        ]
+      }
+    )
 
   it 'roll back on failure', -> #related to issue #112
     schema.fhir_create_storage(plv8, {"resourceType": "Patient"})
