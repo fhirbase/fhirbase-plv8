@@ -118,18 +118,24 @@ describe 'Transaction', ->
     assert.equal(patient.resourceType, 'Patient')
     assert.equal(patient.id, 'id1')
 
-  it 'Report proper error message', ->
+  it 'report proper error message', ->
     bundle =
-        type: "transaction",
-        id: "bundle-transaction",
-        resourceType: "Bundle",
-        entry: [
-            request:
-              url: '/Patient/id1',
-              method: "POST"
-        ]
+      type: 'transaction',
+      id: 'bundle-transaction',
+      resourceType: 'Bundle',
+      entry: [
+        request:
+          url: '/Patient/id1',
+          method: 'POST'
+      ]
     match(
-     transaction.fhir_transaction(plv8, bundle),
-     resourceType: 'OperationOutcome'
-     issue: [{severity: 'error', code: '422', diagnostics: 'Invalid operation POST /Patient/id1'}]
+      transaction.fhir_transaction(plv8, bundle),
+      resourceType: 'OperationOutcome'
+      issue: [
+        {
+          severity: 'error',
+          code: '422',
+          diagnostics: 'Invalid operation POST /Patient/id1'
+        }
+      ]
     )
