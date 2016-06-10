@@ -75,7 +75,7 @@ describe 'Transaction', ->
     assert.equal(t.entry[0].resource.entry[0].resource.resourceType, 'Patient')
     assert.equal(t.entry[0].resource.entry[0].resource.name[0].family[0], 'Foo bar')
 
-  it 'Transactions are not rolled back on failure #112', ->
+  it 'roll back on failure', -> #related to issue #112
     schema.fhir_create_storage(plv8, {"resourceType": "Patient"})
     schema.fhir_truncate_storage(plv8, {"resourceType": "Patient"})
 
@@ -112,10 +112,11 @@ describe 'Transaction', ->
       }
     )
 
-    search = search.fhir_search(plv8,
-      {"resourceType": "Patient", "queryString": "_id=id1"})
+    patient = crud.fhir_read_resource(plv8,
+      {"resourceType": "Patient", "id": "id1"})
 
-    assert.equal(search.entry.length, 1)
+    assert.equal(patient.resourceType, 'Patient')
+    assert.equal(patient.id, 'id1')
 
   it 'Report proper error message', ->
     bundle =
