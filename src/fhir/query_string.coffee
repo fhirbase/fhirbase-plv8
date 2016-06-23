@@ -122,7 +122,10 @@ specials =
     query.sort ||= []
     query.sort.push ['$param', key, '']
     query
-  format:  (query, left, right)->
+  totalMethod: (query, left, right)->
+    query.total_method = right;
+    query
+  format: (query, left, right)->
     query
   lastUpdated: (query, left, right)->
     unless query.lastUpdateds
