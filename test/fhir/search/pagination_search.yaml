@@ -63,3 +63,23 @@ queries:
         result: "/Encounter?patient=Patient/nicola&_sort=patient&_page=0&_count=1"
       - path: ['link', 3, 'url']
         result: "/Encounter?patient=Patient/nicola&_sort=patient&_page=3&_count=1"
+
+  - query: {resourceType: 'Encounter', queryString: 'patient=Patient/nicola&_sort=patient&_page=1&_count=1&_totalMethod=exact'}
+    total: 3
+    probes:
+      - path: ['entry', 'length']
+        result: 1
+      - path: ['link', 0, 'url']
+        result: "/Encounter?patient=Patient/nicola&_sort=patient&_page=1&_count=1&_totalMethod=exact"
+      - path: ['link', 1, 'url']
+        result: "/Encounter?patient=Patient/nicola&_sort=patient&_page=2&_count=1&_totalMethod=exact"
+      - path: ['link', 2, 'url']
+        result: "/Encounter?patient=Patient/nicola&_sort=patient&_page=0&_count=1&_totalMethod=exact"
+      - path: ['link', 3, 'url']
+        result: "/Encounter?patient=Patient/nicola&_sort=patient&_page=3&_count=1&_totalMethod=exact"
+
+  - query: {resourceType: 'Encounter', queryString: 'patient=Patient/nicola&_sort=patient&_page=1&_count=1&_totalMethod=no'}
+    total: _undefined
+    probes:
+      - path: ['link']
+        result: '_undefined'

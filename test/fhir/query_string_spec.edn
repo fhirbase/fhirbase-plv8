@@ -26,6 +26,15 @@
  [["Patient" "_count=11"]
   {:query "Patient" :count 11}]
 
+ [["Patient" "_totalMethod=exact"]
+  {:query "Patient" :total_method "exact"}]
+
+ [["Patient" "_totalMethod=no"]
+  {:query "Patient" :total_method "no"}]
+
+ [["Patient" "_totalMethod=estimated"]
+  {:query "Patient" :total_method "estimated"}]
+
  [["Patient" "_page=12"]
   {:query "Patient" :page 12}]
 
@@ -34,7 +43,7 @@
    :joins [(chained
             (param {:resourceType "Patient" :name "careprovider" :join "Practitioner"} {:value "$id"})
             (param {:resourceType "Practitioner" :name "name"} {:value "igor"}))]}]
- 
+
  [["Patient" "careprovider:Practitioner.organization:Organization.name=hl7"]
   {:query "Patient"
    :joins [(chained

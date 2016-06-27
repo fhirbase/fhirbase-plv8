@@ -213,6 +213,19 @@ SELECT fhir_valueset_expand('{"id": "issue-types", "filter": "err"}');
 
 SELECT fhir_conformance('{"default": "values"}');
 -- return simple Conformance resource, based on created stores
+
+---
+
+-- use different methods to calculate total elements to improve performance: no _totalMethod or _totalMethod=exact uses standard approach
+SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith"}');
+SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith&_totalMethod=exact"}');
+
+-- _totalMethod=extimated - faster but 'total' is estimated.
+SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith&_totalMethod=estimated"}');
+
+-- _totalMethod=no - fastest but no 'total' is returned.
+SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith&_totalMethod=no"}');
+
 ```
 
 ## Contributing
