@@ -79,64 +79,86 @@ describe 'Transaction', ->
     assert.equal(r.entry[0].resource.resourceType, 'Patient')
     assert.equal(r.entry[0].resource.name[0].family[0], 'Foo bar')
 
-  # Conditional update in transaction doesn't work correctly #126
-  # <https://github.com/fhirbase/fhirbase-plv8/issues/126>
-  it 'conditional update', ->
-    crud.fhir_create_resource(plv8, {
-      "allowId": true,
-      "resource": {
-        "resourceType": "Patient",
-        "name": [{"given": ["Name1"], "family": ["Foo"]}],
-        "id": "id1"
-      }
-    })
-    crud.fhir_create_resource(plv8, {
-      "allowId": true,
-      "resource": {
-        "resourceType": "Patient",
-        "name": [{"given": ["Name2"], "family": ["Bar"]}],
-        "id": "id2"
-      }
-    })
+  describe 'conditional', ->
+    beforeEach ->
+      schema.fhir_truncate_storage(plv8, resourceType: 'Patient')
+      crud.fhir_create_resource(plv8, {
+        "allowId": true,
+        "resource": {
+          "resourceType": "Patient",
+          "name": [{"given": ["Name1"], "family": ["Foo"]}],
+          "id": "id1"
+        }
+      })
+      crud.fhir_create_resource(plv8, {
+        "allowId": true,
+        "resource": {
+          "resourceType": "Patient",
+          "name": [{"given": ["Name2"], "family": ["Bar"]}],
+          "id": "id2"
+        }
+      })
 
-    bundle = {
-      "resourceType":"Bundle",
-      "type":"transaction",
-      "entry": [
-        {
-          "resource": {
-            "resourceType": "Patient",
-            "name": [{"given":["Name1"],"family":["Xyz"]}]
-          },
-          "request": {"method":"PUT","url":"Patient?given=Name1"}}
-        ]
-      }
-
-    match(
-      transaction.fhir_transaction(plv8, bundle),
-      {
-        "resourceType": "Bundle",
-        "type": "transaction-response",
+    # Conditional update in transaction doesn't work correctly #126
+    # <https://github.com/fhirbase/fhirbase-plv8/issues/126>
+    it 'update', ->
+      bundle = {
+        "resourceType":"Bundle",
+        "type":"transaction",
         "entry": [
           {
             "resource": {
               "resourceType": "Patient",
-              "name": [
-                {
-                  "given": [
-                    "Name1"
-                  ],
-                  "family": [
-                    "Xyz"
-                  ]
-                }
-              ],
-              "id": "id1",
+              "name": [{"given":["Name1"],"family":["Xyz"]}]
+            },
+            "request": {"method":"PUT","url":"Patient?given=Name1"}}
+          ]
+        }
+
+      match(
+        transaction.fhir_transaction(plv8, bundle),
+        {
+          "resourceType": "Bundle",
+          "type": "transaction-response",
+          "entry": [
+            {
+              "resource": {
+                "resourceType": "Patient",
+                "name": [
+                  {
+                    "given": [
+                      "Name1"
+                    ],
+                    "family": [
+                      "Xyz"
+                    ]
+                  }
+                ],
+                "id": "id1",
+              }
             }
-          }
-        ]
+          ]
+        }
+      )
+
+    # Conditional delete in transaction doesn't work correctly #127
+    # <https://github.com/fhirbase/fhirbase-plv8/issues/127>
+    it 'delete', ->
+      bundle = {
+        "resourceType":"Bundle",
+        "type":"transaction",
+        "entry":[{
+          "request":{"method":"DELETE","url":"Patient?given=Name1"}
+        }]
       }
-    )
+
+      match(
+        transaction.fhir_transaction(plv8, bundle),
+        {
+          "resourceType": "Bundle",
+          "type": "transaction-response"
+        }
+      )
 
   it 'roll back on failure', -> #related to issue #112
     schema.fhir_create_storage(plv8, {"resourceType": "Patient"})

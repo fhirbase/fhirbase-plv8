@@ -87,6 +87,11 @@ HANDLERS = [
         resourceType: match[1]
         queryString: match[2]
         resource: entry.resource
+    DELETE: (match, entry)->
+      strip
+        type: 'conditionalDelete'
+        resourceType: match[1]
+        queryString: match[2]
   }
 ]
 
@@ -124,6 +129,7 @@ makePlan = (bundle) ->
     number = (action)->
       switch action.type
         when 'delete' then 1 # DELETE
+        when 'conditionalDelete' then 1 # DELETE
         when 'create' then 2 # POST
         when 'update' then 3 # PUT
         when 'conditionalUpdate' then 3 # PUT
@@ -178,11 +184,11 @@ executePlan = (plv8, plan) ->
 
         result
 
-      when "update", "conditionalUpdate"
+      when 'update', 'conditionalUpdate'
         action.resource.id = action.resource.id || (!action.queryString && action.id)
         crud.fhir_update_resource(plv8, action)
-      when "delete"
-        crud.fhir_delete_resource(plv8, {id: action.id, resourceType: action.resourceType})
+      when 'delete', 'conditionalDelete'
+        crud.fhir_delete_resource(plv8, action)
       when "read"
         crud.fhir_read_resource(plv8, {id: action.id, resourceType: action.resourceType})
       when "vread"

@@ -387,6 +387,37 @@ describe "CORE: CRUD spec", ->
     assert.equal(outcome.issue[0].extension[0].url, 'http-status-code')
     assert.equal(outcome.issue[0].extension[0].valueString, '404')
 
+  it 'conditional delete', ->
+    created = crud.fhir_create_resource(
+      plv8,
+      allowId: true,
+      resource: {id: 'toBeDeleted', resourceType: 'Users'}
+    )
+    read = crud.fhir_read_resource(
+      plv8,
+      {id: created.id, resourceType: 'Users'}
+    )
+    deleted = crud.fhir_delete_resource(
+      plv8,
+      {queryString: '_id=toBeDeleted', resourceType: 'Users'}
+    )
+    read_deleted = crud.fhir_read_resource(plv8, {id: 'toBeDeleted', resourceType: 'Users'})
+    assert.equal(read_deleted.resourceType, 'OperationOutcome')
+    issue = read_deleted.issue[0]
+    assert.equal(issue.severity, 'error')
+    assert.equal(issue.code, 'not-found')
+    assert.equal(issue.details.coding[0].code, 'MSG_DELETED_ID')
+    assert.equal(
+      issue.details.coding[0].display,
+      'The resource "toBeDeleted" has been deleted'
+    )
+    assert.equal(
+      issue.diagnostics
+      "Resource Id \"toBeDeleted\" with versionId \"#{deleted.versionId}\" has been deleted"
+    )
+    assert.equal(issue.extension[0].url, 'http-status-code')
+    assert.equal(issue.extension[0].valueString, '410')
+
   it 'vread deleted', ->
     created = crud.fhir_create_resource(
       plv8,
