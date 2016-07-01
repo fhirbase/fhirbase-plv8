@@ -124,7 +124,8 @@ makePlan = (bundle) ->
       }]
 
   plan.sort (a, b)->
-    # Transaction should processed in order (DELETE, POST, PUT, GET).
+    # Transaction should processed in order (DELETE, POST, PUT, GET)
+    # <http://hl7-fhir.github.io/http.html#2.1.0.16.2>.
 
     number = (action)->
       switch action.type
