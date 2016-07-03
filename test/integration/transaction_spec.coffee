@@ -302,6 +302,7 @@ describe 'Integration', ->
         resourceType: 'Patient'
         id: 'id1'
       )
+
     it 'should report error message', ->
       bundle =
         type: "transaction",
@@ -318,5 +319,11 @@ describe 'Integration', ->
       match(
         json_call('fhir_transaction', bundle),
         resourceType: 'OperationOutcome'
-        issue: [{severity: 'error', code: '422', diagnostics: 'Invalid operation POST /Patient/id1'}]
+        issue: [
+          {
+            severity: 'error',
+            code: '422',
+            diagnostics: 'Invalid operation POST /Patient/id1'
+          }
+        ]
       )
