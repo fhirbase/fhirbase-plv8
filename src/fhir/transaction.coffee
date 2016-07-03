@@ -27,6 +27,7 @@ HANDLERS = [
         id: match[2]
         resourceType: match[1]
         resource: entry.resource
+        ifMatch: entry.request.ifMatch
 
     DELETE: (match, entry)->
       type: 'delete'
@@ -243,7 +244,7 @@ execute = (plv8, bundle, strictMode) ->
           break
 
       if shouldRollbacked
-        throw new Error('Transaction should rollback')
+        throw new Error('FHIR transaction should rollback')
   catch e
     wasRollbacked = true
 
