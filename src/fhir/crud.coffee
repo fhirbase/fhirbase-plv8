@@ -238,6 +238,8 @@ exports.fhir_vread_resource = _build [
 
 exports.fhir_vread_resource.plv8_signature = ['json', 'json']
 
+# TODO: To DRY (don't repeat yourself) `fhir_update_resource` and
+#       `fhir_patch_resource`.
 fhir_update_resource = _build [
     [wrap_required_attributes, [['resource']]]
     [wrap_ensure_table]
@@ -330,6 +332,8 @@ fhir_update_resource = _build [
 exports.fhir_update_resource = fhir_update_resource
 exports.fhir_update_resource.plv8_signature = ['json', 'json']
 
+# TODO: To DRY (don't repeat yourself) `fhir_update_resource` and
+#       `fhir_patch_resource`.
 fhir_patch_resource = _build [
     [wrap_required_attributes, [['resource']]]
     [wrap_ensure_table]
