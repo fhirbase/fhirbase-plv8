@@ -26,9 +26,14 @@ before_install:
   docker build --tag=fhirbase-tests-in-schemas:pg-9.4-plv8-$PLV8_VERSION \
                --file=Dockerfile-pg-9.4-plv8-$PLV8_VERSION ./ || exit 1
 script: |
-  docker run fhirbase-tests-in-schemas:pg-9.4-plv8-$PLV8_VERSION \
+  docker run --name=fhirbase-tests-in-schemas \
+             fhirbase-tests-in-schemas:pg-9.4-plv8-$PLV8_VERSION \
              --schemas="$SCHEMAS" --install-fhirbase || exit 1
 after_success: |
+  docker cp fhirbase-tests-in-schemas:/home/fhirbase/fhirbase/build \
+            $TRAVIS_BUILD_DIR/ || exit 1
+  ls -lah $TRAVIS_BUILD_DIR || exit 1
+  find $TRAVIS_BUILD_DIR/build || exit 1
   if [ "$PLV8_VERSION" == "1.4.7" ] && [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     echo $PASS | gpg --passphrase-fd 0 --decrypt --output - ./secure.tar.gz.asc \
       | tar --extract --gzip --file -
