@@ -35,6 +35,7 @@ after_success: |
   if [ "$PLV8_VERSION" == "1.4.7" ]; then
     docker cp fhirbase-tests-in-schemas:/home/fhirbase/fhirbase/build \
               $TRAVIS_BUILD_DIR/ || exit 1
+    pip install --user --upgrade awscli || exit 1
     AWS_DEFAULT_REGION=us-west-1 \
       AWS_SECRET_ACCESS_KEY=$BUILD_AWS_SECRET_ACCESS_KEY \
       AWS_ACCESS_KEY_ID=$BUILD_AWS_ACCESS_KEY_ID \
