@@ -39,11 +39,8 @@ after_success: |
     AWS_DEFAULT_REGION=us-west-1 \
       AWS_SECRET_ACCESS_KEY=$BUILD_AWS_SECRET_ACCESS_KEY \
       AWS_ACCESS_KEY_ID=$BUILD_AWS_ACCESS_KEY_ID \
-      aws s3 rm --recursive s3://fhirbase/latest
-    AWS_DEFAULT_REGION=us-west-1 \
-      AWS_SECRET_ACCESS_KEY=$BUILD_AWS_SECRET_ACCESS_KEY \
-      AWS_ACCESS_KEY_ID=$BUILD_AWS_ACCESS_KEY_ID \
-      aws s3 cp --recursive $TRAVIS_BUILD_DIR/build s3://fhirbase
+      aws s3 cp --recursive --follow-symlinks \
+                $TRAVIS_BUILD_DIR/build s3://fhirbase
   fi
   if [ "$PLV8_VERSION" == "1.4.7" ] && [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     echo $PASS | gpg --passphrase-fd 0 --decrypt --output - ./secure.tar.gz.asc \
