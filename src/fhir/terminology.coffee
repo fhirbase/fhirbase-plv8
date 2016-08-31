@@ -111,31 +111,41 @@ _create_concept = (plv8, acc, props, parent, concept)->
   for ch in (concept.concept || [])
     _create_concept(plv8, acc, props, concept, ch)
 
-exports.fhir_valueset_after_changed = (plv8, resource)->
-  return unless resource.id
-  utils.exec plv8,
-    delete: ':_valueset_expansion'
-    where: {valueset_id: resource.id}
-
-  acc = []
+_expand_resource = (plv8, acc, vid, resource)->
   codeSystem = resource.codeSystem
   for concept in ((codeSystem && codeSystem.concept) || [])
-    _create_concept(plv8, acc, {valueset_id: resource.id, system: codeSystem.system}, {}, concept)
+    _create_concept(plv8, acc, {valueset_id: vid, system: codeSystem.system}, {}, concept)
 
   for inc in  ((resource.compose && resource.compose.include) || [])
     for concept in (inc.concept || [])
-      _create_concept(plv8, acc, {valueset_id: resource.id, system: inc.system}, {}, concept)
+      _create_concept(plv8, acc, {valueset_id: vid, system: inc.system}, {}, concept)
     if inc.system
-      plv8.debug = true
       syst = utils.exec plv8,
         select: [':*']
         from: ':codesystem'
         where: ['$eq', ":resource->>'url'", inc.system]
         limit: 1
-      syst_res = (syst[0] && syst[0].resource && JSON.parse(syst[0].resource))
+      syst_res = (syst[0] && syst[0].resource)
       for concept in ((syst_res && syst_res.concept) || [])
-        _create_concept(plv8, acc, {valueset_id: resource.id, system: inc.system}, {}, concept)
-      plv8.debug = false
+        _create_concept(plv8, acc, {valueset_id: vid, system: inc.system}, {}, concept)
+
+  if resource.compose && resource.compose.import
+      imports = resource.compose.import
+      if typeof imports == 'string'
+          imports = [imports]
+      for imp in imports
+        syst = utils.exec plv8,
+          select: [':*']
+          from: ':valueset'
+          where: ['$eq', ":resource->>'url'", imp]
+          limit: 1
+        syst_res = (syst[0] && syst[0].resource)
+        _expand_resource(plv8, acc, vid, syst_res)
+
+_expand_valueset = (plv8, resource)->
+  acc = []
+
+  _expand_resource(plv8, acc, resource.id, resource)
 
   res = plv8.execute """
     INSERT INTO _valueset_expansion
@@ -153,6 +163,13 @@ exports.fhir_valueset_after_changed = (plv8, resource)->
     FROM json_array_elements($1::json) x
   """, [JSON.stringify(acc)]
 
+exports.fhir_valueset_after_changed = (plv8, resource)->
+  return unless resource.id
+  utils.exec plv8,
+    delete: ':_valueset_expansion'
+    where: {valueset_id: resource.id}
+
+    _expand_valueset(plv8, resource)
 
 exports.fhir_valueset_after_changed.plv8_signature = ['json', 'json']
 
@@ -163,3 +180,18 @@ exports.fhir_valueset_after_deleted = (plv8, resource)->
     where: {valueset_id: resource.id}
 
 exports.fhir_valueset_after_deleted.plv8_signature = ['json', 'json']
+
+exports.fhir_expand_all_valuesets = (plv8)->
+    utils.exec plv8,
+        delete: ':_valueset_expansion'
+    vals = utils.exec plv8,
+          select: [':*']
+          from: ':valueset'
+    for valueset in (vals)
+        _expand_valueset(plv8, valueset.resource)
+
+exports.fhir_expand_all_valuesets.plv8_signature =
+    returns: 'void'
+    arguments: ''
+    immutable: false
+    runnable: true
