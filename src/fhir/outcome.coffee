@@ -94,7 +94,7 @@ exports.conflict = (msg)->
   issue: [
     {
       severity: 'error'
-      code: '409'
+      code: 'conflict'
       diagnostics: msg
       extension: [{url: 'http-status-code', valueString: '409'}]
     }
