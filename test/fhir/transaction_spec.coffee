@@ -118,7 +118,7 @@ describe 'Transaction', ->
         "issue": [
           {
             "severity": "error",
-            "code": "409",
+            "code": "conflict",
             "extension": [
               {
                 "url": "http-status-code",

@@ -144,4 +144,4 @@
                  (cast (quote "[\"Patient\",\"alias\"]") :json)
                  (quote "HumanName"))]}
 
-  ["CREATE INDEX patient_name ON patient USING GIN ( extract_as_string( ( \"patient\".\"resource\" )::json , ( '[\"Patient\",\"name\"]' )::json , 'HumanName' ) , extract_as_string( ( \"patient\".\"resource\" )::json , ( '[\"Patient\",\"alias\"]' )::json , 'HumanName' ) gin_trgm_ops )"]]]
+  ["CREATE INDEX patient_name ON patient USING GIN ( extract_as_string( ( \"patient\".\"resource\" )::json , ( '[\"Patient\",\"name\"]' )::json , 'HumanName' ) gin_trgm_ops , extract_as_string( ( \"patient\".\"resource\" )::json , ( '[\"Patient\",\"alias\"]' )::json , 'HumanName' ) gin_trgm_ops )"]]]

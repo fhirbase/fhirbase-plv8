@@ -61,12 +61,12 @@ testCases = [
   },
   { # tables with PostgreSQL reserved name <https://github.com/fhirbase/fhirbase-plv8/issues/77>
     resource: {
-      resourceType: 'Order'
+      resourceType: 'Task'
       foo: 'bar'
     },
     specs: [
       {
-        path: ['Order', 'foo']
+        path: ['Task', 'foo']
         elementType: 'string'
         result: 'bar'
         order: 'bar'

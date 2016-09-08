@@ -22,7 +22,7 @@ testCases = [
   },
   { # tables with PostgreSQL reserved name <https://github.com/fhirbase/fhirbase-plv8/issues/77>
     resource: {
-      resourceType: 'Order'
+      resourceType: 'Task'
       link: [
         {link: 'http://acme.org/fhir/ValueSet/123'}
         {link: 'http://acme.org/fhir/ValueSet/124'}
@@ -30,7 +30,7 @@ testCases = [
     },
     specs: [
       {
-        path: ['Order', 'link', 'link']
+        path: ['Task', 'link', 'link']
         elementType: 'uri'
         result: '^^acme.org/fhir/valueset/123$$ ^^acme.org/fhir/valueset/124$$'
       }

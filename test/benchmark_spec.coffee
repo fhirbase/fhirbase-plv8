@@ -1,4 +1,5 @@
 plv8 = require('../plpl/src/plv8')
+bench = require('../src/benchmark')
 assert = require('assert')
 
 describe 'Benchmarking', ->

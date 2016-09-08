@@ -10,9 +10,11 @@ describe "Conformance", ->
     schema.fhir_create_storage(plv8, resourceType: 'NutritionOrder')
     conformance = conf.fhir_conformance(plv8, {somekey: 'somevalue'})
     assert.equal(conformance.somekey, 'somevalue')
+
+
     assert.equal(
       conformance.rest[0].resource.filter(
-        (r)-> r.type == 'NutritionOrder'
+        (r)-> r.type == 'Patient'
       ).length,
       1
     )

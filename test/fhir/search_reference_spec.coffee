@@ -20,13 +20,13 @@ testCases = [
   },
   { # tables with PostgreSQL reserved name <https://github.com/fhirbase/fhirbase-plv8/issues/77>
     resource: {
-      resourceType: 'Order'
+      resourceType: 'Task'
       foo:
         reference: 'Foo/1'
     },
     specs: [
       {
-        path: ['Order', 'foo']
+        path: ['Task', 'foo']
         elementType: 'Reference'
         result: ['1', 'foo/1']
       }

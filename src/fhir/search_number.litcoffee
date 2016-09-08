@@ -21,6 +21,8 @@ it should be done in an extensible maner
       return unless data
       if element_type == 'integer' or element_type == 'positiveInt'
         data
+      else if element_type = 'Duration'
+        data.value
       else if element_type == 'Quantity'
         data.value
       else
@@ -31,7 +33,7 @@ it should be done in an extensible maner
       returns: 'numeric'
       immutable: true
 
-    SUPPORTED_TYPES = ['integer', 'Quantity', 'positiveInt']
+    SUPPORTED_TYPES = ['integer', 'Quantity', 'positiveInt', 'Duration']
     OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge', 'ne', 'missing']
 
     sf = search_common.get_search_functions({

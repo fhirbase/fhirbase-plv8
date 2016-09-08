@@ -228,6 +228,7 @@ execute = (plv8, bundle, strictMode) ->
 
   entries = null
   wasRollbacked = false
+  error_in_transaction = null
   try
     plv8.subtransaction ->
       entries = executePlan(plv8, plan)
@@ -246,10 +247,19 @@ execute = (plv8, bundle, strictMode) ->
       if shouldRollbacked
         throw new Error('FHIR transaction should rollback')
   catch e
+    error_in_transaction = e
     wasRollbacked = true
 
   if wasRollbacked
-    outcome(entries)
+    if entries
+      outcome(entries)
+    else
+      resourceType: 'OperationOutcome'
+      issue: [{
+        severity: 'error'
+        code: '500'
+        diagnostics: error_in_transaction.toString()
+      }]
   else
     backboneElements = entries.map (entry)->
       resource: entry

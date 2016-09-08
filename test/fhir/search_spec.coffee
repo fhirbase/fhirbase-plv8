@@ -41,6 +41,7 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
 
       for idx in (spec.indices or [])
         search.fhir_unindex_parameter(plv8, idx)
+        console.log("INDEX", idx);
         search.fhir_index_parameter(plv8, idx)
 
       for idx_ord in (spec.index_order or [])

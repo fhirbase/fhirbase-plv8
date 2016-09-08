@@ -293,7 +293,7 @@ CREATE_CLAUSES =
     parens res, ->
       comma_delimited res, expr.expression, (ex)->
         heval(res, ex)
-      heval(res, expr.opclass) if expr.opclass
+        heval(res, expr.opclass) if expr.opclass
   table: (res, expr)->
     res.push("CREATE TABLE")
     res.push("IF NOT EXISTS") if expr.safe
