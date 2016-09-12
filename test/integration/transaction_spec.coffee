@@ -165,7 +165,7 @@ describe 'Integration', ->
           {
             resource:
               resourceType: 'Patient'
-              careProvider: [
+              generalPractitioner: [
                 {reference: '/Practitioner/created-and-referenced-id'}
               ]
             request:
@@ -175,7 +175,7 @@ describe 'Integration', ->
           {
             request:
               method: 'GET'
-              url: '/Patient?_id=patient-to-update-id&_include=careprovider'
+              url: '/Patient?_id=patient-to-update-id&_include=general-practitioner'
           }
         ]
 
@@ -225,7 +225,7 @@ describe 'Integration', ->
           {
             "resource": {
               "resourceType": "Patient",
-              "careProvider": [
+              "generalPractitioner": [
                 {
                   "reference": "/Practitioner/practitioner-id"
                 }
@@ -239,7 +239,7 @@ describe 'Integration', ->
           {
             "request": {
               "method": "GET",
-              "url": "/Patient?_id=patient-id&_include=careprovider"
+              "url": "/Patient?_id=patient-id&_include=general-practitioner"
             }
           }
         ]
@@ -302,6 +302,7 @@ describe 'Integration', ->
         resourceType: 'Patient'
         id: 'id1'
       )
+
     it 'should report error message', ->
       bundle =
         type: "transaction",
@@ -318,5 +319,11 @@ describe 'Integration', ->
       match(
         json_call('fhir_transaction', bundle),
         resourceType: 'OperationOutcome'
-        issue: [{severity: 'error', code: '422', diagnostics: 'Invalid operation POST /Patient/id1'}]
+        issue: [
+          {
+            severity: 'error',
+            code: '422',
+            diagnostics: 'Invalid operation POST /Patient/id1'
+          }
+        ]
       )

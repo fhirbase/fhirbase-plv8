@@ -13,6 +13,8 @@ env:
   - secure: OhbEMmdvXwMoNsQCzWRIQsYc6LwcRAARjAoVv150LRTDB4s/FPo/67DQuUkcMJPp5+HyGh2/9giNArmn7NcMiXHtiUZKQKRkt758Ga9IdYidHJrmUI3wZKJns6W7SeCr4GSsd7cVcDo/ubFQQGZK2yIlRRF3zmWnEcPt9uLIlyJlrBu5DKUev65n/AdUzaqGf48efavz97A9DCVxwuE44jGp5Bqjoqqrben97j9U5L8A3APGIcweBaxcLQPunIZboA9DX8xrP/Y+C0cTJlJksbEb8jDNwrK+xLmX/Bd3o5fQh83/wyu2c/E9WrOR96e74VutLjXhdt5gOfzD79Q09lPziYg+0PkR8NaBwHldpmzRf75asem83OYGlNDacd2dkyiuqCNpa1xOIutdk9IKl0FNCn5C4OYFXaR6vPNwwZWF4lt+cXXs0il2/buWkR1Ydt35W1j0LHAPLezrrD839klfxHmVd+3BEf1RB9TQGMzSseSdMEsx5pWJh1k3gM/QGTRpjeaTat49oHEusSx6P+nU5L1VzfPN60/QJvkiS9ay0xdounbb9pkiI/oYyzQP5JD+dqKqxpBWEEBfhrxc+GhFZEJLPLW9XB9dBF5FCWRVweGyDcGa2SP81xV7L/Vc56jWsKcA/KkCLnpSgBm+b34Fg45VOga1zO2lxEV/Cdk=
   - secure: TCYwHystRMTz1AKWfQ7436LM7r2WumYQNaLs3f/j4QLZEZhZJMTUGClYzfc80mbjkcpSsbXcitSOfwLxo+aTG8kgvQTVFZJsNNExinnlZ8zo8h91+iyN4GHdEECFnylEAC1QvSUJbACpYTmHwz5HsXrBmrP5yKVloesbbdTr5V34Z9DhKHb6MkpgNzzYM7Cy977eqkp5CaFOwRy1CbxM2bCJrgZEFrBGpW9Iqb5YLMoorygffDWltNZ/GK39hYsETOpdNkUIPZWbGQyRx4yYpydk4AMEBz7r0QM6opf4YVCoA2MfrbDnPGrfyyv+T1NgYmBa4PYzpBOACphuYmVcM6Voqb3qxZUxTzQ4lTsNU/gZ8kUQdlbjQCtVotj5blp39ynmOCt6F9iKXGPAG3u8iWB19+19CvpeFirxwa5yG6b0rlsnZNAyQYi+2/7mxR1ZDZjl2llX4WmVPM0NHQ+yfMIrljdog+2SkNOO0PPBcfba4inZE8A7+k/8zCucBOofxx0zfam44FjisUtiVjpEFJtKmEMHznKN/AlEu0SmUl859Hc+418xBboxYr5lux9d+ha0QD4/bpokRNFvSM3ZGcBP44+m3bRpyvjuv+cMN7DBedn2QeBJSnfsB0cJNepoi++b7NsZLggTqKy7KhvGplapiYvQrWSys6ZPnq28PXA=
   - secure: B8Mc7dg0VDL8DZ0L2HakGWlzHnMprVtihjwcmn0a02mhaTxFv1FCXsb3O0pB/kQ0M5Ox2OzLSyrMUZFK+aiY1jhDJrllbXBRa34fVEawUdnczjzmqm8sWyfT3tTPwVPcdLSXuGPwLXmjOBnlJth1zBwJcDK6R4Epv80tNsViG8fmXk23zjS+shi4utlbScuZLZ9jM9DHay7IyMsVDxCSq7Gjsukue8ib3hzxGrL0a/anWfFo+9N7uLwplacPo/Vt+crA9VlIUvfd3Oli1KaEB7GsTCZs2xFPc48oinchei2T/Kb7oB13YW+6T2QYiWEjCw5Y9OEA7G+Ic7KSRqNruUH/63xaBEeCmBKUw5pbg/OKXvHEbI68AlMTls/xEoCPXY52KFUBCJ5tws8MXlC5vdzotjAz+gcBDz3pbQEaEA+MeCz1j9ogRTQCJ7lxqK8zWO8z4HV2u0ZOZ0sHA5IrHuHwiuLNjZyHwneTS+ov889s5ChdChvObRbcLOXtfQUABhvz69zyX/5c8kfVmniQ+FfYNmskNCPoqJifiZESjTnGbgknfNyHeiH2+QHU7nkpQjzbNUpePbJv3hMWSyh4gDT2ky6rxikvaLmsXZLybmvLyiF733VeF2svNXraaJ8yTW6ss/rhfTdESXxMghalFV4Pk02jW2PzLaFND3RH7ZY=
+  - secure: KvT5bK9zW4E7oEZXYU+cq7O423X7BsQE8RkjDi+Eaeh5lSnvFNv4vWeSNKpKfZPTQ5iTwTtAmr3K3IMfmfRZS2jlZcw2r8fUqYZV+ev/ZCcKmVZuFJylY9e5vWOTOs3AlwgP2NFf4dwr7149+l5SiYhjzAOZH80+y2R27lKQgllDy1SpFhOlXQ90QuTpCa59dC7xd7bKTmf6NY4BAdT2dsyycbMKVTTPmvSjY1sT+tUwPlcTjEWJGtPwbXNY/FrH+fFhMnmTodbfSKWfg5fVJvn/+pqeKf3HEAN4ORn5NmHJ0ZXhTHNBxT7eNwTV+6BRYuuNDnFS2KrqAbWA6mPP5Wj1tJh81PMZEcBUJmTWMqAVgVAdu3EcQJB/U2UE6qDnwW+ryZ/8lznb+/N6kXVp/D4f7ldmHUJc4bjYg6tiQ2F0uMYQIhoaqwTpq5CSdPugIhIVJXeqhbikvmGxocObz5TW876SmfNttOtNZkI8J60HaoIzIS5MRver1sMu565ZiQOLom4RVl5Vbzhcnd7oUfJQQiwvbATb4Gg0vQmKEh3gWJQZfgwrrxTe+ykS9Vyz6f/9eqpqwa7EpKO3sE4DS+VFMI5Z/6ojiISQnUGJI9lVkcXCTOZw3xBtgEJaKRrWKcJ6U4q/k3R6jWwDald8xk1ucq7KOEPx64flWjjv5Io=
+  - secure: HRZQRe8R2/qT48wfXbUTcqeYws73KI2fCBZ2V+Y2FGZ3FtwqpxxfBWRexZyaFx+fmzD6iEgR4ojCdxFdcCPavLSEZaMkuRsCeMdPISCBY4IKYd2iN/8DDBsqaxMB1ZMhdUcqeMes1bJgsKCLfqSLjy0kwSSPxizO1E+gFCRYCXjUA94X4ersHHlFhR9EMn/4SprGRm1rI0BKvYbWUI5hVyWqIlhImvWzNPo9ksCeYWzfWbT5nDn+2p9gkXvbs+fcxUi8xGBjnvGaL8fshAXaAfRe8J9gtXDxrt5h8BfhAUABBkovS7XwQc0yFCTAF0/76Kl+phnX5JwM6aJGbI1eRgoMCUVRJMDzfXviQaM4ZcpNE/2sxWJSHyLtIE3QlJu1gHGQKnG/M0e7sQ2hpyjdnLvycObH0R2NsvsehLp2nLHjUMXE1kvAW1IsSvBQuHsbhWgTaKx6k3mvCCDs/yzTCcs+KQITr0TPRwsjV3sQ/OO7T6M1D2Cip/BLz70PPVEX0ZHHENC1yRt2009mrGshOQHDgjAIuoBGXO+dIafKho680O5zdAxmlJonoZinfT+wPvalQW31o/CePujjz7NxscYgnFtWxZceSUTc7BtkA/X39pWE2+vC+uy6DjuG/4b0FhWkwfHjTcQHmSBkP0RNFqfitKuWd3oacyLRJ951Xdo=
   matrix:
   - PLV8_VERSION=1.4.3 SCHEMAS="public"
   - PLV8_VERSION=1.4.4 SCHEMAS="public"
@@ -26,9 +28,23 @@ before_install:
   docker build --tag=fhirbase-tests-in-schemas:pg-9.4-plv8-$PLV8_VERSION \
                --file=Dockerfile-pg-9.4-plv8-$PLV8_VERSION ./ || exit 1
 script: |
-  docker run fhirbase-tests-in-schemas:pg-9.4-plv8-$PLV8_VERSION \
+  docker run --name=fhirbase-tests-in-schemas \
+             fhirbase-tests-in-schemas:pg-9.4-plv8-$PLV8_VERSION \
              --schemas="$SCHEMAS" --install-fhirbase || exit 1
 after_success: |
+  if [ "$PLV8_VERSION" == "1.4.7" ]; then
+    docker cp fhirbase-tests-in-schemas:/home/fhirbase/fhirbase/build \
+              $TRAVIS_BUILD_DIR/ || exit 1
+    rm --recursive --force $TRAVIS_BUILD_DIR/build/latest
+    cp --recursive --force \
+       $TRAVIS_BUILD_DIR/build/$TRAVIS_COMMIT \
+       $TRAVIS_BUILD_DIR/build/latest
+    pip install --user --upgrade awscli || exit 1
+    AWS_DEFAULT_REGION=us-west-1 \
+      AWS_SECRET_ACCESS_KEY=$BUILD_AWS_SECRET_ACCESS_KEY \
+      AWS_ACCESS_KEY_ID=$BUILD_AWS_ACCESS_KEY_ID \
+      aws s3 cp --recursive $TRAVIS_BUILD_DIR/build s3://fhirbase
+  fi
   if [ "$PLV8_VERSION" == "1.4.7" ] && [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     echo $PASS | gpg --passphrase-fd 0 --decrypt --output - ./secure.tar.gz.asc \
       | tar --extract --gzip --file -

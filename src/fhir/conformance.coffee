@@ -5,7 +5,7 @@ fhirbaseVersion = require('../core/fhirbase_version')
 
 exports.fhir_conformance = (plv8, base)->
   base.resourceType = 'Conformance'
-  base.acceptUnknown = true
+  base.acceptUnknown = 'extensions' #a code that indicates whether the application accepts unknown elements or extensions when reading resources <http://hl7-fhir.github.io/valueset-unknown-content-code.html#expansion>
 
   base.fhirVersion = base.fhirVersion || fhirVersion.fhir_version()
   base.version =  base.version || fhirbaseVersion.fhirbase_version()
@@ -41,7 +41,16 @@ exports.fhir_conformance = (plv8, base)->
       versioning: 'versioned'
       profile:
         reference:  "/fhir/StructureDefinition/#{p.name}"
-      interaction: ["read","vread","update","delete","history-instance","validate","history-type","create","search-type"].map((tp)-> {code: tp})
+      interaction: [ #identifies supported a restful operations <http://hl7-fhir.github.io/valueset-type-restful-interaction.html#definition>
+        'read'
+        'vread'
+        'update'
+        'delete'
+        'history-instance'
+        'history-type'
+        'create'
+        'search-type'
+      ].map((tp)-> {code: tp})
   ]
   base
 

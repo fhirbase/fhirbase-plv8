@@ -34,32 +34,32 @@ fixtures:
 
 queries:
   - query: {resourceType: 'Observation', queryString:  'value-quantity=lt186'}
-    indexed: true
+    # indexed: true
     total: 2
   - query: {resourceType: 'Observation', queryString:  'value-quantity=lt186||mg'}
-    indexed: true
+    # indexed: true
     total:  1
   - query: {resourceType: 'Observation', queryString:  'value-quantity=lt186|http://unitsofmeasure.org|lbs'}
-    indexed: true
+    # indexed: true
     total:  1
   - query: {resourceType: 'Observation', queryString:  'value-quantity=lt186|http://unitsofmeasure.org|[lb_av]'}
-    indexed: true
+    # indexed: true
     total:  1
   - query: {resourceType: 'Observation', queryString:  'value-quantity:missing=true'}
-    indexed: true
+    # indexed: true
     total:  1
   - query: {resourceType: 'Observation', queryString:  'value-quantity:missing=false'}
-    indexed: true
+    # indexed: true
     total:  3
   - query: {resourceType: 'Observation', queryString:  '_sort=value-quantity'}
     total:  4
-    indexed_order: true
+    # indexed_order: true
     probes:
       - path: ['entry', '0', 'resource', 'id']
         result: 'obs-3'
   - query: {resourceType: 'Observation', queryString:  '_sort:desc=value-quantity'}
     total:  4
-    indexed_order: true
+    # indexed_order: true
     probes:
       - path: ['entry', '3', 'resource', 'id']
         result: 'obs-3'

@@ -23,7 +23,7 @@ extract_specs = [
   { #related to bugs with PostgreSQL reserved key words <https://github.com/fhirbase/fhirbase-plv8/issues/77>, <https://github.com/fhirbase/fhirbase-plv8/issues/88>, <http://www.postgresql.org/docs/current/static/sql-keywords-appendix.html#KEYWORDS-TABLE>
     resource: {date: '2015-01-02'}
     assert: {
-      path: ['Order', 'date']
+      path: ['Task', 'date']
       elementType: 'dateTime'
       result: '[2015-01-02,2015-01-02T23:59:59.99999]'
     }
@@ -32,7 +32,7 @@ extract_specs = [
 
 describe "extract_as_date", ->
   extract_specs.forEach (spec)->
-    it JSON.stringify(spec.path), ->
+    it JSON.stringify(spec.path || "unknown"), ->
       res = search.fhir_extract_as_daterange(
         {},
         spec.resource,

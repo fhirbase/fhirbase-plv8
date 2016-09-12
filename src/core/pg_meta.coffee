@@ -28,7 +28,7 @@ resource_types_list = (plv8)->
   utils.exec(plv8,
     select: [':id']
     from: ['$q', utils.current_schema(plv8), 'structuredefinition']
-    where: {"resource->'differential'->'element'->0->'type'->0->>'code'": 'DomainResource'})
+    where: {"resource->>'kind'": 'resource'})
   .map((resource)-> resource.id)
 
 exports.resource_types_list = resource_types_list

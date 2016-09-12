@@ -49,7 +49,7 @@ To install fhirbase you need postgresql-9.4 and plv8 extension.
 
 ```sh
 sudo apt-get install postgresql-contrib-9.4 postgresql-9.4-plv8  -qq -y
-psql -c "CREATE USER user WITH PASSWORD 'password'"
+psql -c "CREATE USER \"user\" WITH PASSWORD 'password'"
 psql -c 'CREATE DATABASE fhirbase;' -U user
 psql -c '\dt' -U postgres
 export DATABASE_URL=postgres://user:password@localhost:5432/fhirbase
@@ -73,8 +73,10 @@ cat fhirbase-<version of the fhirbase>-patch.sql | psql fhirbase
 
 ## Development Installation
 
-Development installation requires node 0.12 and npm,
-which could be installed by [nvm](https://github.com/creationix/nvm):
+Development installation requires node v6.2.0 or newer
+and npm 3.0.0 or newer, which could be installed by [nvm][]:
+
+[nvm]: https://github.com/creationix/nvm
 
 ```sh
 # install node < 0.12 by nvm for example
@@ -132,6 +134,7 @@ To make fhirbase-plv8 work, just after opening connection to postgresql, you hav
 SET plv8.start_proc = 'plv8_init';
 ```
 
+## Examples
 
 ```sql
 
@@ -143,6 +146,22 @@ SELECT fhir_create_storage('{"resourceType": "Patient"}');
 SELECT fhir_drop_storage('{"resourceType": "Patient"}');
 SELECT fhir_truncate_storage('{"resourceType": "Patient"}');
 -- delete all resources of specified type
+
+-- the above commands should look like this:
+$ psql fhirbase
+psql (9.4.6)
+Type "help" for help.
+
+fhirbase=# SET plv8.start_proc = 'plv8_init';
+SET
+fhirbase=# SELECT fhir_create_storage('{"resourceType": "Patient"}');
+                  fhir_create_storage                  
+-------------------------------------------------------
+ {"status":"ok","message":"Table patient was created"}
+(1 row)
+
+fhirbase=# 
+
 
 -- CRUD
 
@@ -194,6 +213,19 @@ SELECT fhir_valueset_expand('{"id": "issue-types", "filter": "err"}');
 
 SELECT fhir_conformance('{"default": "values"}');
 -- return simple Conformance resource, based on created stores
+
+---
+
+-- use different methods to calculate total elements to improve performance: no _totalMethod or _totalMethod=exact uses standard approach
+SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith"}');
+SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith&_totalMethod=exact"}');
+
+-- _totalMethod=extimated - faster but 'total' is estimated.
+SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith&_totalMethod=estimated"}');
+
+-- _totalMethod=no - fastest but no 'total' is returned.
+SELECT fhir_search('{"resourceType": "Patient", "queryString": "name=smith&_totalMethod=no"}');
+
 ```
 
 ## Contributing

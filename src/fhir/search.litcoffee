@@ -33,7 +33,6 @@ so the code split as much as possible  into small modules
     sql = require('../honey')
     utils = require('../core/utils')
 
-
 For every search type we have dedicated module,
 with indexing and building search expression implementation.
 
@@ -104,27 +103,36 @@ Then we are returning  resulting Bundle.
 
       resource_rows = utils.exec(plv8, honey)
       resources = resource_rows.map((x)-> compat.parse(plv8, x.resource))
-      count = utils.exec(plv8, countize_query(honey))[0].count
+
+      should_include_total = (expr.total_method != "no")
+
+      if should_include_total
+        count = get_count(plv8, honey, expr)
 
       base_url = "#{query.resourceType}/#{query.queryString}"
 
       if expr.summary or expr.elements
         resources = mask_resources(plv8, expr, idx_db, resources)
 
-      if expr.include && count > 0
+      if expr.include && (count > 0 || !should_include_total)
         includes = search_include.load_includes(plv8, expr.include, resources)
         resources = resources.concat(includes)
 
-      if expr.revinclude && count > 0
+      if expr.revinclude && (count > 0 || !should_include_total)
         includes = search_include.load_revincludes(plv8, expr.revinclude, resources)
         resources = resources.concat(includes)
 
+      if should_include_total
+        resourceType: 'Bundle'
+        type: 'searchset'
+        total: count
+        link: helpers.search_links(query, expr, count)
+        entry: resources.map(to_entry)
+      else
+        resourceType: 'Bundle'
+        type: 'searchset'
+        entry: resources.map(to_entry)
 
-      resourceType: 'Bundle'
-      type: 'searchset'
-      total: count
-      link: helpers.search_links(query, expr, count)
-      entry: resources.map(to_entry)
 
 Helper function to convert resource into entry bundle:
 TODO: add links
@@ -293,6 +301,12 @@ implementation based on searchType
 
     order_hsql = (tbl, params)->
       for meta in params.map((x)-> x[1])
+        # FIXME: inconsistent situation with many params
+        # just take first, it unsorted anyway
+        if ! meta.searchType && meta[0] && meta[0] == '$param'
+          meta = meta[1]
+        if ! meta.searchType
+          throw new Error("Empty search type", params)
         h = get_search_module(meta.searchType)
         unless h.order_expression
           throw new Error("Search type does not exports order_expression fn: [#{meta.searchType}] #{JSON.stringify(meta)}")
@@ -344,6 +358,27 @@ we just strip limit, offset, order and rewrite select clause:
       q.select = [':count(*) as count']
       q
 
+    get_count = (plv8, honey, query_obj) ->
+      if !query_obj.total_method || query_obj.total_method is "exact"
+        query_obj.total_method = "exact"
+
+        utils.exec(plv8, countize_query(honey))[0].count
+      else if query_obj.total_method is "estimated"
+        sql_query= sql(honey)
+        query = sql_query[0].replace /\$(\d+)/g, (match, number) ->
+            if typeof sql_query[number] is "string"
+              return '\''+sql_query[number]+'\''
+            else if typeof sql_query[number] isnt 'undefined'
+              return sql_query[number]
+            else
+              return match
+        query = query.replace /LIMIT \d+/, ""
+        query = query.replace /\'/g, '\'\''
+        query = "SELECT count_estimate('#{query}');"
+        tmp = plv8.execute(query)
+        tmp[0].count_estimate
+      else
+        throw new Error("Invalid value of totalMethod. only 'exact', 'estimated' and 'no' allowed.")
 
 We cache FHIR meta-data index per connection using plv8 object:
 

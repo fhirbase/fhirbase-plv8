@@ -28,7 +28,7 @@ testCases = [
   },
   { # tables with PostgreSQL reserved name <https://github.com/fhirbase/fhirbase-plv8/issues/77>
     resource: {
-      resourceType: 'Order'
+      resourceType: 'Task'
       length: '10'
       valueQuantity:
         value: 100
@@ -37,12 +37,12 @@ testCases = [
     },
     specs: [
       {
-        path: ['Order', 'length']
+        path: ['Task', 'length']
         elementType: 'integer'
         result: '10'
       },
       {
-        path: ['Order', 'valueQuantity']
+        path: ['Task', 'valueQuantity']
         elementType: 'Quantity'
         result: '100'
       }

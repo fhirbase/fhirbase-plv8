@@ -70,6 +70,7 @@ wrap_ensure_table = (fn)->
       query.hx_table_name = hx_table_name
       fn(plv8, query)
 
+# TODO: Move this OperationOutcome to `src/fhir/outcome.coffee`.
 wrap_required_attributes = (fn, attrs)->
   (plv8, query)->
     issue = []
@@ -237,6 +238,8 @@ exports.fhir_vread_resource = _build [
 
 exports.fhir_vread_resource.plv8_signature = ['json', 'json']
 
+# TODO: To DRY (don't repeat yourself) `fhir_update_resource` and
+#       `fhir_patch_resource`.
 fhir_update_resource = _build [
     [wrap_required_attributes, [['resource']]]
     [wrap_ensure_table]
@@ -329,6 +332,8 @@ fhir_update_resource = _build [
 exports.fhir_update_resource = fhir_update_resource
 exports.fhir_update_resource.plv8_signature = ['json', 'json']
 
+# TODO: To DRY (don't repeat yourself) `fhir_update_resource` and
+#       `fhir_patch_resource`.
 fhir_patch_resource = _build [
     [wrap_required_attributes, [['resource']]]
     [wrap_ensure_table]
@@ -424,14 +429,47 @@ exports.fhir_patch_resource = fhir_patch_resource
 exports.fhir_patch_resource.plv8_signature = ['json', 'json']
 
 exports.fhir_delete_resource = _build [
-    [wrap_required_attributes, [['id'], ['resourceType']]]
-    [wrap_ensure_table]
-    [wrap_postprocess]
-    [wrap_hooks, 'deleted']
-  ], (plv8, query)->
+  [wrap_ensure_table]
+  [wrap_postprocess]
+  [wrap_hooks, 'deleted']
+], (plv8, query)->
 
-  id = query.id
-  old_version = exports.fhir_read_resource(plv8, query)
+  if query.queryString
+    unless _get_in(query, ['resourceType'])
+      # TODO: Move this OperationOutcome to `src/fhir/outcome.coffee`.
+      return {
+        resourceType: 'OperationOutcome',
+        issue:
+          severity: 'error',
+          code: 'structure',
+          diagnostics: 'expected attribute "resourceType"'
+      }
+
+    result = search.fhir_search(
+      plv8,
+      {resourceType: query.resourceType, queryString: query.queryString}
+    )
+    unless result.resourceType == 'OperationOutcome'
+      if result.entry.length > 1
+        return outcome.non_selective() # TODO: Add outcome message.
+      else if result.entry.length == 1
+        old_version = result.entry[0].resource
+        id = old_version.id
+  else
+    issues = []
+    for attr in [['id'], ['resourceType']]
+      unless _get_in(query, attr)
+        issues.push(
+          severity: 'error',
+          code: 'structure',
+          diagnostics: "expected attribute #{attr}"
+        )
+    if issues.length > 0
+      # TODO: Move this OperationOutcome to `src/fhir/outcome.coffee`.
+      return {resourceType: 'OperationOutcome', issue: issues}
+
+    old_version = exports.fhir_read_resource(plv8, query)
+    id = query.id
 
   unless old_version
     return outcome.not_found(query.id)

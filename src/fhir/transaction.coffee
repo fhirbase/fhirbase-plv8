@@ -14,7 +14,7 @@ strip = (obj)->
 HANDLERS = [
   {
     name: 'Instance'
-    test: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}$")
+    test: new RegExp("^/?#{RES_TYPE_RE}/#{ID_RE}/?$")
     GET: (match, entry)->
       type: 'read'
       id: match[2]
@@ -27,6 +27,7 @@ HANDLERS = [
         id: match[2]
         resourceType: match[1]
         resource: entry.resource
+        ifMatch: entry.request.ifMatch
 
     DELETE: (match, entry)->
       type: 'delete'
@@ -35,7 +36,7 @@ HANDLERS = [
   }
   {
     name: 'Revision'
-    test: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}/_history/#{ID_RE}$")
+    test: new RegExp("^/?#{RES_TYPE_RE}/#{ID_RE}/_history/#{ID_RE}/?$")
     GET: (match, entry)->
       type: 'vread'
       id: match[2]
@@ -44,7 +45,7 @@ HANDLERS = [
   }
   {
     name: 'Instance History'
-    test: new RegExp("^/#{RES_TYPE_RE}/#{ID_RE}/_history$")
+    test: new RegExp("^/?#{RES_TYPE_RE}/#{ID_RE}/_history/?$")
     GET: (match, entry)->
       type: 'history'
       resourceType: match[1]
@@ -63,22 +64,35 @@ HANDLERS = [
   }
   {
     name: 'History'
-    test: new RegExp("^/#{RES_TYPE_RE}/_history$")
+    test: new RegExp("^/?#{RES_TYPE_RE}/_history/?$")
     GET: (match, entry)->
       type: 'history'
       resourceType: match[1]
   }
   {
-    test: new RegExp("^/_history$")
+    name: 'History of all types'
+    test: new RegExp("^/?_history/?$")
     GET: (match, entry)->
       type: 'history'
   }
   {
-    test: new RegExp("^/#{RES_TYPE_RE}/?\\?#{QUERY_STRING_RE}$")
+    name: 'Search and conditional operations'
+    test: new RegExp("^/?#{RES_TYPE_RE}/?\\?#{QUERY_STRING_RE}/?$")
     GET: (match, entry)->
       type: 'search'
       resourceType: match[1]
       queryString: match[2]
+    PUT: (match, entry)->
+      strip
+        type: 'conditionalUpdate'
+        resourceType: match[1]
+        queryString: match[2]
+        resource: entry.resource
+    DELETE: (match, entry)->
+      strip
+        type: 'conditionalDelete'
+        resourceType: match[1]
+        queryString: match[2]
   }
 ]
 
@@ -111,13 +125,16 @@ makePlan = (bundle) ->
       }]
 
   plan.sort (a, b)->
-    # Transaction should processed in order (DELETE, POST, PUT, GET).
+    # Transaction should processed in order (DELETE, POST, PUT, GET)
+    # <http://hl7-fhir.github.io/http.html#2.1.0.16.2>.
 
     number = (action)->
       switch action.type
         when 'delete' then 1 # DELETE
+        when 'conditionalDelete' then 1 # DELETE
         when 'create' then 2 # POST
         when 'update' then 3 # PUT
+        when 'conditionalUpdate' then 3 # PUT
         when 'read' then 4 # GET
         when 'vread' then 4 # GET
         when 'search' then 4 # GET
@@ -169,11 +186,11 @@ executePlan = (plv8, plan) ->
 
         result
 
-      when "update"
+      when 'update', 'conditionalUpdate'
         action.resource.id = action.resource.id || (!action.queryString && action.id)
         crud.fhir_update_resource(plv8, action)
-      when "delete"
-        crud.fhir_delete_resource(plv8, {id: action.id, resourceType: action.resourceType})
+      when 'delete', 'conditionalDelete'
+        crud.fhir_delete_resource(plv8, action)
       when "read"
         crud.fhir_read_resource(plv8, {id: action.id, resourceType: action.resourceType})
       when "vread"
@@ -211,6 +228,7 @@ execute = (plv8, bundle, strictMode) ->
 
   entries = null
   wasRollbacked = false
+  error_in_transaction = null
   try
     plv8.subtransaction ->
       entries = executePlan(plv8, plan)
@@ -227,12 +245,21 @@ execute = (plv8, bundle, strictMode) ->
           break
 
       if shouldRollbacked
-        throw new Error('Transaction should rollback')
+        throw new Error('FHIR transaction should rollback')
   catch e
+    error_in_transaction = e
     wasRollbacked = true
 
   if wasRollbacked
-    outcome(entries)
+    if entries
+      outcome(entries)
+    else
+      resourceType: 'OperationOutcome'
+      issue: [{
+        severity: 'error'
+        code: '500'
+        diagnostics: error_in_transaction.toString()
+      }]
   else
     backboneElements = entries.map (entry)->
       resource: entry

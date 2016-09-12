@@ -41,6 +41,7 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
 
       for idx in (spec.indices or [])
         search.fhir_unindex_parameter(plv8, idx)
+        console.log("INDEX", idx);
         search.fhir_index_parameter(plv8, idx)
 
       for idx_ord in (spec.index_order or [])
@@ -63,9 +64,16 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
         plv8.execute "SET enable_seqscan = ON;" if (q.indexed or q.indexed_order)
 
         if q.total || q.total == 0
-          assert.equal(res.total, q.total)
+          if q.total == "_undefined"
+            assert.equal(res.total, undefined)
+          else
+            assert.equal(res.total, q.total)
 
-        (q.probes || []).forEach (probe)-> assert.equal(get_in(res, probe.path), probe.result)
+        (q.probes || []).forEach (probe)->
+          if probe.result == "_undefined"
+            assert.equal(get_in(res, probe.path), undefined)
+          else
+            assert.equal(get_in(res, probe.path), probe.result)
 
         # console.log(explain)
 

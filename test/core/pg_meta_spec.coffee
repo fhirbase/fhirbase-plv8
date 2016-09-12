@@ -20,7 +20,4 @@ describe "CORE: pg meta", ()->
     plv8.execute "SET search_path = '#{sch}'"
 
   it 'resource types list', ->
-    assert.equal(
-      meta.resource_types_list(plv8).indexOf('Patient') > -1,
-      true
-    )
+    assert(meta.resource_types_list(plv8).indexOf('Patient') > -1)
