@@ -164,9 +164,9 @@ exports.truncate_storage_done = (resourceType)->
 
 exports.table_not_exists = (resourceType)->
   resourceType: 'OperationOutcome'
-  text: {div: "<div>Storage for #{resourceType} not exists</div>"}
+  text: {div: "<div>Storage for #{resourceType} does not exist</div>"}
   issue: [
     severity: 'error'
     code: 'not-supported'
-    diagnostics: "Storage for #{resourceType} not exists"
+    diagnostics: "Storage for #{resourceType} does not exist"
   ]

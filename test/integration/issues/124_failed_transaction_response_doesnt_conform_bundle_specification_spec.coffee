@@ -21,7 +21,7 @@ describe 'Issues', ->
   ```
   a response
   ```
-  fhir_transaction | {"resourceType":"Bundle","type":"transaction-response","entry":[{"resourceType":"OperationOutcome","text":{"div":"<div>Storage for UnknownResource not exists</div>"},"issue":[{"severity":"error","code":"not-supported"}]}]}
+  fhir_transaction | {"resourceType":"Bundle","type":"transaction-response","entry":[{"resourceType":"OperationOutcome","text":{"div":"<div>Storage for UnknownResource does not exist</div>"},"issue":[{"severity":"error","code":"not-supported"}]}]}
   ```
 
   The response doesn't conform specification at: https://www.hl7.org/fhir/bundle-response.json.html
@@ -67,5 +67,5 @@ describe 'Issues', ->
     assert.equal(transaction.resourceType, 'OperationOutcome')
     assert.equal(
       transaction.issue[0].diagnostics,
-      'Storage for UnknownResource not exists'
+      'Storage for UnknownResource does not exist'
     )
