@@ -385,7 +385,7 @@ describe "CORE: CRUD spec", ->
     assert.equal(outcome.resourceType, 'OperationOutcome')
     assert.equal(outcome.issue[0].code, 'not-found')
     assert.equal(outcome.issue[0].extension[0].url, 'http-status-code')
-    assert.equal(outcome.issue[0].extension[0].valueString, '404')
+    assert.equal(outcome.issue[0].extension[0].valueString, '204')
 
   it 'conditional delete', ->
     created = crud.fhir_create_resource(

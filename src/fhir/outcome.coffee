@@ -40,6 +40,32 @@ exports.not_found = (id)->
     }
   ]
 
+exports.no_resource_type = () ->
+  resourceType: 'OperationOutcome'
+  issue:
+    severity: 'error'
+    code: 'structure'
+    diagnostics: 'expected attribute "resourceType"'
+
+exports.unexisting = ()->
+  resourceType: "OperationOutcome"
+  issue: [
+    {
+      severity: 'information'
+      code: 'not-found'
+      details: {
+        coding: [
+          {
+            code: 'MSG_NO_EXIST',
+            display: "Resource does not exist"
+          }
+        ]
+      }
+      diagnostics: "Resource does not exist"
+      extension: [{url: 'http-status-code', valueString: '204'}]
+    }
+  ]
+
 exports.version_not_found = (id, versionId)->
   resourceType: 'OperationOutcome'
   issue: [

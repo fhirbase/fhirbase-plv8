@@ -242,16 +242,16 @@ describe 'Transaction', ->
     schema.fhir_create_storage(plv8, {"resourceType": "Patient"})
     schema.fhir_truncate_storage(plv8, {"resourceType": "Patient"})
 
-    crud.fhir_create_resource(plv8,
-      {
-        "allowId": true,
-        "resource": {
-          "id": "id1",
-          "resourceType": "Patient",
-          "name": [{"given": ["Patient 1"]}]
+    ['id1', 'id2', 'id3'].forEach (id) ->
+      crud.fhir_create_resource(plv8, {
+        allowId: true
+        resource: {
+          id: id
+          resourceType: "Patient"
+          name: [{"given": ["John"]}]
+          }
         }
-      }
-    )
+      )
 
     t = transaction.fhir_transaction(plv8,
       {
@@ -267,7 +267,7 @@ describe 'Transaction', ->
           },
           {
             "request": {
-              "url": "\/Patient\/id2",
+              "url": "\/Patient\/?given=John",
               "method": "DELETE"
             }
           }
@@ -278,13 +278,15 @@ describe 'Transaction', ->
     match(
       t,
       resourceType: 'OperationOutcome'
-      issue: [
-        {
-          severity: 'error',
-          code: 'not-found',
-          diagnostics: 'Resource Id "id2" does not exist'
-        }
-      ]
+      issue: [{
+        severity: 'error'
+        code: '412'
+        diagnostics: 'Precondition Failed error indicating the client\'s criteria were not selective enough. undefined'
+        extension: [{
+          url: 'http-status-code'
+          valueString: '412'
+          }]
+        }]
     )
 
     patient = crud.fhir_read_resource(plv8,
