@@ -159,6 +159,19 @@ describe "CORE: CRUD spec", ->
     assert.equal(read.id, vread.id)
     assert.equal(read.meta.versionId, vread.meta.versionId)
 
+  it 'read If-Modified-Since', ->
+    created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users'})
+    lastUpdated = created.meta.lastUpdated
+    lastUpdated.setMilliseconds(lastUpdated.getMilliseconds() + 1)
+    unmodified = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users', ifModifiedSince: lastUpdated})
+    lastUpdated.setMilliseconds(lastUpdated.getMilliseconds() - 2)
+    modified = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users', ifModifiedSince: lastUpdated})
+    assert.equal(unmodified.resourceType, 'OperationOutcome')
+    assert.equal(unmodified.issue[0].extension[0].url, 'http-status-code')
+    assert.equal(unmodified.issue[0].extension[0].valueString, '304')
+    assert.equal(modified.resourceType, 'Users')
+    assert.equal(modified.id, created.id)
+
   it "read unexisting", ->
     read = crud.fhir_read_resource(plv8, {id: 'unexisting', resourceType: 'Users'})
     assert.equal(read.resourceType, 'OperationOutcome')

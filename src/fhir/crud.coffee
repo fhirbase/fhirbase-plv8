@@ -188,12 +188,20 @@ fhir_read_resource = _build [
     [wrap_postprocess]
   ],(plv8, query)->
 
+  if (query.ifModifiedSince)
+    where = ['$and', ['$eq', ':id', query.id], ['$gt', ':updated_at', JSON.stringify(query.ifModifiedSince)]]
+  else
+    where = { id: query.id }
+
   res = utils.exec plv8,
     select: ':*'
     from: sql.q(query.table_name)
-    where: { id: query.id }
+    where: where
 
   row = res[0]
+
+  if (query.ifModifiedSince && !row)
+    return outcome.not_modified()
 
   unless row
     deletionHistory = history.fhir_resource_history(plv8, {

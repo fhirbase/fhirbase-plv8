@@ -26,4 +26,3 @@ exports.memoize = (plv8, key, cb)->
   cache[schema] ||= {}
   cache[schema][key] = res if cache
   res
-

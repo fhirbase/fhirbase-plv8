@@ -40,6 +40,17 @@ exports.not_found = (id)->
     }
   ]
 
+exports.not_modified = ()->
+  resourceType: "OperationOutcome"
+  issue: [
+    {
+      severity: 'error'
+      code: 'not-found'
+      diagnostics: "Not Modified"
+      extension: [{url: 'http-status-code', valueString: '304'}]
+    }
+  ]
+
 exports.no_resource_type = () ->
   resourceType: 'OperationOutcome'
   issue:
