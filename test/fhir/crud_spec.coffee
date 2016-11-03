@@ -387,6 +387,14 @@ describe "CORE: CRUD spec", ->
     assert.equal(outcome.issue[0].extension[0].url, 'http-status-code')
     assert.equal(outcome.issue[0].extension[0].valueString, '204')
 
+  it "delete deleted", ->
+    created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users'})
+    crud.fhir_delete_resource(plv8, {id: created.id, resourceType: 'Users'})
+    deleted = crud.fhir_delete_resource(plv8, {id: created.id, resourceType: 'Users'})
+    assert.equal(deleted.issue[0].code, 'not-found')
+    assert.equal(deleted.issue[0].extension[0].url, 'http-status-code')
+    assert.equal(deleted.issue[0].extension[0].valueString, '204')
+
   it 'conditional delete', ->
     created = crud.fhir_create_resource(
       plv8,
