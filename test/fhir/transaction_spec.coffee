@@ -159,7 +159,7 @@ describe 'Transaction', ->
     assert.equal(r.entry[0].resource.resourceType, 'Patient')
     assert.equal(r.entry[0].resource.name[0].family[0], 'Foo bar')
 
-  it 'history', ->
+  it 'history && vread', ->
     res = {resourceType: 'Patient', name: [{given: ['Tim']}], id: '2345'}
     schema.fhir_truncate_storage(plv8, resourceType: 'Patient')
     created = crud.fhir_create_resource(plv8, allowId: true, resource: res)
@@ -179,6 +179,16 @@ describe 'Transaction', ->
           request:
             method: 'GET'
             url: '/Patient/_history'
+        },
+        {
+          request:
+            method: 'GET'
+            url: "Patient/2345/_history/#{created.meta.versionId}"
+        },
+        {
+          request:
+            method: 'GET'
+            url: "Patient/2345/_history/#{updated.meta.versionId}"
         }
       ]
 
@@ -186,13 +196,16 @@ describe 'Transaction', ->
     assert.equal(t.resourceType, 'Bundle')
     assert.equal(t.type, 'transaction-response')
 
-    t.entry.forEach (e) ->
+    [t.entry[0], t.entry[1]].forEach (e) ->
       r = e.resource
       assert.equal(r.resourceType, 'Bundle')
       assert.equal(r.type, 'history')
       assert.equal(r.total, 2)
       match(copy(r.entry[0].resource), copy(updated))
       match(copy(r.entry[1].resource), copy(created))
+
+    match(copy(t.entry[2].resource), copy(created))
+    match(copy(t.entry[3].resource), copy(updated))
 
   describe 'conditional', ->
     beforeEach ->
