@@ -1,6 +1,6 @@
 search = require('../../src/fhir/search_date')
 test = require('../helpers.coffee')
-
+plv8 = require('../../plpl/src/plv8')
 assert = require('assert')
 
 extract_specs = [
@@ -32,7 +32,7 @@ extract_specs = [
 
 describe "extract_as_date", ->
   extract_specs.forEach (spec)->
-    it JSON.stringify(spec.path || "unknown"), ->
+    it JSON.stringify(spec.assert.path || "unknown"), ->
       res = search.fhir_extract_as_daterange(
         {},
         spec.resource,
@@ -68,3 +68,54 @@ describe "extract_as_date", ->
     it JSON.stringify(spec.args) + " >> " + JSON.stringify(spec.result), ->
       res = search.value_to_range.apply(null, spec.args)
       assert.deepEqual(res, spec.result)
+
+epoch_specs = [
+  {
+    resource: {effectiveDateTime: '1993-09-21T15:25:34.300Z'}
+    assert: {
+      path: ['Observation', 'effectiveDateTime']
+      elementType: 'dateTime'
+      lower: 748625134.3
+      upper: 748625134.3
+    }
+  }
+  {
+    resource: {}
+    assert: {
+      path: ['Observation', 'effectiveDateTime']
+      elementType: 'dateTime'
+      lower: null
+      upper: null
+    }
+  }
+  {
+    resource: {effectivePeriod: {
+      start: '1993-09-21T15:25:34.300Z'
+      end: '1994-09-21T15:25:34.300Z'}}
+    assert: {
+      path: ['Observation', 'effectivePeriod']
+      elementType: 'Period'
+      lower: 748625134.3
+      upper: 780161134.3
+    }
+  }
+]
+
+describe "extract_as_epoch", ->
+  before ->
+    plv8.execute("SET plv8.start_proc = 'plv8_init'")
+
+  epoch_specs.forEach (spec)->
+    it JSON.stringify(spec.assert.path) + " : " + spec.assert.elementType + " >> [" + spec.assert.lower + "," + spec.assert.upper + "]", ->
+      lower = search.fhir_extract_as_epoch_lower(
+        plv8,
+        spec.resource,
+        spec.assert.path,
+        spec.assert.elementType)
+      assert.equal(lower, spec.assert.lower)
+      upper = search.fhir_extract_as_epoch_upper(
+        plv8,
+        spec.resource,
+        spec.assert.path,
+        spec.assert.elementType)
+      assert.equal(upper, spec.assert.upper)

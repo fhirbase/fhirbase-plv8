@@ -23,6 +23,8 @@ See it for more details.
     date = require('./date')
     xpath = require('./xpath')
     search_common = require('./search_common')
+    utils = require('../core/utils')
+    sql = require('../honey')
 
 
 Now we support only simple date data-types - i.e. date, dateTime and instant.
@@ -178,3 +180,44 @@ and returns honeysql expression.
           on: ['$q', tbl]
           expression:  exprs
       ]
+
+Function to extract element from resource as epoch.
+
+    epoch = (plv8, value)->
+      console.log(value)
+      if value
+        res = utils.exec plv8,
+          select: sql.raw("extract(epoch from ('#{value.toString()}')::timestamp at time zone 'UTC')")
+        res[0].date_part
+      else
+        null
+
+    exports.fhir_extract_as_epoch_lower = (plv8, resource, path, element_type)->
+      if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
+        value = xpath.get_in(resource, [path])[0]
+        value && epoch(plv8, value)
+      else if element_type == 'Period'
+        value = xpath.get_in(resource, [path])[0]
+        value && epoch(plv8, value.start)
+      else
+        throw new Error("fhir_extract_as_epoch: Not implemented for #{element_type}")
+
+    exports.fhir_extract_as_epoch_lower.plv8_signature =
+      arguments: ['json', 'json', 'text']
+      returns: 'double precision'
+      immutable: true
+
+    exports.fhir_extract_as_epoch_upper = (plv8, resource, path, element_type)->
+      if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
+        value = xpath.get_in(resource, [path])[0]
+        value && epoch(plv8, value)
+      else if element_type == 'Period'
+        value = xpath.get_in(resource, [path])[0]
+        value && epoch(plv8, value.end)
+      else
+        throw new Error("fhir_extract_as_epoch: Not implemented for #{element_type}")
+
+    exports.fhir_extract_as_epoch_upper.plv8_signature =
+      arguments: ['json', 'json', 'text']
+      returns: 'double precision'
+      immutable: true
