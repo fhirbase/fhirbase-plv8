@@ -99,6 +99,15 @@ epoch_specs = [
       upper: 780161134.3
     }
   }
+  {
+    resource: {}
+    assert: {
+      path: ['Observation', 'effectivePeriod']
+      elementType: 'Period'
+      lower: null
+      upper: null
+    }
+  }
 ]
 
 describe "extract_as_epoch", ->

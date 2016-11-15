@@ -184,7 +184,6 @@ and returns honeysql expression.
 Function to extract element from resource as epoch.
 
     epoch = (plv8, value)->
-      console.log(value)
       if value
         res = utils.exec plv8,
           select: sql.raw("extract(epoch from ('#{value.toString()}')::timestamp at time zone 'UTC')")
