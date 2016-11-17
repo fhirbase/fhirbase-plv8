@@ -76,7 +76,7 @@ epoch_specs = [
       path: ['Observation', 'effectiveDateTime']
       elementType: 'dateTime'
       lower: 748625134.3
-      upper: 748625134.3
+      upper: 748625134.30099
     }
   }
   {
@@ -96,7 +96,7 @@ epoch_specs = [
       path: ['Observation', 'effectivePeriod']
       elementType: 'Period'
       lower: 748625134.3
-      upper: 780161134.3
+      upper: 780161134.30099
     }
   }
   {
@@ -106,6 +106,15 @@ epoch_specs = [
       elementType: 'Period'
       lower: null
       upper: null
+    }
+  }
+  {
+    resource: {effectiveDateTime: '1980'}
+    assert: {
+      path: ['Observation', 'effectiveDateTime']
+      elementType: 'dateTime'
+      lower: 315532800
+      upper: 347155200
     }
   }
 ]

@@ -42,6 +42,9 @@ Now we support only simple date data-types - i.e. date, dateTime and instant.
     exports.order_expression = sf.order_expression
     exports.index_order = sf.index_order
 
+    sfLower = search_common.get_search_functions({extract:'fhir_extract_as_epoch_lower', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
+    sfUpper = search_common.get_search_functions({extract:'fhir_extract_as_epoch_upper', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
+
     str = (x)-> x.toString()
 
 Function to extract element from resource as tstzrange.
@@ -167,19 +170,37 @@ and returns honeysql expression.
     exports.index = (plv8, metas)->
       meta = metas[0]
       tbl = meta.resourceType.toLowerCase()
-      idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_date"
+      idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}"
       exprs = metas.map((x)-> extract_expr(x))
+      exprsLower = metas.map((x)-> sfLower.extract_expr(x))
+      exprsUpper = metas.map((x)-> sfUpper.extract_expr(x))
 
-      [
-        name: idx_name
+      [{
+        name: "#{idx_name}_date"
         ddl:
           create: 'index'
-          name:  idx_name
+          name: "#{idx_name}_date"
           using: ':GIST'
           opclass: ':range_ops'
           on: ['$q', tbl]
-          expression:  exprs
-      ]
+          expression: exprs
+      }
+      {
+       name: "#{idx_name}_epoch_lower"
+       ddl:
+         create: 'index'
+         name: "#{idx_name}_epoch_lower"
+         on: ['$q', tbl]
+         expression: exprsLower
+      }
+      {
+       name: "#{idx_name}_epoch_upper"
+       ddl:
+         create: 'index'
+         name: "#{idx_name}_epoch_upper"
+         on: ['$q', tbl]
+         expression: exprsUpper
+      }]
 
 Function to extract element from resource as epoch.
 
@@ -194,10 +215,10 @@ Function to extract element from resource as epoch.
     exports.fhir_extract_as_epoch_lower = (plv8, resource, path, element_type)->
       if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
         value = xpath.get_in(resource, [path])[0]
-        value && epoch(plv8, value)
+        value && epoch(plv8, date.to_lower_date(value))
       else if element_type == 'Period'
         value = xpath.get_in(resource, [path])[0]
-        value && epoch(plv8, value.start)
+        value && epoch(plv8, date.to_lower_date(value.start))
       else
         throw new Error("fhir_extract_as_epoch: Not implemented for #{element_type}")
 
@@ -209,10 +230,10 @@ Function to extract element from resource as epoch.
     exports.fhir_extract_as_epoch_upper = (plv8, resource, path, element_type)->
       if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
         value = xpath.get_in(resource, [path])[0]
-        value && epoch(plv8, value)
+        value && epoch(plv8, date.to_upper_date(value))
       else if element_type == 'Period'
         value = xpath.get_in(resource, [path])[0]
-        value && epoch(plv8, value.end)
+        value && epoch(plv8, date.to_upper_date(value.end))
       else
         throw new Error("fhir_extract_as_epoch: Not implemented for #{element_type}")
 
