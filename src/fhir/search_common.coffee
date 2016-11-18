@@ -22,7 +22,6 @@ extract_expr_custom = (func_name)->
   (meta, tbl)->
     custom_expr(meta, tbl, func_name)
 
-
 get_search_functions = (obj) ->
   extract = obj.extract
   sort = obj.sort

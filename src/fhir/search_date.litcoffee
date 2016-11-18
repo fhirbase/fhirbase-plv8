@@ -37,13 +37,15 @@ Now we support only simple date data-types - i.e. date, dateTime and instant.
       'Timing'
     ]
     sf = search_common.get_search_functions({extract:'fhir_extract_as_daterange', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
+    lower_sf = search_common.get_search_functions({extract:'fhir_extract_as_epoch_lower', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
+    upper_sf = search_common.get_search_functions({extract:'fhir_extract_as_epoch_upper', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
+
     extract_expr = sf.extract_expr
+    extract_lower_expr = lower_sf.extract_expr
+    extract_upper_expr = upper_sf.extract_expr
 
     exports.order_expression = sf.order_expression
     exports.index_order = sf.index_order
-
-    sfLower = search_common.get_search_functions({extract:'fhir_extract_as_epoch_lower', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
-    sfUpper = search_common.get_search_functions({extract:'fhir_extract_as_epoch_upper', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
 
     str = (x)-> x.toString()
 
@@ -95,6 +97,12 @@ Function to extract element from resource as tstzrange.
 
 Function to convert query parameter into range.
 
+    value_to_epoch_expr = (value)->
+      "extract(epoch from ('#{value.toString()}')::timestamp at time zone 'UTC')::double precision"
+
+    epoch_sql = (expr, operator, value)->
+      sql.raw("#{sql(expr)} #{operator} #{value}")
+
     value_to_range = (operator, value)->
       if operator == 'lt'
         ['$tstzrange', '-infinity', date.to_lower_date(value), '()']
@@ -125,8 +133,14 @@ Function to convert query parameter into range.
 
     TODO = -> throw new Error("Date search: unimplemented")
 
+    eq_epoch_expr = (tbl, meta, value)->
+      console.log(sql(['$and',
+        epoch_sql(extract_lower_expr(meta), '<', value_to_epoch_expr(date.to_upper_date(value.value))),
+        epoch_sql(extract_upper_expr(meta), '>=', value_to_epoch_expr(date.to_lower_date(value.value)))]))
+      overlap_expr(tbl, meta, value)
+
     OPERATORS =
-      eq: overlap_expr
+      eq: eq_epoch_expr
       gt: overlap_expr
       ge: overlap_expr
       lt: overlap_expr
@@ -153,7 +167,6 @@ Function to convert query parameter into range.
 It is passed table name, meta {operator: 'lt,gt,eq', path: ['Patient', 'birthDate']}, query parameter value
 and returns honeysql expression.
 
-
     handle = (tbl, meta, value)->
       unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
         throw new Error("Date Search: unsuported type #{JSON.stringify(meta)}")
@@ -172,8 +185,8 @@ and returns honeysql expression.
       tbl = meta.resourceType.toLowerCase()
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}"
       exprs = metas.map((x)-> extract_expr(x))
-      exprsLower = metas.map((x)-> sfLower.extract_expr(x))
-      exprsUpper = metas.map((x)-> sfUpper.extract_expr(x))
+      lower_exprs = metas.map((x)-> extract_lower_expr(x))
+      upper_exprs = metas.map((x)-> extract_upper_expr(x))
 
       [{
         name: "#{idx_name}_date"
@@ -191,7 +204,7 @@ and returns honeysql expression.
          create: 'index'
          name: "#{idx_name}_epoch_lower"
          on: ['$q', tbl]
-         expression: exprsLower
+         expression: lower_exprs
       }
       {
        name: "#{idx_name}_epoch_upper"
@@ -199,7 +212,7 @@ and returns honeysql expression.
          create: 'index'
          name: "#{idx_name}_epoch_upper"
          on: ['$q', tbl]
-         expression: exprsUpper
+         expression: upper_exprs
       }]
 
 Function to extract element from resource as epoch.
