@@ -4,7 +4,7 @@ history = require('./history')
 
 RES_TYPE_RE = "([A-Za-z]+)"
 ID_RE = "([A-Za-z0-9\\-]+)"
-QUERY_STRING_RE = "([A-Za-z0-9 &=_-]+)"
+QUERY_STRING_RE = "(.*)"
 
 strip = (obj)->
   res = {}
@@ -78,7 +78,7 @@ HANDLERS = [
   }
   {
     name: 'Search and conditional operations'
-    test: new RegExp("^/?#{RES_TYPE_RE}/?\\?#{QUERY_STRING_RE}/?$")
+    test: new RegExp("^/?#{RES_TYPE_RE}/?\\?#{QUERY_STRING_RE}$")
     GET: (match, entry)->
       type: 'search'
       resourceType: match[1]

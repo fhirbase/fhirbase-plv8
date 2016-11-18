@@ -237,9 +237,9 @@ describe 'Transaction', ->
           {
             "resource": {
               "resourceType": "Patient",
-              "name": [{"given":["Name1"],"family":["Xyz"]}]
+              "name": [{"given":["Name1"],"family":["aaa~aaa.1.2"]}]
             },
-            "request": {"method":"PUT","url":"Patient?given=Name1"}}
+            "request": {"method":"PUT","url":"Patient?given=aaa~aaa.1.2"}}
           ]
         }
 
@@ -258,11 +258,10 @@ describe 'Transaction', ->
                       "Name1"
                     ],
                     "family": [
-                      "Xyz"
+                      "aaa~aaa.1.2"
                     ]
                   }
-                ],
-                "id": "id1",
+                ]
               }
             }
           ]
