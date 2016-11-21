@@ -136,22 +136,31 @@ Function to convert query parameter into range.
     eq_epoch_expr = (tbl, meta, value)->
       ['$and',
         epoch_sql(extract_lower_expr(meta), '<=', value_to_epoch_expr(date.to_upper_date(value.value))),
-        epoch_sql(extract_upper_expr(meta), '>=', value_to_epoch_expr(date.to_lower_date(value.value)))]
+        epoch_sql(extract_upper_expr(meta), '>', value_to_epoch_expr(date.to_lower_date(value.value)))]
 
     gt_epoch_expr = (tbl, meta, value)->
-      epoch_sql(extract_upper_expr(meta), '>', value_to_epoch_expr(date.to_lower_date(value.value)))
-      overlap_expr(tbl, meta, value)
+      epoch_sql(extract_upper_expr(meta), '>', value_to_epoch_expr(date.to_upper_date(value.value)))
 
     ge_epoch_expr = (tbl, meta, value)->
       epoch_sql(extract_upper_expr(meta), '>=', value_to_epoch_expr(date.to_lower_date(value.value)))
 
     lt_epoch_expr = (tbl, meta, value)->
-      epoch_sql(extract_lower_expr(meta), '<', value_to_epoch_expr(date.to_upper_date(value.value)))
-      overlap_expr(tbl, meta, value)
+      epoch_sql(extract_lower_expr(meta), '<', value_to_epoch_expr(date.to_lower_date(value.value)))
 
     le_epoch_expr = (tbl, meta, value)->
-      epoch_sql(extract_lower_expr(meta), '<=', value_to_epoch_expr(date.to_upper_date(value.value)))
-      overlap_expr(tbl, meta, value)
+      epoch_sql(extract_lower_expr(meta), '<', value_to_epoch_expr(date.to_upper_date(value.value)))
+
+    ne_epoch_expr = (tbl, meta, value)->
+      ['$not', eq_epoch_expr(tbl, meta, value)]
+
+    missing_epoch_expr = (tbl, meta, value)->
+      expr = ['$and',
+        ["$null", extract_lower_expr(meta)],
+        ["$null", extract_upper_expr(meta)]]
+      if value.value == 'false'
+        ["$not", expr]
+      else
+        expr
 
     OPERATORS =
       eq: eq_epoch_expr
@@ -159,8 +168,8 @@ Function to convert query parameter into range.
       ge: ge_epoch_expr
       lt: lt_epoch_expr
       le: le_epoch_expr
-      ne: not_overlap_expr
-      missing: missing_expr
+      ne: ne_epoch_expr
+      missing: missing_epoch_expr
       # sa: TODO
       # eb: TODO
       # ap: TODO
