@@ -33,6 +33,8 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
       # plv8.debug = true
 
       for res in spec.resources
+
+
         schema.fhir_create_storage(plv8, resourceType: res)
         schema.fhir_truncate_storage(plv8, resourceType: res)
 

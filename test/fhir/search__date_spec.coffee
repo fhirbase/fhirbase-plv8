@@ -113,8 +113,8 @@ epoch_specs = [
     assert: {
       path: ['Observation', 'effectiveDateTime']
       elementType: 'dateTime'
-      lower: 315532800
-      upper: 347155200
+      lower: 315529200
+      upper: 347151600
     }
   }
 ]

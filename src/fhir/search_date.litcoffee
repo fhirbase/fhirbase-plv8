@@ -98,7 +98,7 @@ Function to extract element from resource as tstzrange.
 Function to convert query parameter into range.
 
     value_to_epoch_expr = (value)->
-      "extract(epoch from ('#{value.toString()}')::timestamp at time zone 'UTC')::double precision"
+      "extract(epoch from ('#{value.toString()}')::timestamp with time zone)::double precision"
 
     epoch_sql = (expr, operator, value)->
       sql.raw("#{sql(expr)} #{operator} #{value}")
@@ -134,17 +134,31 @@ Function to convert query parameter into range.
     TODO = -> throw new Error("Date search: unimplemented")
 
     eq_epoch_expr = (tbl, meta, value)->
-      console.log(sql(['$and',
-        epoch_sql(extract_lower_expr(meta), '<', value_to_epoch_expr(date.to_upper_date(value.value))),
-        epoch_sql(extract_upper_expr(meta), '>=', value_to_epoch_expr(date.to_lower_date(value.value)))]))
+      ['$and',
+        epoch_sql(extract_lower_expr(meta), '<=', value_to_epoch_expr(date.to_upper_date(value.value))),
+        epoch_sql(extract_upper_expr(meta), '>=', value_to_epoch_expr(date.to_lower_date(value.value)))]
+
+    gt_epoch_expr = (tbl, meta, value)->
+      epoch_sql(extract_upper_expr(meta), '>', value_to_epoch_expr(date.to_lower_date(value.value)))
+      overlap_expr(tbl, meta, value)
+
+    ge_epoch_expr = (tbl, meta, value)->
+      epoch_sql(extract_upper_expr(meta), '>=', value_to_epoch_expr(date.to_lower_date(value.value)))
+
+    lt_epoch_expr = (tbl, meta, value)->
+      epoch_sql(extract_lower_expr(meta), '<', value_to_epoch_expr(date.to_upper_date(value.value)))
+      overlap_expr(tbl, meta, value)
+
+    le_epoch_expr = (tbl, meta, value)->
+      epoch_sql(extract_lower_expr(meta), '<=', value_to_epoch_expr(date.to_upper_date(value.value)))
       overlap_expr(tbl, meta, value)
 
     OPERATORS =
       eq: eq_epoch_expr
-      gt: overlap_expr
-      ge: overlap_expr
-      lt: overlap_expr
-      le: overlap_expr
+      gt: gt_epoch_expr
+      ge: ge_epoch_expr
+      lt: lt_epoch_expr
+      le: le_epoch_expr
       ne: not_overlap_expr
       missing: missing_expr
       # sa: TODO
@@ -220,7 +234,7 @@ Function to extract element from resource as epoch.
     epoch = (plv8, value)->
       if value
         res = utils.exec plv8,
-          select: sql.raw("extract(epoch from ('#{value.toString()}')::timestamp at time zone 'UTC')")
+          select: sql.raw("extract(epoch from ('#{value.toString()}')::timestamp with time zone)")
         res[0].date_part
       else
         null
