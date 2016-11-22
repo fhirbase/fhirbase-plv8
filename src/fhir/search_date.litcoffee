@@ -277,3 +277,48 @@ Function to extract element from resource as epoch.
       arguments: ['json', 'json', 'text']
       returns: 'double precision'
       immutable: true
+
+    extract_value = (resource, metas)->
+      for meta in metas
+        value = xpath.get_in(resource, [meta.path])[0]
+        if value
+          return {
+            value: value
+            path: meta.path
+            elementType: meta.elementType
+          }
+      null
+
+    exports.fhir_extract_as_metas_epoch_lower = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      if value
+        if ['date', 'dateTime', 'instant'].indexOf(value.elementType) > -1
+          epoch(plv8, date.to_lower_date(value.value))
+        else if value.elementType == 'Period'
+          epoch(plv8, date.to_lower_date(value.value.start))
+        else
+          throw new Error("fhir_extract_as_epoch: Not implemented for #{value.elementType}")
+      else
+        null
+
+    exports.fhir_extract_as_metas_epoch_lower.plv8_signature =
+      arguments: ['json', 'json']
+      returns: 'double precision'
+      immutable: true
+
+    exports.fhir_extract_as_metas_epoch_upper = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      if value
+        if ['date', 'dateTime', 'instant'].indexOf(value.elementType) > -1
+          epoch(plv8, date.to_upper_date(value.value))
+        else if value.elementType == 'Period'
+          epoch(plv8, date.to_upper_date(value.value.end))
+        else
+          throw new Error("fhir_extract_as_epoch: Not implemented for #{value.elementType}")
+      else
+        null
+
+    exports.fhir_extract_as_metas_epoch_upper.plv8_signature =
+      arguments: ['json', 'json']
+      returns: 'double precision'
+      immutable: true

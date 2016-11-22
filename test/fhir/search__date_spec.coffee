@@ -137,3 +137,57 @@ describe "extract_as_epoch", ->
         spec.assert.path,
         spec.assert.elementType)
       assert.equal(upper, spec.assert.upper)
+
+metas = [
+  {
+    path: ['Observation', 'effectiveDateTime']
+    elementType: 'dateTime'
+  }
+  {
+    path: ['Observation', 'effectivePeriod']
+    elementType: 'Period'
+  }
+]
+
+metas_epoch_specs = [
+  {
+    resource: {effectiveDateTime: '1993-09-21T15:25:34.300Z'}
+    assert: {
+      lower: 748625134.3
+      upper: 748625134.30099
+    }
+  }
+  {
+    resource: {effectivePeriod: {
+      start: '1993-09-21T15:25:34.300Z'
+      end: '1994-09-21T15:25:34.300Z'}}
+    assert: {
+      lower: 748625134.3
+      upper: 780161134.30099
+    }
+  }
+  {
+    resource: {}
+    assert: {
+      lower: null
+      upper: null
+    }
+  }
+]
+
+describe "extract_as_metas_epoch", ->
+  before ->
+    plv8.execute("SET plv8.start_proc = 'plv8_init'")
+
+  metas_epoch_specs.forEach (spec)->
+    it JSON.stringify(spec.resource) + " >> [" + spec.assert.lower + "," + spec.assert.upper + "]", ->
+      lower = search.fhir_extract_as_metas_epoch_lower(
+        plv8,
+        spec.resource,
+        metas)
+      assert.equal(lower, spec.assert.lower)
+      upper = search.fhir_extract_as_metas_epoch_upper(
+        plv8,
+        spec.resource,
+        metas)
+      assert.equal(upper, spec.assert.upper)
