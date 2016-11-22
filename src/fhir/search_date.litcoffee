@@ -43,6 +43,10 @@ Now we support only simple date data-types - i.e. date, dateTime and instant.
     extract_expr = sf.extract_expr
     extract_lower_expr = lower_sf.extract_expr
     extract_upper_expr = upper_sf.extract_expr
+    extract_metas_expr = (opname, metas)->
+      ["$#{opname}"
+       ['$cast', ':resource', ':json']
+       ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
 
     exports.order_expression = sf.order_expression
     exports.index_order = sf.index_order
@@ -211,6 +215,10 @@ and returns honeysql expression.
       lower_exprs = metas.map((x)-> extract_lower_expr(x))
       upper_exprs = metas.map((x)-> extract_upper_expr(x))
 
+      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
+      lower_metas_exprs = extract_metas_expr('fhir_extract_as_metas_epoch_lower', m)
+      upper_metas_exprs = extract_metas_expr('fhir_extract_as_metas_epoch_upper', m)
+
       [{
         name: "#{idx_name}_date"
         ddl:
@@ -236,6 +244,22 @@ and returns honeysql expression.
          name: "#{idx_name}_epoch_upper"
          on: ['$q', tbl]
          expression: upper_exprs
+      }
+      {
+       name: "#{idx_name}_epoch_lower_upper"
+       ddl:
+         create: 'index'
+         name: "#{idx_name}_epoch_lower_upper"
+         on: ['$q', tbl]
+         expression: [lower_metas_exprs, upper_metas_exprs]
+      }
+      {
+       name: "#{idx_name}_epoch_upper_lower"
+       ddl:
+         create: 'index'
+         name: "#{idx_name}_epoch_upper_lower"
+         on: ['$q', tbl]
+         expression: [upper_metas_exprs, lower_metas_exprs]
       }]
 
 Function to extract element from resource as epoch.
