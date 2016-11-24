@@ -68,7 +68,7 @@ Only equality operator is implemented.
             res.push("#{parts[(len - 2)]}/#{parts[(len - 1)]}")
             res.push(reference) if len > 2
         else
-          throw new Error("extract_as_reference: Not implemented for #{element_type}")
+          throw new Error("extract_as_reference: Not implemented for #{value.elementType}")
       if res.length == 0
         [EMPTY_VALUE]
       else

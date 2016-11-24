@@ -33,6 +33,34 @@ it should be done in an extensible maner
       returns: 'numeric'
       immutable: true
 
+    extract_value = (resource, metas)->
+      for meta in metas
+        value = xpath.get_in(resource, [meta.path])[0]
+        if value
+          return {
+            value: value
+            path: meta.path
+            elementType: meta.elementType
+          }
+      null
+
+    exports.fhir_extract_as_metas_number = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      if value
+        if value.elementType == 'integer' or value.elementType == 'positiveInt'
+          value.value
+        else if value.elementType == 'Duration' or value.elementType == 'Quantity'
+          value.value.value
+        else
+          throw new Error("extract_as_number: unsupported element type #{value.elementType}")
+      else
+        null
+
+    exports.fhir_extract_as_metas_number.plv8_signature =
+      arguments: ['json', 'json']
+      returns: 'numeric'
+      immutable: true
+
     SUPPORTED_TYPES = ['integer', 'Quantity', 'positiveInt', 'Duration']
     OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge', 'ne', 'missing']
 
