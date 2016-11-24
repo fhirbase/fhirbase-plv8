@@ -90,6 +90,66 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       returns: 'text[]'
       immutable: true
 
+    extract_value = (resource, metas)->
+      for meta in metas
+        value = xpath.get_in(resource, [meta.path])
+        if value && (value.length > 0)
+          return {
+            value: value
+            path: meta.path
+            elementType: meta.elementType
+          }
+      null
+
+    exports.fhir_extract_as_metas_token = (plv8, resource, metas)->
+      res = []
+      data = extract_value(resource, metas)
+      if data
+        if data.elementType == 'boolean'
+          res = for str in data.value
+            if str.toString() == 'false'
+              'false'
+            else
+              'true'
+        else if data.elementType == 'dateTime' or data.elementType == 'date'
+          res = if data.value.length > 0 then ['true', 'false'] else []
+        else if data.elementType == 'code' || data.elementType == 'string' || data.elementType == 'uri'
+          res = (str.toString().toLowerCase() for str in data.value)
+        else if data.elementType == 'Identifier' or data.elementType == 'ContactPoint'
+          for coding in data.value
+              res.push(coding.value.toString().toLowerCase()) if coding.value
+              res.push("#{coding.system}|#{coding.value}".toLowerCase())
+        else if data.elementType == 'Coding'
+          for coding in data.value
+              res.push(coding.code.toString().toLowerCase()) if coding.code
+              res.push("#{coding.system}|#{coding.code}".toLowerCase())
+        else if data.elementType == 'Quantity'
+          for quant in data.value
+              res.push(quant.code.toString().toLowerCase()) if quant.code
+              res.push(quant.unit.toString().toLowerCase()) if quant.unit
+              res.push("#{quant.system}|#{quant.code}".toLowerCase())
+              res.push("#{quant.system}|#{quant.unit}".toLowerCase())
+        else if data.elementType == 'CodeableConcept'
+          for concept in data.value
+            for coding in (concept.coding || [])
+              res.push(coding.code.toString().toLowerCase()) if coding.code
+              res.push("#{coding.system}|#{coding.code}".toLowerCase())
+        else if data.elementType == 'Reference'
+          for ref in data.value
+            res.push(ref.reference)
+        else
+          throw new Error("fhir_extract_as_token: Not implemented for #{data.elementType}")
+
+        if res.length == 0
+          ['$NULL']
+        else
+          res
+
+    exports.fhir_extract_as_metas_token.plv8_signature =
+      arguments: ['json', 'json']
+      returns: 'text[]'
+      immutable: true
+
     exports.fhir_sort_as_token = (plv8, resource, path, element_type)->
       data = xpath.get_in(resource, [path])[0]
       return null unless data
