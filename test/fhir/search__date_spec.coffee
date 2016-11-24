@@ -140,6 +140,10 @@ describe "extract_as_epoch", ->
 
 metas = [
   {
+    path: ['Observation', 'unknownPath']
+    elementType: 'dateTime'
+  }
+  {
     path: ['Observation', 'effectiveDateTime']
     elementType: 'dateTime'
   }

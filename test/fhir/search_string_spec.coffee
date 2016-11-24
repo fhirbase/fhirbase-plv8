@@ -83,7 +83,10 @@ describe "extract_as_string", ->
           {}, testCase.resource, spec.path, spec.elementType
         )
         metasRes = search.fhir_extract_as_metas_string(
-          {}, testCase.resource, [{path: spec.path, elementType: spec.elementType}]
+          {}, testCase.resource,
+          [
+            {path: ['Patient', 'unknownPath'], elementType: spec.elementType}
+            {path: spec.path, elementType: spec.elementType}]
         )
         for str in spec.result
           assert(res.indexOf(str) > -1, "#{str} not in #{res}")

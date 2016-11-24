@@ -45,4 +45,12 @@ describe "extract_as_token", ->
         res = search.fhir_extract_as_uri(
           {}, testCase.resource, spec.path, spec.elementType
         )
+        metasRes = search.fhir_extract_as_metas_uri(
+          {}, testCase.resource,
+          [
+            {path: ['Task', 'unknownPath', elementType: spec.elementType]}
+            {path: spec.path, elementType: spec.elementType}]
+        )
+
         assert.equal(res, spec.result)
+        assert.equal(metasRes, spec.result)

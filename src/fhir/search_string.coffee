@@ -52,7 +52,7 @@ exports.fhir_extract_as_string.plv8_signature =
 extract_value = (resource, metas)->
   for meta in metas
     value = xpath.get_in(resource, [meta.path])
-    if value
+    if value && (value.length > 0)
       return {
         value: value
         path: meta.path

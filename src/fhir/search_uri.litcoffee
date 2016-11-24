@@ -28,6 +28,32 @@ We use string functions to implement uri search (see string_search).
       returns: 'text'
       immutable: true
 
+    extract_value = (resource, metas)->
+      for meta in metas
+        value = xpath.get_in(resource, [meta.path])
+        if value && (value.length > 0)
+          return {
+            value: value
+            path: meta.path
+            elementType: meta.elementType
+          }
+      null
+
+    exports.fhir_extract_as_metas_uri = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      if value
+        vals = lang.values(value.value).map((x)-> x && x.toString().trim()).filter(identity)
+
+      if vals.length == 0
+        EMPTY_VALUE
+      else
+        ("^^#{normalize_value(v)}$$" for v in vals).join(" ")
+
+    exports.fhir_extract_as_metas_uri.plv8_signature =
+      arguments: ['json', 'json']
+      returns: 'text'
+      immutable: true
+
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 
