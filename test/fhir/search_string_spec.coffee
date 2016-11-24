@@ -78,12 +78,16 @@ testCases = [
 describe "extract_as_string", ->
   testCases.forEach (testCase)->
     testCase.specs.forEach (spec)->
-      it JSON.stringify(spec.path), ->
+      it JSON.stringify(spec.path) + ' : ' + spec.elementType, ->
         res = search.fhir_extract_as_string(
           {}, testCase.resource, spec.path, spec.elementType
         )
+        metasRes = search.fhir_extract_as_metas_string(
+          {}, testCase.resource, [{path: spec.path, elementType: spec.elementType}]
+        )
         for str in spec.result
           assert(res.indexOf(str) > -1, "#{str} not in #{res}")
+          assert(metasRes.indexOf(str) > -1, "#{str} not in #{metasRes} but in #{res}")
         order = search.fhir_sort_as_string(
           {}, testCase.resource, spec.path, spec.elementType
         )
