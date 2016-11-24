@@ -44,6 +44,41 @@ Only equality operator is implemented.
       returns: 'text[]'
       immutable: true
 
+    extract_value = (resource, metas)->
+      for meta in metas
+        value = xpath.get_in(resource, [meta.path])
+        if value && (value.length > 0)
+          return {
+            value: value
+            path: meta.path
+            elementType: meta.elementType
+          }
+      null
+
+    exports.fhir_extract_as_metas_reference = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      res = []
+      if value
+        if value.elementType == 'Reference'
+          for ref in value.value when ref and ref.reference
+            reference = ref.reference.toLowerCase()
+            parts = reference.split('/')
+            len = parts.length
+            res.push(parts[(len - 1)])
+            res.push("#{parts[(len - 2)]}/#{parts[(len - 1)]}")
+            res.push(reference) if len > 2
+        else
+          throw new Error("extract_as_reference: Not implemented for #{element_type}")
+      if res.length == 0
+        [EMPTY_VALUE]
+      else
+        res
+
+    exports.fhir_extract_as_metas_reference.plv8_signature =
+      arguments: ['json', 'json']
+      returns: 'text[]'
+      immutable: true
+
     extract_expr = (meta, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
 

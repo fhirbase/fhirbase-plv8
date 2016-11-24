@@ -41,4 +41,12 @@ describe "extract_as_reference", ->
         res = search.fhir_extract_as_reference(
           {}, testCase.resource, spec.path, spec.elementType
         )
+        metasRes = search.fhir_extract_as_metas_reference(
+          {}, testCase.resource,
+          [
+            {path: ['Task', 'unknownPath'], elementType: spec.elementType}
+            {path: spec.path, elementType: spec.elementType}
+          ]
+        )
         assert.deepEqual(res, spec.result)
+        assert.deepEqual(metasRes, spec.result)
