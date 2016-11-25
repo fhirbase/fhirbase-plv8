@@ -212,8 +212,13 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_token"
       exprs = metas.map((x)-> extract_expr(x))
+      extract_metas_expr = (opname, metas)->
+        ["$#{opname}"
+         ['$cast', ':resource', ':json']
+         ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
+      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
 
-      [
+      [{
         name: idx_name
         ddl:
           create: 'index'
@@ -221,4 +226,12 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
           using: ':GIN'
           on: ['$q', meta.resourceType.toLowerCase()]
           expression: exprs
-      ]
+      },{
+        name: idx_name + '_metas'
+        ddl:
+          create: 'index'
+          name:  idx_name + '_metas'
+          using: ':GIN'
+          on: ['$q', meta.resourceType.toLowerCase()]
+          expression: [extract_metas_expr('fhir_extract_as_metas_token', m)]
+      }]
