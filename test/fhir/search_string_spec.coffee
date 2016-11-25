@@ -82,7 +82,7 @@ describe "extract_as_string", ->
         res = search.fhir_extract_as_string(
           {}, testCase.resource, spec.path, spec.elementType
         )
-        metasRes = search.fhir_extract_as_metas_string(
+        metasRes = search.fhir_extract_as_string_metas(
           {}, testCase.resource,
           [
             {path: ['Patient', 'unknownPath'], elementType: spec.elementType}

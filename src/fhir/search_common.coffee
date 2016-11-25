@@ -1,10 +1,15 @@
 custom_expr = (meta, tbl, opname)->
   from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
-
-  ["$#{opname}"
-   ['$cast', from, ':json']
-   ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-   ['$quote', meta.elementType]]
+  if Array.isArray(meta)
+    metas = meta.map((x)-> {path: x.path, elementType: x.elementType})
+    ["$#{opname}_metas"
+     ['$cast', from, ':json']
+     ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
+  else
+    ["$#{opname}"
+     ['$cast', from, ':json']
+     ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
+     ['$quote', meta.elementType]]
 
 order_expr_custom = (func_name)->
   (tbl, meta)->
@@ -45,7 +50,6 @@ get_search_functions = (obj) ->
           on: ['$q', meta.resourceType.toLowerCase()]
           expression: exprs
       ]
-
   }
 
 exports.get_search_functions = get_search_functions

@@ -60,7 +60,7 @@ extract_value = (resource, metas)->
       }
   null
 
-exports.fhir_extract_as_metas_string = (plv8, resource, metas)->
+exports.fhir_extract_as_string_metas = (plv8, resource, metas)->
   value = extract_value(resource, metas)
   vals = []
 
@@ -91,7 +91,7 @@ exports.fhir_extract_as_metas_string = (plv8, resource, metas)->
   else
     ("^^#{unaccent(v.toString())}$$" for v in vals).join(" ")
 
-exports.fhir_extract_as_metas_string.plv8_signature =
+exports.fhir_extract_as_string_metas.plv8_signature =
   arguments: ['json', 'json']
   returns: 'text'
   immutable: true
@@ -167,7 +167,6 @@ OPERATORS =
     else
       ["$ilike", extract_expr(meta, tbl), EMPTY_VALUE]
 
-
 OPERATORS_ALIASES =
   exact: 'eq'
   contains: 'co'
@@ -184,10 +183,15 @@ exports.normalize_operator = (meta, value)->
   throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
 handle = (tbl, meta, value)->
-  unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-    throw new Error("String Search: unsupported type #{JSON.stringify(meta)}")
-
-  op = OPERATORS[meta.operator]
+  if Array.isArray(meta)
+    for m in meta
+      unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+        throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+    op = OPERATORS[meta[0].operator]
+  else
+    unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
+      throw new Error("String Search: unsupported type #{JSON.stringify(meta)}")
+    op = OPERATORS[meta.operator]
 
   unless op
     throw new Error("String Search: Unsupported operator #{JSON.stringify(meta)}")
@@ -201,11 +205,6 @@ exports.index = (plv8, metas)->
   idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_string"
 
   exprs = metas.map((x)-> extract_expr(x))
-  extract_metas_expr = (opname, metas)->
-    ["$#{opname}"
-     ['$cast', ':resource', ':json']
-     ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
-  m = metas.map((x)-> {path: x.path, elementType: x.elementType})
 
   [{
     name: idx_name
@@ -224,5 +223,5 @@ exports.index = (plv8, metas)->
       using: ':GIN'
       on: ['$q', meta.resourceType.toLowerCase()]
       opclass: ':gin_trgm_ops'
-      expression: [extract_metas_expr('fhir_extract_as_metas_string', m)]
+      expression: [extract_expr(metas)]
   }]
