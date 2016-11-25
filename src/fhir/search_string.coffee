@@ -201,8 +201,13 @@ exports.index = (plv8, metas)->
   idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_string"
 
   exprs = metas.map((x)-> extract_expr(x))
+  extract_metas_expr = (opname, metas)->
+    ["$#{opname}"
+     ['$cast', ':resource', ':json']
+     ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
+  m = metas.map((x)-> {path: x.path, elementType: x.elementType})
 
-  [
+  [{
     name: idx_name
     ddl:
       create: 'index'
@@ -211,4 +216,13 @@ exports.index = (plv8, metas)->
       on: ['$q', meta.resourceType.toLowerCase()]
       opclass: ':gin_trgm_ops'
       expression: exprs
-  ]
+  },{
+    name: idx_name + '_metas'
+    ddl:
+      create: 'index'
+      name:  idx_name + '_metas'
+      using: ':GIN'
+      on: ['$q', meta.resourceType.toLowerCase()]
+      opclass: ':gin_trgm_ops'
+      expression: [extract_metas_expr('fhir_extract_as_metas_string', m)]
+  }]
