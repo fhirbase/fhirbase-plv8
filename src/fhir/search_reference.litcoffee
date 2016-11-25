@@ -147,7 +147,13 @@ Only equality operator is implemented.
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_reference"
 
       exprs = metas.map((x)-> extract_expr(x))
-      [
+      extract_metas_expr = (opname, metas)->
+        ["$#{opname}"
+         ['$cast', ':resource', ':json']
+         ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
+      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
+
+      [{
         name: idx_name
         ddl:
           create: 'index'
@@ -155,4 +161,12 @@ Only equality operator is implemented.
           using: ':GIN'
           on: ['$q', meta.resourceType.toLowerCase()]
           expression: exprs
-      ]
+      },{
+        name: idx_name + '_metas'
+        ddl:
+          create: 'index'
+          name:  idx_name + '_metas'
+          using: ':GIN'
+          on: ['$q', meta.resourceType.toLowerCase()]
+          expression: [extract_metas_expr('fhir_extract_as_metas_reference', m)]
+      }]
