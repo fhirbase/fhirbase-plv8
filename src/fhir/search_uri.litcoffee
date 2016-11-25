@@ -43,6 +43,8 @@ We use string functions to implement uri search (see string_search).
       value = extract_value(resource, metas)
       if value
         vals = lang.values(value.value).map((x)-> x && x.toString().trim()).filter(identity)
+      else
+        vals = []
 
       if vals.length == 0
         EMPTY_VALUE
@@ -98,7 +100,14 @@ We use string functions to implement uri search (see string_search).
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_uri"
       exprs = metas.map((x)-> extract_expr(x))
-      [
+
+      extract_metas_expr = (opname, metas)->
+        ["$#{opname}"
+         ['$cast', ':resource', ':json']
+         ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
+      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
+
+      [{
         name: idx_name
         ddl:
           create: 'index'
@@ -107,4 +116,13 @@ We use string functions to implement uri search (see string_search).
           opclass: ':gin_trgm_ops'
           on: ['$q', meta.resourceType.toLowerCase()]
           expression: exprs
-      ]
+      },{
+        name: idx_name + '_metas'
+        ddl:
+          create: 'index'
+          name:  idx_name + '_metas'
+          using: ':GIN'
+          opclass: ':gin_trgm_ops'
+          on: ['$q', meta.resourceType.toLowerCase()]
+          expression: [extract_metas_expr('fhir_extract_as_metas_uri', m)]
+      }]
