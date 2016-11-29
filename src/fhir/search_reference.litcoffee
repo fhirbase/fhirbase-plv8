@@ -102,10 +102,17 @@ Only equality operator is implemented.
     SUPPORTED_TYPES = ['Reference']
 
     exports.handle = (tbl, meta, value)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Reference Search: unsupported type #{JSON.stringify(meta)}")
+      if Array.isArray(meta)
+        for m in meta
+          unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+            throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+        operator = meta[0].operator
+      else
+        unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
+          throw new Error("Reference Search: unsupported type #{JSON.stringify(meta)}")
+        operator = meta.operator
 
-      if meta.operator == "missing"
+      if operator == "missing"
         op = if value.value == 'false' then '$ne' else '$eq'
         return [op
                  ['$cast', extract_expr(meta, tbl), ":text[]"]

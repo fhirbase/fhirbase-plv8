@@ -84,19 +84,22 @@ it should be done in an extensible maner
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
     exports.handle = (tbl, meta, value)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Number Search: unsupported type #{JSON.stringify(meta)}")
+      if Array.isArray(meta)
+        for m in meta
+          unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+            throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+        operator = OPERATORS[meta[0].operator]
+      else
+        unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
+          throw new Error("Number Search: unsupported type #{JSON.stringify(meta)}")
+        operator = meta.operator
 
-      # unless OPERATORS.indexOf(meta.operator) > -1
-      #   throw new Error("Number Search: Unsupported operator #{meta.operator}")
-
-      op = if meta.operator == 'missing'
+      op = if operator == 'missing'
         if value.value == 'false' then '$notnull' else '$null'
       else
-        "$#{meta.operator}"
+        "$#{operator}"
 
       [op, extract_expr(meta, tbl), value.value]
-
 
     exports.index = (plv8, metas)->
       meta = metas[0]

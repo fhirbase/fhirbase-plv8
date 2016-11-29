@@ -198,10 +198,15 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
     exports.handle = (tbl, meta, value)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Token Search: unsupported type #{JSON.stringify(meta)}")
-
-      op = OPERATORS[meta.operator]
+      if Array.isArray(meta)
+        for m in meta
+          unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+            throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+        op = OPERATORS[meta[0].operator]
+      else
+        unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
+          throw new Error("Token Search: unsupported type #{JSON.stringify(meta)}")
+        op = OPERATORS[meta.operator]
 
       unless op
         throw new Error("Token Search: Unsupported operator #{JSON.stringify(meta)}")

@@ -83,10 +83,15 @@ We use string functions to implement uri search (see string_search).
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
     exports.handle = (tbl, meta, value)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Uri Search: unsuported type #{JSON.stringify(meta)}")
-
-      op = OPERATORS[meta.operator]
+      if Array.isArray(meta)
+        for m in meta
+          unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+            throw new Error("Uri Search: unsuported type #{JSON.stringify(m)}")
+        op = OPERATORS[meta[0].operator]
+      else
+        unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
+          throw new Error("Uri Search: unsuported type #{JSON.stringify(meta)}")
+        op = OPERATORS[meta.operator]
 
       unless op
         throw new Error("Uri Search: Unsupported operator #{JSON.stringify(meta)}")
