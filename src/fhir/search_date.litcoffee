@@ -40,13 +40,25 @@ Now we support only simple date data-types - i.e. date, dateTime and instant.
     lower_sf = search_common.get_search_functions({extract:'fhir_extract_as_epoch_lower', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
     upper_sf = search_common.get_search_functions({extract:'fhir_extract_as_epoch_upper', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
 
-    extract_expr = sf.extract_expr
-    extract_lower_expr = lower_sf.extract_expr
-    extract_upper_expr = upper_sf.extract_expr
     extract_metas_expr = (opname, metas)->
       ["$#{opname}"
        ['$cast', ':resource', ':json']
        ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
+
+    extract_expr = sf.extract_expr
+    extract_lower_expr = (meta)->
+      if Array.isArray(meta)
+        metas = meta.map((x)-> {path: x.path, elementType: x.elementType})
+        extract_metas_expr('fhir_extract_as_metas_epoch_lower', meta)
+      else
+        lower_sf.extract_expr(meta)
+
+    extract_upper_expr = (meta)->
+      if Array.isArray(meta)
+        metas = meta.map((x)-> {path: x.path, elementType: x.elementType})
+        extract_metas_expr('fhir_extract_as_metas_epoch_upper', metas)
+      else
+        upper_sf.extract_expr(meta)
 
     exports.order_expression = sf.order_expression
     exports.index_order = sf.index_order
@@ -195,10 +207,15 @@ It is passed table name, meta {operator: 'lt,gt,eq', path: ['Patient', 'birthDat
 and returns honeysql expression.
 
     handle = (tbl, meta, value)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Date Search: unsuported type #{JSON.stringify(meta)}")
-
-      op = OPERATORS[meta.operator]
+      if Array.isArray(meta)
+        for m in meta
+          unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+            throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+        op = OPERATORS[meta[0].operator]
+      else
+        unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
+          throw new Error("Date Search: unsuported type #{JSON.stringify(meta)}")
+        op = OPERATORS[meta.operator]
 
       unless op
         throw new Error("Date Search: Unsupported operator #{JSON.stringify(meta)}")
@@ -214,10 +231,8 @@ and returns honeysql expression.
       exprs = metas.map((x)-> extract_expr(x))
       lower_exprs = metas.map((x)-> extract_lower_expr(x))
       upper_exprs = metas.map((x)-> extract_upper_expr(x))
-
-      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
-      lower_metas_exprs = extract_metas_expr('fhir_extract_as_metas_epoch_lower', m)
-      upper_metas_exprs = extract_metas_expr('fhir_extract_as_metas_epoch_upper', m)
+      lower_metas_exprs = extract_lower_expr(metas)
+      upper_metas_exprs = extract_upper_expr(metas)
 
       [{
         name: "#{idx_name}_date"
