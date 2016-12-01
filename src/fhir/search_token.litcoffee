@@ -101,7 +101,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
           }
       null
 
-    exports.fhir_extract_as_metas_token = (plv8, resource, metas)->
+    exports.fhir_extract_as_token_metas = (plv8, resource, metas)->
       res = []
       data = extract_value(resource, metas)
       if data
@@ -145,7 +145,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
         else
           res
 
-    exports.fhir_extract_as_metas_token.plv8_signature =
+    exports.fhir_extract_as_token_metas.plv8_signature =
       arguments: ['json', 'json']
       returns: 'text[]'
       immutable: true
@@ -217,11 +217,6 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_token"
       exprs = metas.map((x)-> extract_expr(x))
-      extract_metas_expr = (opname, metas)->
-        ["$#{opname}"
-         ['$cast', ':resource', ':json']
-         ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
-      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
 
       [{
         name: idx_name
@@ -238,5 +233,5 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
           name:  idx_name + '_metas'
           using: ':GIN'
           on: ['$q', meta.resourceType.toLowerCase()]
-          expression: [extract_metas_expr('fhir_extract_as_metas_token', m)]
+          expression: [extract_expr(metas)]
       }]

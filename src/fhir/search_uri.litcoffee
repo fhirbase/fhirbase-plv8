@@ -7,6 +7,7 @@ We use string functions to implement uri search (see string_search).
     lang = require('../lang')
     xpath = require('./xpath')
     search_token = require('./search_token')
+    search_common = require('./search_common')
 
     normalize_value = (x)-> x && x.trim().toLowerCase().replace(/^(http:\/\/|https:\/\/|ftp:\/\/)/, '')
 
@@ -39,7 +40,7 @@ We use string functions to implement uri search (see string_search).
           }
       null
 
-    exports.fhir_extract_as_metas_uri = (plv8, resource, metas)->
+    exports.fhir_extract_as_uri_metas = (plv8, resource, metas)->
       value = extract_value(resource, metas)
       if value
         vals = lang.values(value.value).map((x)-> x && x.toString().trim()).filter(identity)
@@ -51,18 +52,13 @@ We use string functions to implement uri search (see string_search).
       else
         ("^^#{normalize_value(v)}$$" for v in vals).join(" ")
 
-    exports.fhir_extract_as_metas_uri.plv8_signature =
+    exports.fhir_extract_as_uri_metas.plv8_signature =
       arguments: ['json', 'json']
       returns: 'text'
       immutable: true
 
-    extract_expr = (meta, tbl)->
-      from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
-
-      ['$fhir_extract_as_uri'
-        ['$cast', from, ':json']
-        ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-        ['$quote', meta.elementType]]
+    sf = search_common.get_search_functions({extract: 'fhir_extract_as_uri'})
+    extract_expr = sf.extract_expr
 
     OPERATORS =
       eq: (tbl, meta, value)->
@@ -106,12 +102,6 @@ We use string functions to implement uri search (see string_search).
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_uri"
       exprs = metas.map((x)-> extract_expr(x))
 
-      extract_metas_expr = (opname, metas)->
-        ["$#{opname}"
-         ['$cast', ':resource', ':json']
-         ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
-      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
-
       [{
         name: idx_name
         ddl:
@@ -129,5 +119,5 @@ We use string functions to implement uri search (see string_search).
           using: ':GIN'
           opclass: ':gin_trgm_ops'
           on: ['$q', meta.resourceType.toLowerCase()]
-          expression: [extract_metas_expr('fhir_extract_as_metas_uri', m)]
+          expression: [extract_expr(metas)]
       }]

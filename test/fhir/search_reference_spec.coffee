@@ -41,7 +41,7 @@ describe "extract_as_reference", ->
         res = search.fhir_extract_as_reference(
           {}, testCase.resource, spec.path, spec.elementType
         )
-        metasRes = search.fhir_extract_as_metas_reference(
+        metasRes = search.fhir_extract_as_reference_metas(
           {}, testCase.resource,
           [
             {path: ['Task', 'unknownPath'], elementType: spec.elementType}

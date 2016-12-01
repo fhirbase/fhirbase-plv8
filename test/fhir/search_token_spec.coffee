@@ -90,7 +90,7 @@ describe "extract_as_token", ->
   specs.forEach (spec)->
     it JSON.stringify(spec.path), ->
       res = search.fhir_extract_as_token({}, resource, spec.path, spec.elementType)
-      metasRes = search.fhir_extract_as_metas_token({}, resource,
+      metasRes = search.fhir_extract_as_token_metas({}, resource,
       [
         {path: ['Resource', 'unknownPath'], elementType: spec.elementType},
         {path: spec.path, elementType: spec.elementType}

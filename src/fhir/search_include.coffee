@@ -16,7 +16,10 @@ second = (x)-> x[1]
 
 get_includes = (includes, resources)->
   includes.map(second).reduce(((groups, inc)->
-    refs = lang.mapcat resources, (x)-> xpath.get_in(x, [inc.path])
+    refs = inc.reduce(((r, i)->
+      r.concat(lang.mapcat resources, (x)-> xpath.get_in(x, [i.path]))
+      ), [])
+
     groups = refs.reduce(((acc, ref)->
       tp_and_id = ref_to_type_and_id(ref)
       return acc unless tp_and_id
@@ -47,7 +50,7 @@ exports.load_revincludes = (plv8, revincludes, resources)->
   ids = resources.map((x)-> x.id)
   lang.mapcat revincludes.map((x)-> x[1]), (inc)->
     inc.operator = 'eq'
-    tbl = namings.table_name(plv8, inc.resourceType)
+    tbl = namings.table_name(plv8, inc[0].resourceType)
     hsql = search_reference.handle(tbl, inc, {value: ids})
     load_resources plv8,
       select: [':*']

@@ -44,7 +44,7 @@ it should be done in an extensible maner
           }
       null
 
-    exports.fhir_extract_as_metas_number = (plv8, resource, metas)->
+    exports.fhir_extract_as_number_metas = (plv8, resource, metas)->
       value = extract_value(resource, metas)
       if value
         if value.elementType == 'integer' or value.elementType == 'positiveInt'
@@ -56,7 +56,7 @@ it should be done in an extensible maner
       else
         null
 
-    exports.fhir_extract_as_metas_number.plv8_signature =
+    exports.fhir_extract_as_number_metas.plv8_signature =
       arguments: ['json', 'json']
       returns: 'numeric'
       immutable: true
@@ -88,7 +88,7 @@ it should be done in an extensible maner
         for m in meta
           unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
             throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
-        operator = OPERATORS[meta[0].operator]
+        operator = meta[0].operator
       else
         unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
           throw new Error("Number Search: unsupported type #{JSON.stringify(meta)}")
@@ -105,11 +105,6 @@ it should be done in an extensible maner
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_number"
       exprs = metas.map((x)-> extract_expr(x))
-      extract_metas_expr = (opname, metas)->
-        ["$#{opname}"
-         ['$cast', ':resource', ':json']
-         ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
-      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
 
       [{
         name: idx_name
@@ -124,5 +119,5 @@ it should be done in an extensible maner
           create: 'index'
           name:  idx_name + '_metas'
           on: ['$q', meta.resourceType.toLowerCase()]
-          expression: [extract_metas_expr('fhir_extract_as_metas_number', m)]
+          expression: [extract_expr(metas)]
       }]

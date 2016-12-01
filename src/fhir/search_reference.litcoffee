@@ -17,6 +17,7 @@ Only equality operator is implemented.
     xpath = require('./xpath')
     lang = require('../lang')
     search_token = require('./search_token')
+    search_common = require('./search_common')
 
     TODO = -> throw new Error("TODO")
 
@@ -55,7 +56,7 @@ Only equality operator is implemented.
           }
       null
 
-    exports.fhir_extract_as_metas_reference = (plv8, resource, metas)->
+    exports.fhir_extract_as_reference_metas = (plv8, resource, metas)->
       value = extract_value(resource, metas)
       res = []
       if value
@@ -74,18 +75,13 @@ Only equality operator is implemented.
       else
         res
 
-    exports.fhir_extract_as_metas_reference.plv8_signature =
+    exports.fhir_extract_as_reference_metas.plv8_signature =
       arguments: ['json', 'json']
       returns: 'text[]'
       immutable: true
 
-    extract_expr = (meta, tbl)->
-      from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
-
-      ['$fhir_extract_as_reference'
-        ['$cast', from, ':json']
-        ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-        ['$quote', meta.elementType]]
+    sf = search_common.get_search_functions({extract:'fhir_extract_as_reference'})
+    extract_expr = sf.extract_expr
 
     OPERATORS =
       missing: (tbl, meta, value)->
@@ -154,11 +150,6 @@ Only equality operator is implemented.
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_reference"
 
       exprs = metas.map((x)-> extract_expr(x))
-      extract_metas_expr = (opname, metas)->
-        ["$#{opname}"
-         ['$cast', ':resource', ':json']
-         ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
-      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
 
       [{
         name: idx_name
@@ -175,5 +166,5 @@ Only equality operator is implemented.
           name:  idx_name + '_metas'
           using: ':GIN'
           on: ['$q', meta.resourceType.toLowerCase()]
-          expression: [extract_metas_expr('fhir_extract_as_metas_reference', m)]
+          expression: [extract_expr(metas)]
       }]

@@ -41,7 +41,7 @@ TODO: later we will add some support for units convertion and search in canonica
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
       if Array.isArray(meta)
         metas = meta.map((x)-> {path: x.path, elementType: x.elementType})
-        ["$fhir_extract_as_#{meta[0].searchType}"
+        ["$fhir_extract_as_#{meta[0].searchType}_metas"
           ['$cast', from, ':json']
           ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
       else
