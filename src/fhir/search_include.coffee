@@ -17,14 +17,16 @@ second = (x)-> x[1]
 get_includes = (includes, resources)->
   includes.map(second).reduce(((groups, inc)->
     refs = inc.reduce(((r, i)->
-      r.concat(lang.mapcat resources, (x)-> xpath.get_in(x, [i.path]))
+      r.concat(lang.mapcat(resources, (x)->
+        xpath.get_in(x, [i.path])).map((r)->
+          lang.merge(lang.clone(r), {target: i.target})))
       ), [])
 
     groups = refs.reduce(((acc, ref)->
       tp_and_id = ref_to_type_and_id(ref)
       return acc unless tp_and_id
       [tp,id] = tp_and_id
-      if !inc.target || inc.target.toLowerCase() == tp.toLowerCase()
+      if !ref.target || ref.target.toLowerCase() == tp.toLowerCase()
         acc[tp] = acc[tp] || {}
         acc[tp][id] = true
       acc

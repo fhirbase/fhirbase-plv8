@@ -49,7 +49,7 @@ Now we support only simple date data-types - i.e. date, dateTime and instant.
     extract_lower_expr = (meta)->
       if Array.isArray(meta)
         metas = meta.map((x)-> {path: x.path, elementType: x.elementType})
-        extract_metas_expr('fhir_extract_as_metas_epoch_lower', meta)
+        extract_metas_expr('fhir_extract_as_metas_epoch_lower', metas)
       else
         lower_sf.extract_expr(meta)
 
