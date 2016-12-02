@@ -140,10 +140,10 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
         else
           throw new Error("fhir_extract_as_token: Not implemented for #{data.elementType}")
 
-        if res.length == 0
-          ['$NULL']
-        else
-          res
+      if res.length == 0
+        ['$NULL']
+      else
+        res
 
     exports.fhir_extract_as_token_metas.plv8_signature =
       arguments: ['json', 'json']

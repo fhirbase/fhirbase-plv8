@@ -33,8 +33,6 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
       # plv8.debug = true
 
       for res in spec.resources
-
-
         schema.fhir_create_storage(plv8, resourceType: res)
         schema.fhir_truncate_storage(plv8, resourceType: res)
 
@@ -61,7 +59,7 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
         res = search.fhir_search(plv8, q.query)
         # console.log(JSON.stringify(res))
         explain = JSON.stringify(search.fhir_explain_search(plv8, q.query))
-        # console.log(JSON.stringify(search.fhir_search_sql(plv8, q.query)))
+        #console.log(JSON.stringify(search.fhir_search_sql(plv8, q.query), null, 2))
 
         plv8.execute "SET enable_seqscan = ON;" if (q.indexed or q.indexed_order)
 
