@@ -37,28 +37,18 @@ Now we support only simple date data-types - i.e. date, dateTime and instant.
       'Timing'
     ]
     sf = search_common.get_search_functions({extract:'fhir_extract_as_daterange', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
-    lower_sf = search_common.get_search_functions({extract:'fhir_extract_as_epoch_lower', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
-    upper_sf = search_common.get_search_functions({extract:'fhir_extract_as_epoch_upper', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
 
     extract_metas_expr = (opname, metas)->
+      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
       ["$#{opname}"
        ['$cast', ':resource', ':json']
-       ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
+       ['$cast', ['$quote', JSON.stringify(m)], ':json']]
 
-    extract_expr = sf.extract_expr
-    extract_lower_expr = (meta)->
-      if Array.isArray(meta)
-        metas = meta.map((x)-> {path: x.path, elementType: x.elementType})
-        extract_metas_expr('fhir_extract_as_metas_epoch_lower', metas)
-      else
-        lower_sf.extract_expr(meta)
+    extract_lower_expr = (metas)->
+      extract_metas_expr('fhir_extract_as_metas_epoch_lower', metas)
 
-    extract_upper_expr = (meta)->
-      if Array.isArray(meta)
-        metas = meta.map((x)-> {path: x.path, elementType: x.elementType})
-        extract_metas_expr('fhir_extract_as_metas_epoch_upper', metas)
-      else
-        upper_sf.extract_expr(meta)
+    extract_upper_expr = (metas)->
+      extract_metas_expr('fhir_extract_as_metas_epoch_upper', metas)
 
     exports.order_expression = sf.order_expression
     exports.index_order = sf.index_order
@@ -66,29 +56,6 @@ Now we support only simple date data-types - i.e. date, dateTime and instant.
     str = (x)-> x.toString()
 
 Function to extract element from resource as tstzrange.
-
-    exports.fhir_extract_as_daterange = (plv8, resource, path, element_type)->
-      if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
-        value = xpath.get_in(resource, [path])[0]
-        if value
-          date.to_range(value.toString())
-        else
-          null
-      else if element_type == 'Period'
-        value = xpath.get_in(resource, [path])[0]
-        if value
-          lower = date.to_lower_date(value.start)
-          upper = if value.end then date.to_upper_date(value.end) else 'infinity'
-          "(#{lower}, #{upper}]"
-        else
-          null
-      else
-        throw new Error("fhir_extract_as_date: Not implemented for #{element_type}")
-
-    exports.fhir_extract_as_daterange.plv8_signature =
-      arguments: ['json', 'json', 'text']
-      returns: 'tstzrange'
-      immutable: true
 
     exports.fhir_sort_as_date = (plv8, resource, path, element_type)->
       if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
@@ -134,18 +101,6 @@ Function to convert query parameter into range.
         throw new  Error("Do not know how to create daterange for #{operator} #{value}")
 
     exports.value_to_range = value_to_range
-
-    overlap_expr = (tbl, meta, value)->
-      ["$&&", extract_expr(meta), value_to_range(meta.operator, value.value)]
-
-    not_overlap_expr = (tbl, meta, value)->
-      ['$not', ["$&&", extract_expr(meta), value_to_range(meta.operator, value.value)]]
-
-    missing_expr = (tbl, meta, value)->
-      if value.value == 'false'
-        ["$notnull", extract_expr(meta)]
-      else
-        ["$null", extract_expr(meta)]
 
     TODO = -> throw new Error("Date search: unimplemented")
 
@@ -206,21 +161,16 @@ Function to convert query parameter into range.
 It is passed table name, meta {operator: 'lt,gt,eq', path: ['Patient', 'birthDate']}, query parameter value
 and returns honeysql expression.
 
-    handle = (tbl, meta, value)->
-      if Array.isArray(meta)
-        for m in meta
-          unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
-            throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
-        op = OPERATORS[meta[0].operator]
-      else
-        unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-          throw new Error("Date Search: unsuported type #{JSON.stringify(meta)}")
-        op = OPERATORS[meta.operator]
+    handle = (tbl, metas, value)->
+      for m in metas
+        unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+          throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+      op = OPERATORS[metas[0].operator]
 
       unless op
-        throw new Error("Date Search: Unsupported operator #{JSON.stringify(meta)}")
+        throw new Error("Date Search: Unsupported operator #{JSON.stringify(metas)}")
 
-      op(tbl, meta, value)
+      op(tbl, metas, value)
 
     exports.handle = handle
 
@@ -257,36 +207,6 @@ Function to extract element from resource as epoch.
         res[0].date_part
       else
         null
-
-    exports.fhir_extract_as_epoch_lower = (plv8, resource, path, element_type)->
-      if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
-        value = xpath.get_in(resource, [path])[0]
-        value && epoch(plv8, date.to_lower_date(value))
-      else if element_type == 'Period'
-        value = xpath.get_in(resource, [path])[0]
-        value && epoch(plv8, date.to_lower_date(value.start))
-      else
-        throw new Error("fhir_extract_as_epoch: Not implemented for #{element_type}")
-
-    exports.fhir_extract_as_epoch_lower.plv8_signature =
-      arguments: ['json', 'json', 'text']
-      returns: 'double precision'
-      immutable: true
-
-    exports.fhir_extract_as_epoch_upper = (plv8, resource, path, element_type)->
-      if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
-        value = xpath.get_in(resource, [path])[0]
-        value && epoch(plv8, date.to_upper_date(value))
-      else if element_type == 'Period'
-        value = xpath.get_in(resource, [path])[0]
-        value && epoch(plv8, date.to_upper_date(value.end))
-      else
-        throw new Error("fhir_extract_as_epoch: Not implemented for #{element_type}")
-
-    exports.fhir_extract_as_epoch_upper.plv8_signature =
-      arguments: ['json', 'json', 'text']
-      returns: 'double precision'
-      immutable: true
 
     extract_value = (resource, metas)->
       for meta in metas
