@@ -16,23 +16,6 @@ it should be done in an extensible maner
 
     TODO = -> throw new Error("TODO")
 
-    exports.fhir_extract_as_number = (plv8, resource, path, element_type)->
-      data = xpath.get_in(resource, [path])[0] || null
-      return unless data
-      if element_type == 'integer' or element_type == 'positiveInt'
-        data
-      else if element_type = 'Duration'
-        data.value
-      else if element_type == 'Quantity'
-        data.value
-      else
-        throw new Error("extract_as_number: unsupported element type #{element_type}")
-
-    exports.fhir_extract_as_number.plv8_signature =
-      arguments: ['json', 'json', 'text']
-      returns: 'numeric'
-      immutable: true
-
     extract_value = (resource, metas)->
       for meta in metas
         value = xpath.get_in(resource, [meta.path])[0]
@@ -83,41 +66,45 @@ it should be done in an extensible maner
         return value.prefix
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
-    exports.handle = (tbl, meta, value)->
-      if Array.isArray(meta)
-        for m in meta
-          unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
-            throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
-        operator = meta[0].operator
-      else
-        unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-          throw new Error("Number Search: unsupported type #{JSON.stringify(meta)}")
-        operator = meta.operator
+    exports.handle = (tbl, metas, value)->
+      for m in metas
+        unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+          throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+      operator = metas[0].operator
 
       op = if operator == 'missing'
         if value.value == 'false' then '$notnull' else '$null'
       else
         "$#{operator}"
 
-      [op, extract_expr(meta, tbl), value.value]
+      [op, extract_expr(metas, tbl), value.value]
 
     exports.index = (plv8, metas)->
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_number"
-      exprs = metas.map((x)-> extract_expr(x))
 
-      [{
-        name: idx_name
-        ddl:
-          create: 'index'
-          name:  idx_name
-          on: ['$q', meta.resourceType.toLowerCase()]
-          expression: exprs
-      },{
+      [
         name: idx_name + '_metas'
         ddl:
           create: 'index'
           name:  idx_name + '_metas'
           on: ['$q', meta.resourceType.toLowerCase()]
           expression: [extract_expr(metas)]
-      }]
+      ]
+
+    exports.fhir_extract_as_number = (plv8, resource, path, element_type)->
+      data = xpath.get_in(resource, [path])[0] || null
+      return unless data
+      if element_type == 'integer' or element_type == 'positiveInt'
+        data
+      else if element_type = 'Duration'
+        data.value
+      else if element_type == 'Quantity'
+        data.value
+      else
+        throw new Error("extract_as_number: unsupported element type #{element_type}")
+
+    exports.fhir_extract_as_number.plv8_signature =
+      arguments: ['json', 'json', 'text']
+      returns: 'numeric'
+      immutable: true

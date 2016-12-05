@@ -34,21 +34,14 @@ TODO: later we will add some support for units convertion and search in canonica
     })
     exports.index_order = sf.index_order
 
-
     identity = (x)-> x
 
-    extract_expr = (meta, tbl)->
+    extract_expr = (metas, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
-      if Array.isArray(meta)
-        metas = meta.map((x)-> {path: x.path, elementType: x.elementType})
-        ["$fhir_extract_as_#{meta[0].searchType}_metas"
-          ['$cast', from, ':json']
-          ['$cast', ['$quote', JSON.stringify(metas)], ':json']]
-      else
-        ["$fhir_extract_as_#{meta.searchType}"
-          ['$cast', from, ':json']
-          ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-          ['$quote', meta.elementType]]
+      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
+      ["$fhir_extract_as_#{metas[0].searchType}_metas"
+        ['$cast', from, ':json']
+        ['$cast', ['$quote', JSON.stringify(m)], ':json']]
 
     assoc = (obj, k, v)->
       res = lang.clone(obj)
@@ -64,20 +57,13 @@ TODO: later we will add some support for units convertion and search in canonica
         return value.prefix
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
-    exports.handle = (tbl, meta, value)->
-      if Array.isArray(meta)
-        for m in meta
-          unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
-            throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
-          unless OPERATORS.indexOf(m.operator) > -1
-            throw new Error("Quantity Search: Unsupported operator #{m.operator}")
-        operator = meta[0].operator
-      else
-        unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-          throw new Error("Quantity Search: unsupported type #{JSON.stringify(meta)}")
-        unless OPERATORS.indexOf(meta.operator) > -1
-          throw new Error("Quantity Search: Unsupported operator #{meta.operator}")
-        operator = meta.operator
+    exports.handle = (tbl, metas, value)->
+      for m in metas
+        unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+          throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+        unless OPERATORS.indexOf(m.operator) > -1
+          throw new Error("Quantity Search: Unsupported operator #{m.operator}")
+      operator = metas[0].operator
 
       parts = value.value.split('|')
       numeric_part = parts[0]
@@ -87,10 +73,7 @@ TODO: later we will add some support for units convertion and search in canonica
         else
           "$#{operator}"
 
-      if Array.isArray(meta)
-        m = meta.map((m)-> assoc(m, 'searchType', 'number'))
-      else
-        m = assoc(meta, 'searchType', 'number')
+      m = metas.map((m)-> assoc(m, 'searchType', 'number'))
 
       expr = [op, extract_expr(m, tbl), numeric_part]
 
@@ -98,10 +81,7 @@ TODO: later we will add some support for units convertion and search in canonica
         expr
       else
         token_part = parts[1..-1].filter(identity).join('|')
-        if Array.isArray(meta)
-          m = meta.map((m)-> assoc(m, 'searchType', 'token'))
-        else
-          m = assoc(meta, 'searchType', 'token')
+        m = metas.map((m)-> assoc(m, 'searchType', 'token'))
 
         ['$and'
           expr
