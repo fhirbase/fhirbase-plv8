@@ -38,58 +38,6 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
 
     TODO = -> throw new Error("TODO")
 
-    exports.fhir_extract_as_token = (plv8, resource, path, element_type)->
-      res = []
-      data = xpath.get_in(resource, [path])
-
-      if element_type == 'boolean'
-        res = for str in data
-          if str.toString() == 'false'
-            'false'
-          else
-            'true'
-      else if element_type == 'dateTime' or element_type == 'date'
-        res = if data.length > 0 then ['true', 'false'] else []
-      else if element_type == 'code' || element_type == 'string' || element_type == 'uri'
-        res = (str.toString().toLowerCase() for str in data)
-      else if element_type == 'Identifier' or element_type == 'ContactPoint'
-        for coding in data
-            res.push(coding.value.toString().toLowerCase()) if coding.value
-            res.push("#{coding.system}|#{coding.value}".toLowerCase())
-      else if element_type == 'Coding'
-        for coding in data
-            res.push(coding.code.toString().toLowerCase()) if coding.code
-            res.push("#{coding.system}|#{coding.code}".toLowerCase())
-      else if element_type == 'Quantity'
-        for quant in data
-            res.push(quant.code.toString().toLowerCase()) if quant.code
-            res.push(quant.unit.toString().toLowerCase()) if quant.unit
-            res.push("#{quant.system}|#{quant.code}".toLowerCase())
-            res.push("#{quant.system}|#{quant.unit}".toLowerCase())
-      else if element_type == 'CodeableConcept'
-        for concept in data
-          for coding in (concept.coding || [])
-            res.push(coding.code.toString().toLowerCase()) if coding.code
-            res.push("#{coding.system}|#{coding.code}".toLowerCase())
-      else if element_type == 'Reference'
-        for ref in data
-          res.push(ref.reference)
-      else
-        throw new Error("fhir_extract_as_token: Not implemented for #{element_type}")
-
-      # console.log("!!!! #{resource.id} #{JSON.stringify(data)} #{JSON.stringify(path)} => #{JSON.stringify(res)} (#{element_type})")
-
-
-      if res.length == 0
-        ['$NULL']
-      else
-        res
-
-    exports.fhir_extract_as_token.plv8_signature =
-      arguments: ['json', 'json', 'text']
-      returns: 'text[]'
-      immutable: true
-
     extract_value = (resource, metas)->
       for meta in metas
         value = xpath.get_in(resource, [meta.path])
@@ -180,15 +128,15 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       immutable: true
 
     OPERATORS =
-      missing: (tbl, meta, value)->
+      missing: (tbl, metas, value)->
         op = if value.value == 'false' then '$ne' else '$eq'
         [op
-          ['$cast', extract_expr(meta, tbl), ":text[]"]
+          ['$cast', extract_expr(metas, tbl), ":text[]"]
           ['$cast', ['$array', "$NULL"], ":text[]"]]
 
-      eq: (tbl, meta, value)->
+      eq: (tbl, metas, value)->
         ["$&&"
-          ['$cast', extract_expr(meta, tbl), ":text[]"]
+          ['$cast', extract_expr(metas, tbl), ":text[]"]
           ['$cast', ['$array', value.value.toString().toLowerCase()], ":text[]"]]
 
 
@@ -197,36 +145,22 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       return 'missing' if meta.modifier == 'missing'
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
-    exports.handle = (tbl, meta, value)->
-      if Array.isArray(meta)
-        for m in meta
-          unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
-            throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
-        op = OPERATORS[meta[0].operator]
-      else
-        unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-          throw new Error("Token Search: unsupported type #{JSON.stringify(meta)}")
-        op = OPERATORS[meta.operator]
+    exports.handle = (tbl, metas, value)->
+      for m in metas
+        unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+          throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+      op = OPERATORS[metas[0].operator]
 
       unless op
-        throw new Error("Token Search: Unsupported operator #{JSON.stringify(meta)}")
+        throw new Error("Token Search: Unsupported operator #{JSON.stringify(metas)}")
 
-      op(tbl, meta, value)
+      op(tbl, metas, value)
 
     exports.index = (plv8, metas)->
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_token"
-      exprs = metas.map((x)-> extract_expr(x))
 
-      [{
-        name: idx_name
-        ddl:
-          create: 'index'
-          name:  idx_name
-          using: ':GIN'
-          on: ['$q', meta.resourceType.toLowerCase()]
-          expression: exprs
-      },{
+      [
         name: idx_name + '_metas'
         ddl:
           create: 'index'
@@ -234,4 +168,4 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
           using: ':GIN'
           on: ['$q', meta.resourceType.toLowerCase()]
           expression: [extract_expr(metas)]
-      }]
+      ]

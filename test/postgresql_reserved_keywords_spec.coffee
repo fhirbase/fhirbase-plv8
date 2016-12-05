@@ -211,7 +211,7 @@ describe 'PostgreSQL reserved key words', ->
       indexed = search.fhir_index_parameter(plv8,
         resourceType: 'Task', name: 'identifier')
       assert.equal(indexed[0].status, 'ok')
-      assert.equal(indexed[0].message, 'Index task_identifier_token was created')
+      assert.equal(indexed[0].message, 'Index task_identifier_token_metas was created')
 
     it 'analyze', ->
       assert.equal(
