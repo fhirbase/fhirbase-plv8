@@ -12,43 +12,6 @@ EMPTY_VALUE = "$NULL"
 INDEXABLE_ATTRIBUTES =
   HumanName: ['family', 'given', 'prefix', 'suffix', 'text']
 
-exports.fhir_extract_as_string = (plv8, resource, path, element_type)->
-  obj = xpath.get_in(resource, [path])
-  vals = []
-
-  if INDEXABLE_ATTRIBUTES[element_type]
-    collectValsFn = (o) ->
-      result = []
-      for k, v of o
-        if INDEXABLE_ATTRIBUTES[element_type].indexOf(k) >= 0
-          if Array.isArray(v)
-            result = result.concat(v)
-          else
-            result.push(v)
-      result
-
-    if Array.isArray(obj)
-      for v in obj
-        vals = vals.concat(collectValsFn(v))
-    else
-      vals = collectValsFn(obj)
-  else
-    vals = lang.values(obj)
-
-  # console.log "!!!!!! #{JSON.stringify(obj)}, #{element_type} => #{JSON.stringify(vals)}"
-
-  vals = vals.filter((x)-> x && x.toString().trim().length > 0)
-
-  if vals.length == 0
-    EMPTY_VALUE
-  else
-    ("^^#{unaccent(v.toString())}$$" for v in vals).join(" ")
-
-exports.fhir_extract_as_string.plv8_signature =
-  arguments: ['json', 'json', 'text']
-  returns: 'text'
-  immutable: true
-
 extract_value = (resource, metas)->
   for meta in metas
     value = xpath.get_in(resource, [meta.path])
@@ -153,19 +116,19 @@ exports.order_expression = sf.order_expression
 exports.index_order = sf.index_order
 
 OPERATORS =
-  eq: (tbl, meta, value)->
-    ["$ilike", extract_expr(meta, tbl), "%^^#{normalize_string_value(value.value)}$$%"]
-  sw: (tbl, meta, value)->
-    ["$ilike", extract_expr(meta, tbl), "%^^#{normalize_string_value(value.value)}%"]
-  ew: (tbl, meta, value)->
-    ["$ilike", extract_expr(meta, tbl), "%#{normalize_string_value(value.value)}$$%"]
-  co: (tbl, meta, value)->
-    ["$ilike", extract_expr(meta, tbl), "%#{normalize_string_value(value.value)}%"]
-  missing: (tbl, meta, value)->
+  eq: (tbl, metas, value)->
+    ["$ilike", extract_expr(metas, tbl), "%^^#{normalize_string_value(value.value)}$$%"]
+  sw: (tbl, metas, value)->
+    ["$ilike", extract_expr(metas, tbl), "%^^#{normalize_string_value(value.value)}%"]
+  ew: (tbl, metas, value)->
+    ["$ilike", extract_expr(metas, tbl), "%#{normalize_string_value(value.value)}$$%"]
+  co: (tbl, metas, value)->
+    ["$ilike", extract_expr(metas, tbl), "%#{normalize_string_value(value.value)}%"]
+  missing: (tbl, metas, value)->
     if value.value == 'false'
-      ["$ne", extract_expr(meta, tbl), EMPTY_VALUE]
+      ["$ne", extract_expr(metas, tbl), EMPTY_VALUE]
     else
-      ["$ilike", extract_expr(meta, tbl), EMPTY_VALUE]
+      ["$ilike", extract_expr(metas, tbl), EMPTY_VALUE]
 
 OPERATORS_ALIASES =
   exact: 'eq'
@@ -182,21 +145,16 @@ exports.normalize_operator = (meta, value)->
   return op if op
   throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
-handle = (tbl, meta, value)->
-  if Array.isArray(meta)
-    for m in meta
-      unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
-        throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
-    op = OPERATORS[meta[0].operator]
-  else
-    unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-      throw new Error("String Search: unsupported type #{JSON.stringify(meta)}")
-    op = OPERATORS[meta.operator]
+handle = (tbl, metas, value)->
+  for m in metas
+    unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+      throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+  op = OPERATORS[metas[0].operator]
 
   unless op
-    throw new Error("String Search: Unsupported operator #{JSON.stringify(meta)}")
+    throw new Error("String Search: Unsupported operator #{JSON.stringify(metas)}")
 
-  op(tbl, meta, value)
+  op(tbl, metas, value)
 
 exports.handle = handle
 
@@ -204,18 +162,7 @@ exports.index = (plv8, metas)->
   meta = metas[0]
   idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_string"
 
-  exprs = metas.map((x)-> extract_expr(x))
-
-  [{
-    name: idx_name
-    ddl:
-      create: 'index'
-      name:  idx_name
-      using: ':GIN'
-      on: ['$q', meta.resourceType.toLowerCase()]
-      opclass: ':gin_trgm_ops'
-      expression: exprs
-  },{
+  [
     name: idx_name + '_metas'
     ddl:
       create: 'index'
@@ -224,4 +171,4 @@ exports.index = (plv8, metas)->
       on: ['$q', meta.resourceType.toLowerCase()]
       opclass: ':gin_trgm_ops'
       expression: [extract_expr(metas)]
-  }]
+  ]
