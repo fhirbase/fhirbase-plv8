@@ -23,28 +23,6 @@ Only equality operator is implemented.
 
     EMPTY_VALUE = "$NULL"
 
-    exports.fhir_extract_as_reference = (plv8, resource, path, element_type)->
-      if element_type == 'Reference'
-        res = []
-        for ref in xpath.get_in(resource, [path]) when ref and ref.reference
-          reference = ref.reference.toLowerCase()
-          parts = reference.split('/')
-          len = parts.length
-          res.push(parts[(len - 1)])
-          res.push("#{parts[(len - 2)]}/#{parts[(len - 1)]}")
-          res.push(reference) if len > 2
-        if res.length == 0
-          [EMPTY_VALUE]
-        else
-          res
-      else
-        throw new Error("extract_as_reference: Not implemented for #{element_type}")
-
-    exports.fhir_extract_as_reference.plv8_signature =
-      arguments: ['json', 'json', 'text']
-      returns: 'text[]'
-      immutable: true
-
     extract_value = (resource, metas)->
       for meta in metas
         value = xpath.get_in(resource, [meta.path])
@@ -97,21 +75,16 @@ Only equality operator is implemented.
 
     SUPPORTED_TYPES = ['Reference']
 
-    exports.handle = (tbl, meta, value)->
-      if Array.isArray(meta)
-        for m in meta
-          unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
-            throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
-        operator = meta[0].operator
-      else
-        unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-          throw new Error("Reference Search: unsupported type #{JSON.stringify(meta)}")
-        operator = meta.operator
+    exports.handle = (tbl, metas, value)->
+      for m in metas
+        unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+          throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+      operator = metas[0].operator
 
       if operator == "missing"
         op = if value.value == 'false' then '$ne' else '$eq'
         return [op
-                 ['$cast', extract_expr(meta, tbl), ":text[]"]
+                 ['$cast', extract_expr(metas, tbl), ":text[]"]
                  ['$cast', ['$array', EMPTY_VALUE], ":text[]"]]
 
       # If `value` like /Patient/id or http://fhirbase/Patient/id
@@ -139,7 +112,7 @@ Only equality operator is implemented.
           ['$array', value.value.toLowerCase()]
 
       ["$&&"
-        ['$cast', extract_expr(meta, tbl), ":text[]"]
+        ['$cast', extract_expr(metas, tbl), ":text[]"]
         ['$cast', val, ":text[]"]]
 
     exports.order_expression = (tbl, meta)->
@@ -149,17 +122,7 @@ Only equality operator is implemented.
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_reference"
 
-      exprs = metas.map((x)-> extract_expr(x))
-
-      [{
-        name: idx_name
-        ddl:
-          create: 'index'
-          name:  idx_name
-          using: ':GIN'
-          on: ['$q', meta.resourceType.toLowerCase()]
-          expression: exprs
-      },{
+      [
         name: idx_name + '_metas'
         ddl:
           create: 'index'
@@ -167,4 +130,4 @@ Only equality operator is implemented.
           using: ':GIN'
           on: ['$q', meta.resourceType.toLowerCase()]
           expression: [extract_expr(metas)]
-      }]
+      ]
