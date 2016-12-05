@@ -228,39 +228,10 @@ and returns honeysql expression.
       meta = metas[0]
       tbl = meta.resourceType.toLowerCase()
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}"
-      exprs = metas.map((x)-> extract_expr(x))
-      lower_exprs = metas.map((x)-> extract_lower_expr(x))
-      upper_exprs = metas.map((x)-> extract_upper_expr(x))
       lower_metas_exprs = extract_lower_expr(metas)
       upper_metas_exprs = extract_upper_expr(metas)
 
       [{
-        name: "#{idx_name}_date"
-        ddl:
-          create: 'index'
-          name: "#{idx_name}_date"
-          using: ':GIST'
-          opclass: ':range_ops'
-          on: ['$q', tbl]
-          expression: exprs
-      }
-      {
-       name: "#{idx_name}_epoch_lower"
-       ddl:
-         create: 'index'
-         name: "#{idx_name}_epoch_lower"
-         on: ['$q', tbl]
-         expression: lower_exprs
-      }
-      {
-       name: "#{idx_name}_epoch_upper"
-       ddl:
-         create: 'index'
-         name: "#{idx_name}_epoch_upper"
-         on: ['$q', tbl]
-         expression: upper_exprs
-      }
-      {
        name: "#{idx_name}_epoch_lower_upper"
        ddl:
          create: 'index'

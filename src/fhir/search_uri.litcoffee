@@ -15,20 +15,6 @@ We use string functions to implement uri search (see string_search).
 
     identity = (x)-> x
 
-    exports.fhir_extract_as_uri = (plv8, resource, path, element_type)->
-      obj = xpath.get_in(resource, [path])
-      vals = lang.values(obj).map((x)-> x && x.toString().trim()).filter(identity)
-
-      if vals.length == 0
-        EMPTY_VALUE
-      else
-        ("^^#{normalize_value(v)}$$" for v in vals).join(" ")
-
-    exports.fhir_extract_as_uri.plv8_signature =
-      arguments: ['json', 'json', 'text']
-      returns: 'text'
-      immutable: true
-
     extract_value = (resource, metas)->
       for meta in metas
         value = xpath.get_in(resource, [meta.path])
@@ -61,15 +47,15 @@ We use string functions to implement uri search (see string_search).
     extract_expr = sf.extract_expr
 
     OPERATORS =
-      eq: (tbl, meta, value)->
-        ["$ilike", extract_expr(meta, tbl), "%^^#{normalize_value(value.value)}$$%"]
-      below: (tbl, meta, value)->
-        ["$ilike", extract_expr(meta, tbl), "%^^#{normalize_value(value.value)}%"]
-      missing: (tbl, meta, value)->
+      eq: (tbl, metas, value)->
+        ["$ilike", extract_expr(metas, tbl), "%^^#{normalize_value(value.value)}$$%"]
+      below: (tbl, metas, value)->
+        ["$ilike", extract_expr(metas, tbl), "%^^#{normalize_value(value.value)}%"]
+      missing: (tbl, metas, value)->
         if value.value == 'false'
-          ["$ne", extract_expr(meta, tbl), EMPTY_VALUE]
+          ["$ne", extract_expr(metas, tbl), EMPTY_VALUE]
         else
-          ["$ilike", extract_expr(meta, tbl), EMPTY_VALUE]
+          ["$ilike", extract_expr(metas, tbl), EMPTY_VALUE]
 
     SUPPORTED_TYPES = ['uri']
 
@@ -78,21 +64,16 @@ We use string functions to implement uri search (see string_search).
       return meta.modifier if OPERATORS[meta.modifier]
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
-    exports.handle = (tbl, meta, value)->
-      if Array.isArray(meta)
-        for m in meta
-          unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
-            throw new Error("Uri Search: unsuported type #{JSON.stringify(m)}")
-        op = OPERATORS[meta[0].operator]
-      else
-        unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-          throw new Error("Uri Search: unsuported type #{JSON.stringify(meta)}")
-        op = OPERATORS[meta.operator]
+    exports.handle = (tbl, metas, value)->
+      for m in metas
+        unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+          throw new Error("Uri Search: unsuported type #{JSON.stringify(m)}")
+      op = OPERATORS[metas[0].operator]
 
       unless op
-        throw new Error("Uri Search: Unsupported operator #{JSON.stringify(meta)}")
+        throw new Error("Uri Search: Unsupported operator #{JSON.stringify(metas)}")
 
-      op(tbl, meta, value)
+      op(tbl, metas, value)
 
     exports.order_expression = (tbl, meta)->
       search_token.order_expression(tbl, meta)
@@ -100,18 +81,8 @@ We use string functions to implement uri search (see string_search).
     exports.index = (plv8, metas)->
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_uri"
-      exprs = metas.map((x)-> extract_expr(x))
 
-      [{
-        name: idx_name
-        ddl:
-          create: 'index'
-          name:  idx_name
-          using: ':GIN'
-          opclass: ':gin_trgm_ops'
-          on: ['$q', meta.resourceType.toLowerCase()]
-          expression: exprs
-      },{
+      [
         name: idx_name + '_metas'
         ddl:
           create: 'index'
@@ -120,4 +91,4 @@ We use string functions to implement uri search (see string_search).
           opclass: ':gin_trgm_ops'
           on: ['$q', meta.resourceType.toLowerCase()]
           expression: [extract_expr(metas)]
-      }]
+      ]

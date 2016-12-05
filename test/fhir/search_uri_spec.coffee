@@ -42,10 +42,7 @@ describe "extract_as_token", ->
   testCases.forEach (testCase)->
     testCase.specs.forEach (spec)->
       it JSON.stringify(spec.path), ->
-        res = search.fhir_extract_as_uri(
-          {}, testCase.resource, spec.path, spec.elementType
-        )
-        metasRes = search.fhir_extract_as_uri_metas(
+        res = search.fhir_extract_as_uri_metas(
           {}, testCase.resource,
           [
             {path: ['Task', 'unknownPath', elementType: spec.elementType]}
@@ -53,4 +50,3 @@ describe "extract_as_token", ->
         )
 
         assert.equal(res, spec.result)
-        assert.equal(metasRes, spec.result)
