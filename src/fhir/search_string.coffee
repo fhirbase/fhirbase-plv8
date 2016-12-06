@@ -23,7 +23,7 @@ extract_value = (resource, metas)->
       }
   null
 
-exports.fhir_extract_as_string_metas = (plv8, resource, metas)->
+exports.fhir_extract_as_string = (plv8, resource, metas)->
   value = extract_value(resource, metas)
   vals = []
 
@@ -54,16 +54,17 @@ exports.fhir_extract_as_string_metas = (plv8, resource, metas)->
   else
     ("^^#{unaccent(v.toString())}$$" for v in vals).join(" ")
 
-exports.fhir_extract_as_string_metas.plv8_signature =
+exports.fhir_extract_as_string.plv8_signature =
   arguments: ['json', 'json']
   returns: 'text'
   immutable: true
 
-exports.fhir_sort_as_string = (plv8, resource, path, element_type)->
-  obj = xpath.get_in(resource, [path])[0]
-  return null unless obj
+exports.fhir_sort_as_string = (plv8, resource, metas)->
+  value = extract_value(resource, metas)
+  return null unless value
+  obj = value[0]
 
-  res = switch element_type
+  res = switch value.elementType
     when 'string'
       obj.toString().toLowerCase()
     when 'HumanName'
@@ -95,7 +96,7 @@ exports.fhir_sort_as_string = (plv8, resource, path, element_type)->
   res && res.toLowerCase()
 
 exports.fhir_sort_as_string.plv8_signature =
-  arguments: ['json', 'json', 'text']
+  arguments: ['json', 'json']
   returns: 'text'
   immutable: true
 
@@ -163,10 +164,10 @@ exports.index = (plv8, metas)->
   idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_string"
 
   [
-    name: idx_name + '_metas'
+    name: idx_name
     ddl:
       create: 'index'
-      name:  idx_name + '_metas'
+      name:  idx_name
       using: ':GIN'
       on: ['$q', meta.resourceType.toLowerCase()]
       opclass: ':gin_trgm_ops'

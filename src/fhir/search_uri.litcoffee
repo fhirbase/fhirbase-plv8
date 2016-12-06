@@ -26,7 +26,7 @@ We use string functions to implement uri search (see string_search).
           }
       null
 
-    exports.fhir_extract_as_uri_metas = (plv8, resource, metas)->
+    exports.fhir_extract_as_uri = (plv8, resource, metas)->
       value = extract_value(resource, metas)
       if value
         vals = lang.values(value.value).map((x)-> x && x.toString().trim()).filter(identity)
@@ -38,7 +38,7 @@ We use string functions to implement uri search (see string_search).
       else
         ("^^#{normalize_value(v)}$$" for v in vals).join(" ")
 
-    exports.fhir_extract_as_uri_metas.plv8_signature =
+    exports.fhir_extract_as_uri.plv8_signature =
       arguments: ['json', 'json']
       returns: 'text'
       immutable: true
@@ -75,18 +75,18 @@ We use string functions to implement uri search (see string_search).
 
       op(tbl, metas, value)
 
-    exports.order_expression = (tbl, meta)->
-      search_token.order_expression(tbl, meta)
+    exports.order_expression = (tbl, metas)->
+      search_token.order_expression(tbl, metas)
 
     exports.index = (plv8, metas)->
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_uri"
 
       [
-        name: idx_name + '_metas'
+        name: idx_name
         ddl:
           create: 'index'
-          name:  idx_name + '_metas'
+          name:  idx_name
           using: ':GIN'
           opclass: ':gin_trgm_ops'
           on: ['$q', meta.resourceType.toLowerCase()]

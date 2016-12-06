@@ -34,7 +34,7 @@ Only equality operator is implemented.
           }
       null
 
-    exports.fhir_extract_as_reference_metas = (plv8, resource, metas)->
+    exports.fhir_extract_as_reference = (plv8, resource, metas)->
       value = extract_value(resource, metas)
       res = []
       if value
@@ -53,7 +53,7 @@ Only equality operator is implemented.
       else
         res
 
-    exports.fhir_extract_as_reference_metas.plv8_signature =
+    exports.fhir_extract_as_reference.plv8_signature =
       arguments: ['json', 'json']
       returns: 'text[]'
       immutable: true
@@ -115,18 +115,18 @@ Only equality operator is implemented.
         ['$cast', extract_expr(metas, tbl), ":text[]"]
         ['$cast', val, ":text[]"]]
 
-    exports.order_expression = (tbl, meta)->
-      search_token.order_expression(tbl, meta)
+    exports.order_expression = (tbl, metas)->
+      search_token.order_expression(tbl, metas)
 
     exports.index = (plv8, metas)->
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_reference"
 
       [
-        name: idx_name + '_metas'
+        name: idx_name
         ddl:
           create: 'index'
-          name:  idx_name + '_metas'
+          name:  idx_name
           using: ':GIN'
           on: ['$q', meta.resourceType.toLowerCase()]
           expression: [extract_expr(metas)]

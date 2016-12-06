@@ -27,7 +27,7 @@ it should be done in an extensible maner
           }
       null
 
-    exports.fhir_extract_as_number_metas = (plv8, resource, metas)->
+    exports.fhir_extract_as_number = (plv8, resource, metas)->
       value = extract_value(resource, metas)
       if value
         if value.elementType == 'integer' or value.elementType == 'positiveInt'
@@ -39,7 +39,7 @@ it should be done in an extensible maner
       else
         null
 
-    exports.fhir_extract_as_number_metas.plv8_signature =
+    exports.fhir_extract_as_number.plv8_signature =
       arguments: ['json', 'json']
       returns: 'numeric'
       immutable: true
@@ -84,27 +84,10 @@ it should be done in an extensible maner
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_number"
 
       [
-        name: idx_name + '_metas'
+        name: idx_name
         ddl:
           create: 'index'
-          name:  idx_name + '_metas'
+          name:  idx_name
           on: ['$q', meta.resourceType.toLowerCase()]
           expression: [extract_expr(metas)]
       ]
-
-    exports.fhir_extract_as_number = (plv8, resource, path, element_type)->
-      data = xpath.get_in(resource, [path])[0] || null
-      return unless data
-      if element_type == 'integer' or element_type == 'positiveInt'
-        data
-      else if element_type = 'Duration'
-        data.value
-      else if element_type == 'Quantity'
-        data.value
-      else
-        throw new Error("extract_as_number: unsupported element type #{element_type}")
-
-    exports.fhir_extract_as_number.plv8_signature =
-      arguments: ['json', 'json', 'text']
-      returns: 'numeric'
-      immutable: true

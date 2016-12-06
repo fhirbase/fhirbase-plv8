@@ -497,7 +497,7 @@ describe 'Integration',->
           )[0].fhir_index_parameter
         )
       assert.equal(indexed[0].status, 'ok')
-      assert.equal(indexed[0].message, 'Index task_identifier_token_metas was created')
+      assert.equal(indexed[0].message, 'Index task_identifier_token was created')
 
     it 'analyze', ->
       analyzed =

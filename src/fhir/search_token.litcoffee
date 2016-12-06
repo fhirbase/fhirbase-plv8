@@ -49,7 +49,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
           }
       null
 
-    exports.fhir_extract_as_token_metas = (plv8, resource, metas)->
+    exports.fhir_extract_as_token = (plv8, resource, metas)->
       res = []
       data = extract_value(resource, metas)
       if data
@@ -93,37 +93,39 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       else
         res
 
-    exports.fhir_extract_as_token_metas.plv8_signature =
+    exports.fhir_extract_as_token.plv8_signature =
       arguments: ['json', 'json']
       returns: 'text[]'
       immutable: true
 
-    exports.fhir_sort_as_token = (plv8, resource, path, element_type)->
-      data = xpath.get_in(resource, [path])[0]
-      return null unless data
-      if element_type == 'boolean'
+    exports.fhir_sort_as_token = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      return null unless value
+      data = value[0]
+
+      if value.elementType == 'boolean'
         if data.toString() == 'false' then 'false' else 'true'
-      else if element_type == 'code' || element_type == 'string' || element_type == 'uri'
+      else if value.elementType == 'code' || value.elementType == 'string' || value.elementType == 'uri'
         data.toString()
-      else if element_type == 'Identifier' or element_type == 'ContactPoint'
+      else if value.elementType == 'Identifier' or value.elementType == 'ContactPoint'
         [data.system, data.value].join('0').toLowerCase()
-      else if element_type == 'Coding'
+      else if value.elementType == 'Coding'
         [data.system, data.code, data.display].join('0').toLowerCase()
-      else if element_type == 'Quantity'
+      else if value.elementType == 'Quantity'
         [data.system, data.unit, data.code].join('0').toLowerCase()
-      else if element_type == 'CodeableConcept'
+      else if value.elementType == 'CodeableConcept'
         coding = data.coding && data.coding[0]
         if coding
           [coding.system, coding.code, coding.display].join('0').toLowerCase()
         else
           data.text || JSON.stringify(data)
-      else if element_type == 'Reference'
+      else if value.elementType == 'Reference'
         data.reference
       else
-        throw new Error("fhir_extract_as_token: Not implemented for #{element_type}")
+        throw new Error("fhir_extract_as_token: Not implemented for #{value.elementType}")
 
     exports.fhir_sort_as_token.plv8_signature =
-      arguments: ['json', 'json', 'text']
+      arguments: ['json', 'json']
       returns: 'text'
       immutable: true
 
@@ -161,10 +163,10 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_token"
 
       [
-        name: idx_name + '_metas'
+        name: idx_name
         ddl:
           create: 'index'
-          name:  idx_name + '_metas'
+          name:  idx_name
           using: ':GIN'
           on: ['$q', meta.resourceType.toLowerCase()]
           expression: [extract_expr(metas)]

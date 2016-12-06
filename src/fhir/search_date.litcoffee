@@ -38,43 +38,59 @@ Now we support only simple date data-types - i.e. date, dateTime and instant.
     ]
     sf = search_common.get_search_functions({extract:'fhir_extract_as_daterange', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
 
-    extract_metas_expr = (opname, metas)->
+    extract_op_expr = (opname, metas)->
       m = metas.map((x)-> {path: x.path, elementType: x.elementType})
       ["$#{opname}"
        ['$cast', ':resource', ':json']
        ['$cast', ['$quote', JSON.stringify(m)], ':json']]
 
     extract_lower_expr = (metas)->
-      extract_metas_expr('fhir_extract_as_metas_epoch_lower', metas)
+      extract_op_expr('fhir_extract_as_epoch_lower', metas)
 
     extract_upper_expr = (metas)->
-      extract_metas_expr('fhir_extract_as_metas_epoch_upper', metas)
+      extract_op_expr('fhir_extract_as_epoch_upper', metas)
 
     exports.order_expression = sf.order_expression
     exports.index_order = sf.index_order
 
     str = (x)-> x.toString()
 
+    epoch = (plv8, value)->
+      if value
+        res = utils.exec plv8,
+          select: sql.raw("extract(epoch from ('#{value.toString()}')::timestamp with time zone)")
+        res[0].date_part
+      else
+        null
+
+    extract_value = (resource, metas)->
+      for meta in metas
+        value = xpath.get_in(resource, [meta.path])[0]
+        if value
+          return {
+            value: value
+            path: meta.path
+            elementType: meta.elementType
+          }
+      null
+
+
 Function to extract element from resource as tstzrange.
 
-    exports.fhir_sort_as_date = (plv8, resource, path, element_type)->
-      if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
-        value = xpath.get_in(resource, [path])[0]
-        if value
-          date.to_lower_date(value.toString())
+    exports.fhir_sort_as_date = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      if value
+        if ['date', 'dateTime', 'instant'].indexOf(value.elementType) > -1
+          date.to_lower_date(value.value.toString())
+        else if value.elementType == 'Period'
+          date.to_lower_date(value.value.start || value.value.end)
         else
-          null
-      else if element_type == 'Period'
-        value = xpath.get_in(resource, [path])[0]
-        if value
-          date.to_lower_date(value.start || value.end)
-        else
-          null
+          throw new Error("fhir_sort_as_date: Not implemented for #{value.elementType}")
       else
-        throw new Error("fhir_sort_as_date: Not implemented for #{element_type}")
+        null
 
     exports.fhir_sort_as_date.plv8_signature =
-      arguments: ['json', 'json', 'text']
+      arguments: ['json', 'json']
       returns: 'timestamptz'
       immutable: true
 
@@ -178,8 +194,8 @@ and returns honeysql expression.
       meta = metas[0]
       tbl = meta.resourceType.toLowerCase()
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}"
-      lower_metas_exprs = extract_lower_expr(metas)
-      upper_metas_exprs = extract_upper_expr(metas)
+      lower_exprs = extract_lower_expr(metas)
+      upper_exprs = extract_upper_expr(metas)
 
       [{
        name: "#{idx_name}_epoch_lower_upper"
@@ -187,7 +203,7 @@ and returns honeysql expression.
          create: 'index'
          name: "#{idx_name}_epoch_lower_upper"
          on: ['$q', tbl]
-         expression: [lower_metas_exprs, upper_metas_exprs]
+         expression: [lower_exprs, upper_exprs]
       }
       {
        name: "#{idx_name}_epoch_upper_lower"
@@ -195,31 +211,12 @@ and returns honeysql expression.
          create: 'index'
          name: "#{idx_name}_epoch_upper_lower"
          on: ['$q', tbl]
-         expression: [upper_metas_exprs, lower_metas_exprs]
+         expression: [upper_exprs, lower_exprs]
       }]
 
 Function to extract element from resource as epoch.
 
-    epoch = (plv8, value)->
-      if value
-        res = utils.exec plv8,
-          select: sql.raw("extract(epoch from ('#{value.toString()}')::timestamp with time zone)")
-        res[0].date_part
-      else
-        null
-
-    extract_value = (resource, metas)->
-      for meta in metas
-        value = xpath.get_in(resource, [meta.path])[0]
-        if value
-          return {
-            value: value
-            path: meta.path
-            elementType: meta.elementType
-          }
-      null
-
-    exports.fhir_extract_as_metas_epoch_lower = (plv8, resource, metas)->
+    exports.fhir_extract_as_epoch_lower = (plv8, resource, metas)->
       value = extract_value(resource, metas)
       if value
         if ['date', 'dateTime', 'instant'].indexOf(value.elementType) > -1
@@ -231,12 +228,12 @@ Function to extract element from resource as epoch.
       else
         null
 
-    exports.fhir_extract_as_metas_epoch_lower.plv8_signature =
+    exports.fhir_extract_as_epoch_lower.plv8_signature =
       arguments: ['json', 'json']
       returns: 'double precision'
       immutable: true
 
-    exports.fhir_extract_as_metas_epoch_upper = (plv8, resource, metas)->
+    exports.fhir_extract_as_epoch_upper = (plv8, resource, metas)->
       value = extract_value(resource, metas)
       if value
         if ['date', 'dateTime', 'instant'].indexOf(value.elementType) > -1
@@ -248,7 +245,7 @@ Function to extract element from resource as epoch.
       else
         null
 
-    exports.fhir_extract_as_metas_epoch_upper.plv8_signature =
+    exports.fhir_extract_as_epoch_upper.plv8_signature =
       arguments: ['json', 'json']
       returns: 'double precision'
       immutable: true
