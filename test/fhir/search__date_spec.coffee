@@ -79,12 +79,12 @@ describe "extract_as_metas_epoch", ->
 
   metas_epoch_specs.forEach (spec)->
     it JSON.stringify(spec.resource) + " >> [" + spec.assert.lower + "," + spec.assert.upper + "]", ->
-      lower = search.fhir_extract_as_metas_epoch_lower(
+      lower = search.fhir_extract_as_epoch_lower(
         plv8,
         spec.resource,
         metas)
       assert.equal(lower, spec.assert.lower)
-      upper = search.fhir_extract_as_metas_epoch_upper(
+      upper = search.fhir_extract_as_epoch_upper(
         plv8,
         spec.resource,
         metas)
