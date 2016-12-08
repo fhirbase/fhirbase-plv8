@@ -101,7 +101,7 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
     exports.fhir_sort_as_token = (plv8, resource, metas)->
       value = extract_value(resource, metas)
       return null unless value
-      data = value[0]
+      data = value.value[0]
 
       if value.elementType == 'boolean'
         if data.toString() == 'false' then 'false' else 'true'
