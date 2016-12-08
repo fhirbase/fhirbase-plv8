@@ -62,7 +62,7 @@ exports.fhir_extract_as_string.plv8_signature =
 exports.fhir_sort_as_string = (plv8, resource, metas)->
   value = extract_value(resource, metas)
   return null unless value
-  obj = value[0]
+  obj = value.value[0]
 
   res = switch value.elementType
     when 'string'

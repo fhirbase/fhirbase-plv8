@@ -79,15 +79,11 @@ describe "extract_as_string", ->
   testCases.forEach (testCase)->
     testCase.specs.forEach (spec)->
       it JSON.stringify(spec.path) + ' : ' + spec.elementType, ->
-        res = search.fhir_extract_as_string_metas(
-          {}, testCase.resource,
-          [
+        metas = [
             {path: ['Patient', 'unknownPath'], elementType: spec.elementType}
             {path: spec.path, elementType: spec.elementType}]
-        )
+        res = search.fhir_extract_as_string({}, testCase.resource, metas)
         for str in spec.result
           assert(res.indexOf(str) > -1, "#{str} not in #{res}")
-        order = search.fhir_sort_as_string(
-          {}, testCase.resource, spec.path, spec.elementType
-        )
+        order = search.fhir_sort_as_string({}, testCase.resource, metas)
         assert.deepEqual(order, spec.order)

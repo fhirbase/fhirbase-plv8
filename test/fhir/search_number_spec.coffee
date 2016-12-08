@@ -54,7 +54,7 @@ describe "extract_as_token", ->
   testCases.forEach (testCase)->
     testCase.specs.forEach (spec)->
       it JSON.stringify(spec.path), ->
-        res = search.fhir_extract_as_number_metas(
+        res = search.fhir_extract_as_number(
           {}, testCase.resource,
           [
             {path: ['Task', 'unknownPath'], elementType: spec.elementType},

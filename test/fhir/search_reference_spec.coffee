@@ -38,7 +38,7 @@ describe "extract_as_reference", ->
   testCases.forEach (testCase)->
     testCase.specs.forEach (spec)->
       it JSON.stringify(spec.path), ->
-        res = search.fhir_extract_as_reference_metas(
+        res = search.fhir_extract_as_reference(
           {}, testCase.resource,
           [
             {path: ['Task', 'unknownPath'], elementType: spec.elementType}
