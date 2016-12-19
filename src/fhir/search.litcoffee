@@ -202,7 +202,7 @@ To build search query we need to
         ordering = order_hsql(alias, expr.sort)
 
       hsql =
-        select: ':*'
+        select: sql.raw(alias + '.*')
         from: ['$alias', ['$q', "#{namings.table_name(plv8, expr.query)}"], alias]
         where: expr.where
         order: ordering
@@ -257,7 +257,7 @@ To build search query we need to
           ordering = order_hsql(alias, expr.sort)
 
         hsql =
-          select: ':*'
+          select: sql.raw(alias + '.*')
           from: ['$alias', ['$q', "#{namings.table_name(plv8, expr.query)}"], alias]
           where: expr.where
           order: ordering
