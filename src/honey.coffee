@@ -87,8 +87,8 @@ select = (res, expr)->
   res.push("SELECT")
   select_clause(res, expr.select)
   from(res, expr.from) if expr.from
-  where_clause(res, expr.where) if expr.where
   join_clause(res, expr.join) if expr.join
+  where_clause(res, expr.where) if expr.where
 
   if expr.order
     order_clause(res, expr.order)
