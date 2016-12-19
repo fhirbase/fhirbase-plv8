@@ -382,17 +382,10 @@ describe 'Encounter search', ->
         ).total,
       1)
 
-  it 'by patient name AND status should raise error', -> # FIXME: sql "where" and "join" statements mixed up in wrong order #104 <https://github.com/fhirbase/fhirbase-plv8/issues/104>.
-    assert.throws(
-      (->
-        search.fhir_search(
-          plv8,
-          resourceType: 'Encounter',
-          queryString: 'patient:Patient.name=John&status=finished'
-        )
-      ),
-      ((err)->
-        (err instanceof Error) &&
-          /syntax error at or near "JOIN"/.test(err)
-      )
-    )
+  it 'by patient name AND status should raise error', ->
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Encounter',
+        queryString: 'patient:Patient.name=John&status=finished'
+        ).total,
+      1)

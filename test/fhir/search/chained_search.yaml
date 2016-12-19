@@ -11,7 +11,7 @@ fixtures:
   - {id: 'linc', resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}], birthDate: '1988', multipleBirthInteger: 3}
   - {id: 'cheb', resourceType: 'Patient', name: [{given: ['Cheburashka']}], birthDate: '1972', multipleBirthInteger: 2}
   - {id: 'enc-1', resourceType: 'Encounter', patient: {reference: 'Patient/nicola'}, status: 'planned'}
-  - {id: 'enc-2', resourceType: 'Encounter', patient: {reference: 'Patient/nicola'}, status: 'planned'}
+  - {id: 'enc-2', resourceType: 'Encounter', patient: {reference: 'Patient/nicola'}, status: 'finished', }
   - {resourceType: 'Encounter', patient: {reference: 'Patient/noise1'},  status: 'planned'}
   - {resourceType: 'Encounter', patient: {reference: 'Patient/noise2'},  status: 'planned'}
   - {resourceType: 'Encounter', status: 'planned'}
@@ -53,6 +53,14 @@ queries:
       - path: ['entry', 0, 'resource', 'id']
         result: 'enc-1'
       - path: ['entry', 1, 'resource', 'id']
+        result: 'enc-2'
+
+  - query: {resourceType: 'Encounter', queryString: 'patient:Patient.name=nicola&status=finished'}
+    total: 1
+    probes:
+      - path: ['total']
+        result: 1
+      - path: ['entry', 0, 'resource', 'id']
         result: 'enc-2'
 
   - query: {resourceType: 'Encounter', queryString: '_sort=patient'}
