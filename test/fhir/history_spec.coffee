@@ -62,7 +62,7 @@ describe 'CORE: History spec', ->
     assert.equal(limitedHistory.total, 1)
     assert.equal(limitedHistory.entry.length, 1)
 
-  it.only 'instance history with _since', ->
+  it 'instance history with _since', ->
     for id in ['id1', 'id2']
       crud.fhir_create_resource(plv8, allowId: true, resource: {
         resourceType: 'Patient',
@@ -83,7 +83,6 @@ describe 'CORE: History spec', ->
       resourceType: 'Patient',
       queryString: '_since=2015-07-15'
     })
-    console.log(JSON.stringify(sinceHistory, null, 2))
     assert.equal(sinceHistory.total, 3)
     assert.equal(sinceHistory.entry.length, 3)
     for e in sinceHistory.entry
