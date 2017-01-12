@@ -62,6 +62,32 @@ describe 'CORE: History spec', ->
     assert.equal(limitedHistory.total, 1)
     assert.equal(limitedHistory.entry.length, 1)
 
+  it 'instance history with _since', ->
+    for id in ['id1', 'id2']
+      crud.fhir_create_resource(plv8, allowId: true, resource: {
+        resourceType: 'Patient',
+        id: id,
+        name: [{family: [id + 'First']}]})
+      crud.fhir_update_resource(plv8, resource: {
+        resourceType: 'Patient',
+        id: id,
+        name: [{family: [id + 'Second']}]})
+      crud.fhir_update_resource(plv8, resource: {
+        resourceType: 'Patient',
+        id: id,
+        name: [{family: [id + 'Third']}]})
+    count = plv8.execute("select count(*) from patient")
+    assert.equal(count[0].count, 2)
+    sinceHistory = history.fhir_resource_history(plv8, {
+      id: 'id1',
+      resourceType: 'Patient',
+      queryString: '_since=2015-07-15'
+    })
+    assert.equal(sinceHistory.total, 3)
+    assert.equal(sinceHistory.entry.length, 3)
+    for e in sinceHistory.entry
+      assert(e.resource.id, 'id1')
+
   it 'resource history _since and _before', ->
     created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users'})
     readed = crud.fhir_read_resource(plv8, {
