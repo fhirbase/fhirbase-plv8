@@ -302,9 +302,6 @@ implementation based on searchType
 
     order_hsql = (tbl, params)->
       for metas in params.map((x)-> x[1])
-        console.log('AAA')
-        console.log(JSON.stringify(metas, null, 2))
-        console.log('BBB')
         searchType = metas[0].searchType
         if !searchType
           throw new Error("Empty search type", params)
