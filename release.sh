@@ -7,13 +7,13 @@ set -e
 # DATABASE_URL=postgres://your_user_name:your_password@localhost:5432/fhirbase_build
 # WARNING: `fhirbase_build` database will be destroyed and recreated!
 
-PREV_FBVERSION="1.4.0.0"
-FBVERSION="1.6.0.0"
+PREV_FBVERSION="1.6.0.0"
+FBVERSION="1.6.0.1"
 
-PREV_FBRELEASEDATE="2016-07-01T09:00:00Z"
-FBRELEASEDATE="2016-07-12T12:00:00Z"
+PREV_FBRELEASEDATE="2016-07-12T12:00:00Z"
+FBRELEASEDATE="2017-01-16T10:00:00Z"
 
-PREV_FHIRVERSION="1.4.0"
+PREV_FHIRVERSION="1.6.0"
 FHIRVERSION="1.6.0"
 
 PGOPTIONS='--client-min-messages=warning'
