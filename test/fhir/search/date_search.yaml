@@ -1,5 +1,5 @@
 title: Dates Search
-resources: ['Patient', 'Procedure', 'Encounter']
+resources: ['Patient', 'Procedure', 'Encounter', 'CarePlan']
 indices:
   - {resourceType: 'Patient', name: 'birthdate'}
   - {resourceType: 'Procedure', name: 'date'}
@@ -92,3 +92,6 @@ queries:
     total: 1
   - query: {resourceType: 'Encounter', queryString: 'date=2014-12-02T11:00:00'}
     total: 0
+  - query: {resourceType: 'CarePlan', queryString: 'activitydate=gt2014-12-02T11:00:00'}
+    total: 0
+

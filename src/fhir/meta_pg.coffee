@@ -17,9 +17,9 @@ exports.getter = (plv8, rt, query)->
       where: {"resource->>'name'": query.name, "resource->>'base'": query.base}
 
   if res.length > 1
-    throw new Error("Unexpected behavior: more then one #{rt} #{JSON.stringify(query)}\n #{JSON.stringify(res.map((x)-> x.resource.id))}")
+    throw new Error("Unexpected behavior: more than one #{rt} found #{JSON.stringify(query)}\n #{JSON.stringify(res.map((x)-> x.resource.id))}")
 
   if res.length < 1
-    throw new Error("Not found #{rt} #{JSON.stringify(query)}")
+    throw new Error("#{rt} not found: #{JSON.stringify(query)}")
 
   res[0] && compat.parse(plv8, res[0].resource)

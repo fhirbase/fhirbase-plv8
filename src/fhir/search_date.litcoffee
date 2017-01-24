@@ -178,9 +178,15 @@ It is passed table name, meta {operator: 'lt,gt,eq', path: ['Patient', 'birthDat
 and returns honeysql expression.
 
     handle = (tbl, metas, value)->
-      for m in metas
-        unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
-          throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+      # FIXME: this check doesn't work for polymorphic[x]
+      # attributes. We need to fix it somehow here and
+      # in all other places. For now it breaks Narus backend, it uses
+      # CarePlan.activitydate search param.
+
+      # for m in metas
+      #   unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+      #     throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+
       op = OPERATORS[metas[0].operator]
 
       unless op
