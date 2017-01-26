@@ -17,7 +17,7 @@ env:
   - secure: HRZQRe8R2/qT48wfXbUTcqeYws73KI2fCBZ2V+Y2FGZ3FtwqpxxfBWRexZyaFx+fmzD6iEgR4ojCdxFdcCPavLSEZaMkuRsCeMdPISCBY4IKYd2iN/8DDBsqaxMB1ZMhdUcqeMes1bJgsKCLfqSLjy0kwSSPxizO1E+gFCRYCXjUA94X4ersHHlFhR9EMn/4SprGRm1rI0BKvYbWUI5hVyWqIlhImvWzNPo9ksCeYWzfWbT5nDn+2p9gkXvbs+fcxUi8xGBjnvGaL8fshAXaAfRe8J9gtXDxrt5h8BfhAUABBkovS7XwQc0yFCTAF0/76Kl+phnX5JwM6aJGbI1eRgoMCUVRJMDzfXviQaM4ZcpNE/2sxWJSHyLtIE3QlJu1gHGQKnG/M0e7sQ2hpyjdnLvycObH0R2NsvsehLp2nLHjUMXE1kvAW1IsSvBQuHsbhWgTaKx6k3mvCCDs/yzTCcs+KQITr0TPRwsjV3sQ/OO7T6M1D2Cip/BLz70PPVEX0ZHHENC1yRt2009mrGshOQHDgjAIuoBGXO+dIafKho680O5zdAxmlJonoZinfT+wPvalQW31o/CePujjz7NxscYgnFtWxZceSUTc7BtkA/X39pWE2+vC+uy6DjuG/4b0FhWkwfHjTcQHmSBkP0RNFqfitKuWd3oacyLRJ951Xdo=
   matrix:
   - PLV8_VERSION=1.4.3 SCHEMAS="public"
-  - PLV8_VERSION=1.4.4 SCHEMAS="public"
+  - PLV8_VERSION=1.4.4 SCHEMAS="public" MAKE_BUILD_HERE=1
   - PLV8_VERSION=1.4.4 SCHEMAS="foo bar"
   # Unfortunately plv8 1.5.x hard to install because required very new libv8 version <https://github.com/plv8/plv8/issues/158#issuecomment-189621200>.
 notifications:
@@ -32,7 +32,7 @@ script: |
              fhirbase-tests-in-schemas:pg-9.4-plv8-$PLV8_VERSION \
              --schemas="$SCHEMAS" --install-fhirbase || exit 1
 after_success: |
-  if [ "$PLV8_VERSION" == "1.4.4" ]; then
+  if [ "$MAKE_BUILD_HERE" == "1" ]; then
     docker cp fhirbase-tests-in-schemas:/home/fhirbase/fhirbase/build \
               $TRAVIS_BUILD_DIR/ || exit 1
     rm --recursive --force $TRAVIS_BUILD_DIR/build/latest
@@ -45,7 +45,7 @@ after_success: |
       AWS_ACCESS_KEY_ID=$BUILD_AWS_ACCESS_KEY_ID \
       aws s3 cp --recursive $TRAVIS_BUILD_DIR/build s3://fhirbase
   fi
-  if [ "$PLV8_VERSION" == "1.4.4" ] && [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+  if [ "$MAKE_BUILD_HERE" == "14" ] && [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     echo $PASS | gpg --passphrase-fd 0 --decrypt --output - ./secure.tar.gz.asc \
       | tar --extract --gzip --file -
     [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1
