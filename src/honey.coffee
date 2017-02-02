@@ -87,8 +87,8 @@ select = (res, expr)->
   res.push("SELECT")
   select_clause(res, expr.select)
   from(res, expr.from) if expr.from
-  where_clause(res, expr.where) if expr.where
   join_clause(res, expr.join) if expr.join
+  where_clause(res, expr.where) if expr.where
 
   if expr.order
     order_clause(res, expr.order)
@@ -173,7 +173,7 @@ isSymbol = (x)-> x && x.indexOf && x.indexOf('$') == 0
 
 isKeyword = (x)-> x && x.indexOf && x.indexOf(':') == 0
 
-name = (x)-> x.replace(/^(:|\$)/,'')
+name = (x)-> x && x.replace(/^(:|\$)/,'')
 
 parameter = (res, expr)->
   if lang.isArray(expr)
@@ -293,7 +293,7 @@ CREATE_CLAUSES =
     parens res, ->
       comma_delimited res, expr.expression, (ex)->
         heval(res, ex)
-      heval(res, expr.opclass) if expr.opclass
+        heval(res, expr.opclass) if expr.opclass
   table: (res, expr)->
     res.push("CREATE TABLE")
     res.push("IF NOT EXISTS") if expr.safe
