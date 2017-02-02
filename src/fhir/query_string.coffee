@@ -17,6 +17,15 @@ parse_chained_left = (x)->
   [name, modifier] = decodeURIComponent(x).split(':')
   lang.merge({}, {name: name, modifier: modifier, chain: chain})
 
+parse_rchained_left = (x)->
+  [resource, link, x] = x.split(':')
+  [name, modifier] = decodeURIComponent(x).split(':')
+  if name && name.indexOf('.') > -1
+      throw new Error("Chained name is not supported in reverse chaining: #{name}")
+  if modifier && modifier.length
+      throw new Error("Modifiers is not supported in reverse chaining: #{modifier}")
+  lang.merge({}, {name: name, modifier: modifier, chain: [[resource, link]]})
+
 parse_right =(x)->
   x.split(',').map(parse_one_value)
 
@@ -156,6 +165,8 @@ grouping = (acc, expr)->
       where.push(form)
     else if key == '$chained'
       joins.push(form)
+    else if key == '$rchained'
+      joins.push(form)
     else if is_special_param(key)
       where.push form
     else
@@ -168,7 +179,9 @@ grouping = (acc, expr)->
   result
 
 typed = ([l,r])->
-  if l.indexOf('.') > -1
+  if l.indexOf('_has:') == 0
+    ['$rchained', l.substring(5), r]
+  else if l.indexOf('.') > -1
     ['$chained', l, r]
   else if l.indexOf('_') == 0
     [key,mod] = l.split(':')
@@ -223,6 +236,27 @@ exports.parse = (resourceType, str) ->
         form.push ['$param', meta, right[0]]
       else
         form.push ['$or'].concat(right.map((x)-> ['$param', lang.clone(meta), x]))
+      plv8.elog(INFO, JSON.stringify(form))
+      form
+    $rchained: (l, r)->
+      left = parse_rchained_left(l)
+      right = parse_right(r)
+
+      form = ['$rchained']
+      chain = left.chain
+      item = null
+      currentResourceType = resourceType
+      for [element, rt] in chain
+        item = ['$param', {resourceType: element, name: rt, join: currentResourceType, reverse: true}, {value: '$id'}]
+        form.push(item)
+        currentResourceType = element
+      meta = {resourceType: currentResourceType, name: left.name}
+      meta.modifier = left.modifier if left.modifier
+      if right.length == 1
+        form.push ['$param', meta, right[0]]
+      else
+        form.push ['$or'].concat(right.map((x)-> ['$param', lang.clone(meta), x]))
+      plv8.elog(INFO, JSON.stringify(form))
       form
 
   lisp.eval_with(forms, expr)
