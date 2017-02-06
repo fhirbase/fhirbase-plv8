@@ -19,6 +19,12 @@ exports.fhir_expand_valueset = (plv8, query)->
                       ['$ilike', ':code', "%#{query.filter}%"]]
 
 
+  valueset = utils.exec plv8,
+    select: [":resource->'status' as status", ':expanded_at', ":resource->'url' as url", ":expanded_id"]
+    from: [':valueset'],
+    where: ['$eq', ':id', "#{query.id}"],
+    limit: 1
+
   rows = utils.exec plv8,
     select: [':code', ':display', ':system']
     from: ':_valueset_expansion'
@@ -27,7 +33,11 @@ exports.fhir_expand_valueset = (plv8, query)->
 
   id: query.id
   resourceType: 'ValueSet'
+  status: valueset[0].status,
   expansion:
+    identifier: valueset[0].url + '/' + valueset[0].expanded_id
+    timestamp: valueset[0].expanded_at
+    total: rows.length
     contains: rows
 
 exports.fhir_expand_valueset.plv8_signature = ['json', 'json']
@@ -111,6 +121,11 @@ _create_concept = (plv8, acc, props, parent, concept)->
   for ch in (concept.concept || [])
     _create_concept(plv8, acc, props, concept, ch)
 
+_remove_concept = (plv8, acc, system, code)->
+    acc.forEach (item, idx)->
+        if system && item.system == system && item.code == code
+           acc.splice(idx, 1)
+
 _expand_resource = (plv8, acc, vid, resource)->
   codeSystem = resource.codeSystem
   for concept in ((codeSystem && codeSystem.concept) || [])
@@ -140,11 +155,20 @@ _expand_resource = (plv8, acc, vid, resource)->
           where: ['$eq', ":resource->>'url'", imp]
           limit: 1
         syst_res = (syst[0] && syst[0].resource)
-        _expand_resource(plv8, acc, vid, syst_res)
+        if syst_res
+            _expand_resource(plv8, acc, vid, syst_res)
+        else
+            plv8.elog(NOTICE, "import not found", imp);
+
+
+  for exc in ((resource.compose && resource.compose.exclude) || [])
+      for concept in (exc.concept || [])
+        _remove_concept(plv8, acc, exc.system, concept.code)
 
 _expand_valueset = (plv8, resource)->
   acc = []
 
+  plv8.execute "UPDATE valueset SET expanded_at=now(), expanded_id=gen_random_uuid() WHERE id=$1", [resource.id]
   _expand_resource(plv8, acc, resource.id, resource)
 
   res = plv8.execute """
@@ -169,7 +193,7 @@ exports.fhir_valueset_after_changed = (plv8, resource)->
     delete: ':_valueset_expansion'
     where: {valueset_id: resource.id}
 
-    _expand_valueset(plv8, resource)
+  _expand_valueset(plv8, resource)
 
 exports.fhir_valueset_after_changed.plv8_signature = ['json', 'json']
 
