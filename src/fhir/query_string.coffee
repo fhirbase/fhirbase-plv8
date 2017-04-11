@@ -236,7 +236,6 @@ exports.parse = (resourceType, str) ->
         form.push ['$param', meta, right[0]]
       else
         form.push ['$or'].concat(right.map((x)-> ['$param', lang.clone(meta), x]))
-      plv8.elog(INFO, JSON.stringify(form))
       form
     $rchained: (l, r)->
       left = parse_rchained_left(l)
@@ -256,7 +255,6 @@ exports.parse = (resourceType, str) ->
         form.push ['$param', meta, right[0]]
       else
         form.push ['$or'].concat(right.map((x)-> ['$param', lang.clone(meta), x]))
-      plv8.elog(INFO, JSON.stringify(form))
       form
 
   lisp.eval_with(forms, expr)
