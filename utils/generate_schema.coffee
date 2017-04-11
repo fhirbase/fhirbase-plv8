@@ -151,6 +151,19 @@ console.log """
 """
 
 console.log """
+  -- just experiment
+  drop table if exists _fhirbase_hook;
+  create table _fhirbase_hook  (
+      id serial primary key,
+      function_name text not null,
+      system boolean default false,
+      phase text not null,
+      hook_function_name text not null,
+      weight integer
+  );
+"""
+
+console.log """
   CREATE INDEX idx_valueset_expansion_ilike
   ON _valueset_expansion
   USING GIN (code gin_trgm_ops, display gin_trgm_ops);
