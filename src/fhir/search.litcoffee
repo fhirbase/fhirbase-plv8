@@ -320,16 +320,16 @@ This tricky function converts chained parameters into SQL joins.
       current_alias = base
       res = for param in chained[1..-2]
         meta = param[1]
-        if meta.reverse
-            joined_resource = meta.resourceType
+        if meta[0].reverse
+            joined_resource = meta[0].resourceType
             joined_table = namings.table_name(plv8, joined_resource)
             join_alias = next_alias()
-            value = {value: ":'#{meta.join}/' || #{current_alias}.id"}
+            value = {value: ":'#{meta[0].join}/' || #{current_alias}.id"}
 
             on_expr = to_hsql(join_alias, ['$param', meta, value])
             current_alias = join_alias
         else
-            joined_resource = meta.join
+            joined_resource = meta[0].join
             joined_table = namings.table_name(plv8, joined_resource)
             join_alias = next_alias()
             value = {value: ":'#{joined_resource}/' || #{join_alias}.id"}
