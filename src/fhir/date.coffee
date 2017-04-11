@@ -1,7 +1,7 @@
 extract_tz = (date)->
   tz = ''
   date_length = date.length
-  if date.indexOf('Z') == date_length - 1 
+  if date.indexOf('Z') == date_length - 1
     tz = 'Z'
     date = date.substring(0, date_length - 1)
   else if date.length > 10 and date.match(/[+|-](0[0-9]|1[0-3])$/)
@@ -61,7 +61,7 @@ exports.to_lower_date = (date)->
     #2010-03-05T23:50:30
     when 19 then "#{date}#{ms}#{tz}"
     else
-      throw new Error("date.to_range: Don't know how to handle #{date}")
+      throw new Error("date.to_lower_date: Don't know how to handle #{date}")
 
 exports.to_upper_date = (date)->
   return null unless date
@@ -106,7 +106,7 @@ exports.to_upper_date = (date)->
     #2010-03-05T23:50:30
     when 19 then "#{date}#{ms}#{tz}"
     else
-      throw new Error("date.to_range: Don't know how to handle #{date}")
+      throw new Error("date.to_upper_date: Don't know how to handle #{date}")
 
 exports.to_range = (date)->
   return null unless date

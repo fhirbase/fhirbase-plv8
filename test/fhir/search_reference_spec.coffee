@@ -20,13 +20,13 @@ testCases = [
   },
   { # tables with PostgreSQL reserved name <https://github.com/fhirbase/fhirbase-plv8/issues/77>
     resource: {
-      resourceType: 'Order'
+      resourceType: 'Task'
       foo:
         reference: 'Foo/1'
     },
     specs: [
       {
-        path: ['Order', 'foo']
+        path: ['Task', 'foo']
         elementType: 'Reference'
         result: ['1', 'foo/1']
       }
@@ -39,6 +39,10 @@ describe "extract_as_reference", ->
     testCase.specs.forEach (spec)->
       it JSON.stringify(spec.path), ->
         res = search.fhir_extract_as_reference(
-          {}, testCase.resource, spec.path, spec.elementType
+          {}, testCase.resource,
+          [
+            {path: ['Task', 'unknownPath'], elementType: spec.elementType}
+            {path: spec.path, elementType: spec.elementType}
+          ]
         )
         assert.deepEqual(res, spec.result)

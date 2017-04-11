@@ -23,7 +23,7 @@ resource =
     {system: 'ssn', value: '1'}
     {system: 'mrn', value: '2'}
   ]
-  value: 
+  value:
     value: 10
     unit: "mg"
     system: "http://unitsofmeasure.org"
@@ -89,7 +89,11 @@ specs = [
 describe "extract_as_token", ->
   specs.forEach (spec)->
     it JSON.stringify(spec.path), ->
-      res = search.fhir_extract_as_token({}, resource, spec.path, spec.elementType)
+      metas = [
+        {path: ['Resource', 'unknownPath'], elementType: spec.elementType},
+        {path: spec.path, elementType: spec.elementType}
+      ]
+      res = search.fhir_extract_as_token({}, resource, metas)
       assert.deepEqual(res, spec.result)
-      order = search.fhir_sort_as_token({}, resource, spec.path, spec.elementType)
+      order = search.fhir_sort_as_token({}, resource, metas)
       assert.deepEqual(order, spec.order)

@@ -18,7 +18,7 @@ env:
   matrix:
   - PLV8_VERSION=1.4.3 SCHEMAS="public"
   - PLV8_VERSION=1.4.4 SCHEMAS="public"
-  - PLV8_VERSION=1.4.7 SCHEMAS="foo bar"
+  - PLV8_VERSION=1.4.4 SCHEMAS="foo bar" MAKE_BUILD_HERE="true"
   # Unfortunately plv8 1.5.x hard to install because required very new libv8 version <https://github.com/plv8/plv8/issues/158#issuecomment-189621200>.
 notifications:
   slack: fhirbase:isitOv0KvPgaMzrccuAzVUwB
@@ -32,7 +32,7 @@ script: |
              fhirbase-tests-in-schemas:pg-9.4-plv8-$PLV8_VERSION \
              --schemas="$SCHEMAS" --install-fhirbase || exit 1
 after_success: |
-  if [ "$PLV8_VERSION" == "1.4.7" ]; then
+  if [ "$MAKE_BUILD_HERE" == "true" ]; then
     docker cp fhirbase-tests-in-schemas:/home/fhirbase/fhirbase/build \
               $TRAVIS_BUILD_DIR/ || exit 1
     rm --recursive --force $TRAVIS_BUILD_DIR/build/latest
@@ -45,7 +45,7 @@ after_success: |
       AWS_ACCESS_KEY_ID=$BUILD_AWS_ACCESS_KEY_ID \
       aws s3 cp --recursive $TRAVIS_BUILD_DIR/build s3://fhirbase
   fi
-  if [ "$PLV8_VERSION" == "1.4.7" ] && [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+  if [ "$MAKE_BUILD_HERE" == "true" ] && [ ! -z "$TRAVIS_TAG" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     echo $PASS | gpg --passphrase-fd 0 --decrypt --output - ./secure.tar.gz.asc \
       | tar --extract --gzip --file -
     [[ ${PIPESTATUS[0]} -ne 0 || ${PIPESTATUS[1]} -ne 0 ]] && exit 1

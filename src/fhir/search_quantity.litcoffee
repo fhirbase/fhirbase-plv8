@@ -34,16 +34,14 @@ TODO: later we will add some support for units convertion and search in canonica
     })
     exports.index_order = sf.index_order
 
-
     identity = (x)-> x
 
-    extract_expr = (meta, tbl)->
+    extract_expr = (metas, tbl)->
       from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
-
-      ["$fhir_extract_as_#{meta.searchType}"
+      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
+      ["$fhir_extract_as_#{metas[0].searchType}"
         ['$cast', from, ':json']
-        ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-        ['$quote', meta.elementType]]
+        ['$cast', ['$quote', JSON.stringify(m)], ':json']]
 
     assoc = (obj, k, v)->
       res = lang.clone(obj)
@@ -59,39 +57,43 @@ TODO: later we will add some support for units convertion and search in canonica
         return value.prefix
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
-    exports.handle = (tbl, meta, value)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Quantity Search: unsupported type #{JSON.stringify(meta)}")
-
-      unless OPERATORS.indexOf(meta.operator) > -1
-        throw new Error("Quantity Search: Unsupported operator #{meta.operator}")
+    exports.handle = (tbl, metas, value)->
+      for m in metas
+        unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+          throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+        unless OPERATORS.indexOf(m.operator) > -1
+          throw new Error("Quantity Search: Unsupported operator #{m.operator}")
+      operator = metas[0].operator
 
       parts = value.value.split('|')
       numeric_part = parts[0]
 
-      op = if meta.operator == 'missing'
+      op = if operator == 'missing'
           if value.value == 'false' then '$notnull' else '$null'
         else
-          "$#{meta.operator}"
+          "$#{operator}"
 
-      expr = [op, extract_expr(assoc(meta, 'searchType', 'number'), tbl), numeric_part]
+      m = metas.map((m)-> assoc(m, 'searchType', 'number'))
 
-      if parts.length  == 1 or meta.operator == 'missing'
+      expr = [op, extract_expr(m, tbl), numeric_part]
+
+      if parts.length == 1 or operator == 'missing'
         expr
       else
         token_part = parts[1..-1].filter(identity).join('|')
-        meta.searchType = 'token'
+        m = metas.map((m)-> assoc(m, 'searchType', 'token'))
+
         ['$and'
           expr
           ["$&&",
-            extract_expr(assoc(meta, 'searchType', 'token'), tbl),
+            extract_expr(m, tbl),
             ['$cast', ['$array', token_part], ":text[]"]]]
 
-    exports.order_expression = (tbl, meta)->
-      number_s.order_expression(tbl, assoc(meta, 'searchType', 'number'))
+    exports.order_expression = (tbl, metas)->
+      m = metas.map((meta)-> assoc(meta, 'searchType', 'number'))
+      number_s.order_expression(tbl, m)
 
     exports.index = (plv8, metas)->
       number_part = number_s.index(plv8, metas.map((meta)-> assoc(meta, 'searchType', 'number')))
       token_part = token_s.index(plv8, metas.map((meta)-> assoc(meta, 'searchType', 'token')))
       number_part.concat(token_part)
-

@@ -17,40 +17,49 @@ Only equality operator is implemented.
     xpath = require('./xpath')
     lang = require('../lang')
     search_token = require('./search_token')
+    search_common = require('./search_common')
 
     TODO = -> throw new Error("TODO")
 
     EMPTY_VALUE = "$NULL"
 
-    exports.fhir_extract_as_reference = (plv8, resource, path, element_type)->
-      if element_type == 'Reference'
-        res = []
-        for ref in xpath.get_in(resource, [path]) when ref and ref.reference
-          reference = ref.reference.toLowerCase()
-          parts = reference.split('/')
-          len = parts.length
-          res.push(parts[(len - 1)])
-          res.push("#{parts[(len - 2)]}/#{parts[(len - 1)]}")
-          res.push(reference) if len > 2
-        if res.length == 0
-          [EMPTY_VALUE]
+    extract_value = (resource, metas)->
+      for meta in metas
+        value = xpath.get_in(resource, [meta.path])
+        if value && (value.length > 0)
+          return {
+            value: value
+            path: meta.path
+            elementType: meta.elementType
+          }
+      null
+
+    exports.fhir_extract_as_reference = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      res = []
+      if value
+        if value.elementType == 'Reference'
+          for ref in value.value when ref and ref.reference
+            reference = ref.reference.toLowerCase()
+            parts = reference.split('/')
+            len = parts.length
+            res.push(parts[(len - 1)])
+            res.push("#{parts[(len - 2)]}/#{parts[(len - 1)]}")
+            res.push(reference) if len > 2
         else
-          res
+          throw new Error("extract_as_reference: Not implemented for #{value.elementType}")
+      if res.length == 0
+        [EMPTY_VALUE]
       else
-        throw new Error("extract_as_reference: Not implemented for #{element_type}")
+        res
 
     exports.fhir_extract_as_reference.plv8_signature =
-      arguments: ['json', 'json', 'text']
+      arguments: ['json', 'json']
       returns: 'text[]'
       immutable: true
 
-    extract_expr = (meta, tbl)->
-      from = if tbl then ['$q',":#{tbl}", ':resource'] else ':resource'
-
-      ['$fhir_extract_as_reference'
-        ['$cast', from, ':json']
-        ['$cast', ['$quote', JSON.stringify(meta.path)], ':json']
-        ['$quote', meta.elementType]]
+    sf = search_common.get_search_functions({extract:'fhir_extract_as_reference'})
+    extract_expr = sf.extract_expr
 
     OPERATORS =
       missing: (tbl, meta, value)->
@@ -66,14 +75,16 @@ Only equality operator is implemented.
 
     SUPPORTED_TYPES = ['Reference']
 
-    exports.handle = (tbl, meta, value)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Reference Search: unsupported type #{JSON.stringify(meta)}")
+    exports.handle = (tbl, metas, value)->
+      for m in metas
+        unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+          throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+      operator = metas[0].operator
 
-      if meta.operator == "missing"
+      if operator == "missing"
         op = if value.value == 'false' then '$ne' else '$eq'
         return [op
-                 ['$cast', extract_expr(meta, tbl), ":text[]"]
+                 ['$cast', extract_expr(metas, tbl), ":text[]"]
                  ['$cast', ['$array', EMPTY_VALUE], ":text[]"]]
 
       # If `value` like /Patient/id or http://fhirbase/Patient/id
@@ -101,17 +112,16 @@ Only equality operator is implemented.
           ['$array', value.value.toLowerCase()]
 
       ["$&&"
-        ['$cast', extract_expr(meta, tbl), ":text[]"]
+        ['$cast', extract_expr(metas, tbl), ":text[]"]
         ['$cast', val, ":text[]"]]
 
-    exports.order_expression = (tbl, meta)->
-      search_token.order_expression(tbl, meta)
+    exports.order_expression = (tbl, metas)->
+      search_token.order_expression(tbl, metas)
 
     exports.index = (plv8, metas)->
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_reference"
 
-      exprs = metas.map((x)-> extract_expr(x))
       [
         name: idx_name
         ddl:
@@ -119,5 +129,5 @@ Only equality operator is implemented.
           name:  idx_name
           using: ':GIN'
           on: ['$q', meta.resourceType.toLowerCase()]
-          expression: exprs
+          expression: [extract_expr(metas)]
       ]

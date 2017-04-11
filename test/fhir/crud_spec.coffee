@@ -159,6 +159,35 @@ describe "CORE: CRUD spec", ->
     assert.equal(read.id, vread.id)
     assert.equal(read.meta.versionId, vread.meta.versionId)
 
+  it 'read If-Modified-Since', ->
+    created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users'})
+    lastUpdated = created.meta.lastUpdated
+    lastUpdated.setMilliseconds(lastUpdated.getMilliseconds() + 2)
+    unmodified = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users', ifModifiedSince: lastUpdated})
+    lastUpdated.setMilliseconds(lastUpdated.getMilliseconds() - 4)
+    modified = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users', ifModifiedSince: lastUpdated})
+    assert.equal(unmodified.resourceType, 'OperationOutcome')
+    assert.equal(unmodified.issue[0].extension[0].url, 'http-status-code')
+    assert.equal(unmodified.issue[0].extension[0].valueString, '304')
+    assert.equal(modified.resourceType, 'Users')
+    assert.equal(modified.id, created.id)
+
+  it 'read ifNoneMatch', ->
+    created = crud.fhir_create_resource(plv8, resource:  {resourceType: 'Users'})
+    createdVersion = created.meta.versionId
+    updated = crud.fhir_update_resource(plv8, resource: copy(created))
+    updatedVersion = updated.meta.versionId
+    unknown = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users', ifNoneMatch: 'W/"unknown"'})
+    nonematch = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users', ifNoneMatch: "W/\"#{createdVersion}\""})
+    match = crud.fhir_read_resource(plv8, {id: created.id, resourceType: 'Users', ifNoneMatch: "W/\"#{updatedVersion}\""})
+    assert.equal(unknown.id, created.id)
+    assert.equal(unknown.meta.versionId, updatedVersion)
+    assert.equal(nonematch.id, created.id)
+    assert.equal(nonematch.meta.versionId, updatedVersion)
+    assert.equal(match.resourceType, 'OperationOutcome')
+    assert.equal(match.issue[0].extension[0].url, 'http-status-code')
+    assert.equal(match.issue[0].extension[0].valueString, '304')
+
   it "read unexisting", ->
     read = crud.fhir_read_resource(plv8, {id: 'unexisting', resourceType: 'Users'})
     assert.equal(read.resourceType, 'OperationOutcome')
@@ -385,7 +414,15 @@ describe "CORE: CRUD spec", ->
     assert.equal(outcome.resourceType, 'OperationOutcome')
     assert.equal(outcome.issue[0].code, 'not-found')
     assert.equal(outcome.issue[0].extension[0].url, 'http-status-code')
-    assert.equal(outcome.issue[0].extension[0].valueString, '404')
+    assert.equal(outcome.issue[0].extension[0].valueString, '204')
+
+  it "delete deleted", ->
+    created = crud.fhir_create_resource(plv8, resource: {resourceType: 'Users'})
+    crud.fhir_delete_resource(plv8, {id: created.id, resourceType: 'Users'})
+    deleted = crud.fhir_delete_resource(plv8, {id: created.id, resourceType: 'Users'})
+    assert.equal(deleted.issue[0].code, 'not-found')
+    assert.equal(deleted.issue[0].extension[0].url, 'http-status-code')
+    assert.equal(deleted.issue[0].extension[0].valueString, '204')
 
   it 'conditional delete', ->
     created = crud.fhir_create_resource(

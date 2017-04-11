@@ -38,47 +38,55 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
 
     TODO = -> throw new Error("TODO")
 
-    exports.fhir_extract_as_token = (plv8, resource, path, element_type)->
+    extract_value = (resource, metas)->
+      for meta in metas
+        value = xpath.get_in(resource, [meta.path])
+        if value && (value.length > 0)
+          return {
+            value: value
+            path: meta.path
+            elementType: meta.elementType
+          }
+      null
+
+    exports.fhir_extract_as_token = (plv8, resource, metas)->
       res = []
-      data = xpath.get_in(resource, [path])
-
-      if element_type == 'boolean'
-        res = for str in data
-          if str.toString() == 'false'
-            'false'
-          else
-            'true'
-      else if element_type == 'dateTime' or element_type == 'date'
-        res = if data.length > 0 then ['true', 'false'] else []
-      else if element_type == 'code' || element_type == 'string' || element_type == 'uri'
-        res = (str.toString().toLowerCase() for str in data)
-      else if element_type == 'Identifier' or element_type == 'ContactPoint'
-        for coding in data
-            res.push(coding.value.toString().toLowerCase()) if coding.value
-            res.push("#{coding.system}|#{coding.value}".toLowerCase())
-      else if element_type == 'Coding'
-        for coding in data
-            res.push(coding.code.toString().toLowerCase()) if coding.code
-            res.push("#{coding.system}|#{coding.code}".toLowerCase())
-      else if element_type == 'Quantity'
-        for quant in data
-            res.push(quant.code.toString().toLowerCase()) if quant.code
-            res.push(quant.unit.toString().toLowerCase()) if quant.unit
-            res.push("#{quant.system}|#{quant.code}".toLowerCase())
-            res.push("#{quant.system}|#{quant.unit}".toLowerCase())
-      else if element_type == 'CodeableConcept'
-        for concept in data
-          for coding in (concept.coding || [])
-            res.push(coding.code.toString().toLowerCase()) if coding.code
-            res.push("#{coding.system}|#{coding.code}".toLowerCase())
-      else if element_type == 'Reference'
-        for ref in data
-          res.push(ref.reference)
-      else
-        throw new Error("fhir_extract_as_token: Not implemented for #{element_type}")
-
-      # console.log("!!!! #{resource.id} #{JSON.stringify(data)} #{JSON.stringify(path)} => #{JSON.stringify(res)} (#{element_type})")
-
+      data = extract_value(resource, metas)
+      if data
+        if data.elementType == 'boolean'
+          res = for str in data.value
+            if str.toString() == 'false'
+              'false'
+            else
+              'true'
+        else if data.elementType == 'dateTime' or data.elementType == 'date'
+          res = if data.value.length > 0 then ['true', 'false'] else []
+        else if data.elementType == 'code' || data.elementType == 'string' || data.elementType == 'uri'
+          res = (str.toString().toLowerCase() for str in data.value)
+        else if data.elementType == 'Identifier' or data.elementType == 'ContactPoint'
+          for coding in data.value
+              res.push(coding.value.toString().toLowerCase()) if coding.value
+              res.push("#{coding.system}|#{coding.value}".toLowerCase())
+        else if data.elementType == 'Coding'
+          for coding in data.value
+              res.push(coding.code.toString().toLowerCase()) if coding.code
+              res.push("#{coding.system}|#{coding.code}".toLowerCase())
+        else if data.elementType == 'Quantity'
+          for quant in data.value
+              res.push(quant.code.toString().toLowerCase()) if quant.code
+              res.push(quant.unit.toString().toLowerCase()) if quant.unit
+              res.push("#{quant.system}|#{quant.code}".toLowerCase())
+              res.push("#{quant.system}|#{quant.unit}".toLowerCase())
+        else if data.elementType == 'CodeableConcept'
+          for concept in data.value
+            for coding in (concept.coding || [])
+              res.push(coding.code.toString().toLowerCase()) if coding.code
+              res.push("#{coding.system}|#{coding.code}".toLowerCase())
+        else if data.elementType == 'Reference'
+          for ref in data.value
+            res.push(ref.reference)
+        else
+          throw new Error("fhir_extract_as_token: Not implemented for #{data.elementType}")
 
       if res.length == 0
         ['$NULL']
@@ -86,49 +94,51 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
         res
 
     exports.fhir_extract_as_token.plv8_signature =
-      arguments: ['json', 'json', 'text']
+      arguments: ['json', 'json']
       returns: 'text[]'
       immutable: true
 
-    exports.fhir_sort_as_token = (plv8, resource, path, element_type)->
-      data = xpath.get_in(resource, [path])[0]
-      return null unless data
-      if element_type == 'boolean'
+    exports.fhir_sort_as_token = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      return null unless value
+      data = value.value[0]
+
+      if value.elementType == 'boolean'
         if data.toString() == 'false' then 'false' else 'true'
-      else if element_type == 'code' || element_type == 'string' || element_type == 'uri'
+      else if value.elementType == 'code' || value.elementType == 'string' || value.elementType == 'uri'
         data.toString()
-      else if element_type == 'Identifier' or element_type == 'ContactPoint'
+      else if value.elementType == 'Identifier' or value.elementType == 'ContactPoint'
         [data.system, data.value].join('0').toLowerCase()
-      else if element_type == 'Coding'
+      else if value.elementType == 'Coding'
         [data.system, data.code, data.display].join('0').toLowerCase()
-      else if element_type == 'Quantity'
+      else if value.elementType == 'Quantity'
         [data.system, data.unit, data.code].join('0').toLowerCase()
-      else if element_type == 'CodeableConcept'
+      else if value.elementType == 'CodeableConcept'
         coding = data.coding && data.coding[0]
         if coding
           [coding.system, coding.code, coding.display].join('0').toLowerCase()
         else
           data.text || JSON.stringify(data)
-      else if element_type == 'Reference'
+      else if value.elementType == 'Reference'
         data.reference
       else
-        throw new Error("fhir_extract_as_token: Not implemented for #{element_type}")
+        throw new Error("fhir_extract_as_token: Not implemented for #{value.elementType}")
 
     exports.fhir_sort_as_token.plv8_signature =
-      arguments: ['json', 'json', 'text']
+      arguments: ['json', 'json']
       returns: 'text'
       immutable: true
 
     OPERATORS =
-      missing: (tbl, meta, value)->
+      missing: (tbl, metas, value)->
         op = if value.value == 'false' then '$ne' else '$eq'
         [op
-          ['$cast', extract_expr(meta, tbl), ":text[]"]
+          ['$cast', extract_expr(metas, tbl), ":text[]"]
           ['$cast', ['$array', "$NULL"], ":text[]"]]
 
-      eq: (tbl, meta, value)->
+      eq: (tbl, metas, value)->
         ["$&&"
-          ['$cast', extract_expr(meta, tbl), ":text[]"]
+          ['$cast', extract_expr(metas, tbl), ":text[]"]
           ['$cast', ['$array', value.value.toString().toLowerCase()], ":text[]"]]
 
 
@@ -137,21 +147,20 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
       return 'missing' if meta.modifier == 'missing'
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
-    exports.handle = (tbl, meta, value)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Token Search: unsupported type #{JSON.stringify(meta)}")
-
-      op = OPERATORS[meta.operator]
+    exports.handle = (tbl, metas, value)->
+      for m in metas
+        unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+          throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+      op = OPERATORS[metas[0].operator]
 
       unless op
-        throw new Error("Token Search: Unsupported operator #{JSON.stringify(meta)}")
+        throw new Error("Token Search: Unsupported operator #{JSON.stringify(metas)}")
 
-      op(tbl, meta, value)
+      op(tbl, metas, value)
 
     exports.index = (plv8, metas)->
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_token"
-      exprs = metas.map((x)-> extract_expr(x))
 
       [
         name: idx_name
@@ -160,5 +169,5 @@ PostgreSQL implementation is based on arrays support - http://www.postgresql.org
           name:  idx_name
           using: ':GIN'
           on: ['$q', meta.resourceType.toLowerCase()]
-          expression: exprs
+          expression: [extract_expr(metas)]
       ]

@@ -1,4 +1,4 @@
-export DATABASE_URL=postgres://root:root@localhost:5432/build
+# export DATABASE_URL=postgres://root:root@localhost:5432/build
 psql postgres -c 'drop database if exists build' && \
 psql postgres -c "create database build" && \
 bash build-commit.sh --rebuild && \

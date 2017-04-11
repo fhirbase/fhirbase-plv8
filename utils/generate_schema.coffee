@@ -133,6 +133,8 @@ for tp in ['StructureDefinition', 'SearchParameter', 'OperationDefinition', 'Val
   """
 
 console.log """
+  alter table valueset add expanded_at timestamp not null default now();
+  alter table valueset add expanded_id uuid;
   drop table if exists  _valueset_expansion;
   create table _valueset_expansion  (
       id serial primary key,

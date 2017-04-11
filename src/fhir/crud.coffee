@@ -188,14 +188,27 @@ fhir_read_resource = _build [
     [wrap_postprocess]
   ],(plv8, query)->
 
+  if query.ifModifiedSince
+    where = ['$and', ['$eq', ':id', query.id], ['$gt', ':updated_at', JSON.stringify(query.ifModifiedSince)]]
+  else
+    where = { id: query.id }
+
   res = utils.exec plv8,
     select: ':*'
     from: sql.q(query.table_name)
-    where: { id: query.id }
+    where: where
 
   row = res[0]
 
-  unless row
+  if row
+    if query.ifNoneMatch
+      ifNoneMatch = query.ifNoneMatch.match(/^W\/"(.*)"/)
+      if ifNoneMatch && (ifNoneMatch[1] == row.version_id)
+        return outcome.not_modified()
+  else
+    if query.ifModifiedSince
+      return outcome.not_modified()
+
     deletionHistory = history.fhir_resource_history(plv8, {
       id: query.id, resourceType: query.resourceType
     }).entry.filter((entry) -> entry.request.method == 'DELETE')
@@ -436,15 +449,7 @@ exports.fhir_delete_resource = _build [
 
   if query.queryString
     unless _get_in(query, ['resourceType'])
-      # TODO: Move this OperationOutcome to `src/fhir/outcome.coffee`.
-      return {
-        resourceType: 'OperationOutcome',
-        issue:
-          severity: 'error',
-          code: 'structure',
-          diagnostics: 'expected attribute "resourceType"'
-      }
-
+      return outcome.no_resource_type()
     result = search.fhir_search(
       plv8,
       {resourceType: query.resourceType, queryString: query.queryString}
@@ -455,6 +460,8 @@ exports.fhir_delete_resource = _build [
       else if result.entry.length == 1
         old_version = result.entry[0].resource
         id = old_version.id
+      else
+        return outcome.unexisting()
   else
     issues = []
     for attr in [['id'], ['resourceType']]
@@ -470,9 +477,11 @@ exports.fhir_delete_resource = _build [
 
     old_version = exports.fhir_read_resource(plv8, query)
     id = query.id
+    if outcome.is_not_found(old_version)
+      return outcome.unexisting()
 
   unless old_version
-    return outcome.not_found(query.id)
+    return outcome.unexisting()
 
   if old_version.resourceType == 'OperationOutcome'
     return old_version

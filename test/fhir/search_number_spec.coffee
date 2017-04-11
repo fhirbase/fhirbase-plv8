@@ -28,7 +28,7 @@ testCases = [
   },
   { # tables with PostgreSQL reserved name <https://github.com/fhirbase/fhirbase-plv8/issues/77>
     resource: {
-      resourceType: 'Order'
+      resourceType: 'Task'
       length: '10'
       valueQuantity:
         value: 100
@@ -37,12 +37,12 @@ testCases = [
     },
     specs: [
       {
-        path: ['Order', 'length']
+        path: ['Task', 'length']
         elementType: 'integer'
         result: '10'
       },
       {
-        path: ['Order', 'valueQuantity']
+        path: ['Task', 'valueQuantity']
         elementType: 'Quantity'
         result: '100'
       }
@@ -55,6 +55,12 @@ describe "extract_as_token", ->
     testCase.specs.forEach (spec)->
       it JSON.stringify(spec.path), ->
         res = search.fhir_extract_as_number(
-          {}, testCase.resource, spec.path, spec.elementType
+          {}, testCase.resource,
+          [
+            {path: ['Task', 'unknownPath'], elementType: spec.elementType},
+            {path: spec.path, elementType: spec.elementType}
+          ]
+
+
         )
         assert.equal(res, spec.result)

@@ -12,6 +12,8 @@ planExamples = helpers.loadYaml("#{__dirname}/fixtures/transaction_plans.yml")
 
 transactionExamples = helpers.loadYaml("#{__dirname}/fixtures/transaction_examples.yml")
 
+copy = (x)-> JSON.parse(JSON.stringify(x))
+
 describe 'transaction plans', ->
   planExamples.forEach (e, index) ->
     it "should generate right plan for bundle ##{index}", ->
@@ -118,7 +120,7 @@ describe 'Transaction', ->
         "issue": [
           {
             "severity": "error",
-            "code": "409",
+            "code": "conflict",
             "extension": [
               {
                 "url": "http-status-code",
@@ -157,6 +159,54 @@ describe 'Transaction', ->
     assert.equal(r.entry[0].resource.resourceType, 'Patient')
     assert.equal(r.entry[0].resource.name[0].family[0], 'Foo bar')
 
+  it 'history && vread', ->
+    res = {resourceType: 'Patient', name: [{given: ['Tim']}], id: '2345'}
+    schema.fhir_truncate_storage(plv8, resourceType: 'Patient')
+    created = crud.fhir_create_resource(plv8, allowId: true, resource: res)
+    updated = crud.fhir_update_resource(plv8, resource: copy(created))
+
+    bundle =
+      resourceType: 'Bundle'
+      id: 'bundle-transaction-id'
+      type: 'transaction'
+      entry: [
+        {
+          request:
+            method: 'GET'
+            url: '/Patient/2345/_history'
+        },
+        {
+          request:
+            method: 'GET'
+            url: '/Patient/_history'
+        },
+        {
+          request:
+            method: 'GET'
+            url: "Patient/2345/_history/#{created.meta.versionId}"
+        },
+        {
+          request:
+            method: 'GET'
+            url: "Patient/2345/_history/#{updated.meta.versionId}"
+        }
+      ]
+
+    t = transaction.fhir_transaction(plv8, bundle)
+    assert.equal(t.resourceType, 'Bundle')
+    assert.equal(t.type, 'transaction-response')
+
+    [t.entry[0], t.entry[1]].forEach (e) ->
+      r = e.resource
+      assert.equal(r.resourceType, 'Bundle')
+      assert.equal(r.type, 'history')
+      assert.equal(r.total, 2)
+      match(copy(r.entry[0].resource), copy(updated))
+      match(copy(r.entry[1].resource), copy(created))
+
+    match(copy(t.entry[2].resource), copy(created))
+    match(copy(t.entry[3].resource), copy(updated))
+
   describe 'conditional', ->
     beforeEach ->
       schema.fhir_truncate_storage(plv8, resourceType: 'Patient')
@@ -187,9 +237,9 @@ describe 'Transaction', ->
           {
             "resource": {
               "resourceType": "Patient",
-              "name": [{"given":["Name1"],"family":["Xyz"]}]
+              "name": [{"given":["Name1"],"family":["aaa~aaa.1.2"]}]
             },
-            "request": {"method":"PUT","url":"Patient?given=Name1"}}
+            "request": {"method":"PUT","url":"Patient?given=aaa~aaa.1.2"}}
           ]
         }
 
@@ -208,11 +258,10 @@ describe 'Transaction', ->
                       "Name1"
                     ],
                     "family": [
-                      "Xyz"
+                      "aaa~aaa.1.2"
                     ]
                   }
-                ],
-                "id": "id1",
+                ]
               }
             }
           ]
@@ -242,16 +291,16 @@ describe 'Transaction', ->
     schema.fhir_create_storage(plv8, {"resourceType": "Patient"})
     schema.fhir_truncate_storage(plv8, {"resourceType": "Patient"})
 
-    crud.fhir_create_resource(plv8,
-      {
-        "allowId": true,
-        "resource": {
-          "id": "id1",
-          "resourceType": "Patient",
-          "name": [{"given": ["Patient 1"]}]
+    ['id1', 'id2', 'id3'].forEach (id) ->
+      crud.fhir_create_resource(plv8, {
+        allowId: true
+        resource: {
+          id: id
+          resourceType: "Patient"
+          name: [{"given": ["John"]}]
+          }
         }
-      }
-    )
+      )
 
     t = transaction.fhir_transaction(plv8,
       {
@@ -267,7 +316,7 @@ describe 'Transaction', ->
           },
           {
             "request": {
-              "url": "\/Patient\/id2",
+              "url": "\/Patient\/?given=John",
               "method": "DELETE"
             }
           }
@@ -278,13 +327,15 @@ describe 'Transaction', ->
     match(
       t,
       resourceType: 'OperationOutcome'
-      issue: [
-        {
-          severity: 'error',
-          code: 'not-found',
-          diagnostics: 'Resource Id "id2" does not exist'
-        }
-      ]
+      issue: [{
+        severity: 'error'
+        code: '412'
+        diagnostics: 'Precondition Failed error indicating the client\'s criteria were not selective enough. undefined'
+        extension: [{
+          url: 'http-status-code'
+          valueString: '412'
+          }]
+        }]
     )
 
     patient = crud.fhir_read_resource(plv8,

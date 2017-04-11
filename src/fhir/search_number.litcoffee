@@ -16,22 +16,35 @@ it should be done in an extensible maner
 
     TODO = -> throw new Error("TODO")
 
-    exports.fhir_extract_as_number = (plv8, resource, path, element_type)->
-      data = xpath.get_in(resource, [path])[0] || null
-      return unless data
-      if element_type == 'integer' or element_type == 'positiveInt'
-        data
-      else if element_type == 'Quantity'
-        data.value
+    extract_value = (resource, metas)->
+      for meta in metas
+        value = xpath.get_in(resource, [meta.path])[0]
+        if value
+          return {
+            value: value
+            path: meta.path
+            elementType: meta.elementType
+          }
+      null
+
+    exports.fhir_extract_as_number = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      if value
+        if value.elementType == 'integer' or value.elementType == 'positiveInt'
+          value.value
+        else if value.elementType == 'Duration' or value.elementType == 'Quantity'
+          value.value.value
+        else
+          throw new Error("extract_as_number: unsupported element type #{value.elementType}")
       else
-        throw new Error("extract_as_number: unsupported element type #{element_type}")
+        null
 
     exports.fhir_extract_as_number.plv8_signature =
-      arguments: ['json', 'json', 'text']
+      arguments: ['json', 'json']
       returns: 'numeric'
       immutable: true
 
-    SUPPORTED_TYPES = ['integer', 'Quantity', 'positiveInt']
+    SUPPORTED_TYPES = ['integer', 'Quantity', 'positiveInt', 'Duration']
     OPERATORS = ['eq', 'lt', 'le', 'gt', 'ge', 'ne', 'missing']
 
     sf = search_common.get_search_functions({
@@ -53,25 +66,22 @@ it should be done in an extensible maner
         return value.prefix
       throw new Error("Not supported operator #{JSON.stringify(meta)} #{JSON.stringify(value)}")
 
-    exports.handle = (tbl, meta, value)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Number Search: unsupported type #{JSON.stringify(meta)}")
+    exports.handle = (tbl, metas, value)->
+      for m in metas
+        unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+          throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
+      operator = metas[0].operator
 
-      # unless OPERATORS.indexOf(meta.operator) > -1
-      #   throw new Error("Number Search: Unsupported operator #{meta.operator}")
-
-      op = if meta.operator == 'missing'
+      op = if operator == 'missing'
         if value.value == 'false' then '$notnull' else '$null'
       else
-        "$#{meta.operator}"
+        "$#{operator}"
 
-      [op, extract_expr(meta, tbl), value.value]
-
+      [op, extract_expr(metas, tbl), value.value]
 
     exports.index = (plv8, metas)->
       meta = metas[0]
       idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_number"
-      exprs = metas.map((x)-> extract_expr(x))
 
       [
         name: idx_name
@@ -79,5 +89,5 @@ it should be done in an extensible maner
           create: 'index'
           name:  idx_name
           on: ['$q', meta.resourceType.toLowerCase()]
-          expression: exprs
+          expression: [extract_expr(metas)]
       ]

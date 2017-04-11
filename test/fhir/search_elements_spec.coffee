@@ -30,8 +30,7 @@ expected_pt =
   resourceType: 'Patient'
   gender: 'male'
 
-pt_summary_els = [
-  'resourceType'
+pt_summary_els = [ 'resourceType',
   'id',
   'meta',
   'implicitRules',
@@ -52,8 +51,10 @@ pt_summary_els = [
   'animal.genderStatus',
   'communication.modifierExtension',
   'managingOrganization',
-  'link.modifierExtension'
-]
+  'link',
+  'link.modifierExtension',
+  'link.other',
+  'link.type' ]
 
 describe "elements: filter", ()->
   it "summary elements", ->

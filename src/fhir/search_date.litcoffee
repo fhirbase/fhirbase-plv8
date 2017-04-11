@@ -23,6 +23,8 @@ See it for more details.
     date = require('./date')
     xpath = require('./xpath')
     search_common = require('./search_common')
+    utils = require('../core/utils')
+    sql = require('../honey')
 
 
 Now we support only simple date data-types - i.e. date, dateTime and instant.
@@ -35,60 +37,70 @@ Now we support only simple date data-types - i.e. date, dateTime and instant.
       'Timing'
     ]
     sf = search_common.get_search_functions({extract:'fhir_extract_as_daterange', sort:'fhir_sort_as_date',SUPPORTED_TYPES:SUPPORTED_TYPES})
-    extract_expr = sf.extract_expr
+
+    extract_op_expr = (opname, metas)->
+      m = metas.map((x)-> {path: x.path, elementType: x.elementType})
+      ["$#{opname}"
+       ['$cast', ':resource', ':json']
+       ['$cast', ['$quote', JSON.stringify(m)], ':json']]
+
+    extract_lower_expr = (metas)->
+      extract_op_expr('fhir_extract_as_epoch_lower', metas)
+
+    extract_upper_expr = (metas)->
+      extract_op_expr('fhir_extract_as_epoch_upper', metas)
 
     exports.order_expression = sf.order_expression
     exports.index_order = sf.index_order
 
     str = (x)-> x.toString()
 
+    epoch = (plv8, value)->
+      if value
+        res = utils.exec plv8,
+          select: sql.raw("extract(epoch from ('#{value.toString()}')::timestamp with time zone)")
+        res[0].date_part
+      else
+        null
+
+    extract_value = (resource, metas)->
+      for meta in metas
+        value = xpath.get_in(resource, [meta.path])[0]
+        if value
+          return {
+            value: value
+            path: meta.path
+            elementType: meta.elementType
+          }
+      null
+
+
 Function to extract element from resource as tstzrange.
 
-    exports.fhir_extract_as_daterange = (plv8, resource, path, element_type)->
-      if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
-        value = xpath.get_in(resource, [path])[0]
-        if value
-          date.to_range(value.toString())
+    exports.fhir_sort_as_date = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      if value
+        if ['date', 'dateTime', 'instant'].indexOf(value.elementType) > -1
+          date.to_lower_date(value.value.toString())
+        else if value.elementType == 'Period'
+          date.to_lower_date(value.value.start || value.value.end)
         else
-          null
-      else if element_type == 'Period'
-        value = xpath.get_in(resource, [path])[0]
-        if value
-          lower = date.to_lower_date(value.start)
-          upper = if value.end then date.to_upper_date(value.end) else 'infinity'
-          "(#{lower}, #{upper}]"
-        else
-          null
+          throw new Error("fhir_sort_as_date: Not implemented for #{value.elementType}")
       else
-        throw new Error("fhir_extract_as_date: Not implemented for #{element_type}")
-
-    exports.fhir_extract_as_daterange.plv8_signature =
-      arguments: ['json', 'json', 'text']
-      returns: 'tstzrange'
-      immutable: true
-
-    exports.fhir_sort_as_date = (plv8, resource, path, element_type)->
-      if ['date', 'dateTime', 'instant'].indexOf(element_type) > -1
-        value = xpath.get_in(resource, [path])[0]
-        if value
-          date.to_lower_date(value.toString())
-        else
-          null
-      else if element_type == 'Period'
-        value = xpath.get_in(resource, [path])[0]
-        if value
-          date.to_lower_date(value.start || value.end)
-        else
-          null
-      else
-        throw new Error("fhir_sort_as_date: Not implemented for #{element_type}")
+        null
 
     exports.fhir_sort_as_date.plv8_signature =
-      arguments: ['json', 'json', 'text']
+      arguments: ['json', 'json']
       returns: 'timestamptz'
       immutable: true
 
 Function to convert query parameter into range.
+
+    value_to_epoch_expr = (value)->
+      "extract(epoch from ('#{value.toString()}')::timestamp with time zone)::double precision"
+
+    epoch_sql = (expr, operator, value)->
+      sql.raw("#{sql(expr)} #{operator} #{value}")
 
     value_to_range = (operator, value)->
       if operator == 'lt'
@@ -106,28 +118,45 @@ Function to convert query parameter into range.
 
     exports.value_to_range = value_to_range
 
-    overlap_expr = (tbl, meta, value)->
-      ["$&&", extract_expr(meta), value_to_range(meta.operator, value.value)]
-
-    not_overlap_expr = (tbl, meta, value)->
-      ['$not', ["$&&", extract_expr(meta), value_to_range(meta.operator, value.value)]]
-
-    missing_expr = (tbl, meta, value)->
-      if value.value == 'false'
-        ["$notnull", extract_expr(meta)]
-      else
-        ["$null", extract_expr(meta)]
-
     TODO = -> throw new Error("Date search: unimplemented")
 
+    eq_epoch_expr = (tbl, meta, value)->
+      ['$and',
+        epoch_sql(extract_lower_expr(meta), '<=', value_to_epoch_expr(date.to_upper_date(value.value))),
+        epoch_sql(extract_upper_expr(meta), '>', value_to_epoch_expr(date.to_lower_date(value.value)))]
+
+    gt_epoch_expr = (tbl, meta, value)->
+      epoch_sql(extract_upper_expr(meta), '>', value_to_epoch_expr(date.to_upper_date(value.value)))
+
+    ge_epoch_expr = (tbl, meta, value)->
+      epoch_sql(extract_upper_expr(meta), '>=', value_to_epoch_expr(date.to_lower_date(value.value)))
+
+    lt_epoch_expr = (tbl, meta, value)->
+      epoch_sql(extract_lower_expr(meta), '<', value_to_epoch_expr(date.to_lower_date(value.value)))
+
+    le_epoch_expr = (tbl, meta, value)->
+      epoch_sql(extract_lower_expr(meta), '<', value_to_epoch_expr(date.to_upper_date(value.value)))
+
+    ne_epoch_expr = (tbl, meta, value)->
+      ['$not', eq_epoch_expr(tbl, meta, value)]
+
+    missing_epoch_expr = (tbl, meta, value)->
+      expr = ['$and',
+        ["$null", extract_lower_expr(meta)],
+        ["$null", extract_upper_expr(meta)]]
+      if value.value == 'false'
+        ["$not", expr]
+      else
+        expr
+
     OPERATORS =
-      eq: overlap_expr
-      gt: overlap_expr
-      ge: overlap_expr
-      lt: overlap_expr
-      le: overlap_expr
-      ne: not_overlap_expr
-      missing: missing_expr
+      eq: eq_epoch_expr
+      gt: gt_epoch_expr
+      ge: ge_epoch_expr
+      lt: lt_epoch_expr
+      le: le_epoch_expr
+      ne: ne_epoch_expr
+      missing: missing_epoch_expr
       # sa: TODO
       # eb: TODO
       # ap: TODO
@@ -148,33 +177,81 @@ Function to convert query parameter into range.
 It is passed table name, meta {operator: 'lt,gt,eq', path: ['Patient', 'birthDate']}, query parameter value
 and returns honeysql expression.
 
+    handle = (tbl, metas, value)->
+      # FIXME: this check doesn't work for polymorphic[x]
+      # attributes. We need to fix it somehow here and
+      # in all other places. For now it breaks Narus backend, it uses
+      # CarePlan.activitydate search param.
 
-    handle = (tbl, meta, value)->
-      unless SUPPORTED_TYPES.indexOf(meta.elementType) > -1
-        throw new Error("Date Search: unsuported type #{JSON.stringify(meta)}")
+      # for m in metas
+      #   unless SUPPORTED_TYPES.indexOf(m.elementType) > -1
+      #     throw new Error("String Search: unsupported type #{JSON.stringify(m)}")
 
-      op = OPERATORS[meta.operator]
+      op = OPERATORS[metas[0].operator]
 
       unless op
-        throw new Error("Date Search: Unsupported operator #{JSON.stringify(meta)}")
+        throw new Error("Date Search: Unsupported operator #{JSON.stringify(metas)}")
 
-      op(tbl, meta, value)
+      op(tbl, metas, value)
 
     exports.handle = handle
 
     exports.index = (plv8, metas)->
       meta = metas[0]
       tbl = meta.resourceType.toLowerCase()
-      idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}_date"
-      exprs = metas.map((x)-> extract_expr(x))
+      idx_name = "#{meta.resourceType.toLowerCase()}_#{meta.name.replace('-','_')}"
+      lower_exprs = extract_lower_expr(metas)
+      upper_exprs = extract_upper_expr(metas)
 
-      [
-        name: idx_name
-        ddl:
-          create: 'index'
-          name:  idx_name
-          using: ':GIST'
-          opclass: ':range_ops'
-          on: ['$q', tbl]
-          expression:  exprs
-      ]
+      [{
+       name: "#{idx_name}_epoch_lower_upper"
+       ddl:
+         create: 'index'
+         name: "#{idx_name}_epoch_lower_upper"
+         on: ['$q', tbl]
+         expression: [lower_exprs, upper_exprs]
+      }
+      {
+       name: "#{idx_name}_epoch_upper_lower"
+       ddl:
+         create: 'index'
+         name: "#{idx_name}_epoch_upper_lower"
+         on: ['$q', tbl]
+         expression: [upper_exprs, lower_exprs]
+      }]
+
+Function to extract element from resource as epoch.
+
+    exports.fhir_extract_as_epoch_lower = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      if value
+        if ['date', 'dateTime', 'instant'].indexOf(value.elementType) > -1
+          epoch(plv8, date.to_lower_date(value.value))
+        else if value.elementType == 'Period'
+          epoch(plv8, date.to_lower_date(value.value.start))
+        else
+          throw new Error("fhir_extract_as_epoch: Not implemented for #{value.elementType}")
+      else
+        null
+
+    exports.fhir_extract_as_epoch_lower.plv8_signature =
+      arguments: ['json', 'json']
+      returns: 'double precision'
+      immutable: true
+
+    exports.fhir_extract_as_epoch_upper = (plv8, resource, metas)->
+      value = extract_value(resource, metas)
+      if value
+        if ['date', 'dateTime', 'instant'].indexOf(value.elementType) > -1
+          epoch(plv8, date.to_upper_date(value.value))
+        else if value.elementType == 'Period'
+          epoch(plv8, date.to_upper_date(value.value.end))
+        else
+          throw new Error("fhir_extract_as_epoch: Not implemented for #{value.elementType}")
+      else
+        null
+
+    exports.fhir_extract_as_epoch_upper.plv8_signature =
+      arguments: ['json', 'json']
+      returns: 'double precision'
+      immutable: true

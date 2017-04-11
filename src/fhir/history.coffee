@@ -13,7 +13,7 @@ validate_create_resource = (resource)->
     text:{div: "<div>Resource should have [resourceType] element</div>"}
     issue: [
       severity: 'error'
-      code: 'structure' 
+      code: 'structure'
     ]
 
 assert = (pred, msg)-> throw new Error("Asserted: #{msg}") unless pred
@@ -53,10 +53,10 @@ exports.fhir_resource_history = (plv8, query)->
     hsql.limit = params._count
 
   if params._since
-    hsql.where = ['$ge', ':valid_from', params._since]
+    hsql.where = ['$and', ['$eq', ':id', query.id], ['$ge', ':valid_from', params._since]]
 
   if params._before
-    hsql.where = ['$le', ':valid_from', params._before]
+    hsql.where = ['$and', ['$eq', ':id', query.id], ['$le', ':valid_from', params._before]]
 
   resources = utils.exec(plv8, hsql)
     .map((x)-> compat.parse(plv8, x.resource))

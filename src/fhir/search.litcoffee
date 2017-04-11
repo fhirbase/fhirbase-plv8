@@ -152,24 +152,25 @@ To build search query we need to
 
     normalize_operators = (expr)->
       forms =
-        $param: (meta, value)->
-          handler = SEARCH_TYPES_TABLE[meta.searchType]
+        $param: (metas, value)->
+          for meta in metas
+            handler = SEARCH_TYPES_TABLE[meta.searchType]
 
-          unless handler
-            throw new Error("NORMALIZE: Not registered search type [#{meta.searchType}]")
+            unless handler
+              throw new Error("NORMALIZE: Not registered search type [#{meta.searchType}]")
 
-          unless handler.normalize_operator
-            throw new Error("NORMALIZE: Not implemented noramalize_operator for [#{meta.searchType}]")
+            unless handler.normalize_operator
+              throw new Error("NORMALIZE: Not implemented noramalize_operator for [#{meta.searchType}]")
 
-          meta.operator = if meta.modifier == 'asc' or meta.modifier == 'desc'
-              meta.modifier
-            else
-              handler.normalize_operator(meta, value)
+            meta.operator = if meta.modifier == 'asc' or meta.modifier == 'desc'
+                meta.modifier
+              else
+                handler.normalize_operator(meta, value)
 
-          delete meta.modifier
-          delete value.prefix
+            delete meta.modifier
+            delete value.prefix
 
-          ['$param', meta, value]
+          ['$param', metas, value]
 
       lisp.eval_with(forms, expr)
 
@@ -291,20 +292,23 @@ implementation based on searchType
     to_hsql = (tbl, expr)->
       forms =
         $param: (left, right)->
-          h = get_search_module(left.searchType)
+          h = get_search_module(left[0].searchType)
           unless h.handle
-            throw new Error("Search type does not exports handle fn: [#{left.searchType}] #{JSON.stringify(left)}")
+            throw new Error("Search type does not exports handle fn: [#{left[0].searchType}] #{JSON.stringify(left)}")
           h.handle(tbl, left, right)
       lisp.eval_with(forms, expr)
 
     exports.to_hsql = to_hsql
 
     order_hsql = (tbl, params)->
-      for meta in params.map((x)-> x[1])
-        h = get_search_module(meta.searchType)
+      for metas in params.map((x)-> x[1])
+        searchType = metas[0].searchType
+        if !searchType
+          throw new Error("Empty search type", params)
+        h = get_search_module(searchType)
         unless h.order_expression
-          throw new Error("Search type does not exports order_expression fn: [#{meta.searchType}] #{JSON.stringify(meta)}")
-        h.order_expression(tbl, meta)
+          throw new Error("Search type does not exports order_expression fn: [#{searchType}] #{JSON.stringify(metas)}")
+        h.order_expression(tbl, metas)
 
 
 ###  Handling chained parameters
@@ -397,15 +401,12 @@ awaiting query.resourceType and query.name - name of parameter
     expand_parameter = (plv8, query)->
       idx = ensure_index(plv8)
       expr = expand.expand(idx, ['$param', query])
-      if lang.isArray(expr) and expr[0] == '$or'
-        expr[1..-1].map((x)-> x[1])
-      else if expr[0] == '$param'
-        [expr[1]]
+      if expr[0] == '$param'
+        expr[1]
       else
         throw new Error("Indexing: not supported #{JSON.stringify(expr)}")
 
     ensure_handler = (plv8, metas)->
-
       uniqtypes = lang.uniq(metas.map((x)-> x.searchType))
       if uniqtypes.length > 1
         throw new Error("We do not support such case #{JSON.stringify(uniqtypes)}")
@@ -413,9 +414,9 @@ awaiting query.resourceType and query.name - name of parameter
       h = SEARCH_TYPES_TABLE[uniqtypes[0]]
 
       unless h
-        throw new Error("Unsupported search type [#{meta.searchType}] #{JSON.stringify(meta)}")
+        throw new Error("Unsupported search type [#{uniqtypes[0]}] #{JSON.stringify(metas)}")
       unless h.index
-        throw new Error("Search type does not exports index [#{meta.searchType}] #{JSON.stringify(meta)}")
+        throw new Error("Search type does not exports index [#{uniqtypes[0]}] #{JSON.stringify(metas)}")
 
       h
 

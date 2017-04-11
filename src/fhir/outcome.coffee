@@ -40,6 +40,43 @@ exports.not_found = (id)->
     }
   ]
 
+exports.not_modified = ()->
+  resourceType: "OperationOutcome"
+  issue: [
+    {
+      severity: 'error'
+      code: 'not-found'
+      diagnostics: "Not Modified"
+      extension: [{url: 'http-status-code', valueString: '304'}]
+    }
+  ]
+
+exports.no_resource_type = () ->
+  resourceType: 'OperationOutcome'
+  issue:
+    severity: 'error'
+    code: 'structure'
+    diagnostics: 'expected attribute "resourceType"'
+
+exports.unexisting = ()->
+  resourceType: "OperationOutcome"
+  issue: [
+    {
+      severity: 'information'
+      code: 'not-found'
+      details: {
+        coding: [
+          {
+            code: 'MSG_NO_EXIST',
+            display: "Resource does not exist"
+          }
+        ]
+      }
+      diagnostics: "Resource does not exist"
+      extension: [{url: 'http-status-code', valueString: '204'}]
+    }
+  ]
+
 exports.version_not_found = (id, versionId)->
   resourceType: 'OperationOutcome'
   issue: [
@@ -94,7 +131,7 @@ exports.conflict = (msg)->
   issue: [
     {
       severity: 'error'
-      code: '409'
+      code: 'conflict'
       diagnostics: msg
       extension: [{url: 'http-status-code', valueString: '409'}]
     }
@@ -164,9 +201,9 @@ exports.truncate_storage_done = (resourceType)->
 
 exports.table_not_exists = (resourceType)->
   resourceType: 'OperationOutcome'
-  text: {div: "<div>Storage for #{resourceType} not exists</div>"}
+  text: {div: "<div>Storage for #{resourceType} does not exist</div>"}
   issue: [
     severity: 'error'
     code: 'not-supported'
-    diagnostics: "Storage for #{resourceType} not exists"
+    diagnostics: "Storage for #{resourceType} does not exist"
   ]

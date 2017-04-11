@@ -171,7 +171,7 @@ SELECT fhir_create_resource('{"resource": {"resourceType": "Patient", "name": [{
 SELECT fhir_create_resource('{"allowId": true, "resource": {"resourceType": "Patient", "id": "smith"}}');
 
 -- conditional create
-SELECT fhir_create_resource('{"ifNotExist": "identifier=007", "resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
+SELECT fhir_create_resource('{"ifNoneExist": "identifier=007", "resource": {"resourceType": "Patient", "id": "smith", "name": [{"given": ["Smith"]}]}}');
 
 SELECT fhir_read_resource('{"resourceType": "Patient", "id": "smith"}');
 
@@ -239,3 +239,4 @@ See the [CONTRIBUTING.md][].
 Copyright © 2016 health samurai.
 
 fhirbase is released under the terms of the MIT License.
+ 

@@ -11,7 +11,7 @@ describe 'Integration',->
   it 'conformance', ->
     plv8.execute(
       'SELECT fhir_create_storage($1)',
-      [JSON.stringify(resourceType: 'Order')]
+      [JSON.stringify(resourceType: 'Task')]
     )
     conformance = plv8.execute(
       'SELECT fhir_conformance($1)',
@@ -20,7 +20,7 @@ describe 'Integration',->
     assert.equal(
       JSON.parse(conformance[0].fhir_conformance)
         .rest[0].resource.filter(
-          (resource)-> resource.type == 'Order'
+          (resource)-> resource.type == 'Task'
         ).length,
       1
     )
@@ -52,29 +52,29 @@ describe 'Integration',->
     beforeEach ->
       plv8.execute(
         'SELECT fhir_create_storage($1)',
-        [JSON.stringify(resourceType: 'Order')]
+        [JSON.stringify(resourceType: 'Task')]
       )
       plv8.execute(
         'SELECT fhir_truncate_storage($1)',
-        [JSON.stringify(resourceType: 'Order')]
+        [JSON.stringify(resourceType: 'Task')]
       )
 
     it 'create', ->
       plv8.execute(
         'SELECT fhir_create_storage($1)',
-        [JSON.stringify(resourceType: 'Order')]
+        [JSON.stringify(resourceType: 'Task')]
       )
       assert.equal(
         plv8.execute('''
           SELECT * from information_schema.tables
-          WHERE table_name = 'order' AND table_schema = current_schema()
+          WHERE table_name = 'task' AND table_schema = current_schema()
         ''').length,
         1
       )
       assert.equal(
         plv8.execute('''
           SELECT * from information_schema.tables
-          WHERE table_name = 'order_history' AND table_schema = current_schema()
+          WHERE table_name = 'task_history' AND table_schema = current_schema()
         ''').length,
         1
       )
@@ -85,7 +85,7 @@ describe 'Integration',->
       assert.equal(
         plv8.execute('''
           SELECT * from information_schema.tables
-          WHERE table_name = 'order' AND table_schema = current_schema()
+          WHERE table_name = 'task' AND table_schema = current_schema()
         ''').length,
         1
       )
@@ -93,19 +93,19 @@ describe 'Integration',->
     it 'drop', ->
       plv8.execute(
         'SELECT fhir_drop_storage($1)',
-        [JSON.stringify(resourceType: 'Order')]
+        [JSON.stringify(resourceType: 'Task')]
       )
       assert.equal(
         plv8.execute('''
           SELECT * from information_schema.tables
-          WHERE table_name = 'order' AND table_schema = current_schema()
+          WHERE table_name = 'task' AND table_schema = current_schema()
         ''').length,
         0
       )
       assert.equal(
         plv8.execute('''
           SELECT * from information_schema.tables
-          WHERE table_name = 'order_history' AND table_schema = current_schema()
+          WHERE table_name = 'task_history' AND table_schema = current_schema()
         ''').length,
         0
       )
@@ -115,7 +115,7 @@ describe 'Integration',->
       assert.equal(
         plv8.execute('''
           SELECT * from information_schema.tables
-          WHERE table_name = 'order' AND table_schema = current_schema()
+          WHERE table_name = 'task' AND table_schema = current_schema()
         ''').length,
         0
       )
@@ -123,37 +123,37 @@ describe 'Integration',->
     it 'truncate', ->
       plv8.execute(
         'SELECT fhir_create_resource($1)',
-        [JSON.stringify(resource: {resourceType: 'Order'})]
+        [JSON.stringify(resource: {resourceType: 'Task'})]
       )
       truncateOutcome =
         plv8.execute(
           'SELECT fhir_truncate_storage($1)',
-          [JSON.stringify(resourceType: 'Order')]
+          [JSON.stringify(resourceType: 'Task')]
         )
       issue = JSON.parse(truncateOutcome[0].fhir_truncate_storage).issue[0]
-      assert.equal(issue.diagnostics, 'Resource type "Order" has been truncated')
+      assert.equal(issue.diagnostics, 'Resource type "Task" has been truncated')
 
     it 'describe', ->
       describe = plv8.execute(
         'SELECT fhir_describe_storage($1)',
-        [JSON.stringify(resourceType: 'Order')]
+        [JSON.stringify(resourceType: 'Task')]
       )
       assert.equal(
         JSON.parse(describe[0].fhir_describe_storage).name,
-        'order'
+        'task'
       )
 
   describe 'CRUD', ->
     before ->
       plv8.execute(
         'SELECT fhir_create_storage($1)',
-        [JSON.stringify(resourceType: 'Order')]
+        [JSON.stringify(resourceType: 'Task')]
       )
 
     beforeEach ->
       plv8.execute(
         'SELECT fhir_truncate_storage($1)',
-        [JSON.stringify(resourceType: 'Order')]
+        [JSON.stringify(resourceType: 'Task')]
       )
 
     it 'create', ->
@@ -162,7 +162,7 @@ describe 'Integration',->
           plv8.execute(
             'SELECT fhir_create_resource($1)',
             [JSON.stringify(resource: {
-              resourceType: 'Order', name: 'foo bar'
+              resourceType: 'Task', name: 'foo bar'
             })]
           )[0].fhir_create_resource
         )
@@ -173,14 +173,14 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute(
             'SELECT fhir_create_resource($1)',
-            [JSON.stringify(resource: {resourceType: 'Order'})]
+            [JSON.stringify(resource: {resourceType: 'Task'})]
           )[0].fhir_create_resource
         )
       readed =
         JSON.parse(
           plv8.execute(
             'SELECT fhir_read_resource($1)',
-            [JSON.stringify(id: created.id, resourceType: 'Order')]
+            [JSON.stringify(id: created.id, resourceType: 'Task')]
           )[0].fhir_read_resource
         )
       assert.equal(readed.id, created.id)
@@ -190,7 +190,7 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute(
             'SELECT fhir_create_resource($1)',
-            [JSON.stringify(resource: {resourceType: 'Order'})]
+            [JSON.stringify(resource: {resourceType: 'Task'})]
           )[0].fhir_create_resource
         )
       created.versionId = created.meta.versionId
@@ -208,7 +208,7 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute(
             'SELECT fhir_create_resource($1)',
-            [JSON.stringify(resource: {resourceType: 'Order', name: 'foo'})]
+            [JSON.stringify(resource: {resourceType: 'Task', name: 'foo'})]
           )[0].fhir_create_resource
         )
       toUpdate = copy(created)
@@ -229,19 +229,19 @@ describe 'Integration',->
           plv8.execute(
             'SELECT fhir_create_resource($1)',
             [JSON.stringify(allowId: true, resource: {
-              id: 'toBeDeleted', resourceType: 'Order'
+              id: 'toBeDeleted', resourceType: 'Task'
             })]
           )[0].fhir_create_resource
         )
       plv8.execute(
         'SELECT fhir_delete_resource($1)',
-        [JSON.stringify(id: created.id, resourceType: 'Order')]
+        [JSON.stringify(id: created.id, resourceType: 'Task')]
       )
       readDeleted =
         JSON.parse(
           plv8.execute(
             'SELECT fhir_read_resource($1)',
-            [JSON.stringify(id: created.id, resourceType: 'Order')]
+            [JSON.stringify(id: created.id, resourceType: 'Task')]
           )[0].fhir_read_resource
         )
       assert.equal(readDeleted.resourceType, 'OperationOutcome')
@@ -257,19 +257,19 @@ describe 'Integration',->
           plv8.execute(
             'SELECT fhir_create_resource($1)',
             [JSON.stringify(allowId: true, resource: {
-              id: 'toBeTerminated', resourceType: 'Order'
+              id: 'toBeTerminated', resourceType: 'Task'
             })]
           )[0].fhir_create_resource
         )
       plv8.execute(
         'SELECT fhir_terminate_resource($1)',
-        [JSON.stringify(resourceType: 'Order', id: created.id)]
+        [JSON.stringify(resourceType: 'Task', id: created.id)]
       )
       readed =
         JSON.parse(
           plv8.execute(
             'SELECT fhir_read_resource($1)',
-            [JSON.stringify(id: created.id, resourceType: 'Order')]
+            [JSON.stringify(id: created.id, resourceType: 'Task')]
           )[0].fhir_read_resource
         )
       assert.equal(
@@ -282,7 +282,7 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute(
             'SELECT fhir_create_resource($1)',
-            [JSON.stringify(resource: {resourceType: 'Order', name: 'foo'})]
+            [JSON.stringify(resource: {resourceType: 'Task', name: 'foo'})]
           )[0].fhir_create_resource
         )
 
@@ -290,7 +290,7 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute(
             'SELECT fhir_patch_resource($1)', [JSON.stringify(
-              resource: {id: created.id, resourceType: 'Order'},
+              resource: {id: created.id, resourceType: 'Task'},
               patch: [
                 {op: 'replace', path: '/name', value: 'bar1'},
                 {op: 'replace', path: '/name', value: 'bar2'}
@@ -315,7 +315,7 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute(
             'SELECT fhir_resource_history($1)',
-            [JSON.stringify(id: created.id, resourceType: 'Order')]
+            [JSON.stringify(id: created.id, resourceType: 'Task')]
           )[0].fhir_resource_history
         )
       assert.deepEqual(read_patched.name, 'bar2')
@@ -326,13 +326,13 @@ describe 'Integration',->
     before ->
       plv8.execute(
         'SELECT fhir_create_storage($1)',
-        [JSON.stringify(resourceType: 'Order')]
+        [JSON.stringify(resourceType: 'Task')]
       )
 
     beforeEach ->
       plv8.execute(
         'SELECT fhir_truncate_storage($1)',
-        [JSON.stringify(resourceType: 'Order')]
+        [JSON.stringify(resourceType: 'Task')]
       )
 
     it 'resource', ->
@@ -341,7 +341,7 @@ describe 'Integration',->
           plv8.execute(
             'SELECT fhir_create_resource($1)',
             [JSON.stringify(resource: {
-              resourceType: 'Order', name: 'foo'
+              resourceType: 'Task', name: 'foo'
             })]
           )[0].fhir_create_resource
         )
@@ -349,7 +349,7 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute(
             'SELECT fhir_read_resource($1)',
-            [JSON.stringify(id: created.id, resourceType: 'Order')]
+            [JSON.stringify(id: created.id, resourceType: 'Task')]
           )[0].fhir_read_resource
         )
       toUpdate = copy(readed)
@@ -364,14 +364,14 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute(
             'SELECT fhir_delete_resource($1)',
-            [JSON.stringify(id: readed.id, resourceType: 'Order')]
+            [JSON.stringify(id: readed.id, resourceType: 'Task')]
           )[0].fhir_delete_resource
         )
       hx =
         JSON.parse(
           plv8.execute(
             'SELECT fhir_resource_history($1)',
-            [JSON.stringify(id: readed.id, resourceType: 'Order')]
+            [JSON.stringify(id: readed.id, resourceType: 'Task')]
           )[0].fhir_resource_history
         )
 
@@ -385,18 +385,18 @@ describe 'Integration',->
     it 'resource type', ->
       plv8.execute(
         'SELECT fhir_create_resource($1)',
-        [JSON.stringify(resource: {resourceType: 'Order', name: 'u1'})]
+        [JSON.stringify(resource: {resourceType: 'Task', name: 'u1'})]
       )
       plv8.execute(
         'SELECT fhir_create_resource($1)',
-        [JSON.stringify(resource: {resourceType: 'Order', name: 'u2'})]
+        [JSON.stringify(resource: {resourceType: 'Task', name: 'u2'})]
       )
       created =
         JSON.parse(
           plv8.execute(
             'SELECT fhir_create_resource($1)',
             [JSON.stringify(resource: {
-              resourceType: 'Order', name: 'foo'
+              resourceType: 'Task', name: 'foo'
             })]
           )[0].fhir_create_resource
         )
@@ -405,7 +405,7 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute(
             'SELECT fhir_read_resource($1)',
-            [JSON.stringify(id: created.id, resourceType: 'Order')]
+            [JSON.stringify(id: created.id, resourceType: 'Task')]
           )[0].fhir_read_resource
         )
       toUpdate = copy(readed)
@@ -420,14 +420,14 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute(
             'SELECT fhir_delete_resource($1)',
-            [JSON.stringify(id: readed.id, resourceType: 'Order')]
+            [JSON.stringify(id: readed.id, resourceType: 'Task')]
           )[0].fhir_delete_resource
         )
       hx =
         JSON.parse(
           plv8.execute(
             'SELECT fhir_resource_type_history($1)',
-            [JSON.stringify(resourceType: 'Order')]
+            [JSON.stringify(resourceType: 'Task')]
           )[0].fhir_resource_type_history
         )
 
@@ -442,24 +442,24 @@ describe 'Integration',->
     before ->
       plv8.execute(
         'SELECT fhir_drop_storage($1)',
-        [JSON.stringify(resourceType: 'Order')]
+        [JSON.stringify(resourceType: 'Task')]
       )
       plv8.execute(
         'SELECT fhir_create_storage($1)',
-        [JSON.stringify(resourceType: 'Order')]
+        [JSON.stringify(resourceType: 'Task')]
       )
 
     beforeEach ->
       plv8.execute(
         'SELECT fhir_truncate_storage($1)',
-        [JSON.stringify(resourceType: 'Order')]
+        [JSON.stringify(resourceType: 'Task')]
       )
       plv8.execute(
         'SELECT fhir_create_resource($1)',
         [JSON.stringify(resource: {
-          resourceType: 'Order',
+          resourceType: 'Task',
           identifier: {
-            system: 'http://example.com/OrderIdentifier',
+            system: 'http://example.com/TaskIdentifier',
             value: 'foo'
           }
         })]
@@ -467,9 +467,9 @@ describe 'Integration',->
       plv8.execute(
         'SELECT fhir_create_resource($1)',
         [JSON.stringify(resource: {
-          resourceType: 'Order',
+          resourceType: 'Task',
           identifier: {
-            system: 'http://example.com/OrderIdentifier',
+            system: 'http://example.com/TaskIdentifier',
             value: 'bar'
           }
         })]
@@ -481,7 +481,7 @@ describe 'Integration',->
           plv8.execute(
             'SELECT fhir_search($1)',
             [JSON.stringify(
-              resourceType: 'Order',
+              resourceType: 'Task',
               queryString: 'identifier=foo'
             )]
           )[0].fhir_search
@@ -493,18 +493,18 @@ describe 'Integration',->
         JSON.parse(
           plv8.execute(
             'SELECT fhir_index_parameter($1)',
-            [JSON.stringify(resourceType: 'Order', name: 'identifier')]
+            [JSON.stringify(resourceType: 'Task', name: 'identifier')]
           )[0].fhir_index_parameter
         )
       assert.equal(indexed[0].status, 'ok')
-      assert.equal(indexed[0].message, 'Index order_identifier_token was created')
+      assert.equal(indexed[0].message, 'Index task_identifier_token was created')
 
     it 'analyze', ->
       analyzed =
         JSON.parse(
           plv8.execute(
             'SELECT fhir_analyze_storage($1)',
-            [JSON.stringify(resourceType: 'Order')]
+            [JSON.stringify(resourceType: 'Task')]
           )[0].fhir_analyze_storage
         )
       assert.equal(analyzed.message, 'analyzed')
@@ -514,7 +514,7 @@ describe 'Integration',->
         plv8.execute(
           'SELECT fhir_explain_search($1)',
           [JSON.stringify(
-            resourceType: 'Order',
+            resourceType: 'Task',
             queryString: 'identifier=foo'
           )]
         )[0].fhir_explain_search

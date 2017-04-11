@@ -61,12 +61,12 @@ testCases = [
   },
   { # tables with PostgreSQL reserved name <https://github.com/fhirbase/fhirbase-plv8/issues/77>
     resource: {
-      resourceType: 'Order'
+      resourceType: 'Task'
       foo: 'bar'
     },
     specs: [
       {
-        path: ['Order', 'foo']
+        path: ['Task', 'foo']
         elementType: 'string'
         result: 'bar'
         order: 'bar'
@@ -78,13 +78,12 @@ testCases = [
 describe "extract_as_string", ->
   testCases.forEach (testCase)->
     testCase.specs.forEach (spec)->
-      it JSON.stringify(spec.path), ->
-        res = search.fhir_extract_as_string(
-          {}, testCase.resource, spec.path, spec.elementType
-        )
+      it JSON.stringify(spec.path) + ' : ' + spec.elementType, ->
+        metas = [
+            {path: ['Patient', 'unknownPath'], elementType: spec.elementType}
+            {path: spec.path, elementType: spec.elementType}]
+        res = search.fhir_extract_as_string({}, testCase.resource, metas)
         for str in spec.result
           assert(res.indexOf(str) > -1, "#{str} not in #{res}")
-        order = search.fhir_sort_as_string(
-          {}, testCase.resource, spec.path, spec.elementType
-        )
+        order = search.fhir_sort_as_string({}, testCase.resource, metas)
         assert.deepEqual(order, spec.order)

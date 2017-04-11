@@ -11,42 +11,70 @@ fixtures:
   - {id: 'linc', resourceType: 'Patient', name: [{given: ['Avraam']}, {given: ['Lincoln']}], birthDate: '1988', multipleBirthInteger: 3}
   - {id: 'cheb', resourceType: 'Patient', name: [{given: ['Cheburashka']}], birthDate: '1972', multipleBirthInteger: 2}
   - {id: 'enc-1', resourceType: 'Encounter', patient: {reference: 'Patient/nicola'}, status: 'planned'}
+  - {id: 'enc-2', resourceType: 'Encounter', patient: {reference: 'Patient/nicola'}, status: 'finished', }
   - {resourceType: 'Encounter', patient: {reference: 'Patient/noise1'},  status: 'planned'}
   - {resourceType: 'Encounter', patient: {reference: 'Patient/noise2'},  status: 'planned'}
   - {resourceType: 'Encounter', status: 'planned'}
 
 queries:
   - query: {resourceType: 'Encounter', queryString: 'patient=Patient/nicola'}
-    total: 1
+    total: 2
     indexed: true
     probes:
       - path: ['total']
-        result: 1
+        result: 2
+      - path: ['entry', 0, 'resource', 'id']
+        result: 'enc-1'
+      - path: ['entry', 1, 'resource', 'id']
+        result: 'enc-2'
+
   - query: {resourceType: 'Encounter', queryString: 'patient:Patient=nicola'}
-    total: 1
+    total: 2
     indexed: true
     probes:
       - path: ['total']
-        result: 1
+        result: 2
+
   - query: {resourceType: 'Encounter', queryString: 'patient:missing=true'}
     total: 1
     indexed: true
+
   - query: {resourceType: 'Encounter', queryString: 'patient:missing=false'}
-    total: 3
+    total: 4
+    probes:
+      - path: ['total']
+        result: 4
+
   - query: {resourceType: 'Encounter', queryString: 'patient:Patient.name=nicola'}
+    total: 2
+    probes:
+      - path: ['total']
+        result: 2
+      - path: ['entry', 0, 'resource', 'id']
+        result: 'enc-1'
+      - path: ['entry', 1, 'resource', 'id']
+        result: 'enc-2'
+
+  - query: {resourceType: 'Encounter', queryString: 'patient:Patient.name=nicola&status=finished'}
     total: 1
     probes:
       - path: ['total']
         result: 1
+      - path: ['entry', 0, 'resource', 'id']
+        result: 'enc-2'
 
   - query: {resourceType: 'Encounter', queryString: '_sort=patient'}
-    total: 4
+    total: 5
     probes:
       - path: ['entry', '0', 'resource', 'id']
         result: 'enc-1'
+      - path: ['entry', '1', 'resource', 'id']
+        result: 'enc-2'
 
   - query: {resourceType: 'Encounter', queryString: '_sort:desc=patient'}
-    total: 4
+    total: 5
     probes:
       - path: ['entry', '3', 'resource', 'id']
         result: 'enc-1'
+      - path: ['entry', '4', 'resource', 'id']
+        result: 'enc-2'

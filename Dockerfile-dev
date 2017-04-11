@@ -113,7 +113,7 @@ USER fhirbase
 EXPOSE 5432
 
 # Add VOLUMEs to allow backup of config, logs, socket and databases
-VOLUME  ['/etc/postgresql', '/var/log/postgresql', '/var/lib/postgresql', '/var/run/postgresql']
+VOLUME  ["/etc/postgresql", "/var/log/postgresql", "/var/lib/postgresql", "/var/run/postgresql"]
 
 WORKDIR /home/fhirbase
 

@@ -41,6 +41,7 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
 
       for idx in (spec.indices or [])
         search.fhir_unindex_parameter(plv8, idx)
+        console.log("INDEX", idx);
         search.fhir_index_parameter(plv8, idx)
 
       for idx_ord in (spec.index_order or [])
@@ -58,7 +59,7 @@ fs.readdirSync("#{__dirname}/search").filter(match(FILTER)).forEach (yml)->
         res = search.fhir_search(plv8, q.query)
         # console.log(JSON.stringify(res))
         explain = JSON.stringify(search.fhir_explain_search(plv8, q.query))
-        # console.log(JSON.stringify(search.fhir_search_sql(plv8, q.query)))
+        #console.log(JSON.stringify(search.fhir_search_sql(plv8, q.query), null, 2))
 
         plv8.execute "SET enable_seqscan = ON;" if (q.indexed or q.indexed_order)
 
@@ -381,17 +382,10 @@ describe 'Encounter search', ->
         ).total,
       1)
 
-  it 'by patient name AND status should raise error', -> # FIXME: sql "where" and "join" statements mixed up in wrong order #104 <https://github.com/fhirbase/fhirbase-plv8/issues/104>.
-    assert.throws(
-      (->
-        search.fhir_search(
-          plv8,
-          resourceType: 'Encounter',
-          queryString: 'patient:Patient.name=John&status=finished'
-        )
-      ),
-      ((err)->
-        (err instanceof Error) &&
-          /syntax error at or near "JOIN"/.test(err)
-      )
-    )
+  it 'by patient name AND status should raise error', ->
+    assert.equal(
+      search.fhir_search(plv8,
+        resourceType: 'Encounter',
+        queryString: 'patient:Patient.name=John&status=finished'
+        ).total,
+      1)

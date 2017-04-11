@@ -110,13 +110,13 @@ describe 'Integration', ->
           {
             resource:
               id: 'patient-to-delete-id'
-              resourceType: 'Patient' 
+              resourceType: 'Patient'
               meta:
                 extension: [{url: 'fhir-request-method', valueString: 'DELETE'}]
           }
           {
             resource:
-              resourceType: 'Patient' 
+              resourceType: 'Patient'
               name: [{family: ['Name to create']}]
               meta:
                 extension: [{url: 'fhir-request-method', valueString: 'POST'}]
@@ -124,21 +124,21 @@ describe 'Integration', ->
           {
             resource:
               id: 'patient-to-update-id'
-              resourceType: 'Patient' 
+              resourceType: 'Patient'
               name: [{family: ['Name to update updated']}]
               meta:
                 extension: [{url: 'fhir-request-method', valueString: 'PUT'}]
           }
           {
             resource:
-              resourceType: 'Bundle' 
+              resourceType: 'Bundle'
               type: 'searchset'
               link: [{url: '/Patient?_id=patient-to-delete-id&_page=0'}]
               total: 0
           }
           {
             resource:
-              resourceType: 'Bundle' 
+              resourceType: 'Bundle'
               type: 'searchset'
               total: 1
               entry: [{resource: {resourceType: 'Patient', name: [{family: ['Name to create']}]}}]
@@ -165,7 +165,7 @@ describe 'Integration', ->
           {
             resource:
               resourceType: 'Patient'
-              careProvider: [
+              generalPractitioner: [
                 {reference: '/Practitioner/created-and-referenced-id'}
               ]
             request:
@@ -175,7 +175,7 @@ describe 'Integration', ->
           {
             request:
               method: 'GET'
-              url: '/Patient?_id=patient-to-update-id&_include=careprovider'
+              url: '/Patient?_id=patient-to-update-id&_include=general-practitioner'
           }
         ]
 
@@ -209,7 +209,7 @@ describe 'Integration', ->
         resource: {id: "patient-id", resourceType: "Patient"}
       )
 
-      bundle = 
+      bundle =
         "resourceType": "Bundle",
         "type": "transaction",
         "entry": [
@@ -225,7 +225,7 @@ describe 'Integration', ->
           {
             "resource": {
               "resourceType": "Patient",
-              "careProvider": [
+              "generalPractitioner": [
                 {
                   "reference": "/Practitioner/practitioner-id"
                 }
@@ -239,7 +239,7 @@ describe 'Integration', ->
           {
             "request": {
               "method": "GET",
-              "url": "/Patient?_id=patient-id&_include=careprovider"
+              "url": "/Patient?_id=patient-id&_include=general-practitioner"
             }
           }
         ]
@@ -265,14 +265,15 @@ describe 'Integration', ->
       )
 
     it 'should rollback (#112)', ->
-      json_call(
-        'fhir_create_resource',
-        allowId: true,
-        resource:
-          id: "id1",
-          resourceType: "Patient",
-          name: [{"given": ["Patient 1"]}]
-      )
+      ['id1', 'id2', 'id3'].forEach (id) ->
+        json_call('fhir_create_resource', {
+          allowId: true,
+          resource:
+            id: id,
+            resourceType: "Patient",
+            name: [{"given": ["John"]}]
+          }
+        )
 
       bundle =
         type: "transaction",
@@ -286,7 +287,7 @@ describe 'Integration', ->
           },
           {
             request:
-              url: '/Patient/id2',
+              url: '/Patient/?given=John',
               method: "DELETE"
           }
         ]
@@ -294,7 +295,7 @@ describe 'Integration', ->
       match(
         json_call('fhir_transaction', bundle),
         resourceType: 'OperationOutcome'
-        issue: [{severity: 'error', code: 'not-found', diagnostics: 'Resource Id "id2" does not exist'}]
+        issue: [{severity: 'error', code: '412', diagnostics: 'Precondition Failed error indicating the client\'s criteria were not selective enough. undefined'}]
       )
 
       match(
