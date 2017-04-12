@@ -23,7 +23,8 @@ mk_result = ->
       res.params.push(x)
       cnt = cnt + 1
     to_sql: ()->
-      [res.result.join(" ")].concat(res.params)
+      res.params.unshift(res.result.join(" "))
+      res.params
   res
 
 from = (res, expr)->
@@ -369,9 +370,11 @@ _type = (expr)->
 heval = (res, expr)->
   tp = _type(expr)
   tp(res, expr)
-  res.to_sql()
 
-sql = (expr)-> heval(mk_result(), expr)
+sql = (expr)->
+    res = mk_result()
+    heval(res, expr)
+    res.to_sql()
 
 sql.key = (s)-> ":#{s}"
 sql.symbol = (s)-> "$#{s}"
