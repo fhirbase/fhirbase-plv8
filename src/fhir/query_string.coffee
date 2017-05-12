@@ -199,7 +199,11 @@ exports.parse = (resourceType, str) ->
     a.shift()
     str = a.join('?')
 
-  pairs = str.trim().split("&").filter(identity).map((x)-> x.trim().split('=')).map(typed)
+  pairs = str.trim().split("&").filter(identity).map(
+      (x)->
+          parts = x.trim().split('=')
+          [parts.shift(), parts.join('=')]
+  ).map(typed)
   result = {query: resourceType}
   expr = grouping(result, pairs)
   forms =
