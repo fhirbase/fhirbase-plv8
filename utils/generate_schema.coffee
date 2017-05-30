@@ -40,6 +40,13 @@ output sql(
   ])
 )
 
+console.log "DROP TABLE IF EXISTS structuredefinition;"
+console.log "DROP TABLE IF EXISTS searchparameter;"
+console.log "DROP TABLE IF EXISTS operationdefinition;"
+console.log "DROP TABLE IF EXISTS valueset;"
+console.log "DROP TABLE IF EXISTS conceptmap;"
+console.log "DROP TABLE IF EXISTS codesystem;"
+
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'StructureDefinition')
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'SearchParameter')
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'OperationDefinition')
