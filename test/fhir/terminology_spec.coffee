@@ -71,6 +71,7 @@ describe "terminology", ->
   it "expand", ->
     vs =  expand(id: "administrative-gender")
     console.log("!!!!!!!!!! administrative-gender", JSON.stringify(vs, null, 2))
+
     res = vs.expansion.contains
     assert.equal(res.length, 4)
 
@@ -81,7 +82,7 @@ describe "terminology", ->
   it "custom vs", ->
     vs =  expand(id: "mytestvs")
     res = vs.expansion.contains.map((x)-> x.code).sort()
-    assert.deepEqual([ 'a1', 'a21', 'a22', 'a31', 'a32', 'nested' ], res)
+    assert.deepEqual([ 'a1', 'a21', 'a22', 'a31', 'a32', 'b', 'b1', 'nested' ], res)
 
     vs =  expand(id: "mytestvs", filter: '32')
     res = vs.expansion.contains
