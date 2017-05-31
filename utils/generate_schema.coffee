@@ -95,7 +95,7 @@ RETURNS anyelement LANGUAGE SQL IMMUTABLE STRICT AS $$
 $$;
 
 -- And then wrap an aggregate around it
-CREATE AGGREGATE FIRST (
+CREATE OR REPLACE AGGREGATE FIRST (
   sfunc    = first_agg,
   basetype = anyelement,
   stype    = anyelement
