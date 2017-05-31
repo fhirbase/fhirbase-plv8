@@ -58,12 +58,10 @@ RUN useradd --user-group --create-home --shell /bin/bash fhirbase \
     && echo 'fhirbase:fhirbase' | chpasswd && adduser fhirbase sudo
 RUN echo 'fhirbase ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
-USER fhirbase
+COPY . /home/fhirbase/fhirbase
+RUN chown -R fhirbase:fhirbase /home/fhirbase/fhirbase
 
-RUN cd ~ \
-    && git clone https://github.com/fhirbase/fhirbase-plv8.git fhirbase \
-    && cd ~/fhirbase \
-    && git submodule update --init --recursive
+USER fhirbase
 
 # Install nodejs.
 RUN curl --silent -o- https://raw.githubusercontent.com/creationix/nvm/v0.31.1/install.sh \
