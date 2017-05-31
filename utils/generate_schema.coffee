@@ -94,8 +94,10 @@ RETURNS anyelement LANGUAGE SQL IMMUTABLE STRICT AS $$
   SELECT $1;
 $$;
 
+DROP AGGREGATE IF EXISTS first(anyelement) CASCADE;
+
 -- And then wrap an aggregate around it
-CREATE OR REPLACE AGGREGATE FIRST (
+CREATE AGGREGATE FIRST (
   sfunc    = first_agg,
   basetype = anyelement,
   stype    = anyelement
