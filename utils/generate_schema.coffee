@@ -12,6 +12,29 @@ output = (x)->
 for ex in [":pgcrypto", ":plv8", ":pg_trgm"]
   output sql({create: "extension", name: ex, safe: true})
 
+console.log "DROP TABLE IF EXISTS _constants;"
+console.log "DROP TABLE IF EXISTS _fhirbase_hook;"
+console.log "DROP TABLE IF EXISTS _fhirbase_hook_id_seq;"
+console.log "DROP TABLE IF EXISTS _valueset_expansion;"
+console.log "DROP TABLE IF EXISTS _valueset_expansion_id_seq;"
+console.log "DROP TABLE IF EXISTS codesystem;"
+console.log "DROP TABLE IF EXISTS codesystem_history;"
+console.log "DROP TABLE IF EXISTS conceptmap;"
+console.log "DROP TABLE IF EXISTS conceptmap_history;"
+console.log "DROP TABLE IF EXISTS dssm;"
+console.log "DROP TABLE IF EXISTS namingsystem;"
+console.log "DROP TABLE IF EXISTS namingsystem_history;"
+console.log "DROP TABLE IF EXISTS operationdefinition;"
+console.log "DROP TABLE IF EXISTS operationdefinition_history;"
+console.log "DROP TABLE IF EXISTS resource;"
+console.log "DROP TABLE IF EXISTS resource_history;"
+console.log "DROP TABLE IF EXISTS searchparameter;"
+console.log "DROP TABLE IF EXISTS searchparameter_history;"
+console.log "DROP TABLE IF EXISTS structuredefinition;"
+console.log "DROP TABLE IF EXISTS structuredefinition_history;"
+console.log "DROP TABLE IF EXISTS valueset;"
+console.log "DROP TABLE IF EXISTS valueset_history;"
+
 TZ = "TIMESTAMP WITH TIME ZONE"
 
 base_columns  =[
@@ -20,6 +43,8 @@ base_columns  =[
   [':resource_type',':text']
   [':resource',':jsonb']
 ]
+
+console.log "DROP TABLE IF EXISTS structuredefinition;"
 
 output sql(
   create: ":table"
@@ -39,13 +64,6 @@ output sql(
     [':valid_to', ':timestamp with time zone']
   ])
 )
-
-console.log "DROP TABLE IF EXISTS structuredefinition;"
-console.log "DROP TABLE IF EXISTS searchparameter;"
-console.log "DROP TABLE IF EXISTS operationdefinition;"
-console.log "DROP TABLE IF EXISTS valueset;"
-console.log "DROP TABLE IF EXISTS conceptmap;"
-console.log "DROP TABLE IF EXISTS codesystem;"
 
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'StructureDefinition')
 output  schema.fhir_create_storage_sql(plv8, resourceType: 'SearchParameter')
