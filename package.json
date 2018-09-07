@@ -6,7 +6,7 @@
   "devDependencies": {
     "coffee": "latest",
     "coffee-script": "latest",
-    "fast-json-patch": "latest",
+    "fast-json-patch": "0.5.7",
     "js-yaml": "latest",
     "jsedn": "latest",
     "mocha": "latest",

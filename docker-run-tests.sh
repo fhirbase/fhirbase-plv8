@@ -23,6 +23,7 @@ export PATH="$HOME"/fhirbase/node_modules/coffee-script/bin:"$PATH" || exit 1
 export DATABASE_URL=postgres://fhirbase:fhirbase@localhost:5432/fhirbase || exit 1
 
 sudo service postgresql start || exit 1
+while ! echo exit | nc localhost 5432; do sleep 10; done
 cd ~/fhirbase || exit 1
 source ~/.nvm/nvm.sh && nvm use 6.2.0 || exit 1
 
