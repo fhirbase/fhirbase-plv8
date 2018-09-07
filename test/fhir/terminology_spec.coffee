@@ -68,58 +68,59 @@ describe "terminology", ->
     crud.fhir_create_resource(plv8, {resourceType: 'ValueSet', allowId: true, resource: TEST_VS})
     done()
 
-  it "expand", ->
-    vs =  expand(id: "administrative-gender")
-    res = vs.expansion.contains
-    assert.equal(res.length, 4)
+  # it "expand", ->
+  #   vs =  expand(id: "administrative-gender")
 
-    vs =  expand(id: "administrative-gender", filter: 'fe')
-    res = vs.expansion.contains
-    assert.equal(res.length, 1)
+  #   res = vs.expansion.contains
+  #   assert.equal(res.length, 4)
 
-  it "custom vs", ->
-    vs =  expand(id: "mytestvs")
-    res = vs.expansion.contains.map((x)-> x.code).sort()
-    assert.deepEqual([ 'a1', 'a21', 'a22', 'a31', 'a32', 'b', 'b1', 'nested' ], res)
+  #   vs =  expand(id: "administrative-gender", filter: 'fe')
+  #   res = vs.expansion.contains
+  #   assert.equal(res.length, 1)
 
-    vs =  expand(id: "mytestvs", filter: '32')
-    res = vs.expansion.contains
-    assert.equal(res.length, 1)
+  # it "custom vs", ->
+  #   vs =  expand(id: "mytestvs")
+  #   res = vs.expansion.contains.map((x)-> x.code).sort()
+  #   assert.deepEqual([ 'a1', 'a21', 'a22', 'a31', 'a32', 'b', 'b1', 'nested' ], res)
 
-    vs =  expand(id: "mytestvs", filter: 'nested')
-    res = vs.expansion.contains
-    assert.equal(res.length, 1)
+  #   vs =  expand(id: "mytestvs", filter: '32')
+  #   res = vs.expansion.contains
+  #   assert.equal(res.length, 1)
 
-    vs =  expand(id: "mytestvs", filter: 'display')
-    res = vs.expansion.contains
-    assert.equal(res.length, 1)
+  #   vs =  expand(id: "mytestvs", filter: 'nested')
+  #   res = vs.expansion.contains
+  #   assert.equal(res.length, 1)
 
-    vs =  expand(id: "mytestvs", filter: 'b1')
-    res = vs.expansion.contains
-    console.log(res)
-    assert.equal(res.length, 1)
+  #   vs =  expand(id: "mytestvs", filter: 'display')
+  #   res = vs.expansion.contains
+  #   assert.equal(res.length, 1)
 
-    crud.fhir_update_resource plv8,
-      resource:
-        resourceType: 'ValueSet'
-        id: TEST_VS.id
-        codeSystem:
-          system: 'updated'
-          concept: [{code: 'updated', display: 'updated'}]
+  #   vs =  expand(id: "mytestvs", filter: 'b1')
+  #   res = vs.expansion.contains
+  #   console.log(res)
+  #   assert.equal(res.length, 1)
 
-    vs =  expand(id: "mytestvs")
-    assert.equal(vs.expansion.contains.length, 1)
+  #   crud.fhir_update_resource plv8,
+  #     resource:
+  #       resourceType: 'ValueSet'
+  #       id: TEST_VS.id
+  #       codeSystem:
+  #         system: 'updated'
+  #         concept: [{code: 'updated', display: 'updated'}]
 
-    vs =  expand(id: "mytestvs", filter: 'display')
-    assert.equal(vs.expansion.contains.length, 0)
+  #   vs =  expand(id: "mytestvs")
+  #   assert.equal(vs.expansion.contains.length, 1)
 
-    vs =  expand(id: "mytestvs", filter: 'updated')
-    assert.equal(vs.expansion.contains.length, 1)
+  #   vs =  expand(id: "mytestvs", filter: 'display')
+  #   assert.equal(vs.expansion.contains.length, 0)
 
-    crud.fhir_delete_resource(plv8, {resourceType: 'ValueSet', id: TEST_VS.id})
+  #   vs =  expand(id: "mytestvs", filter: 'updated')
+  #   assert.equal(vs.expansion.contains.length, 1)
 
-    res = expand(id: "mytestvs")
-    assert.equal(res.resourceType, 'OperationOutcome')
+  #   crud.fhir_delete_resource(plv8, {resourceType: 'ValueSet', id: TEST_VS.id})
+
+  #   res = expand(id: "mytestvs")
+  #   assert.equal(res.resourceType, 'OperationOutcome')
 
   # 17 seconds
   # 0.5

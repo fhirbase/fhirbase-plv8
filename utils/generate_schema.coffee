@@ -12,6 +12,29 @@ output = (x)->
 for ex in [":pgcrypto", ":plv8", ":pg_trgm"]
   output sql({create: "extension", name: ex, safe: true})
 
+console.log "DROP TABLE IF EXISTS _constants CASCADE;"
+console.log "DROP TABLE IF EXISTS _fhirbase_hook CASCADE;"
+console.log "DROP TABLE IF EXISTS _fhirbase_hook_id_seq CASCADE;"
+console.log "DROP TABLE IF EXISTS _valueset_expansion CASCADE;"
+console.log "DROP TABLE IF EXISTS _valueset_expansion_id_seq CASCADE;"
+console.log "DROP TABLE IF EXISTS codesystem CASCADE;"
+console.log "DROP TABLE IF EXISTS codesystem_history CASCADE;"
+console.log "DROP TABLE IF EXISTS conceptmap CASCADE;"
+console.log "DROP TABLE IF EXISTS conceptmap_history CASCADE;"
+console.log "DROP TABLE IF EXISTS dssm CASCADE;"
+console.log "DROP TABLE IF EXISTS namingsystem CASCADE;"
+console.log "DROP TABLE IF EXISTS namingsystem_history CASCADE;"
+console.log "DROP TABLE IF EXISTS operationdefinition CASCADE;"
+console.log "DROP TABLE IF EXISTS operationdefinition_history CASCADE;"
+console.log "DROP TABLE IF EXISTS resource CASCADE;"
+console.log "DROP TABLE IF EXISTS resource_history CASCADE;"
+console.log "DROP TABLE IF EXISTS searchparameter CASCADE;"
+console.log "DROP TABLE IF EXISTS searchparameter_history CASCADE;"
+console.log "DROP TABLE IF EXISTS structuredefinition CASCADE;"
+console.log "DROP TABLE IF EXISTS structuredefinition_history CASCADE;"
+console.log "DROP TABLE IF EXISTS valueset CASCADE;"
+console.log "DROP TABLE IF EXISTS valueset_history CASCADE;"
+
 TZ = "TIMESTAMP WITH TIME ZONE"
 
 base_columns  =[
@@ -20,6 +43,8 @@ base_columns  =[
   [':resource_type',':text']
   [':resource',':jsonb']
 ]
+
+console.log "DROP TABLE IF EXISTS structuredefinition;"
 
 output sql(
   create: ":table"
@@ -68,6 +93,8 @@ CREATE OR REPLACE FUNCTION first_agg ( anyelement, anyelement )
 RETURNS anyelement LANGUAGE SQL IMMUTABLE STRICT AS $$
   SELECT $1;
 $$;
+
+DROP AGGREGATE IF EXISTS first(anyelement) CASCADE;
 
 -- And then wrap an aggregate around it
 CREATE AGGREGATE FIRST (
